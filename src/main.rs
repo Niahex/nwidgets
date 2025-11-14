@@ -77,7 +77,7 @@ fn main() {
                 }),
                 ..Default::default()
             },
-            |_, cx| cx.new(|_| osd::Osd::new(osd::OsdType::Volume(50))),
+            |_, cx| cx.new(|_| osd::Osd::new(osd::OsdType::CapsLock(false))),
         ).unwrap();
 
         // Notifications

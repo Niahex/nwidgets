@@ -1,6 +1,6 @@
 use gpui::*;
-use std::process::Command;
-use std::time::Duration;
+use std::fs;
+use std::time::{Duration, Instant};
 
 #[derive(Clone)]
 pub enum OsdType {
@@ -13,6 +13,8 @@ pub enum OsdType {
 pub struct Osd {
     osd_type: OsdType,
     visible: bool,
+    last_caps_state: bool,
+    show_until: Option<Instant>,
 }
 
 impl Osd {
@@ -20,116 +22,54 @@ impl Osd {
         Self {
             osd_type,
             visible: false,
+            last_caps_state: false,
+            show_until: None,
         }
     }
 
-    pub fn show_caps_lock(&mut self, cx: &mut Context<Self>) {
-        let caps_on = Self::get_caps_lock_state();
-        self.osd_type = OsdType::CapsLock(caps_on);
-        self.show_and_hide(cx);
-    }
-
-    pub fn show_volume(&mut self, cx: &mut Context<Self>) {
-        let volume = Self::get_volume_level();
-        self.osd_type = OsdType::Volume(volume);
-        self.show_and_hide(cx);
-    }
-
-    fn show_and_hide(&mut self, cx: &mut Context<Self>) {
-        self.visible = true;
-        cx.notify();
-        
-        cx.spawn(|this, mut cx| async move {
-            cx.background_executor().timer(Duration::from_secs(2)).await;
-            _ = this.update(&mut cx, |osd, cx| {
-                osd.visible = false;
-                cx.notify();
-            });
-        }).detach();
-    }
-
     fn get_caps_lock_state() -> bool {
-        Command::new("xset")
-            .args(&["q"])
-            .output()
-            .map(|output| {
-                String::from_utf8_lossy(&output.stdout)
-                    .contains("Caps Lock:   on")
-            })
-            .unwrap_or(false)
-    }
-
-    fn get_volume_level() -> u8 {
-        Command::new("pactl")
-            .args(&["get-sink-volume", "@DEFAULT_SINK@"])
-            .output()
-            .and_then(|output| {
-                let output_str = String::from_utf8_lossy(&output.stdout);
-                output_str
-                    .split_whitespace()
-                    .find(|s| s.ends_with('%'))
-                    .and_then(|s| s.trim_end_matches('%').parse().ok())
-                    .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::Other, "Parse error"))
-            })
-            .unwrap_or(50)
-    }
-
-    pub fn start_monitoring(&mut self, cx: &mut Context<Self>) {
-        cx.spawn(|this, mut cx| async move {
-            let mut last_caps = false;
-            let mut last_volume = 50u8;
-            
-            loop {
-                cx.background_executor().timer(Duration::from_millis(100)).await;
-                
-                let caps = Self::get_caps_lock_state();
-                let volume = Self::get_volume_level();
-                
-                if caps != last_caps {
-                    _ = this.update(&mut cx, |osd, cx| osd.show_caps_lock(cx));
-                    last_caps = caps;
-                }
-                
-                if volume != last_volume {
-                    _ = this.update(&mut cx, |osd, cx| osd.show_volume(cx));
-                    last_volume = volume;
-                }
+        if let Ok(content) = fs::read_to_string("/sys/class/leds/input0::capslock/brightness") {
+            if let Ok(brightness) = content.trim().parse::<u8>() {
+                return brightness > 0;
             }
-        }).detach();
+        }
+        false
     }
 }
 
 impl Render for Osd {
-    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let caps_on = Self::get_caps_lock_state();
+        let now = Instant::now();
+        
+        // Show OSD when caps lock state changes
+        if caps_on != self.last_caps_state {
+            self.last_caps_state = caps_on;
+            self.visible = true;
+            self.show_until = Some(now + Duration::from_millis(2500));
+            self.osd_type = OsdType::CapsLock(caps_on);
+        }
+
+        // Hide after 2.5s
+        if let Some(hide_time) = self.show_until {
+            if now >= hide_time {
+                self.visible = false;
+                self.show_until = None;
+            }
+        }
+
+        // Keep checking
+        let entity = cx.entity_id();
+        cx.defer(move |cx| {
+            cx.notify(entity);
+        });
+
         if !self.visible {
             return div();
         }
 
-        let (icon, text) = match &self.osd_type {
-            OsdType::CapsLock(enabled) => {
-                ("⇪", if *enabled { "CAPS ON" } else { "CAPS OFF" })
-            },
-            OsdType::NumLock(enabled) => {
-                ("123", if *enabled { "NUM ON" } else { "NUM OFF" })
-            },
-            OsdType::Volume(level) => {
-                let icon = if *level == 0 { "🔇" } else if *level < 50 { "🔉" } else { "🔊" };
-                (icon, "VOLUME")
-            },
-            OsdType::Microphone(muted) => {
-                ("🎤", if *muted { "MIC MUTED" } else { "MIC ON" })
-            },
-        };
-
-        let color = match &self.osd_type {
-            OsdType::CapsLock(enabled) | OsdType::NumLock(enabled) => {
-                if *enabled { rgb(0x88c0d0) } else { rgb(0x4c566a) }
-            },
-            OsdType::Volume(_) => rgb(0x88c0d0),
-            OsdType::Microphone(muted) => {
-                if *muted { rgb(0xbf616a) } else { rgb(0xa3be8c) }
-            },
-        };
+        let text = if caps_on { "CAPS ON" } else { "CAPS OFF" };
+        let color = if caps_on { rgb(0x88c0d0) } else { rgb(0x4c566a) };
 
         div()
             .flex()
@@ -147,7 +87,7 @@ impl Render for Osd {
                     .flex()
                     .items_center()
                     .gap_3()
-                    .child(div().text_xl().text_color(color).child(icon))
+                    .child(div().text_xl().text_color(color).child("⇪"))
                     .child(div().text_sm().text_color(rgb(0xeceff4)).child(text))
             )
     }
