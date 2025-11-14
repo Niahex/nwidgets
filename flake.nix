@@ -1,5 +1,5 @@
 {
-  description = "nbar - A GPUI-based application launcher";
+  description = "nwidgets - A GPUI-based application launcher";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
@@ -69,10 +69,10 @@
         };
 
         # Application package definition
-        nbar = craneLib.buildPackage {
+        nwidgets = craneLib.buildPackage {
           inherit src cargoArtifacts buildInputs nativeBuildInputs runtimeDependencies;
           env = envVars;
-          pname = "nbar";
+          pname = "nwidgets";
           version = "0.1.0";
         };
 
@@ -86,24 +86,24 @@
         ];
       in {
         packages = {
-          default = nbar;
-          inherit nbar;
+          default = nwidgets;
+          inherit nwidgets;
         };
 
         checks = {
-          inherit nbar;
+          inherit nwidgets;
 
-          nbar-clippy = craneLib.cargoClippy {
+          nwidgets-clippy = craneLib.cargoClippy {
             inherit src cargoArtifacts buildInputs nativeBuildInputs;
             env = envVars;
             cargoClippyExtraArgs = "--all-targets -- --deny warnings";
           };
 
-          nbar-fmt = craneLib.cargoFmt {inherit src;};
+          nwidgets-fmt = craneLib.cargoFmt {inherit src;};
         };
 
         devShells.default = pkgs.mkShell {
-          inputsFrom = [nbar];
+          inputsFrom = [nwidgets];
           nativeBuildInputs = devTools;
           env = envVars;
 
@@ -111,7 +111,7 @@
           FONTCONFIG_FILE = pkgs.makeFontsConf {fontDirectories = buildInputs;};
 
           shellHook = ''
-            echo "[🦀 Rust $(rustc --version)] - Ready to develop nbar!"
+            echo "[🦀 Rust $(rustc --version)] - Ready to develop nwidgets!"
           '';
         };
 
