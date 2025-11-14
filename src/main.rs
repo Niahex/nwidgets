@@ -7,11 +7,12 @@ use gpui::layer_shell::{LayerShellOptions, Layer, Anchor, KeyboardInteractivity}
 
 mod shell;
 mod modules;
-mod osd;
-mod launcher;
+mod services;
 
 use shell::Shell;
-use launcher::Launcher;
+use modules::launcher::Launcher;
+use modules::launcher;
+use modules::osd;
 
 actions!(nwidgets, [OpenLauncher]);
 

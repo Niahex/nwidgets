@@ -21,7 +21,7 @@ impl Render for Lock {
         div()
             .absolute()
             .size_full()
-            .bg(rgb(0x000000).with_alpha(0.9))
+            .bg(gpui::black().alpha(0.9))
             .flex()
             .justify_center()
             .items_center()

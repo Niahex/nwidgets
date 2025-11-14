@@ -21,7 +21,7 @@ impl Render for AreaPicker {
         div()
             .absolute()
             .size_full()
-            .bg(rgb(0x000000).with_alpha(0.5))
+            .bg(gpui::black().alpha(0.5))
             .child(
                 div()
                     .absolute()
