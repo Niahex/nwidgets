@@ -1,5 +1,6 @@
 use gpui::{Context, Window, div, prelude::*, rgb, px, AnyElement};
 use std::time::{SystemTime, UNIX_EPOCH, Duration};
+use std::process::Command;
 use crate::modules::{Notification, NotificationService};
 
 // Nord Dark palette
@@ -103,6 +104,22 @@ impl Shell {
             .into_any_element()
     }
 
+    fn get_volume_level(&self) -> u8 {
+        Command::new("wpctl")
+            .args(&["get-volume", "@DEFAULT_AUDIO_SINK@"])
+            .output()
+            .and_then(|output| {
+                let output_str = String::from_utf8_lossy(&output.stdout);
+                if let Some(volume_str) = output_str.strip_prefix("Volume: ") {
+                    if let Ok(volume_float) = volume_str.trim().parse::<f32>() {
+                        return Ok((volume_float * 100.0) as u8);
+                    }
+                }
+                Err(std::io::Error::new(std::io::ErrorKind::Other, "Parse error"))
+            })
+            .unwrap_or(50)
+    }
+
     fn render_panel(&self) -> AnyElement {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -110,6 +127,7 @@ impl Shell {
             .as_secs();
         let hours = (now / 3600) % 24;
         let minutes = (now / 60) % 60;
+        let volume = self.get_volume_level();
 
         div()
             .size_full()
@@ -199,11 +217,13 @@ impl Shell {
                             .bg(rgb(NORD14))
                             .rounded_md()
                             .flex()
+                            .flex_col()
                             .items_center()
                             .justify_center()
                             .text_color(rgb(NORD0))
-                            .text_sm()
-                            .child("🔊")
+                            .text_xs()
+                            .child(if volume == 0 { "🔇" } else if volume < 50 { "🔉" } else { "🔊" })
+                            .child(format!("{}%", volume))
                     )
                     .child(
                         div()
@@ -331,7 +351,13 @@ impl Shell {
 }
 
 impl Render for Shell {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        // Schedule re-render to update volume and time
+        let entity = cx.entity_id();
+        cx.defer(move |cx| {
+            cx.notify(entity);
+        });
+
         match self.mode {
             ShellMode::Background => self.render_background(),
             ShellMode::Panel => self.render_panel(),
