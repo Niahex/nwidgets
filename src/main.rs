@@ -7,6 +7,7 @@ use gpui::layer_shell::{LayerShellOptions, Layer, Anchor, KeyboardInteractivity}
 
 mod shell;
 mod modules;
+mod osd;
 
 use shell::Shell;
 
@@ -55,6 +56,28 @@ fn main() {
                 ..Default::default()
             },
             |_, cx| cx.new(Shell::new_panel),
+        ).unwrap();
+
+        // OSD
+        cx.open_window(
+            WindowOptions {
+                titlebar: None,
+                window_bounds: Some(WindowBounds::Windowed(Bounds {
+                    origin: point(px(1690.), px(100.)),
+                    size: Size::new(px(256.), px(64.)),
+                })),
+                app_id: Some("nwidgets-osd".to_string()),
+                window_background: WindowBackgroundAppearance::Transparent,
+                kind: WindowKind::LayerShell(LayerShellOptions {
+                    namespace: "nwidgets-osd".to_string(),
+                    layer: Layer::Overlay,
+                    anchor: Anchor::TOP,
+                    keyboard_interactivity: KeyboardInteractivity::None,
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            |_, cx| cx.new(|_| osd::Osd::new(osd::OsdType::Volume(50))),
         ).unwrap();
 
         // Notifications
