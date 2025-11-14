@@ -75,12 +75,14 @@ impl Shell {
                             if line.starts_with("workspace>>") || 
                                line.starts_with("createworkspace>>") || 
                                line.starts_with("destroyworkspace>>") {
+                                println!("Hyprland event: {}", line);
                                 let _ = this.update(cx, |shell, cx| {
                                     let (workspaces, active_workspace) = Self::get_hyprland_data();
+                                    println!("Updated active workspace: {}", active_workspace);
                                     shell.workspaces = workspaces;
                                     shell.active_workspace = active_workspace;
-                                    cx.notify();
                                 });
+                                let _ = cx.refresh();
                             }
                         }
                     }
@@ -206,6 +208,9 @@ impl Shell {
         let hours = (local_time / 3600) % 24;
         let minutes = (local_time / 60) % 60;
         let volume = self.get_volume_level();
+        
+        // Get fresh workspace data like volume
+        let (workspaces, active_workspace) = Self::get_hyprland_data();
 
         div()
             .size_full()
@@ -255,10 +260,22 @@ impl Shell {
                     .flex_col()
                     .items_center()
                     .gap_2()
-                    .children(
-                        self.workspaces.iter().take(5).map(|ws| {
-                            let is_active = ws.id == self.active_workspace;
+                    .children({
+                        let mut sorted_workspaces = workspaces.clone();
+                        // Sort: 1-6 first, then others
+                        sorted_workspaces.sort_by(|a, b| {
+                            match (a.id <= 6, b.id <= 6) {
+                                (true, true) => a.id.cmp(&b.id),
+                                (true, false) => std::cmp::Ordering::Less,
+                                (false, true) => std::cmp::Ordering::Greater,
+                                (false, false) => a.id.cmp(&b.id),
+                            }
+                        });
+                        
+                        sorted_workspaces.into_iter().take(8).map(|ws| {
+                            let is_active = ws.id == active_workspace;
                             let bg_color = if is_active { rgb(NORD10) } else { rgb(NORD2) };
+                            println!("Rendering workspace {}: active={}, color={:?}", ws.id, is_active, if is_active { "NORD10" } else { "NORD2" });
                             div()
                                 .w_8()
                                 .h_8()
@@ -270,8 +287,8 @@ impl Shell {
                                 .text_color(rgb(NORD4))
                                 .text_xs()
                                 .child(ws.id.to_string())
-                        })
-                    )
+                        }).collect::<Vec<_>>()
+                    })
             )
             .child(
                 div()
