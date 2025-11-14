@@ -1,2 +1,3 @@
-// Modules pour les composants réutilisables
-// Pour l'instant, tout est dans shell.rs
+pub mod notifications;
+
+pub use notifications::{NotificationService, Notification};

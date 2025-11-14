@@ -12,13 +12,13 @@ use shell::Shell;
 
 fn main() {
     Application::new().run(|cx: &mut App| {
-        // Background layer (wallpaper) - ajusté pour éviter panel et drawers
+        // Background layer (wallpaper) - plein écran sauf panel
         cx.open_window(
             WindowOptions {
                 titlebar: None,
                 window_bounds: Some(WindowBounds::Windowed(Bounds {
-                    origin: point(px(60.), px(25.)),
-                    size: Size::new(px(3355.), px(1390.)),
+                    origin: point(px(60.), px(0.)),
+                    size: Size::new(px(3380.), px(1440.)),
                 })),
                 app_id: Some("nwidgets-background".to_string()),
                 window_background: WindowBackgroundAppearance::Transparent,
@@ -57,73 +57,26 @@ fn main() {
             |_, cx| cx.new(Shell::new_panel),
         ).unwrap();
 
-        // Top drawer
+        // Notifications
         cx.open_window(
             WindowOptions {
                 titlebar: None,
                 window_bounds: Some(WindowBounds::Windowed(Bounds {
-                    origin: point(px(60.), px(0.)),
-                    size: Size::new(px(3380.), px(25.)),
+                    origin: point(px(3040.), px(20.)),
+                    size: Size::new(px(380.), px(1400.)),
                 })),
-                app_id: Some("nwidgets-drawer-top".to_string()),
+                app_id: Some("nwidgets-notifications".to_string()),
                 window_background: WindowBackgroundAppearance::Transparent,
                 kind: WindowKind::LayerShell(LayerShellOptions {
-                    namespace: "nwidgets-drawer-top".to_string(),
-                    layer: Layer::Top,
-                    anchor: Anchor::TOP | Anchor::LEFT | Anchor::RIGHT,
-                    exclusive_zone: Some(px(25.)),
-                    keyboard_interactivity: KeyboardInteractivity::OnDemand,
-                    ..Default::default()
-                }),
-                ..Default::default()
-            },
-            |_, cx| cx.new(Shell::new_drawer_top),
-        ).unwrap();
-
-        // Bottom drawer
-        cx.open_window(
-            WindowOptions {
-                titlebar: None,
-                window_bounds: Some(WindowBounds::Windowed(Bounds {
-                    origin: point(px(60.), px(1415.)),
-                    size: Size::new(px(3380.), px(25.)),
-                })),
-                app_id: Some("nwidgets-drawer-bottom".to_string()),
-                window_background: WindowBackgroundAppearance::Transparent,
-                kind: WindowKind::LayerShell(LayerShellOptions {
-                    namespace: "nwidgets-drawer-bottom".to_string(),
-                    layer: Layer::Top,
-                    anchor: Anchor::BOTTOM | Anchor::LEFT | Anchor::RIGHT,
-                    exclusive_zone: Some(px(25.)),
-                    keyboard_interactivity: KeyboardInteractivity::OnDemand,
-                    ..Default::default()
-                }),
-                ..Default::default()
-            },
-            |_, cx| cx.new(Shell::new_drawer_bottom),
-        ).unwrap();
-
-        // Right drawer
-        cx.open_window(
-            WindowOptions {
-                titlebar: None,
-                window_bounds: Some(WindowBounds::Windowed(Bounds {
-                    origin: point(px(3415.), px(25.)),
-                    size: Size::new(px(25.), px(1390.)),
-                })),
-                app_id: Some("nwidgets-drawer-right".to_string()),
-                window_background: WindowBackgroundAppearance::Transparent,
-                kind: WindowKind::LayerShell(LayerShellOptions {
-                    namespace: "nwidgets-drawer-right".to_string(),
-                    layer: Layer::Top,
+                    namespace: "nwidgets-notifications".to_string(),
+                    layer: Layer::Overlay,
                     anchor: Anchor::TOP | Anchor::BOTTOM | Anchor::RIGHT,
-                    exclusive_zone: Some(px(25.)),
                     keyboard_interactivity: KeyboardInteractivity::OnDemand,
                     ..Default::default()
                 }),
                 ..Default::default()
             },
-            |_, cx| cx.new(Shell::new_drawer_right),
+            |_, cx| cx.new(Shell::new_notifications),
         ).unwrap();
 
         cx.activate(true);
