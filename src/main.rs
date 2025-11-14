@@ -18,7 +18,7 @@ fn main() {
                 titlebar: None,
                 window_bounds: Some(WindowBounds::Windowed(Bounds {
                     origin: point(px(0.), px(0.)),
-                    size: Size::new(px(1920.), px(1080.)),
+                    size: Size::new(px(3440.), px(1440.)),
                 })),
                 app_id: Some("nwidgets-background".to_string()),
                 window_background: WindowBackgroundAppearance::Transparent,
@@ -34,21 +34,21 @@ fn main() {
             |_, cx| cx.new(Shell::new_background),
         ).unwrap();
 
-        // Top layer (panels, bars)
+        // Left panel (sidebar)
         cx.open_window(
             WindowOptions {
                 titlebar: None,
                 window_bounds: Some(WindowBounds::Windowed(Bounds {
                     origin: point(px(0.), px(0.)),
-                    size: Size::new(px(1920.), px(40.)),
+                    size: Size::new(px(60.), px(1440.)),
                 })),
                 app_id: Some("nwidgets-panel".to_string()),
                 window_background: WindowBackgroundAppearance::Transparent,
                 kind: WindowKind::LayerShell(LayerShellOptions {
                     namespace: "nwidgets-panel".to_string(),
                     layer: Layer::Top,
-                    anchor: Anchor::TOP | Anchor::LEFT | Anchor::RIGHT,
-                    exclusive_zone: Some(px(40.)),
+                    anchor: Anchor::LEFT | Anchor::TOP | Anchor::BOTTOM,
+                    exclusive_zone: Some(px(60.)),
                     keyboard_interactivity: KeyboardInteractivity::OnDemand,
                     ..Default::default()
                 }),
