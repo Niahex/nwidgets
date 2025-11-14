@@ -114,18 +114,24 @@ impl NotificationService {
             sender: sender.clone(),
         };
 
-        let notifications_clone = notifications.clone();
-        let sender_clone = sender.clone();
-        tokio::spawn(async move {
-            if let Err(e) = Self::start_dbus_server(notifications_clone, sender_clone).await {
-                eprintln!("Erreur D-Bus: {}", e);
-            }
-        });
-
         (service, receiver)
     }
 
-    async fn start_dbus_server(
+    pub fn start_dbus_server(&self) {
+        let notifications = self.notifications.clone();
+        let sender = self.sender.clone();
+        
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                if let Err(e) = Self::run_dbus_server(notifications, sender).await {
+                    eprintln!("Erreur D-Bus: {}", e);
+                }
+            });
+        });
+    }
+
+    async fn run_dbus_server(
         notifications: Arc<Mutex<Vec<Notification>>>,
         sender: mpsc::UnboundedSender<Notification>,
     ) -> Result<(), Box<dyn std::error::Error>> {
@@ -149,14 +155,5 @@ impl NotificationService {
         loop {
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
         }
-    }
-
-    pub fn get_notifications(&self) -> Vec<Notification> {
-        self.notifications.lock().unwrap().clone()
-    }
-
-    pub fn remove_notification(&self, id: u32) {
-        let mut notifications = self.notifications.lock().unwrap();
-        notifications.retain(|n| n.id != id);
     }
 }

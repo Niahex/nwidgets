@@ -1,5 +1,5 @@
 use gpui::{Context, Window, div, prelude::*, rgb, px, AnyElement};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH, Duration};
 use crate::modules::{Notification, NotificationService};
 
 // Nord Dark palette
@@ -23,7 +23,6 @@ pub enum ShellMode {
 
 pub struct Shell {
     mode: ShellMode,
-    notification_service: Option<NotificationService>,
     notifications: Vec<Notification>,
 }
 
@@ -31,7 +30,6 @@ impl Shell {
     pub fn new_background(_cx: &mut Context<Self>) -> Self {
         Self {
             mode: ShellMode::Background,
-            notification_service: None,
             notifications: Vec::new(),
         }
     }
@@ -39,20 +37,20 @@ impl Shell {
     pub fn new_panel(_cx: &mut Context<Self>) -> Self {
         Self {
             mode: ShellMode::Panel,
-            notification_service: None,
             notifications: Vec::new(),
         }
     }
 
     pub fn new_notifications(cx: &mut Context<Self>) -> Self {
         let (service, mut receiver) = NotificationService::new();
+        service.start_dbus_server();
         
         let shell = Self {
             mode: ShellMode::Notifications,
-            notification_service: Some(service),
             notifications: Vec::new(),
         };
 
+        // Réception des notifications
         cx.spawn(async move |this, cx| {
             while let Some(notification) = receiver.recv().await {
                 let _ = this.update(cx, |shell, cx| {
@@ -60,6 +58,21 @@ impl Shell {
                     shell.notifications.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
                     shell.notifications.truncate(10);
                     cx.notify();
+                });
+            }
+        }).detach();
+
+        // Timer pour nettoyer les notifications expirées
+        cx.spawn(async move |this, cx| {
+            loop {
+                cx.background_executor().timer(Duration::from_secs(1)).await;
+                let _ = this.update(cx, |shell, cx| {
+                    let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+                    let old_count = shell.notifications.len();
+                    shell.notifications.retain(|n| now - n.timestamp < 5);
+                    if shell.notifications.len() != old_count {
+                        cx.notify();
+                    }
                 });
             }
         }).detach();

@@ -44,6 +44,7 @@
           nerd-fonts.ubuntu-sans
           nerd-fonts.ubuntu
           noto-fonts-emoji
+          libnotify
         ];
 
         # Dependencies needed only at runtime
