@@ -1,5 +1,5 @@
 [package]
-name = "nlauncher"
+name = "nwidgets"
 version = "0.1.0"
 edition = "2021"
 include = ["data/**/*", "src/**/*", "Cargo.toml", "assets/**/*"]
