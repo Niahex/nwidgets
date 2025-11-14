@@ -1,6 +1,6 @@
 use gpui::{
-    App, Application, Bounds, WindowBounds, WindowOptions, WindowKind,
-    WindowBackgroundAppearance, prelude::*, px, point, Size,
+    actions, App, Application, Bounds, WindowBounds, WindowOptions, WindowKind,
+    WindowBackgroundAppearance, prelude::*, px, point, Size, KeyBinding,
 };
 
 use gpui::layer_shell::{LayerShellOptions, Layer, Anchor, KeyboardInteractivity};
@@ -8,11 +8,58 @@ use gpui::layer_shell::{LayerShellOptions, Layer, Anchor, KeyboardInteractivity}
 mod shell;
 mod modules;
 mod osd;
+mod launcher;
 
 use shell::Shell;
+use launcher::Launcher;
+
+actions!(nwidgets, [OpenLauncher]);
 
 fn main() {
     Application::new().run(|cx: &mut App| {
+        // Keybindings globaux
+        cx.bind_keys([
+            KeyBinding::new("super-space", OpenLauncher, None),
+        ]);
+
+        // Action pour ouvrir le launcher
+        cx.on_action(|_: &OpenLauncher, cx| {
+            let window = cx.open_window(
+                WindowOptions {
+                    titlebar: None,
+                    window_bounds: Some(WindowBounds::Windowed(Bounds {
+                        origin: point(px(760.), px(520.)),
+                        size: Size::new(px(800.), px(400.)),
+                    })),
+                    app_id: Some("nwidgets-launcher".to_string()),
+                    window_background: WindowBackgroundAppearance::Transparent,
+                    kind: WindowKind::LayerShell(LayerShellOptions {
+                        namespace: "nwidgets-launcher".to_string(),
+                        layer: Layer::Overlay,
+                        anchor: Anchor::empty(),
+                        keyboard_interactivity: KeyboardInteractivity::Exclusive,
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                |_, cx| cx.new(Launcher::new),
+            ).unwrap();
+
+            // Configurer les keybindings pour le launcher
+            window.update(cx, |view, window, cx| {
+                cx.bind_keys([
+                    KeyBinding::new("backspace", launcher::Backspace, None),
+                    KeyBinding::new("up", launcher::Up, None),
+                    KeyBinding::new("down", launcher::Down, None),
+                    KeyBinding::new("enter", launcher::Launch, None),
+                    KeyBinding::new("escape", launcher::Quit, None),
+                ]);
+                
+                window.focus(&view.focus_handle);
+                cx.activate(true);
+            }).unwrap();
+        });
+
         // Background layer (wallpaper) - plein écran sauf panel
         cx.open_window(
             WindowOptions {
@@ -77,7 +124,7 @@ fn main() {
                 }),
                 ..Default::default()
             },
-            |_, cx| cx.new(|_| osd::Osd::new(osd::OsdType::CapsLock(false))),
+            |_, cx| cx.new(|cx| osd::Osd::new(osd::OsdType::CapsLock(false), cx)),
         ).unwrap();
 
         // Notifications

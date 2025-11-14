@@ -1,7 +1,7 @@
-use gpui::{Context, Window, div, prelude::*, rgb, px, AnyElement};
+use gpui::{Context, Window, div, prelude::*, rgb, px, AnyElement, Timer};
 use std::time::{SystemTime, UNIX_EPOCH, Duration};
 use std::process::Command;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::os::unix::net::UnixStream;
 use std::io::{BufReader, BufRead};
 use crate::modules::{Notification, NotificationService};
@@ -41,6 +41,7 @@ pub struct Shell {
     notifications: Vec<Notification>,
     workspaces: Vec<Workspace>,
     active_workspace: i32,
+    volume: u8,
 }
 
 impl Shell {
@@ -50,43 +51,76 @@ impl Shell {
             notifications: Vec::new(),
             workspaces: Vec::new(),
             active_workspace: 1,
+            volume: 50,
         }
     }
 
     pub fn new_panel(cx: &mut Context<Self>) -> Self {
+        println!("[SHELL] Creating panel shell");
         let (workspaces, active_workspace) = Self::get_hyprland_data();
+        let initial_volume = Self::get_volume_level();
+        println!("[SHELL] Initial state - volume: {}, active_workspace: {}, workspaces: {}", 
+            initial_volume, active_workspace, workspaces.len());
+        
         let shell = Self {
             mode: ShellMode::Panel,
             notifications: Vec::new(),
             workspaces,
             active_workspace,
+            volume: initial_volume,
         };
+
+        // Monitor volume changes
+        let entity = cx.entity_id();
+        cx.spawn(async move |this, cx| {
+            println!("[SHELL] Volume monitoring task started");
+            loop {
+                Timer::after(Duration::from_millis(100)).await;
+                let new_volume = Self::get_volume_level();
+                println!("[SHELL] Volume check: new={}", new_volume);
+                let _ = this.update(cx, |shell, cx| {
+                    println!("[SHELL] Shell volume state: {}", shell.volume);
+                    if shell.volume != new_volume {
+                        println!("[SHELL] Volume changed: {} -> {}", shell.volume, new_volume);
+                        shell.volume = new_volume;
+                        cx.notify();
+                    }
+                });
+            }
+        }).detach();
 
         // Monitor Hyprland socket for workspace changes
         cx.spawn(async move |this, cx| {
+            println!("[SHELL] Starting Hyprland monitoring");
             if let Ok(hypr_sig) = std::env::var("HYPRLAND_INSTANCE_SIGNATURE") {
                 let socket_path = format!("/run/user/1000/hypr/{}/.socket2.sock", hypr_sig);
+                println!("[SHELL] Connecting to socket: {}", socket_path);
                 
                 if let Ok(stream) = UnixStream::connect(&socket_path) {
+                    println!("[SHELL] Connected to Hyprland socket");
                     let reader = BufReader::new(stream);
                     
                     for line in reader.lines() {
                         if let Ok(line) = line {
+                            println!("[SHELL] Hyprland event: {}", line);
                             if line.starts_with("workspace>>") || 
                                line.starts_with("createworkspace>>") || 
                                line.starts_with("destroyworkspace>>") {
-                                println!("Hyprland event: {}", line);
                                 let _ = this.update(cx, |shell, cx| {
                                     let (workspaces, active_workspace) = Self::get_hyprland_data();
-                                    println!("Updated active workspace: {}", active_workspace);
+                                    println!("[SHELL] Updated workspaces - active: {}, count: {}", active_workspace, workspaces.len());
                                     shell.workspaces = workspaces;
                                     shell.active_workspace = active_workspace;
+                                    cx.notify();
                                 });
-                                let _ = cx.refresh();
                             }
                         }
                     }
+                } else {
+                    println!("[SHELL] Failed to connect to Hyprland socket");
                 }
+            } else {
+                println!("[SHELL] HYPRLAND_INSTANCE_SIGNATURE not found");
             }
         }).detach();
 
@@ -102,6 +136,7 @@ impl Shell {
             notifications: Vec::new(),
             workspaces: Vec::new(),
             active_workspace: 1,
+            volume: 50,
         };
 
         // Réception des notifications
@@ -182,20 +217,31 @@ impl Shell {
         (workspaces, active_workspace)
     }
 
-    fn get_volume_level(&self) -> u8 {
-        Command::new("wpctl")
+    fn get_volume_level() -> u8 {
+        let output = Command::new("wpctl")
             .args(&["get-volume", "@DEFAULT_AUDIO_SINK@"])
-            .output()
-            .and_then(|output| {
+            .output();
+            
+        match output {
+            Ok(output) => {
                 let output_str = String::from_utf8_lossy(&output.stdout);
+                println!("[SHELL] wpctl output: '{}'", output_str.trim());
+                
                 if let Some(volume_str) = output_str.strip_prefix("Volume: ") {
                     if let Ok(volume_float) = volume_str.trim().parse::<f32>() {
-                        return Ok((volume_float * 100.0) as u8);
+                        let volume = (volume_float * 100.0) as u8;
+                        println!("[SHELL] Parsed volume: {}% (from {})", volume, volume_float);
+                        return volume;
                     }
                 }
-                Err(std::io::Error::new(std::io::ErrorKind::Other, "Parse error"))
-            })
-            .unwrap_or(50)
+                println!("[SHELL] Failed to parse volume from: '{}'", output_str);
+                50
+            },
+            Err(e) => {
+                println!("[SHELL] wpctl command failed: {}", e);
+                50
+            }
+        }
     }
 
     fn render_panel(&self) -> AnyElement {
@@ -207,10 +253,6 @@ impl Shell {
         let local_time = now + 3600;
         let hours = (local_time / 3600) % 24;
         let minutes = (local_time / 60) % 60;
-        let volume = self.get_volume_level();
-        
-        // Get fresh workspace data like volume
-        let (workspaces, active_workspace) = Self::get_hyprland_data();
 
         div()
             .size_full()
@@ -261,7 +303,7 @@ impl Shell {
                     .items_center()
                     .gap_2()
                     .children({
-                        let mut sorted_workspaces = workspaces.clone();
+                        let mut sorted_workspaces = self.workspaces.clone();
                         // Sort: 1-6 first, then others
                         sorted_workspaces.sort_by(|a, b| {
                             match (a.id <= 6, b.id <= 6) {
@@ -273,9 +315,8 @@ impl Shell {
                         });
                         
                         sorted_workspaces.into_iter().take(8).map(|ws| {
-                            let is_active = ws.id == active_workspace;
+                            let is_active = ws.id == self.active_workspace;
                             let bg_color = if is_active { rgb(NORD10) } else { rgb(NORD2) };
-                            println!("Rendering workspace {}: active={}, color={:?}", ws.id, is_active, if is_active { "NORD10" } else { "NORD2" });
                             div()
                                 .w_8()
                                 .h_8()
@@ -308,8 +349,8 @@ impl Shell {
                             .justify_center()
                             .text_color(rgb(NORD0))
                             .text_xs()
-                            .child(if volume == 0 { "🔇" } else if volume < 50 { "🔉" } else { "🔊" })
-                            .child(format!("{}%", volume))
+                            .child(if self.volume == 0 { "🔇" } else if self.volume < 50 { "🔉" } else { "🔊" })
+                            .child(format!("{}%", self.volume))
                     )
                     .child(
                         div()
@@ -424,17 +465,21 @@ impl Shell {
 }
 
 impl Render for Shell {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        // Schedule re-render to update volume and time
-        let entity = cx.entity_id();
-        cx.defer(move |cx| {
-            cx.notify(entity);
-        });
-
+    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         match self.mode {
-            ShellMode::Background => self.render_background(),
-            ShellMode::Panel => self.render_panel(),
-            ShellMode::Notifications => self.render_notifications(),
+            ShellMode::Background => {
+                println!("[SHELL] Rendering background");
+                self.render_background()
+            },
+            ShellMode::Panel => {
+                println!("[SHELL] Rendering panel - volume: {}, active_workspace: {}, workspaces: {}", 
+                    self.volume, self.active_workspace, self.workspaces.len());
+                self.render_panel()
+            },
+            ShellMode::Notifications => {
+                println!("[SHELL] Rendering notifications - count: {}", self.notifications.len());
+                self.render_notifications()
+            },
         }
     }
 }

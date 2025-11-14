@@ -3,7 +3,7 @@ use std::fs;
 use std::time::{Duration, Instant};
 use std::process::Command;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum OsdType {
     CapsLock(bool),
     NumLock(bool),
@@ -14,22 +14,78 @@ pub enum OsdType {
 pub struct Osd {
     osd_type: OsdType,
     visible: bool,
-    last_caps_state: bool,
-    last_volume: u8,
     show_until: Option<Instant>,
     volume_text: String,
 }
 
 impl Osd {
-    pub fn new(osd_type: OsdType) -> Self {
-        Self {
+    pub fn new(osd_type: OsdType, cx: &mut Context<Self>) -> Self {
+        println!("[OSD] Creating OSD with type: {:?}", osd_type);
+        
+        let osd = Self {
             osd_type,
             visible: false,
-            last_caps_state: false,
-            last_volume: 50,
             show_until: None,
             volume_text: String::new(),
-        }
+        };
+
+        // Monitor caps lock and volume changes
+        cx.spawn(async move |this, cx| {
+            let mut last_caps_state = Self::get_caps_lock_state();
+            let mut last_volume = Self::get_volume_level();
+            println!("[OSD] Starting monitoring - caps: {}, volume: {}", last_caps_state, last_volume);
+            
+            loop {
+                Timer::after(Duration::from_millis(100)).await;
+                
+                let caps_on = Self::get_caps_lock_state();
+                let volume = Self::get_volume_level();
+                let now = Instant::now();
+                
+                let _ = this.update(cx, |osd, cx| {
+                    let mut should_notify = false;
+                    
+                    // Check caps lock change
+                    if caps_on != last_caps_state {
+                        println!("[OSD] Caps lock changed: {} -> {}", last_caps_state, caps_on);
+                        osd.osd_type = OsdType::CapsLock(caps_on);
+                        osd.visible = true;
+                        osd.show_until = Some(now + Duration::from_millis(2500));
+                        should_notify = true;
+                    }
+                    
+                    // Check volume change
+                    if volume != last_volume {
+                        println!("[OSD] Volume changed: {} -> {}", last_volume, volume);
+                        osd.volume_text = format!("{}%", volume);
+                        osd.osd_type = OsdType::Volume(volume);
+                        osd.visible = true;
+                        osd.show_until = Some(now + Duration::from_millis(2500));
+                        should_notify = true;
+                    }
+                    
+                    // Hide after timeout
+                    if let Some(hide_time) = osd.show_until {
+                        if now >= hide_time && osd.visible {
+                            println!("[OSD] Hiding OSD after timeout");
+                            osd.visible = false;
+                            osd.show_until = None;
+                            should_notify = true;
+                        }
+                    }
+                    
+                    if should_notify {
+                        println!("[OSD] Notifying render - visible: {}", osd.visible);
+                        cx.notify();
+                    }
+                });
+                
+                last_caps_state = caps_on;
+                last_volume = volume;
+            }
+        }).detach();
+
+        osd
     }
 
     fn get_caps_lock_state() -> bool {
@@ -60,42 +116,9 @@ impl Osd {
 }
 
 impl Render for Osd {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let caps_on = Self::get_caps_lock_state();
-        let volume = Self::get_volume_level();
-        let now = Instant::now();
+    fn render(&mut self, _: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+        println!("[OSD] Rendering - visible: {}", self.visible);
         
-        // Show OSD when caps lock state changes
-        if caps_on != self.last_caps_state {
-            self.last_caps_state = caps_on;
-            self.visible = true;
-            self.show_until = Some(now + Duration::from_millis(2500));
-            self.osd_type = OsdType::CapsLock(caps_on);
-        }
-
-        // Show OSD when volume changes
-        if volume != self.last_volume {
-            self.last_volume = volume;
-            self.volume_text = format!("{}%", volume);
-            self.visible = true;
-            self.show_until = Some(now + Duration::from_millis(2500));
-            self.osd_type = OsdType::Volume(volume);
-        }
-
-        // Hide after 2.5s
-        if let Some(hide_time) = self.show_until {
-            if now >= hide_time {
-                self.visible = false;
-                self.show_until = None;
-            }
-        }
-
-        // Keep checking
-        let entity = cx.entity_id();
-        cx.defer(move |cx| {
-            cx.notify(entity);
-        });
-
         if !self.visible {
             return div();
         }
@@ -104,10 +127,12 @@ impl Render for Osd {
             OsdType::CapsLock(enabled) => {
                 let text = if *enabled { "CAPS ON" } else { "CAPS OFF" };
                 let color = if *enabled { rgb(0x88c0d0) } else { rgb(0x4c566a) };
+                println!("[OSD] Rendering caps lock: {} - {}", enabled, text);
                 ("⇪", text.to_string(), color)
             },
             OsdType::Volume(level) => {
                 let icon = if *level == 0 { "🔇" } else if *level < 50 { "🔉" } else { "🔊" };
+                println!("[OSD] Rendering volume: {}% - {}", level, self.volume_text);
                 (icon, self.volume_text.clone(), rgb(0x88c0d0))
             },
             _ => ("", "".to_string(), rgb(0x88c0d0))
