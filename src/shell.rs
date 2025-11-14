@@ -125,8 +125,10 @@ impl Shell {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        let hours = (now / 3600) % 24;
-        let minutes = (now / 60) % 60;
+        // Add timezone offset for CET (UTC+1)
+        let local_time = now + 3600;
+        let hours = (local_time / 3600) % 24;
+        let minutes = (local_time / 60) % 60;
         let volume = self.get_volume_level();
 
         div()
@@ -224,19 +226,6 @@ impl Shell {
                             .text_xs()
                             .child(if volume == 0 { "🔇" } else if volume < 50 { "🔉" } else { "🔊" })
                             .child(format!("{}%", volume))
-                    )
-                    .child(
-                        div()
-                            .w_10()
-                            .h_8()
-                            .bg(rgb(NORD13))
-                            .rounded_md()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .text_color(rgb(NORD0))
-                            .text_sm()
-                            .child("🔋")
                     )
                     .child(
                         div()
