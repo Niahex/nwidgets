@@ -1,7 +1,19 @@
 use gpui::{Context, Window, div, prelude::*, rgb, px, AnyElement};
 use std::time::{SystemTime, UNIX_EPOCH, Duration};
 use std::process::Command;
+use serde::{Deserialize, Serialize};
 use crate::modules::{Notification, NotificationService};
+
+#[derive(Debug, Deserialize, Clone)]
+struct Workspace {
+    id: i32,
+    name: String,
+    monitor: String,
+    windows: i32,
+    hasfullscreen: bool,
+    lastwindow: String,
+    lastwindowtitle: String,
+}
 
 // Nord Dark palette
 const NORD0: u32 = 0x2e3440;
@@ -25,6 +37,8 @@ pub enum ShellMode {
 pub struct Shell {
     mode: ShellMode,
     notifications: Vec<Notification>,
+    workspaces: Vec<Workspace>,
+    active_workspace: i32,
 }
 
 impl Shell {
@@ -32,13 +46,18 @@ impl Shell {
         Self {
             mode: ShellMode::Background,
             notifications: Vec::new(),
+            workspaces: Vec::new(),
+            active_workspace: 1,
         }
     }
 
     pub fn new_panel(_cx: &mut Context<Self>) -> Self {
+        let (workspaces, active_workspace) = Self::get_hyprland_data();
         Self {
             mode: ShellMode::Panel,
             notifications: Vec::new(),
+            workspaces,
+            active_workspace,
         }
     }
 
@@ -49,6 +68,8 @@ impl Shell {
         let shell = Self {
             mode: ShellMode::Notifications,
             notifications: Vec::new(),
+            workspaces: Vec::new(),
+            active_workspace: 1,
         };
 
         // Réception des notifications
@@ -102,6 +123,31 @@ impl Shell {
                     .child("12:34")
             )
             .into_any_element()
+    }
+
+    fn get_hyprland_data() -> (Vec<Workspace>, i32) {
+        let workspaces = Command::new("hyprctl")
+            .args(&["workspaces", "-j"])
+            .output()
+            .and_then(|output| {
+                let json_str = String::from_utf8_lossy(&output.stdout);
+                serde_json::from_str::<Vec<Workspace>>(&json_str)
+                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
+            })
+            .unwrap_or_default();
+
+        let active_workspace = Command::new("hyprctl")
+            .args(&["activeworkspace", "-j"])
+            .output()
+            .and_then(|output| {
+                let json_str = String::from_utf8_lossy(&output.stdout);
+                serde_json::from_str::<Workspace>(&json_str)
+                    .map(|ws| ws.id)
+                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
+            })
+            .unwrap_or(1);
+
+        (workspaces, active_workspace)
     }
 
     fn get_volume_level(&self) -> u8 {
@@ -179,31 +225,22 @@ impl Shell {
                     .flex_col()
                     .items_center()
                     .gap_2()
-                    .child(
-                        div()
-                            .w_8()
-                            .h_8()
-                            .bg(rgb(NORD10))
-                            .rounded_sm()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .text_color(rgb(NORD4))
-                            .text_xs()
-                            .child("1")
-                    )
-                    .child(
-                        div()
-                            .w_8()
-                            .h_8()
-                            .bg(rgb(NORD2))
-                            .rounded_sm()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .text_color(rgb(NORD4))
-                            .text_xs()
-                            .child("2")
+                    .children(
+                        self.workspaces.iter().take(5).map(|ws| {
+                            let is_active = ws.id == self.active_workspace;
+                            let bg_color = if is_active { rgb(NORD10) } else { rgb(NORD2) };
+                            div()
+                                .w_8()
+                                .h_8()
+                                .bg(bg_color)
+                                .rounded_sm()
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .text_color(rgb(NORD4))
+                                .text_xs()
+                                .child(ws.id.to_string())
+                        })
                     )
             )
             .child(
