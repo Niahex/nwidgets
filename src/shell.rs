@@ -2,6 +2,8 @@ use gpui::{Context, Window, div, prelude::*, rgb, px, AnyElement};
 use std::time::{SystemTime, UNIX_EPOCH, Duration};
 use std::process::Command;
 use serde::{Deserialize, Serialize};
+use std::os::unix::net::UnixStream;
+use std::io::{BufReader, BufRead};
 use crate::modules::{Notification, NotificationService};
 
 #[derive(Debug, Deserialize, Clone)]
@@ -51,14 +53,42 @@ impl Shell {
         }
     }
 
-    pub fn new_panel(_cx: &mut Context<Self>) -> Self {
+    pub fn new_panel(cx: &mut Context<Self>) -> Self {
         let (workspaces, active_workspace) = Self::get_hyprland_data();
-        Self {
+        let shell = Self {
             mode: ShellMode::Panel,
             notifications: Vec::new(),
             workspaces,
             active_workspace,
-        }
+        };
+
+        // Monitor Hyprland socket for workspace changes
+        cx.spawn(async move |this, cx| {
+            if let Ok(hypr_sig) = std::env::var("HYPRLAND_INSTANCE_SIGNATURE") {
+                let socket_path = format!("/run/user/1000/hypr/{}/.socket2.sock", hypr_sig);
+                
+                if let Ok(stream) = UnixStream::connect(&socket_path) {
+                    let reader = BufReader::new(stream);
+                    
+                    for line in reader.lines() {
+                        if let Ok(line) = line {
+                            if line.starts_with("workspace>>") || 
+                               line.starts_with("createworkspace>>") || 
+                               line.starts_with("destroyworkspace>>") {
+                                let _ = this.update(cx, |shell, cx| {
+                                    let (workspaces, active_workspace) = Self::get_hyprland_data();
+                                    shell.workspaces = workspaces;
+                                    shell.active_workspace = active_workspace;
+                                    cx.notify();
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }).detach();
+
+        shell
     }
 
     pub fn new_notifications(cx: &mut Context<Self>) -> Self {
