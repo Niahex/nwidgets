@@ -43,12 +43,9 @@ impl Shell {
     }
 
     pub fn new_panel(cx: &mut Context<Self>) -> Self {
-        println!("[SHELL] 🎨 Creating panel shell");
         let (workspaces, active_workspace) = HyprlandService::get_hyprland_data();
         let pipewire_service = PipeWireService::new();
         let initial_volume = pipewire_service.get_volume();
-        println!("[SHELL] 📊 Initial state - volume: {}, active_workspace: {}, workspaces: {}",
-            initial_volume, active_workspace, workspaces.len());
 
         let shell = Self {
             mode: ShellMode::Panel,
@@ -58,46 +55,46 @@ impl Shell {
             volume: initial_volume,
         };
 
-        // Subscribe to PipeWire volume changes
+        // Monitor volume changes using PipeWireService
         cx.spawn(async move |this, cx| {
-            let mut volume_rx = PipeWireService::start_monitoring();
-            println!("[SHELL] 🔊 Subscribed to volume changes");
+            let pipewire_service = PipeWireService::new();
+            let mut last_volume = pipewire_service.get_volume();
 
-            while let Some((new_volume, _muted)) = volume_rx.recv().await {
-                println!("[SHELL] 🔊 Received volume update: {}%", new_volume);
-                let result = this.update(cx, |shell, cx| {
-                    shell.volume = new_volume;
-                    println!("[SHELL] 🔔 Calling cx.notify() for volume update");
-                    cx.notify();
-                });
+            loop {
+                gpui::Timer::after(Duration::from_millis(500)).await;
+                let new_volume = pipewire_service.get_volume();
 
-                if let Err(e) = result {
-                    println!("[SHELL] ❌ Error updating volume: {:?}", e);
-                    break;
+                if new_volume != last_volume {
+                    println!("[SHELL] 🔊 Volume: {}% -> {}%", last_volume, new_volume);
+                    let _ = this.update(cx, |shell, cx| {
+                        shell.volume = new_volume;
+                        cx.notify();
+                    });
+                    last_volume = new_volume;
                 }
             }
         }).detach();
 
-        // Subscribe to Hyprland workspace changes
+        // Monitor Hyprland workspace changes
         cx.spawn(async move |this, cx| {
-            let mut hyprland_rx = HyprlandService::start_monitoring();
-            println!("[SHELL] 🖥️  Subscribed to Hyprland changes");
+            let hyprland_rx = HyprlandService::start_monitoring();
 
-            while let Some((workspaces, active_workspace)) = hyprland_rx.recv().await {
-                println!("[SHELL] 📡 Received workspace update - active: {}, count: {}",
-                    active_workspace, workspaces.len());
-
-                let result = this.update(cx, |shell, cx| {
-                    shell.workspaces = workspaces;
-                    shell.active_workspace = active_workspace;
-                    println!("[SHELL] 🔔 Calling cx.notify() to trigger re-render");
-                    cx.notify();
-                });
-
-                if let Err(e) = result {
-                    println!("[SHELL] ❌ Error updating workspaces: {:?}", e);
-                    break;
+            loop {
+                match hyprland_rx.try_recv() {
+                    Ok((workspaces, active_workspace)) => {
+                        println!("[SHELL] 🖥️  Workspace changed -> {}", active_workspace);
+                        let _ = this.update(cx, |shell, cx| {
+                            shell.workspaces = workspaces;
+                            shell.active_workspace = active_workspace;
+                            cx.notify();
+                        });
+                    }
+                    Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                        break;
+                    }
+                    _ => {}
                 }
+                gpui::Timer::after(Duration::from_millis(100)).await;
             }
         }).detach();
 
@@ -105,9 +102,7 @@ impl Shell {
     }
 
     pub fn new_notifications(cx: &mut Context<Self>) -> Self {
-        println!("[SHELL] 📢 Creating notifications shell");
         let (service, mut receiver) = NotificationService::new();
-        println!("[SHELL] 📢 NotificationService created, starting D-Bus server");
         service.start_dbus_server();
 
         let shell = Self {
@@ -261,8 +256,6 @@ impl Shell {
                         sorted_workspaces.into_iter().take(8).map(|ws| {
                             let is_active = ws.id == self.active_workspace;
                             let bg_color = if is_active { rgb(NORD10) } else { rgb(NORD2) };
-                            println!("[SHELL] Rendering workspace {} - active: {} (current active: {}), color: {:?}",
-                                ws.id, is_active, self.active_workspace, bg_color);
                             div()
                                 .w_8()
                                 .h_8()
@@ -285,7 +278,6 @@ impl Shell {
                     .gap_2()
                     .child({
                         let volume_icon = if self.volume == 0 { "🔇" } else if self.volume < 50 { "🔉" } else { "🔊" };
-                        println!("[SHELL] Rendering volume widget: {}% - icon: {}", self.volume, volume_icon);
                         div()
                             .w_10()
                             .h_8()
@@ -415,19 +407,9 @@ impl Shell {
 impl Render for Shell {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         match self.mode {
-            ShellMode::Background => {
-                println!("[SHELL] Rendering background");
-                self.render_background()
-            },
-            ShellMode::Panel => {
-                println!("[SHELL] Rendering panel - volume: {}, active_workspace: {}, workspaces: {}", 
-                    self.volume, self.active_workspace, self.workspaces.len());
-                self.render_panel()
-            },
-            ShellMode::Notifications => {
-                println!("[SHELL] Rendering notifications - count: {}", self.notifications.len());
-                self.render_notifications()
-            },
+            ShellMode::Background => self.render_background(),
+            ShellMode::Panel => self.render_panel(),
+            ShellMode::Notifications => self.render_notifications(),
         }
     }
 }
