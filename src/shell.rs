@@ -1,7 +1,7 @@
 use gpui::{Context, Window, div, prelude::*, rgb, px, AnyElement};
 use std::time::{SystemTime, UNIX_EPOCH, Duration};
 use crate::modules::{Notification, NotificationService};
-use crate::services::{HyprlandService, PipeWireService};
+use crate::services::{HyprlandService, PipeWireService, PomodoroService, PomodoroState};
 use crate::services::hyprland::Workspace;
 
 // Nord Dark palette
@@ -29,6 +29,7 @@ pub struct Shell {
     workspaces: Vec<Workspace>,
     active_workspace: i32,
     volume: u8,
+    pomodoro: PomodoroService,
 }
 
 impl Shell {
@@ -39,6 +40,7 @@ impl Shell {
             workspaces: Vec::new(),
             active_workspace: 1,
             volume: 50,
+            pomodoro: PomodoroService::new(),
         }
     }
 
@@ -53,6 +55,7 @@ impl Shell {
             workspaces,
             active_workspace,
             volume: initial_volume,
+            pomodoro: PomodoroService::new(),
         };
 
         // Monitor volume changes using PipeWireService
@@ -98,6 +101,17 @@ impl Shell {
             }
         }).detach();
 
+        // Monitor Pomodoro timer
+        cx.spawn(async move |this, cx| {
+            loop {
+                gpui::Timer::after(Duration::from_millis(1000)).await;
+                let _ = this.update(cx, |shell, cx| {
+                    shell.pomodoro.auto_transition();
+                    cx.notify();
+                });
+            }
+        }).detach();
+
         shell
     }
 
@@ -111,6 +125,7 @@ impl Shell {
             workspaces: Vec::new(),
             active_workspace: 1,
             volume: 50,
+            pomodoro: PomodoroService::new(),
         };
 
         // Réception des notifications
@@ -160,6 +175,54 @@ impl Shell {
         shell
     }
 
+    fn render_pomodoro(&mut self) -> AnyElement {
+        let (pomodoro_icon, pomodoro_color) = match self.pomodoro.get_state() {
+            PomodoroState::Idle => ("🍅", NORD3),
+            PomodoroState::Work | PomodoroState::WorkPaused => ("🍅", NORD11),
+            PomodoroState::ShortBreak | PomodoroState::ShortBreakPaused => ("☕", NORD13),
+            PomodoroState::LongBreak | PomodoroState::LongBreakPaused => ("🌴", NORD14),
+        };
+
+        let current_state = self.pomodoro.get_state();
+
+        div()
+            .w_12()
+            .h_12()
+            .bg(rgb(pomodoro_color))
+            .rounded_md()
+            .flex()
+            .flex_col()
+            .items_center()
+            .justify_center()
+            .text_color(rgb(NORD0))
+            .text_xs()
+            .on_mouse_down(gpui::MouseButton::Left, move |_event, _window, cx| {
+                cx.update(|shell: &mut Shell, cx| {
+                    match current_state {
+                        PomodoroState::Idle => {
+                            shell.pomodoro.start_work();
+                        }
+                        PomodoroState::Work | PomodoroState::ShortBreak | PomodoroState::LongBreak => {
+                            shell.pomodoro.pause();
+                        }
+                        PomodoroState::WorkPaused | PomodoroState::ShortBreakPaused | PomodoroState::LongBreakPaused => {
+                            shell.pomodoro.resume();
+                        }
+                    }
+                    cx.notify();
+                })
+            })
+            .on_mouse_down(gpui::MouseButton::Middle, move |_event, _window, cx| {
+                cx.update(|shell: &mut Shell, cx| {
+                    shell.pomodoro.reset();
+                    cx.notify();
+                })
+            })
+            .child(pomodoro_icon)
+            .child(self.pomodoro.format_time())
+            .into_any_element()
+    }
+
     fn render_background(&self) -> AnyElement {
         div()
             .size_full()
@@ -183,7 +246,7 @@ impl Shell {
             .into_any_element()
     }
 
-    fn render_panel(&self) -> AnyElement {
+    fn render_panel(&mut self) -> AnyElement {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
@@ -208,32 +271,7 @@ impl Shell {
                     .flex_col()
                     .items_center()
                     .gap_2()
-                    .child(
-                        div()
-                            .w_10()
-                            .h_10()
-                            .bg(rgb(NORD8))
-                            .rounded_md()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .text_color(rgb(NORD0))
-                            .text_sm()
-                            .child("📱")
-                    )
-                    .child(
-                        div()
-                            .w_10()
-                            .h_10()
-                            .bg(rgb(NORD9))
-                            .rounded_md()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .text_color(rgb(NORD0))
-                            .text_sm()
-                            .child("🚀")
-                    )
+                    .child(self.render_pomodoro())
             )
             .child(
                 div()

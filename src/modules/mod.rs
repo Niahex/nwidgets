@@ -7,4 +7,3 @@ pub mod panel;
 pub mod osd;
 
 pub use notifications::{NotificationService, Notification};
-pub use osd::{Osd, OsdType};
