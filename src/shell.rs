@@ -2,7 +2,7 @@ use crate::modules::{
     paint_cove_corner_clipped, CoveCornerConfig, CoveCornerPosition, Notification,
     NotificationService,
 };
-use crate::services::hyprland::Workspace;
+use crate::services::hyprland::{Workspace, ActiveWindow};
 use crate::services::{HyprlandService, PipeWireService, PomodoroService, PomodoroState};
 use gpui::{canvas, div, prelude::*, px, rgb, AnyElement, Context, Hsla, Window};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -38,6 +38,7 @@ pub struct Shell {
     notifications: Vec<Notification>,
     workspaces: Vec<Workspace>,
     active_workspace: i32,
+    active_window: Option<ActiveWindow>,
     volume: u8,
     pomodoro: PomodoroService,
 }
@@ -49,6 +50,7 @@ impl Shell {
             notifications: Vec::new(),
             workspaces: Vec::new(),
             active_workspace: 1,
+            active_window: None,
             volume: 50,
             pomodoro: PomodoroService::new(),
         }
@@ -56,6 +58,7 @@ impl Shell {
 
     pub fn new_panel(cx: &mut Context<Self>) -> Self {
         let (workspaces, active_workspace) = HyprlandService::get_hyprland_data();
+        let active_window = HyprlandService::get_active_window();
         let pipewire_service = PipeWireService::new();
         let initial_volume = pipewire_service.get_volume();
 
@@ -64,6 +67,7 @@ impl Shell {
             notifications: Vec::new(),
             workspaces,
             active_workspace,
+            active_window,
             volume: initial_volume,
             pomodoro: PomodoroService::new(),
         };
@@ -89,17 +93,20 @@ impl Shell {
         })
         .detach();
 
-        // Monitor Hyprland workspace changes
+        // Monitor Hyprland workspace and window changes
         cx.spawn(async move |this, cx| {
             let hyprland_rx = HyprlandService::start_monitoring();
 
             loop {
                 match hyprland_rx.try_recv() {
-                    Ok((workspaces, active_workspace)) => {
-                        println!("[SHELL] 🖥️  Workspace changed -> {}", active_workspace);
+                    Ok((workspaces, active_workspace, active_window)) => {
+                        println!("[SHELL] 🖥️  Hyprland update -> workspace: {}, window: {:?}",
+                                 active_workspace,
+                                 active_window.as_ref().map(|w| &w.class));
                         let _ = this.update(cx, |shell, cx| {
                             shell.workspaces = workspaces;
                             shell.active_workspace = active_workspace;
+                            shell.active_window = active_window;
                             cx.notify();
                         });
                     }
@@ -135,6 +142,7 @@ impl Shell {
             notifications: Vec::new(),
             workspaces: Vec::new(),
             active_workspace: 1,
+            active_window: None,
             volume: 50,
             pomodoro: PomodoroService::new(),
         };
@@ -208,6 +216,7 @@ impl Shell {
             notifications: Vec::new(),
             workspaces: Vec::new(),
             active_workspace: 1,
+            active_window: None,
             volume: 50,
             pomodoro: PomodoroService::new(),
         }
@@ -292,13 +301,37 @@ impl Shell {
             .items_center()
             .justify_between()
             .px_4()
-            // Section gauche (pomodoro)
+            // Section gauche (fenêtre active + pomodoro)
             .child(
                 div()
                     .flex()
                     .flex_row()
                     .items_center()
                     .gap_3()
+                    // Fenêtre active
+                    .when_some(self.active_window.as_ref(), |this, active_window| {
+                        this.child(
+                            div()
+                                .h_8()
+                                .px_3()
+                                .bg(rgb(NORD2))
+                                .rounded_md()
+                                .flex()
+                                .flex_row()
+                                .items_center()
+                                .gap_2()
+                                .text_color(rgb(NORD4))
+                                .text_sm()
+                                .child(format!("🪟 {}", active_window.class))
+                                .when(!active_window.title.is_empty(), |this| {
+                                    this.child(
+                                        div()
+                                            .text_color(rgb(NORD3))
+                                            .child(format!("- {}", active_window.title))
+                                    )
+                                })
+                        )
+                    })
                     .child(self.render_pomodoro(cx)),
             )
             // Section centrale (workspaces)
