@@ -1,6 +1,6 @@
 use crate::modules::{
     paint_cove_corner_clipped, CoveCornerConfig, CoveCornerPosition, Notification,
-    NotificationService, TrayItem,
+    NotificationService, TrayItem, BluetoothState,
 };
 use crate::services::hyprland::{Workspace, ActiveWindow};
 use crate::services::{HyprlandService, PipeWireService, PomodoroService, PomodoroState};
@@ -40,6 +40,7 @@ pub struct Shell {
     active_workspace: i32,
     active_window: Option<ActiveWindow>,
     tray_items: Vec<TrayItem>,
+    bluetooth_state: BluetoothState,
     volume: u8,
     pomodoro: PomodoroService,
 }
@@ -53,6 +54,7 @@ impl Shell {
             active_workspace: 1,
             active_window: None,
             tray_items: Vec::new(),
+            bluetooth_state: BluetoothState { powered: false, connected_devices: 0 },
             volume: 50,
             pomodoro: PomodoroService::new(),
         }
@@ -71,6 +73,7 @@ impl Shell {
             active_workspace,
             active_window,
             tray_items: Vec::new(),
+            bluetooth_state: BluetoothState { powered: false, connected_devices: 0 },
             volume: initial_volume,
             pomodoro: PomodoroService::new(),
         };
@@ -155,6 +158,35 @@ impl Shell {
         })
         .detach();
 
+        // Monitor Bluetooth state
+        cx.spawn(async move |this, cx| {
+            use crate::modules::BluetoothService;
+
+            let receiver = BluetoothService::start_monitoring();
+
+            loop {
+                // Use try_recv to not block and allow other tasks to run
+                match receiver.try_recv() {
+                    Ok(state) => {
+                        let _ = this.update(cx, |shell, cx| {
+                            // Only log and notify if state actually changed
+                            if shell.bluetooth_state.powered != state.powered ||
+                               shell.bluetooth_state.connected_devices != state.connected_devices {
+                                println!("[SHELL] 🔵 Bluetooth: powered={}, devices={}", state.powered, state.connected_devices);
+                                shell.bluetooth_state = state;
+                                cx.notify();
+                            }
+                        });
+                    }
+                    Err(_) => {
+                        // No new state, sleep a bit before checking again
+                        gpui::Timer::after(Duration::from_millis(100)).await;
+                    }
+                }
+            }
+        })
+        .detach();
+
         shell
     }
 
@@ -169,6 +201,7 @@ impl Shell {
             active_workspace: 1,
             active_window: None,
             tray_items: Vec::new(),
+            bluetooth_state: BluetoothState { powered: false, connected_devices: 0 },
             volume: 50,
             pomodoro: PomodoroService::new(),
         };
@@ -244,6 +277,7 @@ impl Shell {
             active_workspace: 1,
             active_window: None,
             tray_items: Vec::new(),
+            bluetooth_state: BluetoothState { powered: false, connected_devices: 0 },
             volume: 50,
             pomodoro: PomodoroService::new(),
         }
@@ -419,6 +453,59 @@ impl Shell {
                                 })
                         })
                     )
+                    .child({
+                        // Bluetooth widget
+                        let (bt_icon, bt_color) = if !self.bluetooth_state.powered {
+                            ("󰂯", NORD11) // Off - red
+                        } else if self.bluetooth_state.connected_devices > 0 {
+                            ("󰂱", NORD8) // Connected - blue
+                        } else {
+                            ("󰂲", NORD4) // On but not connected - white
+                        };
+
+                        let mut bt_widget = div()
+                            .w_12()
+                            .h_8()
+                            .bg(rgb(NORD2))
+                            .rounded_md()
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .text_color(rgb(bt_color))
+                            .text_base()
+                            .cursor_pointer()
+                            .on_mouse_down(gpui::MouseButton::Left, cx.listener(|_this, _event, _window, cx| {
+                                // Toggle Bluetooth in a background task
+                                cx.spawn(async move |_this, cx| {
+                                    use crate::modules::BluetoothService;
+
+                                    match BluetoothService::toggle_power().await {
+                                        Ok(new_state) => {
+                                            println!("[SHELL] 🔵 Bluetooth toggled to: {}", new_state);
+                                        }
+                                        Err(e) => {
+                                            println!("[SHELL] ❌ Failed to toggle Bluetooth: {:?}", e);
+                                        }
+                                    }
+
+                                    // Force immediate state refresh
+                                    let _ = cx;
+                                }).detach();
+                            }))
+                            .child(bt_icon);
+
+                        // Show count if devices connected
+                        if self.bluetooth_state.connected_devices > 0 {
+                            bt_widget = bt_widget.child(
+                                div()
+                                    .text_xs()
+                                    .ml_0p5()
+                                    .child(format!("{}", self.bluetooth_state.connected_devices))
+                            );
+                        }
+
+                        bt_widget
+                    })
                     .child({
                         let volume_icon = if self.volume == 0 {
                             "🔇"
