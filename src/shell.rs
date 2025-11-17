@@ -1,6 +1,6 @@
 use crate::modules::{
     paint_cove_corner_clipped, CoveCornerConfig, CoveCornerPosition, Notification,
-    NotificationService,
+    NotificationService, TrayItem,
 };
 use crate::services::hyprland::{Workspace, ActiveWindow};
 use crate::services::{HyprlandService, PipeWireService, PomodoroService, PomodoroState};
@@ -39,6 +39,7 @@ pub struct Shell {
     workspaces: Vec<Workspace>,
     active_workspace: i32,
     active_window: Option<ActiveWindow>,
+    tray_items: Vec<TrayItem>,
     volume: u8,
     pomodoro: PomodoroService,
 }
@@ -51,6 +52,7 @@ impl Shell {
             workspaces: Vec::new(),
             active_workspace: 1,
             active_window: None,
+            tray_items: Vec::new(),
             volume: 50,
             pomodoro: PomodoroService::new(),
         }
@@ -68,6 +70,7 @@ impl Shell {
             workspaces,
             active_workspace,
             active_window,
+            tray_items: Vec::new(),
             volume: initial_volume,
             pomodoro: PomodoroService::new(),
         };
@@ -130,6 +133,28 @@ impl Shell {
         })
         .detach();
 
+        // Initialize system tray
+        cx.spawn(async move |this, cx| {
+            use crate::modules::SystemTrayService;
+
+            println!("[SHELL] 🔔 Initializing system tray...");
+            let mut tray_service = SystemTrayService::new();
+
+            match tray_service.start_monitoring().await {
+                Ok(items) => {
+                    println!("[SHELL] 🔔 Found {} tray items", items.len());
+                    let _ = this.update(cx, |shell, cx| {
+                        shell.tray_items = items;
+                        cx.notify();
+                    });
+                }
+                Err(e) => {
+                    println!("[SHELL] ❌ Failed to initialize systray: {:?}", e);
+                }
+            }
+        })
+        .detach();
+
         shell
     }
 
@@ -143,6 +168,7 @@ impl Shell {
             workspaces: Vec::new(),
             active_workspace: 1,
             active_window: None,
+            tray_items: Vec::new(),
             volume: 50,
             pomodoro: PomodoroService::new(),
         };
@@ -217,6 +243,7 @@ impl Shell {
             workspaces: Vec::new(),
             active_workspace: 1,
             active_window: None,
+            tray_items: Vec::new(),
             volume: 50,
             pomodoro: PomodoroService::new(),
         }
@@ -365,13 +392,33 @@ impl Shell {
                     })
                     .collect::<Vec<_>>()
             }))
-            // Section droite (volume + horloge)
+            // Section droite (systray + volume + horloge)
             .child(
                 div()
                     .flex()
                     .flex_row()
                     .items_center()
                     .gap_3()
+                    // System tray
+                    .children(
+                        self.tray_items.iter().map(|item| {
+                            div()
+                                .w_8()
+                                .h_8()
+                                .bg(rgb(NORD2))
+                                .rounded_sm()
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .text_xs()
+                                .child(if !item.icon_name.is_empty() {
+                                    // Pour l'instant, afficher juste la première lettre du titre
+                                    item.title.chars().next().unwrap_or('?').to_string()
+                                } else {
+                                    "•".to_string()
+                                })
+                        })
+                    )
                     .child({
                         let volume_icon = if self.volume == 0 {
                             "🔇"
