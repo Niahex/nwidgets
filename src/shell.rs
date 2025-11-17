@@ -4,9 +4,8 @@ use crate::modules::{
 };
 use crate::services::hyprland::Workspace;
 use crate::services::{HyprlandService, PipeWireService, PomodoroService, PomodoroState};
-use gpui::{canvas, div, img, prelude::*, px, rgb, AnyElement, Context, Hsla, Window, ImageSource, RenderImage};
+use gpui::{canvas, div, prelude::*, px, rgb, AnyElement, Context, Hsla, Window};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use std::sync::Arc;
 
 // Nord Dark palette
 const NORD0: u32 = 0x2e3440;
@@ -269,54 +268,9 @@ impl Shell {
     }
 
     fn render_background(&self) -> AnyElement {
-        println!("[SHELL] 🖼️  Rendering background with image");
-
-        // Charger l'image manuellement
-        let custom_loader = Arc::new(|window: &mut Window, cx: &mut gpui::App| {
-            use std::fs;
-            use image::Frame;
-
-            let image_path = "/home/nia/Github/nwidgets/assets/wallpaper/1.png";
-            println!("[SHELL] 🖼️  Custom loader: trying to load {}", image_path);
-
-            match fs::read(image_path) {
-                Ok(bytes) => {
-                    println!("[SHELL] ✅ Image loaded: {} bytes", bytes.len());
-                    match image::load_from_memory(&bytes) {
-                        Ok(img) => {
-                            println!("[SHELL] ✅ Image decoded: {}x{}", img.width(), img.height());
-                            let rgba = img.to_rgba8();
-
-                            // Créer un Frame à partir de l'image
-                            let frame = Frame::new(rgba);
-
-                            // Créer un RenderImage avec le frame
-                            let render_image = RenderImage::new(vec![frame]);
-
-                            Some(Ok(Arc::new(render_image)))
-                        }
-                        Err(e) => {
-                            println!("[SHELL] ❌ Failed to decode image: {}", e);
-                            None
-                        }
-                    }
-                }
-                Err(e) => {
-                    println!("[SHELL] ❌ Failed to read image file: {}", e);
-                    None
-                }
-            }
-        });
-
+        // Background supprimé - simplement retourner un div vide
         div()
             .size_full()
-            .bg(rgb(NORD0))
-            .child(
-                img(ImageSource::Custom(custom_loader))
-                    .w_full()
-                    .h_full()
-                    .object_fit(gpui::ObjectFit::Cover)
-            )
             .into_any_element()
     }
 

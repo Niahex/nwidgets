@@ -8,11 +8,13 @@ use gpui::layer_shell::{LayerShellOptions, Layer, Anchor, KeyboardInteractivity}
 mod shell;
 mod modules;
 mod services;
+mod wayland_ext;
 
-use shell::{Shell, CornerPosition};
+use shell::Shell;
 use modules::launcher::Launcher;
 use modules::launcher;
 use modules::osd;
+use services::NotificationManager;
 
 actions!(nwidgets, [OpenLauncher]);
 
@@ -177,27 +179,8 @@ fn main() {
             |_, cx| cx.new(|cx| osd::Osd::new(osd::OsdType::CapsLock(false), cx)),
         ).unwrap();
 
-        // Notifications
-        cx.open_window(
-            WindowOptions {
-                titlebar: None,
-                window_bounds: Some(WindowBounds::Windowed(Bounds {
-                    origin: point(px(3040.), px(20.)),
-                    size: Size::new(px(380.), px(1400.)),
-                })),
-                app_id: Some("nwidgets-notifications".to_string()),
-                window_background: WindowBackgroundAppearance::Transparent,
-                kind: WindowKind::LayerShell(LayerShellOptions {
-                    namespace: "nwidgets-notifications".to_string(),
-                    layer: Layer::Overlay,
-                    anchor: Anchor::TOP | Anchor::BOTTOM | Anchor::RIGHT,
-                    keyboard_interactivity: KeyboardInteractivity::None,
-                    ..Default::default()
-                }),
-                ..Default::default()
-            },
-            |_, cx| cx.new(Shell::new_notifications),
-        ).unwrap();
+        // Notifications - Géré par NotificationManager avec des fenêtres dynamiques
+        NotificationManager::new(cx);
 
         cx.activate(true);
     });
