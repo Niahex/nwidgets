@@ -54,75 +54,74 @@ pub fn paint_cove_corner(
     bounds: Bounds<Pixels>,
     config: &CoveCornerConfig,
 ) {
-    // Extraire la valeur en pixels de manière sûre
+    // Extraire la valeur en pixels
     let s: f32 = config.size.into();
-    let center = point(px(s / 2.0), px(s / 2.0));
-    let radius = s / 2.0;
+    let radius = s / 2.0; // Rayon de l'arc = moitié de la taille
 
-    // Créer le chemin du cercle qui va "mordre" le carré
-    // On dessine un cercle complet, mais seul le quadrant dans les bounds sera visible
     let mut path_builder = PathBuilder::fill();
 
-    // Dessiner un cercle en utilisant 4 arcs de 90° chacun
-    // Point de départ: droite du cercle (3h)
-    let start = point(center.x + px(radius), center.y);
-    path_builder.move_to(start);
-
-    // Arc de 90° vers le haut (12h)
-    path_builder.arc_to(
-        point(px(radius), px(radius)),
-        px(0.0),
-        false, // small arc
-        false, // counter-clockwise
-        point(center.x, center.y - px(radius)),
-    );
-
-    // Arc de 90° vers la gauche (9h)
-    path_builder.arc_to(
-        point(px(radius), px(radius)),
-        px(0.0),
-        false,
-        false,
-        point(center.x - px(radius), center.y),
-    );
-
-    // Arc de 90° vers le bas (6h)
-    path_builder.arc_to(
-        point(px(radius), px(radius)),
-        px(0.0),
-        false,
-        false,
-        point(center.x, center.y + px(radius)),
-    );
-
-    // Arc de 90° vers la droite (3h) - retour au point de départ
-    path_builder.arc_to(point(px(radius), px(radius)), px(0.0), false, false, start);
-
-    path_builder.close();
-
-    // Appliquer une translation pour positionner le cercle selon le quadrant
-    let translate_to = match config.position {
-        CoveCornerPosition::TopLeft => {
-            // Q1: Le centre du cercle doit être au coin inférieur droit des bounds
-            point(bounds.origin.x + px(s / 2.0), bounds.origin.y + px(s / 2.0))
-        }
+    match config.position {
         CoveCornerPosition::TopRight => {
-            // Q2: Le centre du cercle doit être au coin inférieur gauche des bounds
-            point(bounds.origin.x + px(s / 2.0), bounds.origin.y + px(s / 2.0))
-        }
-        CoveCornerPosition::BottomLeft => {
-            // Q3: Le centre du cercle doit être au coin supérieur droit des bounds
-            point(bounds.origin.x + px(s / 2.0), bounds.origin.y + px(s / 2.0))
-        }
-        CoveCornerPosition::BottomRight => {
-            // Q4: Le centre du cercle doit être au coin supérieur gauche des bounds
-            point(bounds.origin.x + px(s / 2.0), bounds.origin.y + px(s / 2.0))
-        }
-    };
+            // SVG: corner top right - forme en L avec arrondi concave en haut à droite
+            // Point de départ : coin en haut à droite
+            path_builder.move_to(point(bounds.origin.x + bounds.size.width, bounds.origin.y));
 
-    path_builder.translate(translate_to);
+            // Ligne horizontale vers la gauche (toute la largeur)
+            path_builder.line_to(point(bounds.origin.x, bounds.origin.y));
 
-    // Construire et dessiner le chemin
+            // Ligne verticale vers le bas (jusqu'au milieu)
+            path_builder.line_to(point(bounds.origin.x, bounds.origin.y + px(radius)));
+
+            // Arc concave : rayon rx=radius, ry=radius, x-axis-rotation=0, large-arc=0, sweep=1
+            path_builder.arc_to(
+                point(px(radius), px(radius)),
+                px(0.0),
+                false, // large arc = 0
+                true,  // sweep = 1 (sens horaire)
+                point(bounds.origin.x + px(radius), bounds.origin.y + bounds.size.height),
+            );
+
+            // Ligne horizontale vers la droite (jusqu'au bout)
+            path_builder.line_to(point(bounds.origin.x + bounds.size.width, bounds.origin.y + bounds.size.height));
+
+            // Ligne verticale vers le haut (retour au point de départ)
+            path_builder.line_to(point(bounds.origin.x + bounds.size.width, bounds.origin.y));
+
+            path_builder.close();
+        }
+        CoveCornerPosition::TopLeft => {
+            // SVG: corner top left - forme en L avec arrondi concave en haut à gauche
+            // Point de départ : coin en haut à gauche
+            path_builder.move_to(point(bounds.origin.x, bounds.origin.y));
+
+            // Ligne verticale vers le bas (toute la hauteur)
+            path_builder.line_to(point(bounds.origin.x, bounds.origin.y + bounds.size.height));
+
+            // Ligne horizontale vers la droite (jusqu'au milieu)
+            path_builder.line_to(point(bounds.origin.x + px(radius), bounds.origin.y + bounds.size.height));
+
+            // Arc concave
+            path_builder.arc_to(
+                point(px(radius), px(radius)),
+                px(0.0),
+                false,
+                true,
+                point(bounds.origin.x + bounds.size.width, bounds.origin.y + px(radius)),
+            );
+
+            // Ligne verticale vers le haut (jusqu'au bout)
+            path_builder.line_to(point(bounds.origin.x + bounds.size.width, bounds.origin.y));
+
+            // Ligne horizontale vers la gauche (retour au point de départ)
+            path_builder.line_to(point(bounds.origin.x, bounds.origin.y));
+
+            path_builder.close();
+        }
+        CoveCornerPosition::BottomLeft | CoveCornerPosition::BottomRight => {
+            // TODO: Implémenter si nécessaire
+        }
+    }
+
     if let Ok(path) = path_builder.build() {
         window.paint_path(path, config.fill_color);
     }
@@ -136,6 +135,10 @@ pub fn paint_cove_corner_clipped(
     config: &CoveCornerConfig,
 ) {
     use gpui::ContentMask;
+
+    // DEBUG: Dessiner un fond rouge pour voir les bounds
+    use gpui::{fill, rgb};
+    window.paint_quad(fill(bounds, rgb(0xff0000)));
 
     // Utiliser un content mask pour clipper au bounds exact
     window.with_content_mask(Some(ContentMask { bounds }), |window| {

@@ -61,7 +61,8 @@ fn main() {
             }).unwrap();
         });
 
-        // Background layer (wallpaper) - plein écran sauf panel
+        // Background layer (wallpaper) - DÉSACTIVÉ
+        /*
         cx.open_window(
             WindowOptions {
                 titlebar: None,
@@ -82,6 +83,7 @@ fn main() {
             },
             |_, cx| cx.new(Shell::new_background),
         ).unwrap();
+        */
 
         // Top panel (horizontal bar)
         cx.open_window(
@@ -107,12 +109,14 @@ fn main() {
         ).unwrap();
 
         // Left corner decorator (rounded corner below panel)
+        // DÉSACTIVÉ TEMPORAIREMENT
+        /*
         cx.open_window(
             WindowOptions {
                 titlebar: None,
                 window_bounds: Some(WindowBounds::Windowed(Bounds {
                     origin: point(px(0.), px(48.)),
-                    size: Size::new(px(24.), px(24.)),
+                    size: Size::new(px(48.), px(48.)),
                 })),
                 app_id: Some("nwidgets-corner-left".to_string()),
                 window_background: WindowBackgroundAppearance::Transparent,
@@ -133,8 +137,8 @@ fn main() {
             WindowOptions {
                 titlebar: None,
                 window_bounds: Some(WindowBounds::Windowed(Bounds {
-                    origin: point(px(3416.), px(48.)),
-                    size: Size::new(px(24.), px(24.)),
+                    origin: point(px(3392.), px(48.)),
+                    size: Size::new(px(48.), px(48.)),
                 })),
                 app_id: Some("nwidgets-corner-right".to_string()),
                 window_background: WindowBackgroundAppearance::Transparent,
@@ -149,6 +153,7 @@ fn main() {
             },
             |_, cx| cx.new(|cx| Shell::new_corner(cx, CornerPosition::BottomRight)),
         ).unwrap();
+        */
 
         // OSD
         cx.open_window(
@@ -186,7 +191,7 @@ fn main() {
                     namespace: "nwidgets-notifications".to_string(),
                     layer: Layer::Overlay,
                     anchor: Anchor::TOP | Anchor::BOTTOM | Anchor::RIGHT,
-                    keyboard_interactivity: KeyboardInteractivity::OnDemand,
+                    keyboard_interactivity: KeyboardInteractivity::None,
                     ..Default::default()
                 }),
                 ..Default::default()
