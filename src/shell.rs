@@ -1,8 +1,11 @@
-use gpui::{Context, Window, div, prelude::*, rgb, px, AnyElement};
-use std::time::{SystemTime, UNIX_EPOCH, Duration};
-use crate::modules::{Notification, NotificationService};
-use crate::services::{HyprlandService, PipeWireService, PomodoroService, PomodoroState};
+use crate::modules::{
+    paint_cove_corner_clipped, CoveCornerConfig, CoveCornerPosition, Notification,
+    NotificationService,
+};
 use crate::services::hyprland::Workspace;
+use crate::services::{HyprlandService, PipeWireService, PomodoroService, PomodoroState};
+use gpui::{canvas, div, prelude::*, px, rgb, AnyElement, Context, Hsla, Window};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 // Nord Dark palette
 const NORD0: u32 = 0x2e3440;
@@ -21,6 +24,13 @@ pub enum ShellMode {
     Background,
     Panel,
     Notifications,
+    Corner(CornerPosition),
+}
+
+#[derive(Clone, Copy)]
+pub enum CornerPosition {
+    BottomLeft,
+    BottomRight,
 }
 
 pub struct Shell {
@@ -76,7 +86,8 @@ impl Shell {
                     last_volume = new_volume;
                 }
             }
-        }).detach();
+        })
+        .detach();
 
         // Monitor Hyprland workspace changes
         cx.spawn(async move |this, cx| {
@@ -99,18 +110,18 @@ impl Shell {
                 }
                 gpui::Timer::after(Duration::from_millis(100)).await;
             }
-        }).detach();
+        })
+        .detach();
 
         // Monitor Pomodoro timer
-        cx.spawn(async move |this, cx| {
-            loop {
-                gpui::Timer::after(Duration::from_millis(1000)).await;
-                let _ = this.update(cx, |shell, cx| {
-                    shell.pomodoro.auto_transition();
-                    cx.notify();
-                });
-            }
-        }).detach();
+        cx.spawn(async move |this, cx| loop {
+            gpui::Timer::after(Duration::from_millis(1000)).await;
+            let _ = this.update(cx, |shell, cx| {
+                shell.pomodoro.auto_transition();
+                cx.notify();
+            });
+        })
+        .detach();
 
         shell
     }
@@ -132,16 +143,24 @@ impl Shell {
         cx.spawn(async move |this, cx| {
             println!("[SHELL] 📢 Notification receiver task started");
             while let Some(notification) = receiver.recv().await {
-                println!("[SHELL] 📢 Received notification from channel: {} - {}",
-                    notification.summary, notification.body);
+                println!(
+                    "[SHELL] 📢 Received notification from channel: {} - {}",
+                    notification.summary, notification.body
+                );
                 let result = this.update(cx, |shell, cx| {
-                    println!("[SHELL] 📢 Adding notification to shell (current count: {})",
-                        shell.notifications.len());
+                    println!(
+                        "[SHELL] 📢 Adding notification to shell (current count: {})",
+                        shell.notifications.len()
+                    );
                     shell.notifications.push(notification.clone());
-                    shell.notifications.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+                    shell
+                        .notifications
+                        .sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
                     shell.notifications.truncate(10);
-                    println!("[SHELL] 📢 Now have {} notifications, calling cx.notify()",
-                        shell.notifications.len());
+                    println!(
+                        "[SHELL] 📢 Now have {} notifications, calling cx.notify()",
+                        shell.notifications.len()
+                    );
                     cx.notify();
                 });
                 if let Err(e) = result {
@@ -149,7 +168,8 @@ impl Shell {
                 }
             }
             println!("[SHELL] ⚠️  Notification receiver channel closed!");
-        }).detach();
+        })
+        .detach();
 
         // Timer pour nettoyer les notifications expirées
         cx.spawn(async move |this, cx| {
@@ -157,12 +177,18 @@ impl Shell {
             loop {
                 cx.background_executor().timer(Duration::from_secs(1)).await;
                 let result = this.update(cx, |shell, cx| {
-                    let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+                    let now = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap()
+                        .as_secs();
                     let old_count = shell.notifications.len();
                     shell.notifications.retain(|n| now - n.timestamp < 5);
                     if shell.notifications.len() != old_count {
-                        println!("[SHELL] 📢 Cleaned up notifications: {} -> {}",
-                            old_count, shell.notifications.len());
+                        println!(
+                            "[SHELL] 📢 Cleaned up notifications: {} -> {}",
+                            old_count,
+                            shell.notifications.len()
+                        );
                         cx.notify();
                     }
                 });
@@ -170,12 +196,24 @@ impl Shell {
                     println!("[SHELL] ❌ Error cleaning notifications: {:?}", e);
                 }
             }
-        }).detach();
+        })
+        .detach();
 
         shell
     }
 
-    fn render_pomodoro(&mut self) -> AnyElement {
+    pub fn new_corner(_cx: &mut Context<Self>, position: CornerPosition) -> Self {
+        Self {
+            mode: ShellMode::Corner(position),
+            notifications: Vec::new(),
+            workspaces: Vec::new(),
+            active_workspace: 1,
+            volume: 50,
+            pomodoro: PomodoroService::new(),
+        }
+    }
+
+    fn render_pomodoro(&mut self, cx: &mut Context<Self>) -> AnyElement {
         let (pomodoro_icon, pomodoro_color) = match self.pomodoro.get_state() {
             PomodoroState::Idle => ("🍅", NORD3),
             PomodoroState::Work | PomodoroState::WorkPaused => ("🍅", NORD11),
@@ -196,28 +234,34 @@ impl Shell {
             .justify_center()
             .text_color(rgb(NORD0))
             .text_xs()
-            .on_mouse_down(gpui::MouseButton::Left, move |_event, _window, cx| {
-                cx.update(|shell: &mut Shell, cx| {
+            .on_mouse_down(
+                gpui::MouseButton::Left,
+                cx.listener(move |shell, _event, _window, cx| {
                     match current_state {
                         PomodoroState::Idle => {
                             shell.pomodoro.start_work();
                         }
-                        PomodoroState::Work | PomodoroState::ShortBreak | PomodoroState::LongBreak => {
+                        PomodoroState::Work
+                        | PomodoroState::ShortBreak
+                        | PomodoroState::LongBreak => {
                             shell.pomodoro.pause();
                         }
-                        PomodoroState::WorkPaused | PomodoroState::ShortBreakPaused | PomodoroState::LongBreakPaused => {
+                        PomodoroState::WorkPaused
+                        | PomodoroState::ShortBreakPaused
+                        | PomodoroState::LongBreakPaused => {
                             shell.pomodoro.resume();
                         }
                     }
                     cx.notify();
-                })
-            })
-            .on_mouse_down(gpui::MouseButton::Middle, move |_event, _window, cx| {
-                cx.update(|shell: &mut Shell, cx| {
+                }),
+            )
+            .on_mouse_down(
+                gpui::MouseButton::Middle,
+                cx.listener(move |shell, _event, _window, cx| {
                     shell.pomodoro.reset();
                     cx.notify();
-                })
-            })
+                }),
+            )
             .child(pomodoro_icon)
             .child(self.pomodoro.format_time())
             .into_any_element()
@@ -227,11 +271,7 @@ impl Shell {
         div()
             .size_full()
             .bg(rgb(NORD0))
-            .child(
-                div()
-                    .size_full()
-                    .bg(rgb(NORD1))
-            )
+            .child(div().size_full().bg(rgb(NORD1)))
             .child(
                 div()
                     .absolute()
@@ -241,12 +281,12 @@ impl Shell {
                     .bg(rgb(NORD2))
                     .rounded_md()
                     .text_color(rgb(NORD4))
-                    .child("12:34")
+                    .child("12:34"),
             )
             .into_any_element()
     }
 
-    fn render_panel(&mut self) -> AnyElement {
+    fn render_panel(&mut self, cx: &mut Context<Self>) -> AnyElement {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
@@ -259,72 +299,76 @@ impl Shell {
         div()
             .size_full()
             .bg(rgb(NORD1))
-            .border_r_1()
-            .border_color(rgb(NORD3))
             .flex()
-            .flex_col()
+            .flex_row()
+            .items_center()
             .justify_between()
-            .py_4()
+            .px_4()
+            // Section gauche (pomodoro)
             .child(
                 div()
                     .flex()
-                    .flex_col()
+                    .flex_row()
                     .items_center()
-                    .gap_2()
-                    .child(self.render_pomodoro())
+                    .gap_3()
+                    .child(self.render_pomodoro(cx)),
             )
-            .child(
-                div()
-                    .flex()
-                    .flex_col()
-                    .items_center()
-                    .gap_2()
-                    .children({
-                        let mut sorted_workspaces = self.workspaces.clone();
-                        // Sort: 1-6 first, then others
-                        sorted_workspaces.sort_by(|a, b| {
-                            match (a.id <= 6, b.id <= 6) {
-                                (true, true) => a.id.cmp(&b.id),
-                                (true, false) => std::cmp::Ordering::Less,
-                                (false, true) => std::cmp::Ordering::Greater,
-                                (false, false) => a.id.cmp(&b.id),
-                            }
-                        });
-                        
-                        sorted_workspaces.into_iter().take(8).map(|ws| {
-                            let is_active = ws.id == self.active_workspace;
-                            let bg_color = if is_active { rgb(NORD10) } else { rgb(NORD2) };
-                            div()
-                                .w_8()
-                                .h_8()
-                                .bg(bg_color)
-                                .rounded_sm()
-                                .flex()
-                                .items_center()
-                                .justify_center()
-                                .text_color(rgb(NORD4))
-                                .text_xs()
-                                .child(ws.id.to_string())
-                        }).collect::<Vec<_>>()
-                    })
-            )
-            .child(
-                div()
-                    .flex()
-                    .flex_col()
-                    .items_center()
-                    .gap_2()
-                    .child({
-                        let volume_icon = if self.volume == 0 { "🔇" } else if self.volume < 50 { "🔉" } else { "🔊" };
+            // Section centrale (workspaces)
+            .child(div().flex().flex_row().items_center().gap_2().children({
+                let mut sorted_workspaces = self.workspaces.clone();
+                // Sort: 1-6 first, then others
+                sorted_workspaces.sort_by(|a, b| match (a.id <= 6, b.id <= 6) {
+                    (true, true) => a.id.cmp(&b.id),
+                    (true, false) => std::cmp::Ordering::Less,
+                    (false, true) => std::cmp::Ordering::Greater,
+                    (false, false) => a.id.cmp(&b.id),
+                });
+
+                sorted_workspaces
+                    .into_iter()
+                    .take(8)
+                    .map(|ws| {
+                        let is_active = ws.id == self.active_workspace;
+                        let bg_color = if is_active { rgb(NORD10) } else { rgb(NORD2) };
                         div()
-                            .w_10()
+                            .w_8()
+                            .h_8()
+                            .bg(bg_color)
+                            .rounded_sm()
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .text_color(rgb(NORD4))
+                            .text_xs()
+                            .child(ws.id.to_string())
+                    })
+                    .collect::<Vec<_>>()
+            }))
+            // Section droite (volume + horloge)
+            .child(
+                div()
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .gap_3()
+                    .child({
+                        let volume_icon = if self.volume == 0 {
+                            "🔇"
+                        } else if self.volume < 50 {
+                            "🔉"
+                        } else {
+                            "🔊"
+                        };
+                        div()
+                            .w_16()
                             .h_8()
                             .bg(rgb(NORD14))
                             .rounded_md()
                             .flex()
-                            .flex_col()
+                            .flex_row()
                             .items_center()
                             .justify_center()
+                            .gap_1()
                             .text_color(rgb(NORD0))
                             .text_xs()
                             .child(volume_icon)
@@ -332,30 +376,50 @@ impl Shell {
                     })
                     .child(
                         div()
-                            .w_10()
-                            .h_12()
+                            .w_16()
+                            .h_8()
                             .bg(rgb(NORD3))
                             .rounded_md()
                             .flex()
-                            .flex_col()
                             .items_center()
                             .justify_center()
                             .text_color(rgb(NORD4))
-                            .text_xs()
-                            .child(format!("{:02}", hours))
-                            .child(format!("{:02}", minutes))
-                    )
+                            .text_sm()
+                            .child(format!("{:02}:{:02}", hours, minutes)),
+                    ),
             )
             .into_any_element()
     }
 
+    fn render_corner(&self, position: CornerPosition) -> AnyElement {
+        // Crée un coin arrondi inversé (cove/concave) selon la formule mathématique:
+        // Coin = (Carré S×S ∖ Disque(centre=(S/2,S/2), rayon=S/2)) ∩ Quadrant
+        //
+        // Le coin est créé en dessinant un cercle de la couleur du panel qui "mord"
+        // le carré transparent, créant l'effet de découpe circulaire (cove).
+
+        let cove_position = match position {
+            CornerPosition::BottomLeft => CoveCornerPosition::TopRight,
+            CornerPosition::BottomRight => CoveCornerPosition::TopLeft,
+        };
+
+        canvas(
+            move |_bounds, _window, _cx| {
+                // Prepaint: retourner la configuration du coin
+                let panel_color: Hsla = rgb(NORD13).into();
+                CoveCornerConfig::new(px(24.0), panel_color, cove_position)
+            },
+            move |bounds, config, window, cx| {
+                // Paint: dessiner le coin cove avec clipping
+                paint_cove_corner_clipped(window, cx, bounds, &config);
+            },
+        )
+        .size_full()
+        .into_any_element()
+    }
+
     fn render_notifications(&self) -> AnyElement {
-        let mut container = div()
-            .size_full()
-            .flex()
-            .flex_col()
-            .gap_3()
-            .p_4();
+        let mut container = div().size_full().flex().flex_col().gap_3().p_4();
 
         for notification in &self.notifications {
             let border_color = match notification.urgency {
@@ -367,7 +431,8 @@ impl Shell {
             let elapsed = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
-                .as_secs() - notification.timestamp;
+                .as_secs()
+                - notification.timestamp;
 
             let time_str = if elapsed < 60 {
                 "now".to_string()
@@ -397,20 +462,15 @@ impl Shell {
                                 .text_color(rgb(NORD4))
                                 .text_sm()
                                 .font_weight(gpui::FontWeight::BOLD)
-                                .child(notification.summary.clone())
+                                .child(notification.summary.clone()),
                         )
-                        .child(
-                            div()
-                                .text_color(rgb(NORD3))
-                                .text_xs()
-                                .child(time_str)
-                        )
+                        .child(div().text_color(rgb(NORD3)).text_xs().child(time_str)),
                 )
                 .child(
                     div()
                         .text_color(rgb(NORD4))
                         .text_xs()
-                        .child(notification.body.clone())
+                        .child(notification.body.clone()),
                 );
 
             if !notification.app_name.is_empty() {
@@ -418,7 +478,7 @@ impl Shell {
                     div()
                         .text_color(rgb(NORD3))
                         .text_xs()
-                        .child(format!("from {}", notification.app_name))
+                        .child(format!("from {}", notification.app_name)),
                 );
             }
 
@@ -434,7 +494,7 @@ impl Shell {
                     .h_full()
                     .text_color(rgb(NORD3))
                     .text_sm()
-                    .child("No notifications")
+                    .child("No notifications"),
             );
         }
 
@@ -443,11 +503,12 @@ impl Shell {
 }
 
 impl Render for Shell {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         match self.mode {
             ShellMode::Background => self.render_background(),
-            ShellMode::Panel => self.render_panel(),
+            ShellMode::Panel => self.render_panel(cx),
             ShellMode::Notifications => self.render_notifications(),
+            ShellMode::Corner(position) => self.render_corner(position),
         }
     }
 }

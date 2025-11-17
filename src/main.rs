@@ -9,7 +9,7 @@ mod shell;
 mod modules;
 mod services;
 
-use shell::Shell;
+use shell::{Shell, CornerPosition};
 use modules::launcher::Launcher;
 use modules::launcher;
 use modules::osd;
@@ -66,15 +66,15 @@ fn main() {
             WindowOptions {
                 titlebar: None,
                 window_bounds: Some(WindowBounds::Windowed(Bounds {
-                    origin: point(px(60.), px(0.)),
-                    size: Size::new(px(3380.), px(1440.)),
+                    origin: point(px(0.), px(48.)),
+                    size: Size::new(px(3440.), px(1392.)),
                 })),
                 app_id: Some("nwidgets-background".to_string()),
                 window_background: WindowBackgroundAppearance::Transparent,
                 kind: WindowKind::LayerShell(LayerShellOptions {
                     namespace: "nwidgets-background".to_string(),
                     layer: Layer::Background,
-                    anchor: Anchor::TOP | Anchor::BOTTOM | Anchor::LEFT | Anchor::RIGHT,
+                    anchor: Anchor::BOTTOM | Anchor::LEFT | Anchor::RIGHT,
                     keyboard_interactivity: KeyboardInteractivity::None,
                     ..Default::default()
                 }),
@@ -83,27 +83,71 @@ fn main() {
             |_, cx| cx.new(Shell::new_background),
         ).unwrap();
 
-        // Left panel (sidebar)
+        // Top panel (horizontal bar)
         cx.open_window(
             WindowOptions {
                 titlebar: None,
                 window_bounds: Some(WindowBounds::Windowed(Bounds {
                     origin: point(px(0.), px(0.)),
-                    size: Size::new(px(60.), px(1440.)),
+                    size: Size::new(px(3440.), px(48.)),
                 })),
                 app_id: Some("nwidgets-panel".to_string()),
                 window_background: WindowBackgroundAppearance::Transparent,
                 kind: WindowKind::LayerShell(LayerShellOptions {
                     namespace: "nwidgets-panel".to_string(),
                     layer: Layer::Top,
-                    anchor: Anchor::LEFT | Anchor::TOP | Anchor::BOTTOM,
-                    exclusive_zone: Some(px(60.)),
+                    anchor: Anchor::TOP | Anchor::LEFT | Anchor::RIGHT,
+                    exclusive_zone: Some(px(48.)),
                     keyboard_interactivity: KeyboardInteractivity::OnDemand,
                     ..Default::default()
                 }),
                 ..Default::default()
             },
             |_, cx| cx.new(Shell::new_panel),
+        ).unwrap();
+
+        // Left corner decorator (rounded corner below panel)
+        cx.open_window(
+            WindowOptions {
+                titlebar: None,
+                window_bounds: Some(WindowBounds::Windowed(Bounds {
+                    origin: point(px(0.), px(48.)),
+                    size: Size::new(px(24.), px(24.)),
+                })),
+                app_id: Some("nwidgets-corner-left".to_string()),
+                window_background: WindowBackgroundAppearance::Transparent,
+                kind: WindowKind::LayerShell(LayerShellOptions {
+                    namespace: "nwidgets-corner-left".to_string(),
+                    layer: Layer::Top,
+                    anchor: Anchor::TOP | Anchor::LEFT,
+                    keyboard_interactivity: KeyboardInteractivity::None,
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            |_, cx| cx.new(|cx| Shell::new_corner(cx, CornerPosition::BottomLeft)),
+        ).unwrap();
+
+        // Right corner decorator (rounded corner below panel)
+        cx.open_window(
+            WindowOptions {
+                titlebar: None,
+                window_bounds: Some(WindowBounds::Windowed(Bounds {
+                    origin: point(px(3416.), px(48.)),
+                    size: Size::new(px(24.), px(24.)),
+                })),
+                app_id: Some("nwidgets-corner-right".to_string()),
+                window_background: WindowBackgroundAppearance::Transparent,
+                kind: WindowKind::LayerShell(LayerShellOptions {
+                    namespace: "nwidgets-corner-right".to_string(),
+                    layer: Layer::Top,
+                    anchor: Anchor::TOP | Anchor::RIGHT,
+                    keyboard_interactivity: KeyboardInteractivity::None,
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            |_, cx| cx.new(|cx| Shell::new_corner(cx, CornerPosition::BottomRight)),
         ).unwrap();
 
         // OSD
