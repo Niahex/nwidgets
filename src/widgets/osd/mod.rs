@@ -130,15 +130,25 @@ impl Render for Osd {
                     .border_color(rgb(FROST1))
                     .rounded_lg()
                     .shadow_lg()
+                    .px_4()
                     .child(
                         div()
                             .flex()
                             .items_center()
                             .gap_4()
-                            .px_4()
-                            // Icon
-                            .child(div().text_xl().text_color(rgb(SNOW0)).child(volume_icon))
-                            // Progress bar
+                            .w_full()
+                            // Icon - fixed width
+                            .child(
+                                div()
+                                    .w(px(24.))
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .text_xl()
+                                    .text_color(rgb(SNOW0))
+                                    .child(volume_icon)
+                            )
+                            // Progress bar - takes remaining space
                             .child(
                                 div().flex_1().h(px(8.)).bg(rgb(POLAR2)).rounded_sm().child(
                                     div()
@@ -148,12 +158,12 @@ impl Render for Osd {
                                         .rounded_sm(),
                                 ),
                             )
-                            // Percentage text
+                            // Percentage text - fixed width
                             .child(
                                 div()
+                                    .w(px(48.))
                                     .text_sm()
                                     .text_color(rgb(SNOW0))
-                                    .w(px(48.))
                                     .text_right()
                                     .child(format!("{}%", level)),
                             ),
