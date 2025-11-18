@@ -63,31 +63,6 @@ fn main() {
                 .unwrap();
         });
 
-        // Background layer (wallpaper) - DÉSACTIVÉ
-        /*
-        cx.open_window(
-            WindowOptions {
-                titlebar: None,
-                window_bounds: Some(WindowBounds::Windowed(Bounds {
-                    origin: point(px(0.), px(48.)),
-                    size: Size::new(px(3440.), px(1392.)),
-                })),
-                app_id: Some("nwidgets-background".to_string()),
-                window_background: WindowBackgroundAppearance::Transparent,
-                kind: WindowKind::LayerShell(LayerShellOptions {
-                    namespace: "nwidgets-background".to_string(),
-                    layer: Layer::Background,
-                    anchor: Anchor::BOTTOM | Anchor::LEFT | Anchor::RIGHT,
-                    keyboard_interactivity: KeyboardInteractivity::None,
-                    ..Default::default()
-                }),
-                ..Default::default()
-            },
-            |_, cx| cx.new(Shell::new_background),
-        ).unwrap();
-        */
-
-        // Top panel (horizontal bar)
         cx.open_window(
             WindowOptions {
                 titlebar: None,
@@ -110,53 +85,6 @@ fn main() {
             |_, cx| cx.new(Panel::new),
         )
         .unwrap();
-
-        // Left corner decorator (rounded corner below panel)
-        // DÉSACTIVÉ TEMPORAIREMENT
-        /*
-        cx.open_window(
-            WindowOptions {
-                titlebar: None,
-                window_bounds: Some(WindowBounds::Windowed(Bounds {
-                    origin: point(px(0.), px(48.)),
-                    size: Size::new(px(48.), px(48.)),
-                })),
-                app_id: Some("nwidgets-corner-left".to_string()),
-                window_background: WindowBackgroundAppearance::Transparent,
-                kind: WindowKind::LayerShell(LayerShellOptions {
-                    namespace: "nwidgets-corner-left".to_string(),
-                    layer: Layer::Top,
-                    anchor: Anchor::TOP | Anchor::LEFT,
-                    keyboard_interactivity: KeyboardInteractivity::None,
-                    ..Default::default()
-                }),
-                ..Default::default()
-            },
-            |_, cx| cx.new(|cx| Shell::new_corner(cx, CornerPosition::BottomLeft)),
-        ).unwrap();
-
-        // Right corner decorator (rounded corner below panel)
-        cx.open_window(
-            WindowOptions {
-                titlebar: None,
-                window_bounds: Some(WindowBounds::Windowed(Bounds {
-                    origin: point(px(3392.), px(48.)),
-                    size: Size::new(px(48.), px(48.)),
-                })),
-                app_id: Some("nwidgets-corner-right".to_string()),
-                window_background: WindowBackgroundAppearance::Transparent,
-                kind: WindowKind::LayerShell(LayerShellOptions {
-                    namespace: "nwidgets-corner-right".to_string(),
-                    layer: Layer::Top,
-                    anchor: Anchor::TOP | Anchor::RIGHT,
-                    keyboard_interactivity: KeyboardInteractivity::None,
-                    ..Default::default()
-                }),
-                ..Default::default()
-            },
-            |_, cx| cx.new(|cx| Shell::new_corner(cx, CornerPosition::BottomRight)),
-        ).unwrap();
-        */
 
         // OSD
         cx.open_window(
@@ -181,9 +109,10 @@ fn main() {
         )
         .unwrap();
 
-        // Notifications widget - Panneau de notifications statique
-        // Note: Pour l'instant commenté, à implémenter plus tard avec une fenêtre layer shell
-        // cx.open_window(..., |_, cx| cx.new(NotificationsWidget::new));
+        // Démarrer le service de notifications avec son manager
+        use crate::services::notifications::NotificationManager;
+        let _notification_manager = NotificationManager::new(cx);
+        println!("[MAIN] 📢 Notification manager started");
 
         cx.activate(true);
     });

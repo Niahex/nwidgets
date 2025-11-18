@@ -33,9 +33,7 @@ impl BluetoothModule {
 
     /// Toggle Bluetooth power - to be called from event handlers
     pub async fn toggle_power() -> Result<bool, Box<dyn std::error::Error>> {
-        BluetoothService::toggle_power()
-            .await
-            .map_err(|e| e.into())
+        BluetoothService::toggle_power().await.map_err(|e| e.into())
     }
 
     pub fn render<V: 'static>(&self, cx: &mut Context<V>) -> impl IntoElement {
