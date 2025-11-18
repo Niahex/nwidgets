@@ -22,7 +22,6 @@ impl DateTimeModule {
         div()
             .w_16()
             .h_8()
-            .bg(rgb(POLAR3))
             .rounded_md()
             .flex()
             .items_center()

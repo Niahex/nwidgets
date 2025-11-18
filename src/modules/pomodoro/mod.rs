@@ -23,10 +23,10 @@ impl PomodoroModule {
 
     pub fn render(&self) -> impl IntoElement {
         let (pomodoro_icon, pomodoro_color) = match self.service.get_state() {
-            PomodoroState::Idle => ("🍅", POLAR3),
-            PomodoroState::Work | PomodoroState::WorkPaused => ("🍅", RED),
-            PomodoroState::ShortBreak | PomodoroState::ShortBreakPaused => ("☕", YELLOW),
-            PomodoroState::LongBreak | PomodoroState::LongBreakPaused => ("🌴", GREEN),
+            PomodoroState::Idle => ("", POLAR3), // nf-md-timer_outline
+            PomodoroState::Work | PomodoroState::WorkPaused => ("", RED), // nf-md-timer
+            PomodoroState::ShortBreak | PomodoroState::ShortBreakPaused => ("", YELLOW), // nf-md-coffee
+            PomodoroState::LongBreak | PomodoroState::LongBreakPaused => ("", GREEN), // nf-md-beach
         };
 
         div()

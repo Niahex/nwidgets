@@ -141,10 +141,10 @@ impl Panel {
 
         let current_state = self.pomodoro_module.get_service_mut().get_state();
         let (pomodoro_icon, pomodoro_color) = match current_state {
-            PomodoroState::Idle => ("🍅", POLAR3),
-            PomodoroState::Work | PomodoroState::WorkPaused => ("🍅", RED),
-            PomodoroState::ShortBreak | PomodoroState::ShortBreakPaused => ("☕", YELLOW),
-            PomodoroState::LongBreak | PomodoroState::LongBreakPaused => ("🌴", GREEN),
+            PomodoroState::Idle => ("", POLAR3), // nf-md-timer_outline
+            PomodoroState::Work | PomodoroState::WorkPaused => ("", RED), // nf-md-timer
+            PomodoroState::ShortBreak | PomodoroState::ShortBreakPaused => ("", YELLOW), // nf-md-coffee
+            PomodoroState::LongBreak | PomodoroState::LongBreakPaused => ("󱁕", GREEN), // nf-md-beach
         };
 
         div()
@@ -207,16 +207,7 @@ impl Render for Panel {
             .justify_between()
             .px_4()
             // Section gauche (fenêtre active)
-            .child(
-                div()
-                    .flex()
-                    .flex_row()
-                    .items_center()
-                    .gap_3()
-                    .when_some(self.active_window_module.render(), |this, element| {
-                        this.child(element)
-                    })
-            )
+            .child(self.active_window_module.render())
             // Section centrale (workspaces)
             .child(self.workspace_module.render())
             // Section droite (pomodoro + systray + bluetooth + volume + horloge)

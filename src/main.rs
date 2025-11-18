@@ -1,5 +1,5 @@
 use gpui::{
-    actions, point, prelude::*, px, App, Application, Bounds, KeyBinding, Size,
+    point, prelude::*, px, Application, Bounds, Size,
     WindowBackgroundAppearance, WindowBounds, WindowKind, WindowOptions,
 };
 
@@ -10,59 +10,11 @@ mod services;
 mod theme;
 mod widgets;
 
-use widgets::launcher;
 use widgets::osd;
-use widgets::{Launcher, Panel};
-
-actions!(nwidgets, [OpenLauncher]);
+use widgets::Panel;
 
 fn main() {
-    Application::new().run(|cx: &mut App| {
-        // Keybindings globaux
-        cx.bind_keys([KeyBinding::new("super-space", OpenLauncher, None)]);
-
-        // Action pour ouvrir le launcher
-        cx.on_action(|_: &OpenLauncher, cx| {
-            let window = cx
-                .open_window(
-                    WindowOptions {
-                        titlebar: None,
-                        window_bounds: Some(WindowBounds::Windowed(Bounds {
-                            origin: point(px(760.), px(520.)),
-                            size: Size::new(px(800.), px(400.)),
-                        })),
-                        app_id: Some("nwidgets-launcher".to_string()),
-                        window_background: WindowBackgroundAppearance::Transparent,
-                        kind: WindowKind::LayerShell(LayerShellOptions {
-                            namespace: "nwidgets-launcher".to_string(),
-                            layer: Layer::Overlay,
-                            anchor: Anchor::empty(),
-                            keyboard_interactivity: KeyboardInteractivity::Exclusive,
-                            ..Default::default()
-                        }),
-                        ..Default::default()
-                    },
-                    |_, cx| cx.new(Launcher::new),
-                )
-                .unwrap();
-
-            // Configurer les keybindings pour le launcher
-            window
-                .update(cx, |view, window, cx| {
-                    cx.bind_keys([
-                        KeyBinding::new("backspace", launcher::Backspace, None),
-                        KeyBinding::new("up", launcher::Up, None),
-                        KeyBinding::new("down", launcher::Down, None),
-                        KeyBinding::new("enter", launcher::Launch, None),
-                        KeyBinding::new("escape", launcher::Quit, None),
-                    ]);
-
-                    window.focus(&view.focus_handle);
-                    cx.activate(true);
-                })
-                .unwrap();
-        });
-
+    Application::new().run(|cx| {
         cx.open_window(
             WindowOptions {
                 titlebar: None,
@@ -86,20 +38,20 @@ fn main() {
         )
         .unwrap();
 
-        // OSD
+        // OSD - centered at bottom
         cx.open_window(
             WindowOptions {
                 titlebar: None,
                 window_bounds: Some(WindowBounds::Windowed(Bounds {
-                    origin: point(px(1690.), px(100.)),
-                    size: Size::new(px(256.), px(64.)),
+                    origin: point(px(1520.), px(980.)), // Center horizontally (3440/2 - 400/2 = 1520)
+                    size: Size::new(px(400.), px(64.)),
                 })),
                 app_id: Some("nwidgets-osd".to_string()),
                 window_background: WindowBackgroundAppearance::Transparent,
                 kind: WindowKind::LayerShell(LayerShellOptions {
                     namespace: "nwidgets-osd".to_string(),
                     layer: Layer::Overlay,
-                    anchor: Anchor::TOP,
+                    anchor: Anchor::BOTTOM,
                     keyboard_interactivity: KeyboardInteractivity::None,
                     ..Default::default()
                 }),

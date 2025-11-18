@@ -15,57 +15,62 @@ impl ActiveWindowModule {
         self.active_window = active_window;
     }
 
-    pub fn render(&self) -> Option<impl IntoElement> {
-        self.active_window.as_ref().map(|active_window| {
+    pub fn render(&self) -> impl IntoElement {
+        // Si aucune fenêtre active, afficher l'icône de flocon de neige avec NixOS/Nia
+        let (icon, class, title) = if let Some(active_window) = &self.active_window {
             // Tronquer le titre pour qu'il ne soit pas trop long (max 30 caractères)
-            let truncated_title = if active_window.title.len() > 30 {
-                format!("{}...", &active_window.title[..27])
+            let truncated_title = if active_window.title.chars().count() > 30 {
+                let truncated: String = active_window.title.chars().take(27).collect();
+                format!("{}...", truncated)
             } else {
                 active_window.title.clone()
             };
+            ("🪟", active_window.class.clone(), truncated_title)
+        } else {
+            ("❄️", "NixOS".to_string(), "Nia".to_string())
+        };
 
-            div()
-                .w_64()  // Largeur fixe
-                .h_10()  // Hauteur légèrement plus grande pour 2 lignes
-                .px_3()
-                .py_1()
-                .bg(rgb(POLAR2))
-                .rounded_md()
-                .flex()
-                .flex_row()
-                .items_center()
-                .gap_2()
-                // Icône
-                .child(
-                    div()
-                        .text_color(rgb(FROST1))
-                        .text_base()
-                        .child("🪟")
-                )
-                // Contenu (classe + titre)
-                .child(
-                    div()
-                        .flex()
-                        .flex_col()
-                        .justify_center()
-                        .gap_0()
-                        // Classe (plus petite)
-                        .child(
+        div()
+            .w_64()  // Largeur fixe
+            .h_10()  // Hauteur légèrement plus grande pour 2 lignes
+            .px_3()
+            .py_1()
+            .bg(rgb(POLAR2))
+            .rounded_md()
+            .flex()
+            .flex_row()
+            .items_center()
+            .gap_2()
+            // Icône
+            .child(
+                div()
+                    .text_color(rgb(FROST1))
+                    .text_base()
+                    .child(icon)
+            )
+            // Contenu (classe + titre)
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .justify_center()
+                    .gap_0()
+                    // Classe (plus petite)
+                    .child(
+                        div()
+                            .text_color(rgb(POLAR3))
+                            .text_xs()
+                            .child(class)
+                    )
+                    // Titre de l'application
+                    .when(!title.is_empty(), |this| {
+                        this.child(
                             div()
-                                .text_color(rgb(POLAR3))
-                                .text_xs()
-                                .child(active_window.class.clone())
+                                .text_color(rgb(SNOW0))
+                                .text_sm()
+                                .child(title)
                         )
-                        // Titre de l'application
-                        .when(!truncated_title.is_empty(), |this| {
-                            this.child(
-                                div()
-                                    .text_color(rgb(SNOW0))
-                                    .text_sm()
-                                    .child(truncated_title)
-                            )
-                        })
-                )
-        })
+                    })
+            )
     }
 }

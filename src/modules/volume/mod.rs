@@ -16,24 +16,23 @@ impl VolumeModule {
 
     pub fn render(&self) -> impl IntoElement {
         let volume_icon = if self.volume == 0 {
-            "🔇"
+            ""
         } else if self.volume < 50 {
-            "🔉"
+            ""
         } else {
-            "🔊"
+            ""
         };
 
         div()
             .w_16()
             .h_8()
-            .bg(rgb(GREEN))
             .rounded_md()
             .flex()
             .flex_row()
             .items_center()
             .justify_center()
             .gap_1()
-            .text_color(rgb(POLAR0))
+            .text_color(rgb(SNOW0))
             .text_xs()
             .child(volume_icon)
             .child(format!("{}%", self.volume))
