@@ -7,9 +7,9 @@ pub mod volume;
 pub mod workspace;
 
 pub use active_window::ActiveWindowModule;
-pub use bluetooth::{BluetoothService, BluetoothState};
+pub use bluetooth::BluetoothModule;
 pub use datetime::DateTimeModule;
 pub use pomodoro::PomodoroModule;
-pub use systray::{SystemTrayService, TrayItem};
+pub use systray::SystrayModule;
 pub use volume::VolumeModule;
 pub use workspace::WorkspaceModule;

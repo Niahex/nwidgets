@@ -1,6 +1,6 @@
 use crate::services::{PomodoroService, PomodoroState};
 use crate::theme::*;
-use gpui::{div, prelude::*, rgb, AnyElement};
+use gpui::{div, prelude::*, rgb};
 
 pub struct PomodoroModule {
     service: PomodoroService,
@@ -21,7 +21,7 @@ impl PomodoroModule {
         self.service.auto_transition();
     }
 
-    pub fn render(&self) -> AnyElement {
+    pub fn render(&self) -> impl IntoElement {
         let (pomodoro_icon, pomodoro_color) = match self.service.get_state() {
             PomodoroState::Idle => ("🍅", POLAR3),
             PomodoroState::Work | PomodoroState::WorkPaused => ("🍅", RED),
@@ -42,6 +42,5 @@ impl PomodoroModule {
             .text_xs()
             .child(pomodoro_icon)
             .child(self.service.format_time())
-            .into_any_element()
     }
 }

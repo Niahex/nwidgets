@@ -1,142 +1,92 @@
-use zbus::{Connection, proxy};
-use std::sync::mpsc;
+use crate::services::bluetooth::{BluetoothService, BluetoothState};
+use crate::theme::*;
+use gpui::{div, prelude::*, rgb, Context};
+use std::time::Duration;
 
-#[derive(Debug, Clone)]
-pub struct BluetoothState {
-    pub powered: bool,
-    pub connected_devices: usize,
+pub struct BluetoothModule {
+    state: BluetoothState,
 }
 
-// BlueZ Adapter interface
-#[proxy(
-    interface = "org.bluez.Adapter1",
-    default_service = "org.bluez",
-    default_path = "/org/bluez/hci0"
-)]
-trait Adapter {
-    #[zbus(property)]
-    fn powered(&self) -> zbus::Result<bool>;
-
-    #[zbus(property)]
-    fn set_powered(&self, powered: bool) -> zbus::Result<()>;
-
-    #[zbus(property)]
-    fn discovering(&self) -> zbus::Result<bool>;
-
-    #[zbus(property)]
-    fn discoverable(&self) -> zbus::Result<bool>;
-}
-
-// BlueZ Device interface
-#[proxy(
-    interface = "org.bluez.Device1",
-    default_service = "org.bluez"
-)]
-trait Device {
-    #[zbus(property)]
-    fn connected(&self) -> zbus::Result<bool>;
-
-    #[zbus(property)]
-    fn name(&self) -> zbus::Result<String>;
-
-    #[zbus(property)]
-    fn alias(&self) -> zbus::Result<String>;
-}
-
-pub struct BluetoothService;
-
-impl BluetoothService {
+impl BluetoothModule {
     pub fn new() -> Self {
-        Self
-    }
-
-    /// Start monitoring Bluetooth state changes
-    pub fn start_monitoring() -> mpsc::Receiver<BluetoothState> {
-        let (tx, rx) = mpsc::channel();
-
-        std::thread::spawn(move || {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(async {
-                loop {
-                    if let Ok(state) = Self::get_bluetooth_state().await {
-                        let _ = tx.send(state);
-                    }
-
-                    // Poll every 5 seconds
-                    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-                }
-            });
-        });
-
-        rx
-    }
-
-    /// Get current Bluetooth state
-    pub async fn get_bluetooth_state() -> zbus::Result<BluetoothState> {
-        let connection = Connection::system().await?;
-
-        // Get adapter state
-        let adapter_proxy = AdapterProxy::new(&connection).await?;
-        let powered = adapter_proxy.powered().await.unwrap_or(false);
-
-        // Count connected devices
-        let connected_devices = Self::count_connected_devices(&connection).await;
-
-        Ok(BluetoothState {
-            powered,
-            connected_devices,
-        })
-    }
-
-    async fn count_connected_devices(connection: &Connection) -> usize {
-        // Get all objects from BlueZ
-        let obj_manager = match zbus::fdo::ObjectManagerProxy::builder(connection)
-            .destination("org.bluez")
-            .ok()
-            .and_then(|b| b.path("/").ok())
-        {
-            Some(builder) => match builder.build().await {
-                Ok(om) => om,
-                Err(_) => return 0,
+        Self {
+            state: BluetoothState {
+                powered: false,
+                connected_devices: 0,
             },
-            None => return 0,
+        }
+    }
+
+    pub fn update(&mut self, state: BluetoothState) {
+        self.state = state;
+    }
+
+    pub fn get_state(&self) -> &BluetoothState {
+        &self.state
+    }
+
+    /// Start monitoring Bluetooth - exposes the service's monitoring
+    /// Panel will call this and listen to updates
+    pub fn start_monitoring() -> std::sync::mpsc::Receiver<BluetoothState> {
+        BluetoothService::start_monitoring()
+    }
+
+    /// Toggle Bluetooth power - to be called from event handlers
+    pub async fn toggle_power() -> Result<bool, Box<dyn std::error::Error>> {
+        BluetoothService::toggle_power()
+            .await
+            .map_err(|e| e.into())
+    }
+
+    pub fn render<V: 'static>(&self, cx: &mut Context<V>) -> impl IntoElement {
+        let (bt_icon, bt_color) = if !self.state.powered {
+            ("󰂯", RED) // Off - red
+        } else if self.state.connected_devices > 0 {
+            ("󰂱", FROST1) // Connected - blue
+        } else {
+            ("󰂲", SNOW0) // On but not connected - white
         };
 
-        let objects = match obj_manager.get_managed_objects().await {
-            Ok(objs) => objs,
-            Err(_) => return 0,
-        };
-
-        let mut count = 0;
-        for (path, interfaces) in objects {
-            if interfaces.contains_key("org.bluez.Device1") {
-                // Try to check if device is connected
-                if let Some(builder) = DeviceProxy::builder(connection)
-                    .path(path)
-                    .ok()
-                {
-                    if let Ok(device_proxy) = builder.build().await {
-                        if device_proxy.connected().await.unwrap_or(false) {
-                            count += 1;
+        let mut bt_widget = div()
+            .w_12()
+            .h_8()
+            .bg(rgb(POLAR2))
+            .rounded_md()
+            .flex()
+            .items_center()
+            .justify_center()
+            .text_color(rgb(bt_color))
+            .text_base()
+            .cursor_pointer()
+            .on_mouse_down(
+                gpui::MouseButton::Left,
+                cx.listener(|_this, _event, _window, cx| {
+                    cx.spawn(async move |_this, cx| {
+                        match BluetoothModule::toggle_power().await {
+                            Ok(new_state) => {
+                                println!("[BLUETOOTH] 🔵 Toggled to: {}", new_state);
+                            }
+                            Err(e) => {
+                                println!("[BLUETOOTH] ❌ Failed to toggle: {:?}", e);
+                            }
                         }
-                    }
-                }
-            }
+                        let _ = cx;
+                    })
+                    .detach();
+                }),
+            )
+            .child(bt_icon);
+
+        // Show count if devices connected
+        if self.state.connected_devices > 0 {
+            bt_widget = bt_widget.child(
+                div()
+                    .text_xs()
+                    .ml_0p5()
+                    .child(format!("{}", self.state.connected_devices)),
+            );
         }
 
-        count
-    }
-
-    /// Toggle Bluetooth power state
-    pub async fn toggle_power() -> zbus::Result<bool> {
-        let connection = Connection::system().await?;
-        let adapter_proxy = AdapterProxy::new(&connection).await?;
-
-        let current = adapter_proxy.powered().await.unwrap_or(false);
-        let new_state = !current;
-
-        adapter_proxy.set_powered(new_state).await?;
-
-        Ok(new_state)
+        bt_widget
     }
 }

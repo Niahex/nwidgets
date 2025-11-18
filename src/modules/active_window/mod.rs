@@ -1,6 +1,6 @@
 use crate::services::hyprland::ActiveWindow;
 use crate::theme::*;
-use gpui::{div, prelude::*, rgb, AnyElement};
+use gpui::{div, prelude::*, rgb};
 
 pub struct ActiveWindowModule {
     active_window: Option<ActiveWindow>,
@@ -15,7 +15,7 @@ impl ActiveWindowModule {
         self.active_window = active_window;
     }
 
-    pub fn render(&self) -> Option<AnyElement> {
+    pub fn render(&self) -> Option<impl IntoElement> {
         self.active_window.as_ref().map(|active_window| {
             div()
                 .h_8()
@@ -36,7 +36,6 @@ impl ActiveWindowModule {
                             .child(format!("- {}", active_window.title)),
                     )
                 })
-                .into_any_element()
         })
     }
 }

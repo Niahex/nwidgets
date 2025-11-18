@@ -1,6 +1,6 @@
 use crate::services::hyprland::Workspace;
 use crate::theme::*;
-use gpui::{div, prelude::*, rgb, AnyElement};
+use gpui::{div, prelude::*, rgb};
 
 pub struct WorkspaceModule {
     workspaces: Vec<Workspace>,
@@ -20,7 +20,7 @@ impl WorkspaceModule {
         self.active_workspace = active_workspace;
     }
 
-    pub fn render(&self) -> AnyElement {
+    pub fn render(&self) -> impl IntoElement {
         let mut sorted_workspaces = self.workspaces.clone();
         // Sort: 1-6 first, then others
         sorted_workspaces.sort_by(|a, b| match (a.id <= 6, b.id <= 6) {
@@ -56,6 +56,5 @@ impl WorkspaceModule {
                     })
                     .collect::<Vec<_>>(),
             )
-            .into_any_element()
     }
 }

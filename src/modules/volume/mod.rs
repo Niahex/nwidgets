@@ -1,5 +1,5 @@
 use crate::theme::*;
-use gpui::{div, prelude::*, rgb, AnyElement};
+use gpui::{div, prelude::*, rgb};
 
 pub struct VolumeModule {
     volume: u8,
@@ -14,7 +14,7 @@ impl VolumeModule {
         self.volume = volume;
     }
 
-    pub fn render(&self) -> AnyElement {
+    pub fn render(&self) -> impl IntoElement {
         let volume_icon = if self.volume == 0 {
             "🔇"
         } else if self.volume < 50 {
@@ -37,6 +37,5 @@ impl VolumeModule {
             .text_xs()
             .child(volume_icon)
             .child(format!("{}%", self.volume))
-            .into_any_element()
     }
 }

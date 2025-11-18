@@ -1,5 +1,5 @@
 use crate::theme::*;
-use gpui::{div, prelude::*, rgb, AnyElement};
+use gpui::{div, prelude::*, rgb};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub struct DateTimeModule;
@@ -9,7 +9,7 @@ impl DateTimeModule {
         Self
     }
 
-    pub fn render(&self) -> AnyElement {
+    pub fn render(&self) -> impl IntoElement {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
@@ -30,6 +30,5 @@ impl DateTimeModule {
             .text_color(rgb(SNOW0))
             .text_sm()
             .child(format!("{:02}:{:02}", hours, minutes))
-            .into_any_element()
     }
 }

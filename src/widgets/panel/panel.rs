@@ -1,6 +1,6 @@
 use crate::modules::{
-    ActiveWindowModule, BluetoothService, BluetoothState, DateTimeModule, PomodoroModule,
-    SystemTrayService, TrayItem, VolumeModule, WorkspaceModule,
+    ActiveWindowModule, BluetoothModule, DateTimeModule, PomodoroModule, SystrayModule,
+    VolumeModule, WorkspaceModule,
 };
 use crate::services::{HyprlandService, PipeWireService};
 use crate::theme::*;
@@ -8,16 +8,14 @@ use gpui::{div, prelude::*, rgb, Context, Window};
 use std::time::Duration;
 
 pub struct Panel {
-    // Modules
+    // Modules uniquement - pas de services !
     active_window_module: ActiveWindowModule,
     workspace_module: WorkspaceModule,
     pomodoro_module: PomodoroModule,
     volume_module: VolumeModule,
     datetime_module: DateTimeModule,
-
-    // State
-    tray_items: Vec<TrayItem>,
-    bluetooth_state: BluetoothState,
+    bluetooth_module: BluetoothModule,
+    systray_module: SystrayModule,
 }
 
 impl Panel {
@@ -33,11 +31,8 @@ impl Panel {
             pomodoro_module: PomodoroModule::new(),
             volume_module: VolumeModule::new(initial_volume),
             datetime_module: DateTimeModule::new(),
-            tray_items: Vec::new(),
-            bluetooth_state: BluetoothState {
-                powered: false,
-                connected_devices: 0,
-            },
+            bluetooth_module: BluetoothModule::new(),
+            systray_module: SystrayModule::new(),
         };
 
         // Monitor volume changes using PipeWireService
@@ -99,16 +94,15 @@ impl Panel {
         })
         .detach();
 
-        // Initialize system tray
+        // Initialize system tray via module
         cx.spawn(async move |this, cx| {
             println!("[PANEL] 🔔 Initializing system tray...");
-            let mut tray_service = SystemTrayService::new();
 
-            match tray_service.start_monitoring().await {
+            match SystrayModule::start_monitoring().await {
                 Ok(items) => {
                     println!("[PANEL] 🔔 Found {} tray items", items.len());
                     let _ = this.update(cx, |panel, cx| {
-                        panel.tray_items = items;
+                        panel.systray_module.update(items);
                         cx.notify();
                     });
                 }
@@ -119,25 +113,16 @@ impl Panel {
         })
         .detach();
 
-        // Monitor Bluetooth state
+        // Monitor Bluetooth state via module
         cx.spawn(async move |this, cx| {
-            let receiver = BluetoothService::start_monitoring();
+            let receiver = BluetoothModule::start_monitoring();
 
             loop {
                 match receiver.try_recv() {
                     Ok(state) => {
                         let _ = this.update(cx, |panel, cx| {
-                            if panel.bluetooth_state.powered != state.powered
-                                || panel.bluetooth_state.connected_devices
-                                    != state.connected_devices
-                            {
-                                println!(
-                                    "[PANEL] 🔵 Bluetooth: powered={}, devices={}",
-                                    state.powered, state.connected_devices
-                                );
-                                panel.bluetooth_state = state;
-                                cx.notify();
-                            }
+                            panel.bluetooth_module.update(state);
+                            cx.notify();
                         });
                     }
                     Err(_) => {
@@ -206,78 +191,8 @@ impl Panel {
     }
 
     fn render_bluetooth(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let (bt_icon, bt_color) = if !self.bluetooth_state.powered {
-            ("󰂯", RED) // Off - red
-        } else if self.bluetooth_state.connected_devices > 0 {
-            ("󰂱", FROST1) // Connected - blue
-        } else {
-            ("󰂲", SNOW0) // On but not connected - white
-        };
-
-        let mut bt_widget = div()
-            .w_12()
-            .h_8()
-            .bg(rgb(POLAR2))
-            .rounded_md()
-            .flex()
-            .items_center()
-            .justify_center()
-            .text_color(rgb(bt_color))
-            .text_base()
-            .cursor_pointer()
-            .on_mouse_down(
-                gpui::MouseButton::Left,
-                cx.listener(|_this, _event, _window, cx| {
-                    cx.spawn(async move |_this, cx| {
-                        match BluetoothService::toggle_power().await {
-                            Ok(new_state) => {
-                                println!("[PANEL] 🔵 Bluetooth toggled to: {}", new_state);
-                            }
-                            Err(e) => {
-                                println!("[PANEL] ❌ Failed to toggle Bluetooth: {:?}", e);
-                            }
-                        }
-                        let _ = cx;
-                    })
-                    .detach();
-                }),
-            )
-            .child(bt_icon);
-
-        if self.bluetooth_state.connected_devices > 0 {
-            bt_widget = bt_widget.child(
-                div()
-                    .text_xs()
-                    .ml_0p5()
-                    .child(format!("{}", self.bluetooth_state.connected_devices)),
-            );
-        }
-
-        bt_widget
-    }
-
-    fn render_systray(&self) -> impl IntoElement {
-        div()
-            .flex()
-            .flex_row()
-            .items_center()
-            .gap_1()
-            .children(self.tray_items.iter().map(|item| {
-                div()
-                    .w_8()
-                    .h_8()
-                    .bg(rgb(POLAR2))
-                    .rounded_sm()
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .text_xs()
-                    .child(if !item.icon_name.is_empty() {
-                        item.title.chars().next().unwrap_or('?').to_string()
-                    } else {
-                        "•".to_string()
-                    })
-            }))
+        // Le module gère tout : le rendu ET les événements
+        self.bluetooth_module.render(cx)
     }
 }
 
@@ -312,7 +227,7 @@ impl Render for Panel {
                     .flex_row()
                     .items_center()
                     .gap_3()
-                    .child(self.render_systray())
+                    .child(self.systray_module.render())
                     .child(self.render_bluetooth(cx))
                     .child(self.volume_module.render())
                     .child(self.datetime_module.render()),
