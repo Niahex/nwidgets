@@ -1,8 +1,12 @@
+mod notifications_widget;
+
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 use zbus::Connection;
 use tokio::sync::mpsc;
+
+pub use notifications_widget::NotificationsWidget;
 
 #[derive(Debug, Clone)]
 pub struct Notification {

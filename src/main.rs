@@ -7,14 +7,12 @@ use gpui::layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions}
 
 mod modules;
 mod services;
-mod shell;
-mod wayland_ext;
+mod theme;
+mod widgets;
 
-use modules::launcher;
-use modules::launcher::Launcher;
-use modules::osd;
-use services::NotificationManager;
-use shell::Shell;
+use widgets::launcher;
+use widgets::osd;
+use widgets::{Launcher, Panel};
 
 actions!(nwidgets, [OpenLauncher]);
 
@@ -109,7 +107,7 @@ fn main() {
                 }),
                 ..Default::default()
             },
-            |_, cx| cx.new(Shell::new_panel),
+            |_, cx| cx.new(Panel::new),
         )
         .unwrap();
 
@@ -183,8 +181,9 @@ fn main() {
         )
         .unwrap();
 
-        // Notifications - Géré par NotificationManager avec des fenêtres dynamiques
-        NotificationManager::new(cx);
+        // Notifications widget - Panneau de notifications statique
+        // Note: Pour l'instant commenté, à implémenter plus tard avec une fenêtre layer shell
+        // cx.open_window(..., |_, cx| cx.new(NotificationsWidget::new));
 
         cx.activate(true);
     });

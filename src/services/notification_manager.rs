@@ -1,4 +1,4 @@
-use crate::modules::{Notification, NotificationService};
+use crate::widgets::notifications::{Notification, NotificationService};
 use gpui::{App, Entity, WindowOptions, WindowBounds, Bounds, Size, point, px, WindowBackgroundAppearance, WindowKind, Context, Render, IntoElement, div, prelude::*, rgb, Window, WindowHandle};
 use gpui::layer_shell::{LayerShellOptions, Layer, Anchor, KeyboardInteractivity};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
