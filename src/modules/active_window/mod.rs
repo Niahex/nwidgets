@@ -17,25 +17,55 @@ impl ActiveWindowModule {
 
     pub fn render(&self) -> Option<impl IntoElement> {
         self.active_window.as_ref().map(|active_window| {
+            // Tronquer le titre pour qu'il ne soit pas trop long (max 30 caractères)
+            let truncated_title = if active_window.title.len() > 30 {
+                format!("{}...", &active_window.title[..27])
+            } else {
+                active_window.title.clone()
+            };
+
             div()
-                .h_8()
+                .w_64()  // Largeur fixe
+                .h_10()  // Hauteur légèrement plus grande pour 2 lignes
                 .px_3()
+                .py_1()
                 .bg(rgb(POLAR2))
                 .rounded_md()
                 .flex()
                 .flex_row()
                 .items_center()
                 .gap_2()
-                .text_color(rgb(SNOW0))
-                .text_sm()
-                .child(format!("🪟 {}", active_window.class))
-                .when(!active_window.title.is_empty(), |this| {
-                    this.child(
-                        div()
-                            .text_color(rgb(POLAR3))
-                            .child(format!("- {}", active_window.title)),
-                    )
-                })
+                // Icône
+                .child(
+                    div()
+                        .text_color(rgb(FROST1))
+                        .text_base()
+                        .child("🪟")
+                )
+                // Contenu (classe + titre)
+                .child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .justify_center()
+                        .gap_0()
+                        // Classe (plus petite)
+                        .child(
+                            div()
+                                .text_color(rgb(POLAR3))
+                                .text_xs()
+                                .child(active_window.class.clone())
+                        )
+                        // Titre de l'application
+                        .when(!truncated_title.is_empty(), |this| {
+                            this.child(
+                                div()
+                                    .text_color(rgb(SNOW0))
+                                    .text_sm()
+                                    .child(truncated_title)
+                            )
+                        })
+                )
         })
     }
 }

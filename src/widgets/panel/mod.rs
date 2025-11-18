@@ -206,7 +206,7 @@ impl Render for Panel {
             .items_center()
             .justify_between()
             .px_4()
-            // Section gauche (fenêtre active + pomodoro)
+            // Section gauche (fenêtre active)
             .child(
                 div()
                     .flex()
@@ -216,17 +216,17 @@ impl Render for Panel {
                     .when_some(self.active_window_module.render(), |this, element| {
                         this.child(element)
                     })
-                    .child(self.render_pomodoro(cx)),
             )
             // Section centrale (workspaces)
             .child(self.workspace_module.render())
-            // Section droite (systray + bluetooth + volume + horloge)
+            // Section droite (pomodoro + systray + bluetooth + volume + horloge)
             .child(
                 div()
                     .flex()
                     .flex_row()
                     .items_center()
                     .gap_3()
+                    .child(self.render_pomodoro(cx))
                     .child(self.systray_module.render())
                     .child(self.render_bluetooth(cx))
                     .child(self.volume_module.render())
