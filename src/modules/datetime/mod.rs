@@ -1,6 +1,6 @@
 use crate::theme::*;
+use chrono::Local;
 use gpui::{div, prelude::*, rgb};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 pub struct DateTimeModule;
 
@@ -10,24 +10,28 @@ impl DateTimeModule {
     }
 
     pub fn render(&self) -> impl IntoElement {
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
-        // Add timezone offset for CET (UTC+1)
-        let local_time = now + 3600;
-        let hours = (local_time / 3600) % 24;
-        let minutes = (local_time / 60) % 60;
+        let now = Local::now();
 
         div()
             .w_16()
-            .h_8()
+            .h_16()
             .rounded_md()
             .flex()
+            .flex_col()
             .items_center()
             .justify_center()
-            .text_color(rgb(SNOW0))
-            .text_sm()
-            .child(format!("{:02}:{:02}", hours, minutes))
+            .gap_0p5()
+            .child(
+                div()
+                    .text_sm()
+                    .text_color(rgb(SNOW2))
+                    .child(now.format("%H:%M").to_string())
+            )
+            .child(
+                div()
+                    .text_xs()
+                    .text_color(rgb(SNOW0))
+                    .child(now.format("%d/%m/%y").to_string())
+            )
     }
 }
