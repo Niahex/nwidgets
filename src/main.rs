@@ -38,12 +38,12 @@ fn main() {
         )
         .unwrap();
 
-        // OSD - centered at bottom
+        // OSD - centered at bottom with margin
         cx.open_window(
             WindowOptions {
                 titlebar: None,
                 window_bounds: Some(WindowBounds::Windowed(Bounds {
-                    origin: point(px(1520.), px(980.)), // Center horizontally (3440/2 - 400/2 = 1520)
+                    origin: point(px(1520.), px(920.)), // Center horizontally (3440/2 - 400/2 = 1520), 60px margin from bottom
                     size: Size::new(px(400.), px(64.)),
                 })),
                 app_id: Some("nwidgets-osd".to_string()),
@@ -53,6 +53,7 @@ fn main() {
                     layer: Layer::Overlay,
                     anchor: Anchor::BOTTOM,
                     keyboard_interactivity: KeyboardInteractivity::None,
+                    margin: Some((px(0.), px(0.), px(60.), px(0.))), // top, right, bottom, left
                     ..Default::default()
                 }),
                 ..Default::default()
