@@ -48,7 +48,6 @@ impl BluetoothModule {
         let mut bt_widget = div()
             .w_12()
             .h_8()
-            .bg(rgb(POLAR2))
             .rounded_md()
             .flex()
             .items_center()

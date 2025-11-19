@@ -34,7 +34,6 @@ impl SystrayModule {
                 div()
                     .w_8()
                     .h_8()
-                    .bg(rgb(POLAR2))
                     .rounded_sm()
                     .flex()
                     .items_center()
@@ -54,10 +53,14 @@ impl SystrayModule {
             s if s.contains("vesktop") || s.contains("discord") => icons::VESKTOP,
             s if s.contains("firefox") => icons::FIREFOX,
             s if s.contains("vlc") => icons::VLC,
-            s if s.contains("1password") || s.contains("keepass") || s.contains("bitwarden") => icons::PASSWORD,
+            s if s.contains("1password") || s.contains("keepass") || s.contains("bitwarden") => {
+                icons::PASSWORD
+            }
             s if s.contains("obs") || s.contains("stream") => icons::STREAM,
             s if s.contains("bluetooth") => icons::BLUETOOTH_ON,
-            s if s.contains("volume") || s.contains("sound") || s.contains("audio") => icons::VOLUME_HIGH,
+            s if s.contains("volume") || s.contains("sound") || s.contains("audio") => {
+                icons::VOLUME_HIGH
+            }
             s if s.contains("network") || s.contains("wifi") => icons::WIFI,
             s if s.contains("battery") || s.contains("power") => icons::BATTERY_FULL,
             s if s.contains("notification") => icons::BELL,
