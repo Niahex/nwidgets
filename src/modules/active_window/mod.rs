@@ -31,23 +31,17 @@ impl ActiveWindowModule {
         };
 
         div()
-            .w_64()  // Largeur fixe
-            .h_10()  // Hauteur légèrement plus grande pour 2 lignes
+            .w_64() // Largeur fixe
+            .h_10() // Hauteur légèrement plus grande pour 2 lignes
             .px_3()
             .py_1()
-            .bg(rgb(POLAR2))
             .rounded_md()
             .flex()
             .flex_row()
             .items_center()
             .gap_2()
             // Icône
-            .child(
-                div()
-                    .text_color(rgb(FROST1))
-                    .text_base()
-                    .child(icon)
-            )
+            .child(div().text_color(rgb(FROST1)).text_base().child(icon))
             // Contenu (classe + titre)
             .child(
                 div()
@@ -56,21 +50,11 @@ impl ActiveWindowModule {
                     .justify_center()
                     .gap_0()
                     // Classe (plus petite)
-                    .child(
-                        div()
-                            .text_color(rgb(POLAR3))
-                            .text_xs()
-                            .child(class)
-                    )
+                    .child(div().text_color(rgb(SNOW0)).text_xs().child(class))
                     // Titre de l'application
                     .when(!title.is_empty(), |this| {
-                        this.child(
-                            div()
-                                .text_color(rgb(SNOW0))
-                                .text_sm()
-                                .child(title)
-                        )
-                    })
+                        this.child(div().text_color(rgb(SNOW0)).text_sm().child(title))
+                    }),
             )
     }
 }
