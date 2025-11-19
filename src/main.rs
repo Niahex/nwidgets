@@ -12,7 +12,7 @@ mod theme;
 mod widgets;
 
 use widgets::osd;
-use widgets::{Panel, TranscriptionViewer};
+use widgets::{AiChat, Panel, TranscriptionViewer};
 
 fn main() {
     // Check if this is a CLI command
@@ -27,9 +27,17 @@ fn main() {
                 }
                 return;
             }
+            "chat" => {
+                if let Err(e) = ipc::send_command(ipc::IpcCommand::ToggleAiChat) {
+                    eprintln!("Failed to send command: {}", e);
+                    eprintln!("Is nwidgets running?");
+                    std::process::exit(1);
+                }
+                return;
+            }
             _ => {
                 eprintln!("Unknown command: {}", args[1]);
-                eprintln!("Available commands: dictation");
+                eprintln!("Available commands: dictation, chat");
                 std::process::exit(1);
             }
         }
@@ -155,9 +163,14 @@ fn main() {
             eprintln!("[IPC] Failed to start IPC server: {}", e);
         }
 
+        // AI Chat window management
+        let ai_chat_window: std::sync::Arc<std::sync::Mutex<Option<gpui::WindowHandle<AiChat>>>> =
+            std::sync::Arc::new(std::sync::Mutex::new(None));
+
         // Poll for IPC commands
         let panel_for_ipc = panel_entity.clone();
         let transcription_window_for_ipc = transcription_window.clone();
+        let ai_chat_window_for_ipc = ai_chat_window.clone();
         cx.spawn(async move |cx| {
             loop {
                 gpui::Timer::after(std::time::Duration::from_millis(100)).await;
@@ -220,6 +233,52 @@ fn main() {
 
                                 cx.notify();
                             });
+                        }
+                        ipc::IpcCommand::ToggleAiChat => {
+                            println!("[IPC] Toggle AI chat command received");
+
+                            // Check if chat window already exists
+                            let mut window_lock = ai_chat_window_for_ipc.lock().unwrap();
+                            if window_lock.is_some() {
+                                // Close existing window
+                                if let Some(window) = window_lock.take() {
+                                    println!("[IPC] Closing AI chat window");
+                                    let _ = window.update(cx, |_, window, _| {
+                                        window.remove_window();
+                                    });
+                                }
+                            } else {
+                                // Create new chat window
+                                println!("[IPC] Creating AI chat window");
+                                match cx.open_window(
+                                    WindowOptions {
+                                        titlebar: None,
+                                        window_bounds: Some(WindowBounds::Windowed(Bounds {
+                                            origin: point(px(0.), px(0.)),
+                                            size: Size::new(px(400.), px(1080.)),
+                                        })),
+                                        app_id: Some("nwidgets-ai-chat".to_string()),
+                                        window_background: WindowBackgroundAppearance::Transparent,
+                                        kind: WindowKind::LayerShell(LayerShellOptions {
+                                            namespace: "nwidgets-ai-chat".to_string(),
+                                            layer: Layer::Overlay,
+                                            anchor: Anchor::LEFT | Anchor::TOP | Anchor::BOTTOM,
+                                            keyboard_interactivity: KeyboardInteractivity::Exclusive,
+                                            ..Default::default()
+                                        }),
+                                        ..Default::default()
+                                    },
+                                    |_, cx| cx.new(|_cx| AiChat::new()),
+                                ) {
+                                    Ok(window) => {
+                                        *window_lock = Some(window);
+                                        println!("[IPC] AI chat window created");
+                                    }
+                                    Err(e) => {
+                                        eprintln!("[IPC] Failed to create AI chat window: {:?}", e);
+                                    }
+                                }
+                            }
                         }
                     }
                 }

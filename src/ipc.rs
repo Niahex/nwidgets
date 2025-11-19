@@ -6,12 +6,14 @@ const SOCKET_PATH: &str = "/tmp/nwidgets.sock";
 #[derive(Debug)]
 pub enum IpcCommand {
     ToggleDictation,
+    ToggleAiChat,
 }
 
 impl IpcCommand {
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "dictation" => Some(IpcCommand::ToggleDictation),
+            "chat" => Some(IpcCommand::ToggleAiChat),
             _ => None,
         }
     }
@@ -19,6 +21,7 @@ impl IpcCommand {
     pub fn to_string(&self) -> String {
         match self {
             IpcCommand::ToggleDictation => "dictation".to_string(),
+            IpcCommand::ToggleAiChat => "chat".to_string(),
         }
     }
 }
