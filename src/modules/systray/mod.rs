@@ -28,6 +28,9 @@ impl SystrayModule {
             .items_center()
             .gap_1()
             .children(self.items.iter().map(|item| {
+                // Mapper l'item du systray à une icône appropriée
+                let icon = Self::get_icon_for_item(item);
+
                 div()
                     .w_8()
                     .h_8()
@@ -37,11 +40,36 @@ impl SystrayModule {
                     .items_center()
                     .justify_center()
                     .text_xs()
-                    .child(if !item.icon_name.is_empty() {
-                        item.title.chars().next().unwrap_or('?').to_string()
-                    } else {
-                        "•".to_string()
-                    })
+                    .text_color(rgb(SNOW0))
+                    .child(icon)
             }))
+    }
+
+    fn get_icon_for_item(item: &TrayItem) -> &'static str {
+        // Chercher dans le titre ou l'id (en minuscules)
+        let search_str = format!("{} {}", item.title.to_lowercase(), item.id.to_lowercase());
+
+        match search_str.as_str() {
+            s if s.contains("steam") => icons::STEAM,
+            s if s.contains("vesktop") || s.contains("discord") => icons::VESKTOP,
+            s if s.contains("firefox") => icons::FIREFOX,
+            s if s.contains("vlc") => icons::VLC,
+            s if s.contains("1password") || s.contains("keepass") || s.contains("bitwarden") => icons::PASSWORD,
+            s if s.contains("obs") || s.contains("stream") => icons::STREAM,
+            s if s.contains("bluetooth") => icons::BLUETOOTH_ON,
+            s if s.contains("volume") || s.contains("sound") || s.contains("audio") => icons::VOLUME_HIGH,
+            s if s.contains("network") || s.contains("wifi") => icons::WIFI,
+            s if s.contains("battery") || s.contains("power") => icons::BATTERY_FULL,
+            s if s.contains("notification") => icons::BELL,
+            _ => {
+                // Fallback: première lettre du titre
+                if let Some(first_char) = item.title.chars().next() {
+                    // On ne peut pas retourner une String ici, donc on utilise une icône par défaut
+                    icons::SYSTRAY
+                } else {
+                    icons::SYSTRAY
+                }
+            }
+        }
     }
 }
