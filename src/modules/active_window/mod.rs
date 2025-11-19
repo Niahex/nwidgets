@@ -18,12 +18,20 @@ impl ActiveWindowModule {
     pub fn render(&self) -> impl IntoElement {
         // Si aucune fenêtre active, afficher l'icône NixOS
         let (icon, class, title) = if let Some(active_window) = &self.active_window {
+            // Extraire seulement ce qui est avant le premier "-" dans le titre
+            let title_before_dash = active_window.title
+                .split(" - ")
+                .next()
+                .unwrap_or(&active_window.title)
+                .trim()
+                .to_string();
+
             // Tronquer le titre pour qu'il ne soit pas trop long (max 30 caractères)
-            let truncated_title = if active_window.title.chars().count() > 30 {
-                let truncated: String = active_window.title.chars().take(27).collect();
+            let truncated_title = if title_before_dash.chars().count() > 30 {
+                let truncated: String = title_before_dash.chars().take(27).collect();
                 format!("{}...", truncated)
             } else {
-                active_window.title.clone()
+                title_before_dash
             };
 
             // Mapper la classe de fenêtre à une icône appropriée
@@ -62,7 +70,14 @@ impl ActiveWindowModule {
                 _ => icons::WINDOW, // Icône par défaut pour les fenêtres non reconnues
             };
 
-            (icon, active_window.class.clone(), truncated_title)
+            // Extraire seulement ce qui est avant le "-" dans le nom de la classe
+            let display_class = active_window.class
+                .split('-')
+                .next()
+                .unwrap_or(&active_window.class)
+                .to_string();
+
+            (icon, display_class, truncated_title)
         } else {
             (icons::NIXOS, "NixOS".to_string(), "Nia".to_string())
         };
