@@ -1,3 +1,4 @@
+use crate::components::TextInput;
 use crate::theme::*;
 use gpui::*;
 
@@ -15,14 +16,18 @@ pub enum MessageRole {
 
 pub struct AiChat {
     messages: Vec<ChatMessage>,
-    input_text: SharedString,
+    input: Entity<TextInput>,
+    focus_handle: FocusHandle,
 }
 
 impl AiChat {
-    pub fn new() -> Self {
+    pub fn new(cx: &mut Context<Self>) -> Self {
+        let input = cx.new(|cx| TextInput::new(cx, "Type a message..."));
+
         Self {
             messages: Vec::new(),
-            input_text: "".into(),
+            input,
+            focus_handle: cx.focus_handle(),
         }
     }
 
@@ -36,25 +41,32 @@ impl AiChat {
         cx.notify();
     }
 
-    fn on_send(&mut self, _: &gpui::MouseDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
-        if self.input_text.is_empty() {
+    fn send_message(&mut self, cx: &mut Context<Self>) {
+        let text = self.input.read(cx).text().trim().to_string();
+
+        if text.is_empty() {
             return;
         }
 
         // Add user message
-        let user_message = self.input_text.to_string();
-        self.add_message(MessageRole::User, user_message.clone(), cx);
+        self.add_message(MessageRole::User, text.clone(), cx);
 
         // Clear input
-        self.input_text = "".into();
+        self.input.update(cx, |input, cx| {
+            input.clear(cx);
+        });
 
         // TODO: Send to AI service and get response
         // For now, just echo back
         self.add_message(
             MessageRole::Assistant,
-            format!("You said: {}", user_message),
+            format!("You said: {}", text),
             cx,
         );
+    }
+
+    fn on_send(&mut self, _: &gpui::MouseDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
+        self.send_message(cx);
     }
 
     fn on_close(&mut self, _: &gpui::MouseDownEvent, window: &mut Window, _cx: &mut Context<Self>) {
@@ -63,33 +75,146 @@ impl AiChat {
     }
 
     fn render_message(&self, message: &ChatMessage) -> impl IntoElement {
-        let (bg_color, text_color, is_user) = match message.role {
-            MessageRole::User => (FROST1, POLAR0, true),
-            MessageRole::Assistant => (POLAR2, SNOW0, false),
+        use crate::theme::icons::*;
+
+        let (name, icon, header_bg) = match message.role {
+            MessageRole::User => ("Nia", PERSON, POLAR3),
+            MessageRole::Assistant => ("Assistant", ROBOT, POLAR3),
         };
 
-        let mut container = div()
-            .flex()
+        div()
             .w_full()
-            .mb_2();
+            .mb_4()
+            .child(
+                // Header with name and action buttons
+                div()
+                    .w_full()
+                    .h(px(36.0))
+                    .bg(rgb(header_bg))
+                    .rounded_t_lg()
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .px_3()
+                    .child(
+                        // Left: icon + name
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap_2()
+                            .child(
+                                div()
+                                    .text_sm()
+                                    .text_color(rgb(FROST1))
+                                    .child(icon)
+                            )
+                            .child(
+                                div()
+                                    .text_sm()
+                                    .font_weight(FontWeight::MEDIUM)
+                                    .text_color(rgb(SNOW1))
+                                    .child(name)
+                            )
+                    )
+                    .child(
+                        // Right: action buttons
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap_2()
+                            .child(
+                                div()
+                                    .w(px(24.0))
+                                    .h(px(24.0))
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .rounded_md()
+                                    .text_sm()
+                                    .text_color(rgb(SNOW2))
+                                    .cursor_pointer()
+                                    .hover(|style| style.bg(rgb(POLAR2)))
+                                    .child(REFRESH)
+                            )
+                            .child(
+                                div()
+                                    .w(px(24.0))
+                                    .h(px(24.0))
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .rounded_md()
+                                    .text_sm()
+                                    .text_color(rgb(SNOW2))
+                                    .cursor_pointer()
+                                    .hover(|style| style.bg(rgb(POLAR2)))
+                                    .child(CLIPBOARD)
+                            )
+                            .child(
+                                div()
+                                    .w(px(24.0))
+                                    .h(px(24.0))
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .rounded_md()
+                                    .text_sm()
+                                    .text_color(rgb(SNOW2))
+                                    .cursor_pointer()
+                                    .hover(|style| style.bg(rgb(POLAR2)))
+                                    .child(EDIT)
+                            )
+                            .child(
+                                div()
+                                    .w(px(24.0))
+                                    .h(px(24.0))
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .rounded_md()
+                                    .text_sm()
+                                    .text_color(rgb(SNOW2))
+                                    .cursor_pointer()
+                                    .hover(|style| style.bg(rgb(POLAR2)))
+                                    .child(CODE)
+                            )
+                            .child(
+                                div()
+                                    .w(px(24.0))
+                                    .h(px(24.0))
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .rounded_md()
+                                    .text_sm()
+                                    .text_color(rgb(SNOW2))
+                                    .cursor_pointer()
+                                    .hover(|style| style.bg(rgb(POLAR2)))
+                                    .child(CLOSE)
+                            )
+                    )
+            )
+            .child(
+                // Message content
+                div()
+                    .w_full()
+                    .bg(rgb(POLAR2))
+                    .rounded_b_lg()
+                    .p_4()
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(rgb(SNOW1))
+                            .line_height(relative(1.5))
+                            .child(message.content.clone()),
+                    ),
+            )
+    }
+}
 
-        if is_user {
-            container = container.flex_row_reverse();
-        }
-
-        container.child(
-            div()
-                .max_w(px(350.0))
-                .bg(rgb(bg_color))
-                .rounded_lg()
-                .p_3()
-                .child(
-                    div()
-                        .text_sm()
-                        .text_color(rgb(text_color))
-                        .child(message.content.clone()),
-                ),
-        )
+impl Focusable for AiChat {
+    fn focus_handle(&self, _cx: &App) -> FocusHandle {
+        self.focus_handle.clone()
     }
 }
 
@@ -97,42 +222,43 @@ impl Render for AiChat {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         div()
             .size_full()
-            .bg(rgb(POLAR0))
-            .border_r_2()
-            .border_color(rgb(FROST1))
+            .bg(rgb(POLAR1))  // Darker background like the image
             .flex()
             .flex_col()
+            .track_focus(&self.focus_handle)
             // Header
             .child(
                 div()
                     .w_full()
-                    .h_12()
-                    .bg(rgb(POLAR1))
-                    .border_b_2()
-                    .border_color(rgb(FROST1))
+                    .h(px(56.0))
+                    .bg(rgb(POLAR0))
+                    .border_b_1()
+                    .border_color(rgb(POLAR3))
                     .flex()
                     .items_center()
                     .justify_between()
                     .px_4()
                     .child(
                         div()
-                            .text_lg()
-                            .font_weight(FontWeight::BOLD)
+                            .text_base()
+                            .font_weight(FontWeight::SEMIBOLD)
                             .text_color(rgb(SNOW0))
                             .child("AI Chat"),
                     )
                     .child(
                         div()
-                            .px_3()
-                            .py_1()
-                            .bg(rgb(POLAR2))
+                            .w(px(32.0))
+                            .h(px(32.0))
+                            .flex()
+                            .items_center()
+                            .justify_center()
                             .rounded_md()
-                            .text_sm()
-                            .text_color(rgb(SNOW0))
+                            .text_lg()
+                            .text_color(rgb(SNOW2))
                             .cursor_pointer()
-                            .hover(|style| style.bg(rgb(POLAR3)))
+                            .hover(|style| style.bg(rgb(POLAR2)))
                             .on_mouse_down(gpui::MouseButton::Left, cx.listener(Self::on_close))
-                            .child("✕"),
+                            .child("×"),
                     ),
             )
             // Messages area
@@ -155,10 +281,10 @@ impl Render for AiChat {
             .child(
                 div()
                     .w_full()
-                    .h_16()
-                    .bg(rgb(POLAR1))
-                    .border_t_2()
-                    .border_color(rgb(FROST1))
+                    .h(px(64.0))
+                    .bg(rgb(POLAR0))
+                    .border_t_1()
+                    .border_color(rgb(POLAR3))
                     .flex()
                     .items_center()
                     .gap_3()
@@ -166,32 +292,22 @@ impl Render for AiChat {
                     .child(
                         div()
                             .flex_1()
-                            .h_10()
+                            .h(px(40.0))
                             .bg(rgb(POLAR2))
-                            .border_1()
-                            .border_color(rgb(POLAR3))
-                            .rounded_md()
+                            .rounded_lg()
                             .px_3()
                             .flex()
                             .items_center()
-                            .child(
-                                div()
-                                    .text_sm()
-                                    .text_color(rgb(SNOW1))
-                                    .child(if self.input_text.is_empty() {
-                                        "Type a message...".to_string()
-                                    } else {
-                                        self.input_text.to_string()
-                                    }),
-                            ),
+                            .child(self.input.clone())
                     )
                     .child(
                         div()
                             .px_4()
                             .py_2()
                             .bg(rgb(FROST1))
-                            .rounded_md()
+                            .rounded_lg()
                             .text_sm()
+                            .font_weight(FontWeight::MEDIUM)
                             .text_color(rgb(POLAR0))
                             .cursor_pointer()
                             .hover(|style| style.bg(rgb(FROST2)))

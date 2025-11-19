@@ -33,32 +33,69 @@ pub mod colors {
         let r = ((color >> 16) & 0xFF) as f32 / 255.0;
         let g = ((color >> 8) & 0xFF) as f32 / 255.0;
         let b = (color & 0xFF) as f32 / 255.0;
-        gpui::Rgba { r, g, b, a: opacity }
+        gpui::Rgba {
+            r,
+            g,
+            b,
+            a: opacity,
+        }
     }
 
     // Polar Night with opacity variants (95% to 0%, step 5)
-    pub fn polar0(opacity: u8) -> gpui::Rgba { rgba_with_opacity(POLAR0, opacity as f32 / 100.0) }
-    pub fn polar1(opacity: u8) -> gpui::Rgba { rgba_with_opacity(POLAR1, opacity as f32 / 100.0) }
-    pub fn polar2(opacity: u8) -> gpui::Rgba { rgba_with_opacity(POLAR2, opacity as f32 / 100.0) }
-    pub fn polar3(opacity: u8) -> gpui::Rgba { rgba_with_opacity(POLAR3, opacity as f32 / 100.0) }
+    pub fn polar0(opacity: u8) -> gpui::Rgba {
+        rgba_with_opacity(POLAR0, opacity as f32 / 100.0)
+    }
+    pub fn polar1(opacity: u8) -> gpui::Rgba {
+        rgba_with_opacity(POLAR1, opacity as f32 / 100.0)
+    }
+    pub fn polar2(opacity: u8) -> gpui::Rgba {
+        rgba_with_opacity(POLAR2, opacity as f32 / 100.0)
+    }
+    pub fn polar3(opacity: u8) -> gpui::Rgba {
+        rgba_with_opacity(POLAR3, opacity as f32 / 100.0)
+    }
 
     // Snow Storm with opacity variants
-    pub fn snow0(opacity: u8) -> gpui::Rgba { rgba_with_opacity(SNOW0, opacity as f32 / 100.0) }
-    pub fn snow1(opacity: u8) -> gpui::Rgba { rgba_with_opacity(SNOW1, opacity as f32 / 100.0) }
-    pub fn snow2(opacity: u8) -> gpui::Rgba { rgba_with_opacity(SNOW2, opacity as f32 / 100.0) }
+    pub fn snow0(opacity: u8) -> gpui::Rgba {
+        rgba_with_opacity(SNOW0, opacity as f32 / 100.0)
+    }
+    pub fn snow1(opacity: u8) -> gpui::Rgba {
+        rgba_with_opacity(SNOW1, opacity as f32 / 100.0)
+    }
+    pub fn snow2(opacity: u8) -> gpui::Rgba {
+        rgba_with_opacity(SNOW2, opacity as f32 / 100.0)
+    }
 
     // Frost with opacity variants
-    pub fn frost0(opacity: u8) -> gpui::Rgba { rgba_with_opacity(FROST0, opacity as f32 / 100.0) }
-    pub fn frost1(opacity: u8) -> gpui::Rgba { rgba_with_opacity(FROST1, opacity as f32 / 100.0) }
-    pub fn frost2(opacity: u8) -> gpui::Rgba { rgba_with_opacity(FROST2, opacity as f32 / 100.0) }
-    pub fn frost3(opacity: u8) -> gpui::Rgba { rgba_with_opacity(FROST3, opacity as f32 / 100.0) }
+    pub fn frost0(opacity: u8) -> gpui::Rgba {
+        rgba_with_opacity(FROST0, opacity as f32 / 100.0)
+    }
+    pub fn frost1(opacity: u8) -> gpui::Rgba {
+        rgba_with_opacity(FROST1, opacity as f32 / 100.0)
+    }
+    pub fn frost2(opacity: u8) -> gpui::Rgba {
+        rgba_with_opacity(FROST2, opacity as f32 / 100.0)
+    }
+    pub fn frost3(opacity: u8) -> gpui::Rgba {
+        rgba_with_opacity(FROST3, opacity as f32 / 100.0)
+    }
 
     // Aurora with opacity variants
-    pub fn red(opacity: u8) -> gpui::Rgba { rgba_with_opacity(RED, opacity as f32 / 100.0) }
-    pub fn orange(opacity: u8) -> gpui::Rgba { rgba_with_opacity(ORANGE, opacity as f32 / 100.0) }
-    pub fn yellow(opacity: u8) -> gpui::Rgba { rgba_with_opacity(YELLOW, opacity as f32 / 100.0) }
-    pub fn green(opacity: u8) -> gpui::Rgba { rgba_with_opacity(GREEN, opacity as f32 / 100.0) }
-    pub fn purple(opacity: u8) -> gpui::Rgba { rgba_with_opacity(PURPLE, opacity as f32 / 100.0) }
+    pub fn red(opacity: u8) -> gpui::Rgba {
+        rgba_with_opacity(RED, opacity as f32 / 100.0)
+    }
+    pub fn orange(opacity: u8) -> gpui::Rgba {
+        rgba_with_opacity(ORANGE, opacity as f32 / 100.0)
+    }
+    pub fn yellow(opacity: u8) -> gpui::Rgba {
+        rgba_with_opacity(YELLOW, opacity as f32 / 100.0)
+    }
+    pub fn green(opacity: u8) -> gpui::Rgba {
+        rgba_with_opacity(GREEN, opacity as f32 / 100.0)
+    }
+    pub fn purple(opacity: u8) -> gpui::Rgba {
+        rgba_with_opacity(PURPLE, opacity as f32 / 100.0)
+    }
 }
 
 // Re-export colors at root level for backwards compatibility
@@ -149,6 +186,15 @@ pub mod icons {
     pub const STREAM: &str = "󰕵";
 
     // Dictation icons
-    pub const MICROPHONE: &str = ""; // nf-fa-microphone
-    pub const MICROPHONE_SLASH: &str = ""; // nf-fa-microphone_slash
+    pub const MICROPHONE: &str = "󰍬"; // nf-fa-microphone
+    pub const MICROPHONE_SLASH: &str = "󰍭"; // nf-fa-microphone_slash
+
+    // AI Chat icons
+    pub const PERSON: &str = ""; // nf-fa-user (person icon)
+    pub const ROBOT: &str = "󰚩"; // nf-md-robot (assistant icon)
+    pub const REFRESH: &str = ""; // nf-fa-refresh (regenerate response)
+    pub const CLIPBOARD: &str = ""; // nf-fa-clipboard (copy to clipboard)
+    pub const EDIT: &str = ""; // nf-fa-edit (edit message)
+    pub const CODE: &str = ""; // nf-fa-code (view as code)
+    pub const CLOSE: &str = ""; // Close/delete message
 }

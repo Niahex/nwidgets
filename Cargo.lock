@@ -995,7 +995,7 @@ dependencies = [
 [[package]]
 name = "collections"
 version = "0.1.0"
-source = "git+https://github.com/zed-industries/zed?tag=v0.212.6#66713583941614a9899cb01727b6013ae79def7e"
+source = "git+https://github.com/zed-industries/zed?tag=v0.212.6#74924bc91865f111542ac6b1554231a0d3f66f89"
 dependencies = [
  "indexmap",
  "rustc-hash 2.1.1",
@@ -1406,7 +1406,7 @@ dependencies = [
 [[package]]
 name = "derive_refineable"
 version = "0.1.0"
-source = "git+https://github.com/zed-industries/zed?tag=v0.212.6#66713583941614a9899cb01727b6013ae79def7e"
+source = "git+https://github.com/zed-industries/zed?tag=v0.212.6#74924bc91865f111542ac6b1554231a0d3f66f89"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2303,7 +2303,7 @@ dependencies = [
 [[package]]
 name = "gpui"
 version = "0.2.2"
-source = "git+https://github.com/zed-industries/zed?tag=v0.212.6#66713583941614a9899cb01727b6013ae79def7e"
+source = "git+https://github.com/zed-industries/zed?tag=v0.212.6#74924bc91865f111542ac6b1554231a0d3f66f89"
 dependencies = [
  "anyhow",
  "as-raw-xcb-connection",
@@ -2400,7 +2400,7 @@ dependencies = [
 [[package]]
 name = "gpui_macros"
 version = "0.1.0"
-source = "git+https://github.com/zed-industries/zed?tag=v0.212.6#66713583941614a9899cb01727b6013ae79def7e"
+source = "git+https://github.com/zed-industries/zed?tag=v0.212.6#74924bc91865f111542ac6b1554231a0d3f66f89"
 dependencies = [
  "heck 0.5.0",
  "proc-macro2",
@@ -2577,7 +2577,7 @@ dependencies = [
 [[package]]
 name = "http_client"
 version = "0.1.0"
-source = "git+https://github.com/zed-industries/zed?tag=v0.212.6#66713583941614a9899cb01727b6013ae79def7e"
+source = "git+https://github.com/zed-industries/zed?tag=v0.212.6#74924bc91865f111542ac6b1554231a0d3f66f89"
 dependencies = [
  "anyhow",
  "async-compression",
@@ -3337,7 +3337,7 @@ dependencies = [
 [[package]]
 name = "media"
 version = "0.1.0"
-source = "git+https://github.com/zed-industries/zed?tag=v0.212.6#66713583941614a9899cb01727b6013ae79def7e"
+source = "git+https://github.com/zed-industries/zed?tag=v0.212.6#74924bc91865f111542ac6b1554231a0d3f66f89"
 dependencies = [
  "anyhow",
  "bindgen 0.71.1",
@@ -3786,9 +3786,9 @@ dependencies = [
 
 [[package]]
 name = "objc2-app-kit"
-version = "0.3.2"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d49e936b501e5c5bf01fda3a9452ff86dc3ea98ad5f283e1455153142d97518c"
+checksum = "e6f29f568bec459b0ddff777cec4fe3fd8666d82d5a40ebd0ff7e66134f89bcc"
 dependencies = [
  "bitflags 2.10.0",
  "objc2",
@@ -3816,9 +3816,9 @@ checksum = "ef25abbcd74fb2609453eb695bd2f860d389e457f67dc17cafc8b8cbc89d0c33"
 
 [[package]]
 name = "objc2-foundation"
-version = "0.3.2"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3e0adef53c21f888deb4fa59fc59f7eb17404926ee8a6f59f5df0fd7f9f3272"
+checksum = "900831247d2fe1a09a683278e5384cfb8c80c79fe6b166f9d14bfdde0ea1b03c"
 dependencies = [
  "bitflags 2.10.0",
  "objc2",
@@ -3827,9 +3827,9 @@ dependencies = [
 
 [[package]]
 name = "objc2-metal"
-version = "0.3.2"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0125f776a10d00af4152d74616409f0d4a2053a6f57fa5b7d6aa2854ac04794"
+checksum = "7f246c183239540aab1782457b35ab2040d4259175bd1d0c58e46ada7b47a874"
 dependencies = [
  "bitflags 2.10.0",
  "block2",
@@ -3839,9 +3839,9 @@ dependencies = [
 
 [[package]]
 name = "objc2-quartz-core"
-version = "0.3.2"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96c1358452b371bf9f104e21ec536d37a650eb10f7ee379fff67d2e08d537f1f"
+checksum = "90ffb6a0cd5f182dc964334388560b12a57f7b74b3e2dec5e2722aa2dfb2ccd5"
 dependencies = [
  "bitflags 2.10.0",
  "objc2",
@@ -3852,9 +3852,9 @@ dependencies = [
 
 [[package]]
 name = "objc2-ui-kit"
-version = "0.3.2"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d87d638e33c06f577498cbcc50491496a3ed4246998a7fbba7ccb98b1e7eab22"
+checksum = "25b1312ad7bc8a0e92adae17aa10f90aae1fb618832f9b993b022b591027daed"
 dependencies = [
  "bitflags 2.10.0",
  "objc2",
@@ -4110,7 +4110,7 @@ checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
 [[package]]
 name = "perf"
 version = "0.1.0"
-source = "git+https://github.com/zed-industries/zed?tag=v0.212.6#66713583941614a9899cb01727b6013ae79def7e"
+source = "git+https://github.com/zed-industries/zed?tag=v0.212.6#74924bc91865f111542ac6b1554231a0d3f66f89"
 dependencies = [
  "collections",
  "serde",
@@ -4685,7 +4685,7 @@ dependencies = [
 [[package]]
 name = "refineable"
 version = "0.1.0"
-source = "git+https://github.com/zed-industries/zed?tag=v0.212.6#66713583941614a9899cb01727b6013ae79def7e"
+source = "git+https://github.com/zed-industries/zed?tag=v0.212.6#74924bc91865f111542ac6b1554231a0d3f66f89"
 dependencies = [
  "derive_refineable",
 ]
@@ -5117,7 +5117,7 @@ checksum = "16c2f82143577edb4921b71ede051dac62ca3c16084e918bf7b40c96ae10eb33"
 [[package]]
 name = "semantic_version"
 version = "0.1.0"
-source = "git+https://github.com/zed-industries/zed?tag=v0.212.6#66713583941614a9899cb01727b6013ae79def7e"
+source = "git+https://github.com/zed-industries/zed?tag=v0.212.6#74924bc91865f111542ac6b1554231a0d3f66f89"
 dependencies = [
  "anyhow",
  "serde",
@@ -5509,7 +5509,7 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 [[package]]
 name = "sum_tree"
 version = "0.1.0"
-source = "git+https://github.com/zed-industries/zed?tag=v0.212.6#66713583941614a9899cb01727b6013ae79def7e"
+source = "git+https://github.com/zed-industries/zed?tag=v0.212.6#74924bc91865f111542ac6b1554231a0d3f66f89"
 dependencies = [
  "arrayvec",
  "log",
@@ -5683,7 +5683,7 @@ dependencies = [
  "memchr",
  "ntapi",
  "rayon",
- "windows 0.57.0",
+ "windows 0.54.0",
 ]
 
 [[package]]
@@ -6344,7 +6344,7 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 [[package]]
 name = "util"
 version = "0.1.0"
-source = "git+https://github.com/zed-industries/zed?tag=v0.212.6#66713583941614a9899cb01727b6013ae79def7e"
+source = "git+https://github.com/zed-industries/zed?tag=v0.212.6#74924bc91865f111542ac6b1554231a0d3f66f89"
 dependencies = [
  "anyhow",
  "async-fs",
@@ -6379,7 +6379,7 @@ dependencies = [
 [[package]]
 name = "util_macros"
 version = "0.1.0"
-source = "git+https://github.com/zed-industries/zed?tag=v0.212.6#66713583941614a9899cb01727b6013ae79def7e"
+source = "git+https://github.com/zed-industries/zed?tag=v0.212.6#74924bc91865f111542ac6b1554231a0d3f66f89"
 dependencies = [
  "perf",
  "quote",
@@ -6786,16 +6786,6 @@ dependencies = [
 
 [[package]]
 name = "windows"
-version = "0.57.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12342cb4d8e3b046f3d80effd474a7a02447231330ef77d71daa6fbc40681143"
-dependencies = [
- "windows-core 0.57.0",
- "windows-targets 0.52.6",
-]
-
-[[package]]
-name = "windows"
 version = "0.61.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9babd3a767a4c1aef6900409f85f5d53ce2544ccdfaa86dad48c91782c6d6893"
@@ -6841,24 +6831,12 @@ dependencies = [
 
 [[package]]
 name = "windows-core"
-version = "0.57.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2ed2439a290666cd67ecce2b0ffaad89c2a56b976b736e6ece670297897832d"
-dependencies = [
- "windows-implement 0.57.0",
- "windows-interface 0.57.0",
- "windows-result 0.1.2",
- "windows-targets 0.52.6",
-]
-
-[[package]]
-name = "windows-core"
 version = "0.61.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c0fdd3ddb90610c7638aa2b3a3ab2904fb9e5cdbecc643ddb3647212781c4ae3"
 dependencies = [
- "windows-implement 0.60.2",
- "windows-interface 0.59.3",
+ "windows-implement",
+ "windows-interface",
  "windows-link 0.1.3",
  "windows-result 0.3.4",
  "windows-strings 0.4.2",
@@ -6877,31 +6855,9 @@ dependencies = [
 
 [[package]]
 name = "windows-implement"
-version = "0.57.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9107ddc059d5b6fbfbffdfa7a7fe3e22a226def0b2608f72e9d552763d3e1ad7"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.110",
-]
-
-[[package]]
-name = "windows-implement"
 version = "0.60.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "053e2e040ab57b9dc951b72c264860db7eb3b0200ba345b4e4c3b14f67855ddf"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.110",
-]
-
-[[package]]
-name = "windows-interface"
-version = "0.57.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29bee4b38ea3cde66011baa44dba677c432a78593e202392d1e9070cf2a7fca7"
 dependencies = [
  "proc-macro2",
  "quote",
