@@ -1,6 +1,7 @@
-use crate::services::{CapsLockService, NumLockService, PipeWireService};
+use crate::services::{CapsLockService, NumLockService, OsdEvent, PipeWireService, receive_osd_events};
 use crate::theme::*;
 use gpui::*;
+use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant};
 
 #[derive(Clone, Debug)]
@@ -9,6 +10,7 @@ pub enum OsdType {
     NumLock(bool),
     Volume(u8),
     Microphone(bool),
+    Dictation(bool),
 }
 
 pub struct Osd {
@@ -19,13 +21,41 @@ pub struct Osd {
 }
 
 impl Osd {
-    pub fn new(osd_type: OsdType, cx: &mut Context<Self>) -> Self {
+    pub fn new(osd_type: OsdType, osd_event_receiver: Receiver<OsdEvent>, cx: &mut Context<Self>) -> Self {
         let osd = Self {
             osd_type,
             visible: false,
             show_until: None,
             volume_text: String::new(),
         };
+
+        // Monitor OSD events from other parts of the app
+        cx.spawn(async move |this, cx| {
+            loop {
+                if let Some(event) = receive_osd_events(&osd_event_receiver) {
+                    let _ = this.update(cx, |osd, cx| {
+                        match event {
+                            OsdEvent::DictationStarted => {
+                                println!("[OSD] 🎤 Transcription Start");
+                                osd.osd_type = OsdType::Dictation(true);
+                                osd.visible = true;
+                                osd.show_until = Some(Instant::now() + Duration::from_millis(2500));
+                                cx.notify();
+                            }
+                            OsdEvent::DictationStopped => {
+                                println!("[OSD] 🎤 Transcription Stop");
+                                osd.osd_type = OsdType::Dictation(false);
+                                osd.visible = true;
+                                osd.show_until = Some(Instant::now() + Duration::from_millis(2500));
+                                cx.notify();
+                            }
+                        }
+                    });
+                }
+                gpui::Timer::after(Duration::from_millis(100)).await;
+            }
+        })
+        .detach();
 
         // Monitor CapsLock, NumLock and Volume changes
         cx.spawn(async move |this, cx| {
@@ -238,6 +268,34 @@ impl Render for Osd {
                             .items_center()
                             .gap_3()
                             .child(div().text_xl().text_color(color).child("🎤"))
+                            .child(div().text_sm().text_color(rgb(SNOW0)).child(text)),
+                    )
+            }
+            OsdType::Dictation(enabled) => {
+                let text = if *enabled {
+                    "Transcription Start"
+                } else {
+                    "Transcription Stop"
+                };
+                let color = if *enabled { rgb(FROST1) } else { rgb(POLAR3) };
+
+                div()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .w(px(400.))
+                    .h_16()
+                    .bg(rgb(POLAR0))
+                    .border_2()
+                    .border_color(color)
+                    .rounded_lg()
+                    .shadow_lg()
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap_3()
+                            .child(div().text_xl().text_color(color).child(icons::MICROPHONE))
                             .child(div().text_sm().text_color(rgb(SNOW0)).child(text)),
                     )
             }

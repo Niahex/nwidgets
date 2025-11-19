@@ -46,6 +46,7 @@
           noto-fonts-emoji
           libnotify
           alsa-lib # For audio capture (cpal/vosk)
+          udev # For libinput (hotkey detection)
         ];
 
         # Dependencies needed only at runtime

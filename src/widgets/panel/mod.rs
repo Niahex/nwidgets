@@ -2,7 +2,7 @@ use crate::modules::{
     ActiveWindowModule, BluetoothModule, DateTimeModule, DictationModule, PomodoroModule,
     SystrayModule, VolumeModule, WorkspaceModule,
 };
-use crate::services::{HotkeyEvent, HotkeyService, HyprlandService, PipeWireService};
+use crate::services::{HyprlandService, OsdEvent, OsdEventService, PipeWireService, ToggleDictation};
 use crate::theme::*;
 use gpui::{div, prelude::*, rgb, Context, Window};
 use std::time::Duration;
@@ -16,7 +16,7 @@ pub struct Panel {
     datetime_module: DateTimeModule,
     bluetooth_module: BluetoothModule,
     systray_module: SystrayModule,
-    dictation_module: DictationModule,
+    pub dictation_module: DictationModule,
 }
 
 impl Panel {
@@ -142,36 +142,21 @@ impl Panel {
         })
         .detach();
 
-        // Monitor hotkey events (Super+Space for dictation)
-        cx.spawn(async move |this, cx| {
-            println!("[PANEL] Starting hotkey monitoring...");
-            match HotkeyService::start() {
-                Ok(hotkey_service) => {
-                    println!("[PANEL] Hotkey service started - listening for Super+Space");
-                    loop {
-                        if let Some(event) = hotkey_service.poll_event() {
-                            match event {
-                                HotkeyEvent::DictationToggle => {
-                                    let _ = this.update(cx, |panel, cx| {
-                                        panel.dictation_module.toggle_recording();
-                                        cx.notify();
-                                    });
-                                }
-                            }
-                        }
-                        gpui::Timer::after(Duration::from_millis(100)).await;
-                    }
-                }
-                Err(e) => {
-                    eprintln!("[PANEL] Failed to start hotkey service: {}", e);
-                    eprintln!("[PANEL] Make sure you have permission to access /dev/input devices");
-                    eprintln!("[PANEL] Run: sudo usermod -a -G input $USER");
-                }
-            }
-        })
-        .detach();
-
         panel
+    }
+
+    pub fn toggle_dictation(&mut self, _: &ToggleDictation, _: &mut Window, cx: &mut Context<Self>) {
+        self.dictation_module.toggle_recording();
+
+        // Send OSD event
+        let is_recording = self.dictation_module.is_recording();
+        if is_recording {
+            OsdEventService::send_event(OsdEvent::DictationStarted);
+        } else {
+            OsdEventService::send_event(OsdEvent::DictationStopped);
+        }
+
+        cx.notify();
     }
 
     fn render_pomodoro(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
@@ -244,6 +229,7 @@ impl Render for Panel {
             .items_center()
             .justify_between()
             .px_4()
+            .on_action(cx.listener(Self::toggle_dictation))
             // Section gauche (fenêtre active)
             .child(self.active_window_module.render())
             // Section centrale (workspaces)
