@@ -19,7 +19,8 @@ impl ActiveWindowModule {
         // Si aucune fenêtre active, afficher l'icône NixOS
         let (icon, class, title) = if let Some(active_window) = &self.active_window {
             // Extraire seulement ce qui est avant le premier "-" dans le titre
-            let title_before_dash = active_window.title
+            let title_before_dash = active_window
+                .title
                 .split(" - ")
                 .next()
                 .unwrap_or(&active_window.title)
@@ -71,7 +72,8 @@ impl ActiveWindowModule {
             };
 
             // Extraire seulement ce qui est avant le "-" dans le nom de la classe
-            let display_class = active_window.class
+            let display_class = active_window
+                .class
                 .split('-')
                 .next()
                 .unwrap_or(&active_window.class)
@@ -102,7 +104,7 @@ impl ActiveWindowModule {
                     .justify_center()
                     .gap_0()
                     // Classe (plus petite)
-                    .child(div().text_color(rgb(SNOW0)).text_xs().child(class))
+                    .child(div().text_color(colors::frost0(75)).text_xs().child(class))
                     // Titre de l'application
                     .when(!title.is_empty(), |this| {
                         this.child(div().text_color(rgb(SNOW0)).text_sm().child(title))

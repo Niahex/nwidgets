@@ -30,31 +30,35 @@ impl WorkspaceModule {
             (false, false) => a.id.cmp(&b.id),
         });
 
-        div()
-            .flex()
-            .flex_row()
-            .items_center()
-            .gap_2()
-            .children(
-                sorted_workspaces
-                    .into_iter()
-                    .take(8)
-                    .map(|ws| {
-                        let is_active = ws.id == self.active_workspace;
-                        let bg_color = if is_active { rgb(FROST3) } else { rgb(POLAR2) };
-                        div()
-                            .w_8()
-                            .h_8()
-                            .bg(bg_color)
-                            .rounded_sm()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .text_color(rgb(SNOW0))
-                            .text_xs()
-                            .child(ws.id.to_string())
-                    })
-                    .collect::<Vec<_>>(),
-            )
+        div().flex().flex_row().items_center().gap_2().children(
+            sorted_workspaces
+                .into_iter()
+                .take(8)
+                .map(|ws| {
+                    let is_active = ws.id == self.active_workspace;
+                    let color = if is_active {
+                        colors::frost0(100)
+                    } else {
+                        colors::snow0(100)
+                    };
+                    let bg_color = if is_active {
+                        colors::frost0(35)
+                    } else {
+                        colors::polar2(100)
+                    };
+                    div()
+                        .w_8()
+                        .h_8()
+                        .bg(bg_color)
+                        .rounded_sm()
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .text_color(color)
+                        .text_xs()
+                        .child(ws.id.to_string())
+                })
+                .collect::<Vec<_>>(),
+        )
     }
 }

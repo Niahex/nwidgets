@@ -2,6 +2,8 @@
 // https://www.nordtheme.com/
 #[allow(dead_code)]
 pub mod colors {
+    use gpui::Hsla;
+
     // Polar Night (Dark backgrounds)
     pub const POLAR0: u32 = 0x2e3440;
     pub const POLAR1: u32 = 0x3b4252;
@@ -25,6 +27,38 @@ pub mod colors {
     pub const YELLOW: u32 = 0xebcb8b;
     pub const GREEN: u32 = 0xa3be8c;
     pub const PURPLE: u32 = 0xb48ead;
+
+    // Helper function to convert u32 color to Rgba with opacity
+    fn rgba_with_opacity(color: u32, opacity: f32) -> gpui::Rgba {
+        let r = ((color >> 16) & 0xFF) as f32 / 255.0;
+        let g = ((color >> 8) & 0xFF) as f32 / 255.0;
+        let b = (color & 0xFF) as f32 / 255.0;
+        gpui::Rgba { r, g, b, a: opacity }
+    }
+
+    // Polar Night with opacity variants (95% to 0%, step 5)
+    pub fn polar0(opacity: u8) -> gpui::Rgba { rgba_with_opacity(POLAR0, opacity as f32 / 100.0) }
+    pub fn polar1(opacity: u8) -> gpui::Rgba { rgba_with_opacity(POLAR1, opacity as f32 / 100.0) }
+    pub fn polar2(opacity: u8) -> gpui::Rgba { rgba_with_opacity(POLAR2, opacity as f32 / 100.0) }
+    pub fn polar3(opacity: u8) -> gpui::Rgba { rgba_with_opacity(POLAR3, opacity as f32 / 100.0) }
+
+    // Snow Storm with opacity variants
+    pub fn snow0(opacity: u8) -> gpui::Rgba { rgba_with_opacity(SNOW0, opacity as f32 / 100.0) }
+    pub fn snow1(opacity: u8) -> gpui::Rgba { rgba_with_opacity(SNOW1, opacity as f32 / 100.0) }
+    pub fn snow2(opacity: u8) -> gpui::Rgba { rgba_with_opacity(SNOW2, opacity as f32 / 100.0) }
+
+    // Frost with opacity variants
+    pub fn frost0(opacity: u8) -> gpui::Rgba { rgba_with_opacity(FROST0, opacity as f32 / 100.0) }
+    pub fn frost1(opacity: u8) -> gpui::Rgba { rgba_with_opacity(FROST1, opacity as f32 / 100.0) }
+    pub fn frost2(opacity: u8) -> gpui::Rgba { rgba_with_opacity(FROST2, opacity as f32 / 100.0) }
+    pub fn frost3(opacity: u8) -> gpui::Rgba { rgba_with_opacity(FROST3, opacity as f32 / 100.0) }
+
+    // Aurora with opacity variants
+    pub fn red(opacity: u8) -> gpui::Rgba { rgba_with_opacity(RED, opacity as f32 / 100.0) }
+    pub fn orange(opacity: u8) -> gpui::Rgba { rgba_with_opacity(ORANGE, opacity as f32 / 100.0) }
+    pub fn yellow(opacity: u8) -> gpui::Rgba { rgba_with_opacity(YELLOW, opacity as f32 / 100.0) }
+    pub fn green(opacity: u8) -> gpui::Rgba { rgba_with_opacity(GREEN, opacity as f32 / 100.0) }
+    pub fn purple(opacity: u8) -> gpui::Rgba { rgba_with_opacity(PURPLE, opacity as f32 / 100.0) }
 }
 
 // Re-export colors at root level for backwards compatibility

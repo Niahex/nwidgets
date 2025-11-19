@@ -62,13 +62,8 @@ impl SystrayModule {
             s if s.contains("battery") || s.contains("power") => icons::BATTERY_FULL,
             s if s.contains("notification") => icons::BELL,
             _ => {
-                // Fallback: première lettre du titre
-                if let Some(first_char) = item.title.chars().next() {
-                    // On ne peut pas retourner une String ici, donc on utilise une icône par défaut
-                    icons::SYSTRAY
-                } else {
-                    icons::SYSTRAY
-                }
+                // Fallback: icône par défaut pour le systray
+                icons::SYSTRAY
             }
         }
     }
