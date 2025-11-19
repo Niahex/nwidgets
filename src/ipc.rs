@@ -1,6 +1,5 @@
 use std::io::{Read, Write};
 use std::os::unix::net::{UnixListener, UnixStream};
-use std::path::PathBuf;
 
 const SOCKET_PATH: &str = "/tmp/nwidgets.sock";
 

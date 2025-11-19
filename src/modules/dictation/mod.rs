@@ -54,8 +54,9 @@ impl DictationModule {
                     // Callback when text is recognized
                     println!("[DICTATION] Recognized text: {}", text);
 
-                    // TODO: Inject text into focused application
-                    Self::inject_text(&text);
+                    // Send to TranscriptionViewer via event service
+                    use crate::services::{TranscriptionEvent, TranscriptionEventService};
+                    TranscriptionEventService::send_event(TranscriptionEvent::TextRecognized(text));
                 }) {
                     eprintln!("[DICTATION] Failed to start recording: {}", e);
                     return;
@@ -71,28 +72,6 @@ impl DictationModule {
     /// Check if currently recording
     pub fn is_recording(&self) -> bool {
         self.is_recording
-    }
-
-    /// Inject text into the focused application
-    fn inject_text(text: &str) {
-        // Use wtype to simulate keyboard typing on Wayland
-        // This will type the text into whatever input has focus
-        let output = std::process::Command::new("wtype")
-            .arg(text)
-            .output();
-
-        match output {
-            Ok(result) => {
-                if !result.status.success() {
-                    eprintln!("[DICTATION] wtype failed: {}",
-                        String::from_utf8_lossy(&result.stderr));
-                }
-            }
-            Err(e) => {
-                eprintln!("[DICTATION] Failed to execute wtype: {}", e);
-                eprintln!("[DICTATION] Make sure 'wtype' is installed: sudo pacman -S wtype");
-            }
-        }
     }
 
     /// Render the dictation indicator (shows when recording)

@@ -9,6 +9,7 @@ pub mod pipewire;
 pub mod pomodoro;
 pub mod speech;
 pub mod systray;
+pub mod transcription_events;
 
 pub use bluetooth::{BluetoothService, BluetoothState};
 pub use capslock::CapsLockService;
@@ -21,3 +22,4 @@ pub use pipewire::PipeWireService;
 pub use pomodoro::{PomodoroService, PomodoroState};
 pub use speech::SpeechRecognitionService;
 pub use systray::{SystemTrayService, TrayItem};
+pub use transcription_events::{TranscriptionEvent, TranscriptionEventService, receive_transcription_events};

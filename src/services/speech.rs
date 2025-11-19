@@ -71,7 +71,10 @@ impl SpeechRecognitionService {
         // Spawn a task to periodically send audio to Google for transcription
         let is_recording_clone = is_recording.clone();
         let audio_buffer_clone = audio_buffer.clone();
-        tokio::spawn(async move {
+        std::thread::spawn(move || {
+            // Create a tokio runtime for this thread
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async move {
             loop {
                 tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
 
@@ -94,15 +97,18 @@ impl SpeechRecognitionService {
                 match Self::transcribe_audio(&samples, sample_rate).await {
                     Ok(text) => {
                         if !text.is_empty() {
-                            println!("[SPEECH] Recognized: {}", text);
+                            println!("[SPEECH] ✅ Recognized: '{}'", text);
                             on_text(text);
+                        } else {
+                            println!("[SPEECH] ⚠️  No text recognized (empty response)");
                         }
                     }
                     Err(e) => {
-                        eprintln!("[SPEECH] Transcription error: {}", e);
+                        eprintln!("[SPEECH] ❌ Transcription error: {}", e);
                     }
                 }
             }
+            });
         });
 
         // Keep the stream alive
@@ -160,8 +166,11 @@ impl SpeechRecognitionService {
 
     /// Transcribe audio using Google Speech API (unofficial)
     async fn transcribe_audio(samples: &[i16], sample_rate: u32) -> Result<String> {
-        // Convert i16 samples to FLAC format
-        let flac_data = Self::encode_flac(samples, sample_rate)?;
+        // Convert i16 samples to raw PCM bytes (little-endian)
+        let pcm_data: Vec<u8> = samples
+            .iter()
+            .flat_map(|&sample| sample.to_le_bytes())
+            .collect();
 
         // Google Speech API endpoint (unofficial)
         let url = format!(
@@ -171,12 +180,14 @@ impl SpeechRecognitionService {
         let client = reqwest::Client::new();
         let response = client
             .post(&url)
-            .header("Content-Type", "audio/x-flac; rate=16000")
-            .body(flac_data)
+            .header("Content-Type", format!("audio/l16; rate={}", sample_rate))
+            .body(pcm_data)
             .send()
             .await?;
 
         let text = response.text().await?;
+
+        println!("[SPEECH] 📡 Raw response from Google: {:?}", text);
 
         // Parse JSON response (format: {"result":[{"alternative":[{"transcript":"text","confidence":0.9}]}]})
         // The response might have multiple lines, take the last non-empty one
