@@ -1,17 +1,21 @@
 pub mod bluetooth;
 pub mod capslock;
+pub mod hotkey;
 pub mod hyprland;
 pub mod notifications;
 pub mod numlock;
 pub mod pipewire;
 pub mod pomodoro;
+pub mod speech;
 pub mod systray;
 
 pub use bluetooth::{BluetoothService, BluetoothState};
 pub use capslock::CapsLockService;
+pub use hotkey::{HotkeyEvent, HotkeyService};
 pub use hyprland::HyprlandService;
 pub use notifications::{Notification, NotificationService, NotificationManager};
 pub use numlock::NumLockService;
 pub use pipewire::PipeWireService;
 pub use pomodoro::{PomodoroService, PomodoroState};
+pub use speech::SpeechRecognitionService;
 pub use systray::{SystemTrayService, TrayItem};

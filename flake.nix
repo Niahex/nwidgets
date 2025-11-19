@@ -45,12 +45,14 @@
           nerd-fonts.ubuntu
           noto-fonts-emoji
           libnotify
+          alsa-lib # For audio capture (cpal/vosk)
         ];
 
         # Dependencies needed only at runtime
         runtimeDependencies = with pkgs; [
           wayland
           vulkan-loader
+          wtype # For text injection in dictation
         ];
 
         nativeBuildInputs = with pkgs; [

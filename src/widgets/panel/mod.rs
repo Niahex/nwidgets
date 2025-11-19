@@ -1,8 +1,8 @@
 use crate::modules::{
-    ActiveWindowModule, BluetoothModule, DateTimeModule, PomodoroModule, SystrayModule,
-    VolumeModule, WorkspaceModule,
+    ActiveWindowModule, BluetoothModule, DateTimeModule, DictationModule, PomodoroModule,
+    SystrayModule, VolumeModule, WorkspaceModule,
 };
-use crate::services::{HyprlandService, PipeWireService};
+use crate::services::{HotkeyEvent, HotkeyService, HyprlandService, PipeWireService};
 use crate::theme::*;
 use gpui::{div, prelude::*, rgb, Context, Window};
 use std::time::Duration;
@@ -16,6 +16,7 @@ pub struct Panel {
     datetime_module: DateTimeModule,
     bluetooth_module: BluetoothModule,
     systray_module: SystrayModule,
+    dictation_module: DictationModule,
 }
 
 impl Panel {
@@ -25,6 +26,13 @@ impl Panel {
         let pipewire_service = PipeWireService::new();
         let initial_volume = pipewire_service.get_volume();
 
+        // Initialize dictation module
+        let mut dictation_module = DictationModule::new();
+        if let Err(e) = dictation_module.initialize_default() {
+            eprintln!("[PANEL] Failed to initialize dictation: {}", e);
+            eprintln!("[PANEL] Dictation will not be available");
+        }
+
         let panel = Self {
             active_window_module: ActiveWindowModule::new(active_window.clone()),
             workspace_module: WorkspaceModule::new(workspaces.clone(), active_workspace),
@@ -33,6 +41,7 @@ impl Panel {
             datetime_module: DateTimeModule::new(),
             bluetooth_module: BluetoothModule::new(),
             systray_module: SystrayModule::new(),
+            dictation_module,
         };
 
         // Monitor volume changes using PipeWireService
@@ -133,6 +142,35 @@ impl Panel {
         })
         .detach();
 
+        // Monitor hotkey events (Super+Space for dictation)
+        cx.spawn(async move |this, cx| {
+            println!("[PANEL] Starting hotkey monitoring...");
+            match HotkeyService::start() {
+                Ok(hotkey_service) => {
+                    println!("[PANEL] Hotkey service started - listening for Super+Space");
+                    loop {
+                        if let Some(event) = hotkey_service.poll_event() {
+                            match event {
+                                HotkeyEvent::DictationToggle => {
+                                    let _ = this.update(cx, |panel, cx| {
+                                        panel.dictation_module.toggle_recording();
+                                        cx.notify();
+                                    });
+                                }
+                            }
+                        }
+                        gpui::Timer::after(Duration::from_millis(100)).await;
+                    }
+                }
+                Err(e) => {
+                    eprintln!("[PANEL] Failed to start hotkey service: {}", e);
+                    eprintln!("[PANEL] Make sure you have permission to access /dev/input devices");
+                    eprintln!("[PANEL] Run: sudo usermod -a -G input $USER");
+                }
+            }
+        })
+        .detach();
+
         panel
     }
 
@@ -210,13 +248,14 @@ impl Render for Panel {
             .child(self.active_window_module.render())
             // Section centrale (workspaces)
             .child(self.workspace_module.render())
-            // Section droite (pomodoro + systray + bluetooth + volume + horloge)
+            // Section droite (dictation + pomodoro + systray + bluetooth + volume + horloge)
             .child(
                 div()
                     .flex()
                     .flex_row()
                     .items_center()
                     .gap_3()
+                    .child(self.dictation_module.render())
                     .child(self.render_pomodoro(cx))
                     .child(self.systray_module.render())
                     .child(self.render_bluetooth(cx))

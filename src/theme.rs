@@ -147,4 +147,8 @@ pub mod icons {
     pub const TERMINAL: &str = "";
     pub const INKSCAPE: &str = "";
     pub const STREAM: &str = "󰕵";
+
+    // Dictation icons
+    pub const MICROPHONE: &str = ""; // nf-fa-microphone
+    pub const MICROPHONE_SLASH: &str = ""; // nf-fa-microphone_slash
 }

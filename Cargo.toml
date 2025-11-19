@@ -22,5 +22,11 @@ futures = "0.3"
 raw-window-handle = "0.6.2"
 libc = "0.2"
 chrono = "0.4"
+cpal = "0.15"
+hound = "3.5"
+evdev = "0.12"
+nix = { version = "0.29", features = ["event"] }
+base64 = "0.22"
+reqwest = { version = "0.12", features = ["json"] }
 
 [workspace]
