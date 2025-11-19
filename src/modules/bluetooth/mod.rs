@@ -38,11 +38,11 @@ impl BluetoothModule {
 
     pub fn render<V: 'static>(&self, cx: &mut Context<V>) -> impl IntoElement {
         let (bt_icon, bt_color) = if !self.state.powered {
-            ("󰂯", RED) // Off - red
+            (icons::BLUETOOTH_OFF, RED) // Off - red
         } else if self.state.connected_devices > 0 {
-            ("󰂱", FROST1) // Connected - blue
+            (icons::BLUETOOTH_CONNECTED, FROST1) // Connected - blue
         } else {
-            ("󰂲", SNOW0) // On but not connected - white
+            (icons::BLUETOOTH_ON, SNOW0) // On but not connected - white
         };
 
         let mut bt_widget = div()

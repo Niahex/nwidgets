@@ -16,7 +16,7 @@ impl ActiveWindowModule {
     }
 
     pub fn render(&self) -> impl IntoElement {
-        // Si aucune fenêtre active, afficher l'icône de flocon de neige avec NixOS/Nia
+        // Si aucune fenêtre active, afficher l'icône NixOS
         let (icon, class, title) = if let Some(active_window) = &self.active_window {
             // Tronquer le titre pour qu'il ne soit pas trop long (max 30 caractères)
             let truncated_title = if active_window.title.chars().count() > 30 {
@@ -25,9 +25,46 @@ impl ActiveWindowModule {
             } else {
                 active_window.title.clone()
             };
-            ("🪟", active_window.class.clone(), truncated_title)
+
+            // Mapper la classe de fenêtre à une icône appropriée
+            let icon = match active_window.class.to_lowercase().as_str() {
+                class if class.contains("vesktop") || class.contains("discord") => icons::VESKTOP,
+                class if class.contains("zen") => icons::FIREFOX,
+                class if class.contains("zed") => icons::ZED,
+                class if class.contains("davinci") => icons::DAVINCI,
+                class if class.contains("vlc") => icons::VLC,
+                class
+                    if class.contains("1password")
+                        || class.contains("keepass")
+                        || class.contains("bitwarden") =>
+                {
+                    icons::PASSWORD
+                }
+                class if class.contains("rofi") || class.contains("nlauncher") => icons::LAUNCHER,
+                class if class.contains("steam") => icons::STEAM,
+                class
+                    if class.contains("game")
+                        || class.contains("minecraft")
+                        || class.contains("lutris") =>
+                {
+                    icons::GAME
+                }
+                class
+                    if class.contains("kitty")
+                        || class.contains("alacritty")
+                        || class.contains("wezterm")
+                        || class.contains("terminal") =>
+                {
+                    icons::TERMINAL
+                }
+                class if class.contains("inkscape") => icons::INKSCAPE,
+                class if class.contains("obs") || class.contains("stream") => icons::STREAM,
+                _ => icons::WINDOW, // Icône par défaut pour les fenêtres non reconnues
+            };
+
+            (icon, active_window.class.clone(), truncated_title)
         } else {
-            ("❄️", "NixOS".to_string(), "Nia".to_string())
+            (icons::NIXOS, "NixOS".to_string(), "Nia".to_string())
         };
 
         div()
@@ -41,7 +78,7 @@ impl ActiveWindowModule {
             .items_center()
             .gap_2()
             // Icône
-            .child(div().text_color(rgb(FROST1)).text_base().child(icon))
+            .child(div().text_color(rgb(FROST0)).text_base().child(icon))
             // Contenu (classe + titre)
             .child(
                 div()

@@ -16,11 +16,11 @@ impl VolumeModule {
 
     pub fn render(&self) -> impl IntoElement {
         let volume_icon = if self.volume == 0 {
-            ""
+            icons::VOLUME_MUTE
         } else if self.volume < 50 {
-            ""
+            icons::VOLUME_LOW
         } else {
-            ""
+            icons::VOLUME_HIGH
         };
 
         div()
