@@ -355,8 +355,8 @@ impl NotificationManager {
         // - right: distance depuis le bord droit
         const NOTIF_WIDTH: f32 = 380.0;
         const NOTIF_HEIGHT: f32 = 100.0;
-        const MARGIN_RIGHT: f32 = 20.0;
-        const MARGIN_TOP_BASE: f32 = 68.0; // 48px panel + 20px marge
+        const MARGIN_RIGHT: f32 = 0.0;
+        const MARGIN_TOP_BASE: f32 = 0.0; // 48px panel + 20px marge
         const SPACING: f32 = 10.0;
 
         for (index, notification) in self.notifications.iter().enumerate() {
