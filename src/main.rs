@@ -283,7 +283,7 @@ fn main() {
                                             layer: Layer::Overlay,
                                             anchor: Anchor::LEFT | Anchor::TOP | Anchor::BOTTOM,
                                             keyboard_interactivity:
-                                                KeyboardInteractivity::Exclusive,
+                                                KeyboardInteractivity::OnDemand,
                                             ..Default::default()
                                         }),
                                         ..Default::default()
