@@ -58,11 +58,7 @@ impl AiChat {
 
         // TODO: Send to AI service and get response
         // For now, just echo back
-        self.add_message(
-            MessageRole::Assistant,
-            format!("You said: {}", text),
-            cx,
-        );
+        self.add_message(MessageRole::Assistant, format!("You said: {}", text), cx);
     }
 
     fn on_send(&mut self, _: &gpui::MouseDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
@@ -102,19 +98,14 @@ impl AiChat {
                             .flex()
                             .items_center()
                             .gap_2()
-                            .child(
-                                div()
-                                    .text_sm()
-                                    .text_color(rgb(FROST1))
-                                    .child(icon)
-                            )
+                            .child(div().text_sm().text_color(rgb(FROST1)).child(icon))
                             .child(
                                 div()
                                     .text_sm()
                                     .font_weight(FontWeight::MEDIUM)
                                     .text_color(rgb(SNOW1))
-                                    .child(name)
-                            )
+                                    .child(name),
+                            ),
                     )
                     .child(
                         // Right: action buttons
@@ -134,7 +125,7 @@ impl AiChat {
                                     .text_color(rgb(SNOW2))
                                     .cursor_pointer()
                                     .hover(|style| style.bg(rgb(POLAR2)))
-                                    .child(REFRESH)
+                                    .child(REFRESH),
                             )
                             .child(
                                 div()
@@ -148,7 +139,7 @@ impl AiChat {
                                     .text_color(rgb(SNOW2))
                                     .cursor_pointer()
                                     .hover(|style| style.bg(rgb(POLAR2)))
-                                    .child(CLIPBOARD)
+                                    .child(CLIPBOARD),
                             )
                             .child(
                                 div()
@@ -162,7 +153,7 @@ impl AiChat {
                                     .text_color(rgb(SNOW2))
                                     .cursor_pointer()
                                     .hover(|style| style.bg(rgb(POLAR2)))
-                                    .child(EDIT)
+                                    .child(EDIT),
                             )
                             .child(
                                 div()
@@ -176,7 +167,7 @@ impl AiChat {
                                     .text_color(rgb(SNOW2))
                                     .cursor_pointer()
                                     .hover(|style| style.bg(rgb(POLAR2)))
-                                    .child(CODE)
+                                    .child(CODE),
                             )
                             .child(
                                 div()
@@ -190,24 +181,19 @@ impl AiChat {
                                     .text_color(rgb(SNOW2))
                                     .cursor_pointer()
                                     .hover(|style| style.bg(rgb(POLAR2)))
-                                    .child(CLOSE)
-                            )
-                    )
+                                    .child(CLOSE),
+                            ),
+                    ),
             )
             .child(
                 // Message content
-                div()
-                    .w_full()
-                    .bg(rgb(POLAR2))
-                    .rounded_b_lg()
-                    .p_4()
-                    .child(
-                        div()
-                            .text_sm()
-                            .text_color(rgb(SNOW1))
-                            .line_height(relative(1.5))
-                            .child(message.content.clone()),
-                    ),
+                div().w_full().bg(rgb(POLAR2)).rounded_b_lg().p_4().child(
+                    div()
+                        .text_sm()
+                        .text_color(rgb(SNOW1))
+                        .line_height(relative(1.5))
+                        .child(message.content.clone()),
+                ),
             )
     }
 }
@@ -222,7 +208,7 @@ impl Render for AiChat {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         div()
             .size_full()
-            .bg(rgb(POLAR1))  // Darker background like the image
+            .bg(rgb(POLAR1)) // Darker background like the image
             .flex()
             .flex_col()
             .track_focus(&self.focus_handle)
@@ -298,7 +284,7 @@ impl Render for AiChat {
                             .px_3()
                             .flex()
                             .items_center()
-                            .child(self.input.clone())
+                            .child(self.input.clone()),
                     )
                     .child(
                         div()
