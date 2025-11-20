@@ -274,7 +274,7 @@ fn main() {
                                         titlebar: None,
                                         window_bounds: Some(WindowBounds::Windowed(Bounds {
                                             origin: point(px(0.), px(0.)),
-                                            size: Size::new(px(400.), px(0.)), // Height ignored with TOP|BOTTOM anchor
+                                            size: Size::new(px(500.), px(0.)), // Height ignored with TOP|BOTTOM anchor
                                         })),
                                         app_id: Some("nwidgets-ai-chat".to_string()),
                                         window_background: WindowBackgroundAppearance::Transparent,

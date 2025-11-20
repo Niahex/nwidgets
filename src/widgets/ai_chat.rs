@@ -519,26 +519,28 @@ impl Render for AiChat {
                                     .text_base()
                                     .font_weight(FontWeight::SEMIBOLD)
                                     .text_color(rgb(SNOW0))
-                                    .child("AI Chat"),
+                                    .child(if self.show_settings { "API Keys Settings" } else { "AI Chat" }),
                             )
-                            .child(
-                                // Provider toggle button
-                                div()
-                                    .px_3()
-                                    .py_1()
-                                    .bg(rgb(POLAR2))
-                                    .rounded_md()
-                                    .text_sm()
-                                    .font_weight(FontWeight::MEDIUM)
-                                    .text_color(rgb(FROST1))
-                                    .cursor_pointer()
-                                    .hover(|style| style.bg(rgb(POLAR3)))
-                                    .on_mouse_down(
-                                        gpui::MouseButton::Left,
-                                        cx.listener(Self::toggle_provider),
-                                    )
-                                    .child(self.current_provider.name().to_string()),
-                            ),
+                            .when(!self.show_settings, |this| {
+                                this.child(
+                                    // Provider toggle button
+                                    div()
+                                        .px_3()
+                                        .py_1()
+                                        .bg(rgb(POLAR2))
+                                        .rounded_md()
+                                        .text_sm()
+                                        .font_weight(FontWeight::MEDIUM)
+                                        .text_color(rgb(FROST1))
+                                        .cursor_pointer()
+                                        .hover(|style| style.bg(rgb(POLAR3)))
+                                        .on_mouse_down(
+                                            gpui::MouseButton::Left,
+                                            cx.listener(Self::toggle_provider),
+                                        )
+                                        .child(self.current_provider.name().to_string())
+                                )
+                            }),
                     )
                     .child(
                         div()
@@ -585,8 +587,18 @@ impl Render for AiChat {
                             ),
                     ),
             )
-            // Settings dialog (if shown)
-            .when(self.show_settings, |this| {
+            // Main content area - either settings or messages
+            .child(
+                div()
+                    .flex_1()
+                    .w_full()
+                    .overflow_y_scroll()
+                    .when(self.show_settings, |this| {
+                        // Settings content
+                        let openai_keys = self.ai_service.get_config().openai_keys.get_keys().clone();
+                        let gemini_keys = self.ai_service.get_config().gemini_keys.get_keys().clone();
+
+                        this.child(
                 let openai_keys = self.ai_service.get_config().openai_keys.get_keys().clone();
                 let gemini_keys = self.ai_service.get_config().gemini_keys.get_keys().clone();
 
