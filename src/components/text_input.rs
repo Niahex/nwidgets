@@ -48,6 +48,42 @@ impl TextInput {
 
     fn on_key_down(&mut self, event: &KeyDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
         let key = event.keystroke.key.as_str();
+        let modifiers = &event.keystroke.modifiers;
+
+        // Handle Ctrl/Cmd shortcuts (platform = Cmd on macOS, Ctrl on Linux/Windows)
+        if modifiers.platform || modifiers.control {
+            match key {
+                "v" => {
+                    // Paste from clipboard
+                    if let Some(clipboard_item) = cx.read_from_clipboard() {
+                        if let Some(clipboard_text) = clipboard_item.text() {
+                            self.text.push_str(&clipboard_text);
+                            cx.notify();
+                        }
+                    }
+                    return;
+                }
+                "c" => {
+                    // Copy to clipboard
+                    let item = ClipboardItem::new_string(self.text.clone());
+                    cx.write_to_clipboard(item);
+                    return;
+                }
+                "x" => {
+                    // Cut to clipboard
+                    let item = ClipboardItem::new_string(self.text.clone());
+                    cx.write_to_clipboard(item);
+                    self.text.clear();
+                    cx.notify();
+                    return;
+                }
+                "a" => {
+                    // Select all (we don't have selection, so just ignore)
+                    return;
+                }
+                _ => {}
+            }
+        }
 
         match key {
             "enter" => {

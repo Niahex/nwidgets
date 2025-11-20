@@ -12,7 +12,7 @@ pub mod speech;
 pub mod systray;
 pub mod transcription_events;
 
-pub use ai_providers::{AiProvider, AiService, Message};
+pub use ai_providers::{AiConfig, AiProvider, AiService, ApiKeyManager, Message};
 pub use bluetooth::{BluetoothService, BluetoothState};
 pub use capslock::CapsLockService;
 pub use hotkey::ToggleDictation;

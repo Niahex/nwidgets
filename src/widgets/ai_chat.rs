@@ -1,8 +1,8 @@
 use crate::components::TextInput;
 use crate::services::{AiProvider, AiService, Message as AiMessage};
 use crate::theme::*;
-use gpui::*;
 use gpui::prelude::FluentBuilder;
+use gpui::*;
 
 #[derive(Clone, Debug)]
 pub struct ChatMessage {
@@ -24,13 +24,15 @@ pub struct AiChat {
     current_provider: AiProvider,
     is_loading: bool,
     show_settings: bool,
-    openai_key_input: String,
-    gemini_key_input: String,
+    new_openai_key_input: Entity<TextInput>,
+    new_gemini_key_input: Entity<TextInput>,
 }
 
 impl AiChat {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let input = cx.new(|cx| TextInput::new(cx, "Type a message..."));
+        let new_openai_key_input = cx.new(|cx| TextInput::new(cx, "sk-..."));
+        let new_gemini_key_input = cx.new(|cx| TextInput::new(cx, "AIza..."));
 
         Self {
             messages: Vec::new(),
@@ -40,8 +42,8 @@ impl AiChat {
             current_provider: AiProvider::ChatGPT,
             is_loading: false,
             show_settings: false,
-            openai_key_input: String::new(),
-            gemini_key_input: String::new(),
+            new_openai_key_input,
+            new_gemini_key_input,
         }
     }
 
@@ -71,7 +73,10 @@ impl AiChat {
         if !has_key {
             self.add_message(
                 MessageRole::Assistant,
-                format!("Please set your {} API key in settings first.", self.current_provider.name()),
+                format!(
+                    "Please set your {} API key in settings first.",
+                    self.current_provider.name()
+                ),
                 cx,
             );
             self.show_settings = true;
@@ -105,10 +110,10 @@ impl AiChat {
             .collect();
 
         let provider = self.current_provider.clone();
-        let ai_service = self.ai_service.clone();
+        let mut ai_service = self.ai_service.clone();
 
         // Spawn async task to call AI API
-        cx.spawn(async move |this, mut cx| {
+        cx.spawn(async move |this, cx| {
             let result = ai_service.send_message(provider, ai_messages).await;
 
             if let Some(entity) = this.upgrade() {
@@ -120,11 +125,7 @@ impl AiChat {
                             this.add_message(MessageRole::Assistant, response, cx);
                         }
                         Err(e) => {
-                            this.add_message(
-                                MessageRole::Assistant,
-                                format!("Error: {}", e),
-                                cx,
-                            );
+                            this.add_message(MessageRole::Assistant, format!("Error: {}", e), cx);
                         }
                     }
                 });
@@ -142,7 +143,12 @@ impl AiChat {
         window.remove_window();
     }
 
-    fn toggle_provider(&mut self, _: &gpui::MouseDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
+    fn toggle_provider(
+        &mut self,
+        _: &gpui::MouseDownEvent,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         self.current_provider = match self.current_provider {
             AiProvider::ChatGPT => AiProvider::Gemini,
             AiProvider::Gemini => AiProvider::ChatGPT,
@@ -150,20 +156,72 @@ impl AiChat {
         cx.notify();
     }
 
-    fn toggle_settings(&mut self, _: &gpui::MouseDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
+    fn toggle_settings(
+        &mut self,
+        _: &gpui::MouseDownEvent,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         self.show_settings = !self.show_settings;
         cx.notify();
     }
 
-    fn save_api_keys(&mut self, _: &gpui::MouseDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
-        if !self.openai_key_input.is_empty() {
-            self.ai_service.set_openai_key(self.openai_key_input.clone());
+    fn add_openai_key(
+        &mut self,
+        _: &gpui::MouseDownEvent,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let key = self.new_openai_key_input.read(cx).text().trim().to_string();
+        if !key.is_empty() {
+            self.ai_service.get_config_mut().openai_keys.add_key(key);
+            let _ = self.ai_service.save_config();
+            self.new_openai_key_input
+                .update(cx, |input, cx| input.clear(cx));
+            cx.notify();
         }
+    }
 
-        if !self.gemini_key_input.is_empty() {
-            self.ai_service.set_gemini_key(self.gemini_key_input.clone());
+    fn remove_openai_key(&mut self, index: usize, cx: &mut Context<Self>) {
+        self.ai_service
+            .get_config_mut()
+            .openai_keys
+            .remove_key(index);
+        let _ = self.ai_service.save_config();
+        cx.notify();
+    }
+
+    fn add_gemini_key(
+        &mut self,
+        _: &gpui::MouseDownEvent,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let key = self.new_gemini_key_input.read(cx).text().trim().to_string();
+        if !key.is_empty() {
+            self.ai_service.get_config_mut().gemini_keys.add_key(key);
+            let _ = self.ai_service.save_config();
+            self.new_gemini_key_input
+                .update(cx, |input, cx| input.clear(cx));
+            cx.notify();
         }
+    }
 
+    fn remove_gemini_key(&mut self, index: usize, cx: &mut Context<Self>) {
+        self.ai_service
+            .get_config_mut()
+            .gemini_keys
+            .remove_key(index);
+        let _ = self.ai_service.save_config();
+        cx.notify();
+    }
+
+    fn close_settings(
+        &mut self,
+        _: &gpui::MouseDownEvent,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         self.show_settings = false;
         cx.notify();
     }
@@ -346,7 +404,10 @@ impl Render for AiChat {
                                     .text_color(rgb(FROST1))
                                     .cursor_pointer()
                                     .hover(|style| style.bg(rgb(POLAR3)))
-                                    .on_mouse_down(gpui::MouseButton::Left, cx.listener(Self::toggle_provider))
+                                    .on_mouse_down(
+                                        gpui::MouseButton::Left,
+                                        cx.listener(Self::toggle_provider),
+                                    )
                                     .child(self.current_provider.name().to_string()),
                             ),
                     )
@@ -368,7 +429,10 @@ impl Render for AiChat {
                                     .text_color(rgb(SNOW2))
                                     .cursor_pointer()
                                     .hover(|style| style.bg(rgb(POLAR2)))
-                                    .on_mouse_down(gpui::MouseButton::Left, cx.listener(Self::toggle_settings))
+                                    .on_mouse_down(
+                                        gpui::MouseButton::Left,
+                                        cx.listener(Self::toggle_settings),
+                                    )
                                     .child("⚙"),
                             )
                             .child(
@@ -384,13 +448,19 @@ impl Render for AiChat {
                                     .text_color(rgb(SNOW2))
                                     .cursor_pointer()
                                     .hover(|style| style.bg(rgb(POLAR2)))
-                                    .on_mouse_down(gpui::MouseButton::Left, cx.listener(Self::on_close))
+                                    .on_mouse_down(
+                                        gpui::MouseButton::Left,
+                                        cx.listener(Self::on_close),
+                                    )
                                     .child("×"),
                             ),
                     ),
             )
             // Settings dialog (if shown)
             .when(self.show_settings, |this| {
+                let openai_keys = self.ai_service.get_config().openai_keys.get_keys().clone();
+                let gemini_keys = self.ai_service.get_config().gemini_keys.get_keys().clone();
+
                 this.child(
                     div()
                         .absolute()
@@ -403,20 +473,23 @@ impl Render for AiChat {
                         .justify_center()
                         .child(
                             div()
-                                .w(px(400.0))
+                                .w(px(500.0))
+                                .max_h(px(600.0))
                                 .bg(rgb(POLAR0))
                                 .rounded_lg()
                                 .p_6()
                                 .flex()
                                 .flex_col()
                                 .gap_4()
+                                // Header
                                 .child(
                                     div()
                                         .text_lg()
                                         .font_weight(FontWeight::SEMIBOLD)
                                         .text_color(rgb(SNOW0))
-                                        .child("API Settings"),
+                                        .child("API Keys Management"),
                                 )
+                                // OpenAI Section
                                 .child(
                                     div()
                                         .flex()
@@ -424,28 +497,122 @@ impl Render for AiChat {
                                         .gap_2()
                                         .child(
                                             div()
-                                                .text_sm()
-                                                .font_weight(FontWeight::MEDIUM)
-                                                .text_color(rgb(SNOW1))
-                                                .child("OpenAI API Key"),
-                                        )
-                                        .child(
-                                            div()
-                                                .w_full()
-                                                .h(px(36.0))
-                                                .bg(rgb(POLAR2))
-                                                .rounded_md()
-                                                .px_3()
                                                 .flex()
                                                 .items_center()
+                                                .justify_between()
                                                 .child(
                                                     div()
                                                         .text_sm()
-                                                        .text_color(rgb(SNOW2))
-                                                        .child("sk-..."),
+                                                        .font_weight(FontWeight::SEMIBOLD)
+                                                        .text_color(rgb(SNOW1))
+                                                        .child("OpenAI API Keys"),
+                                                )
+                                                .child(
+                                                    div().text_xs().text_color(rgb(SNOW2)).child(
+                                                        format!("{} key(s)", openai_keys.len()),
+                                                    ),
+                                                ),
+                                        )
+                                        // Existing keys
+                                        .children(
+                                            openai_keys
+                                                .iter()
+                                                .enumerate()
+                                                .map(|(index, key)| {
+                                                    let masked_key = if key.len() > 12 {
+                                                        format!(
+                                                            "{}...{}",
+                                                            &key[..6],
+                                                            &key[key.len() - 4..]
+                                                        )
+                                                    } else {
+                                                        "****".to_string()
+                                                    };
+
+                                                    div()
+                                                        .w_full()
+                                                        .h(px(32.0))
+                                                        .bg(rgb(POLAR2))
+                                                        .rounded_md()
+                                                        .px_3()
+                                                        .flex()
+                                                        .items_center()
+                                                        .justify_between()
+                                                        .child(
+                                                            div()
+                                                                .text_sm()
+                                                                .text_color(rgb(SNOW2))
+                                                                .child(masked_key),
+                                                        )
+                                                        .child(
+                                                            div()
+                                                                .w(px(24.0))
+                                                                .h(px(24.0))
+                                                                .flex()
+                                                                .items_center()
+                                                                .justify_center()
+                                                                .rounded_md()
+                                                                .text_base()
+                                                                .text_color(rgb(RED))
+                                                                .cursor_pointer()
+                                                                .hover(|style| {
+                                                                    style.bg(rgb(POLAR3))
+                                                                })
+                                                                .on_mouse_down(
+                                                                    gpui::MouseButton::Left,
+                                                                    cx.listener(
+                                                                        move |this, _, _, cx| {
+                                                                            this.remove_openai_key(
+                                                                                index, cx,
+                                                                            );
+                                                                        },
+                                                                    ),
+                                                                )
+                                                                .child("×"),
+                                                        )
+                                                })
+                                                .collect::<Vec<_>>(),
+                                        )
+                                        // New key input
+                                        .child(
+                                            div()
+                                                .w_full()
+                                                .flex()
+                                                .gap_2()
+                                                .child(
+                                                    div()
+                                                        .flex_1()
+                                                        .h(px(36.0))
+                                                        .bg(rgb(POLAR2))
+                                                        .rounded_md()
+                                                        .px_3()
+                                                        .flex()
+                                                        .items_center()
+                                                        .child(self.new_openai_key_input.clone()),
+                                                )
+                                                .child(
+                                                    div()
+                                                        .w(px(36.0))
+                                                        .h(px(36.0))
+                                                        .flex()
+                                                        .items_center()
+                                                        .justify_center()
+                                                        .bg(rgb(FROST1))
+                                                        .rounded_md()
+                                                        .text_lg()
+                                                        .font_weight(FontWeight::BOLD)
+                                                        .text_color(rgb(POLAR0))
+                                                        .cursor_pointer()
+                                                        .hover(|style| style.bg(rgb(FROST2)))
+                                                        .on_mouse_down(
+                                                            gpui::MouseButton::Left,
+                                                            cx.listener(Self::add_openai_key),
+                                                        )
+                                                        .child("+"),
                                                 ),
                                         ),
                                 )
+                                // Gemini Section
                                 .child(
                                     div()
                                         .flex()
@@ -453,61 +620,140 @@ impl Render for AiChat {
                                         .gap_2()
                                         .child(
                                             div()
-                                                .text_sm()
-                                                .font_weight(FontWeight::MEDIUM)
-                                                .text_color(rgb(SNOW1))
-                                                .child("Google Gemini API Key"),
-                                        )
-                                        .child(
-                                            div()
-                                                .w_full()
-                                                .h(px(36.0))
-                                                .bg(rgb(POLAR2))
-                                                .rounded_md()
-                                                .px_3()
                                                 .flex()
                                                 .items_center()
+                                                .justify_between()
                                                 .child(
                                                     div()
                                                         .text_sm()
-                                                        .text_color(rgb(SNOW2))
-                                                        .child("AIza..."),
+                                                        .font_weight(FontWeight::SEMIBOLD)
+                                                        .text_color(rgb(SNOW1))
+                                                        .child("Google Gemini API Keys"),
+                                                )
+                                                .child(
+                                                    div().text_xs().text_color(rgb(SNOW2)).child(
+                                                        format!("{} key(s)", gemini_keys.len()),
+                                                    ),
+                                                ),
+                                        )
+                                        // Existing keys
+                                        .children(
+                                            gemini_keys
+                                                .iter()
+                                                .enumerate()
+                                                .map(|(index, key)| {
+                                                    let masked_key = if key.len() > 12 {
+                                                        format!(
+                                                            "{}...{}",
+                                                            &key[..6],
+                                                            &key[key.len() - 4..]
+                                                        )
+                                                    } else {
+                                                        "****".to_string()
+                                                    };
+
+                                                    div()
+                                                        .w_full()
+                                                        .h(px(32.0))
+                                                        .bg(rgb(POLAR2))
+                                                        .rounded_md()
+                                                        .px_3()
+                                                        .flex()
+                                                        .items_center()
+                                                        .justify_between()
+                                                        .child(
+                                                            div()
+                                                                .text_sm()
+                                                                .text_color(rgb(SNOW2))
+                                                                .child(masked_key),
+                                                        )
+                                                        .child(
+                                                            div()
+                                                                .w(px(24.0))
+                                                                .h(px(24.0))
+                                                                .flex()
+                                                                .items_center()
+                                                                .justify_center()
+                                                                .rounded_md()
+                                                                .text_base()
+                                                                .text_color(rgb(RED))
+                                                                .cursor_pointer()
+                                                                .hover(|style| {
+                                                                    style.bg(rgb(POLAR3))
+                                                                })
+                                                                .on_mouse_down(
+                                                                    gpui::MouseButton::Left,
+                                                                    cx.listener(
+                                                                        move |this, _, _, cx| {
+                                                                            this.remove_gemini_key(
+                                                                                index, cx,
+                                                                            );
+                                                                        },
+                                                                    ),
+                                                                )
+                                                                .child("×"),
+                                                        )
+                                                })
+                                                .collect::<Vec<_>>(),
+                                        )
+                                        // New key input
+                                        .child(
+                                            div()
+                                                .w_full()
+                                                .flex()
+                                                .gap_2()
+                                                .child(
+                                                    div()
+                                                        .flex_1()
+                                                        .h(px(36.0))
+                                                        .bg(rgb(POLAR2))
+                                                        .rounded_md()
+                                                        .px_3()
+                                                        .flex()
+                                                        .items_center()
+                                                        .child(self.new_gemini_key_input.clone()),
+                                                )
+                                                .child(
+                                                    div()
+                                                        .w(px(36.0))
+                                                        .h(px(36.0))
+                                                        .flex()
+                                                        .items_center()
+                                                        .justify_center()
+                                                        .bg(rgb(FROST1))
+                                                        .rounded_md()
+                                                        .text_lg()
+                                                        .font_weight(FontWeight::BOLD)
+                                                        .text_color(rgb(POLAR0))
+                                                        .cursor_pointer()
+                                                        .hover(|style| style.bg(rgb(FROST2)))
+                                                        .on_mouse_down(
+                                                            gpui::MouseButton::Left,
+                                                            cx.listener(Self::add_gemini_key),
+                                                        )
+                                                        .child("+"),
                                                 ),
                                         ),
                                 )
+                                // Close button
                                 .child(
-                                    div()
-                                        .flex()
-                                        .gap_2()
-                                        .justify_end()
-                                        .child(
-                                            div()
-                                                .px_4()
-                                                .py_2()
-                                                .bg(rgb(POLAR2))
-                                                .rounded_md()
-                                                .text_sm()
-                                                .font_weight(FontWeight::MEDIUM)
-                                                .text_color(rgb(SNOW1))
-                                                .cursor_pointer()
-                                                .hover(|style| style.bg(rgb(POLAR3)))
-                                                .on_mouse_down(gpui::MouseButton::Left, cx.listener(Self::toggle_settings))
-                                                .child("Cancel"),
-                                        )
-                                        .child(
-                                            div()
-                                                .px_4()
-                                                .py_2()
-                                                .bg(rgb(FROST1))
-                                                .rounded_md()
-                                                .text_sm()
-                                                .font_weight(FontWeight::MEDIUM)
-                                                .text_color(rgb(POLAR0))
-                                                .cursor_pointer()
-                                                .hover(|style| style.bg(rgb(FROST2)))
-                                                .on_mouse_down(gpui::MouseButton::Left, cx.listener(Self::save_api_keys))
-                                                .child("Save"),
-                                        ),
+                                    div().flex().justify_end().child(
+                                        div()
+                                            .px_4()
+                                            .py_2()
+                                            .bg(rgb(FROST1))
+                                            .rounded_md()
+                                            .text_sm()
+                                            .font_weight(FontWeight::MEDIUM)
+                                            .text_color(rgb(POLAR0))
+                                            .cursor_pointer()
+                                            .hover(|style| style.bg(rgb(FROST2)))
+                                            .on_mouse_down(
+                                                gpui::MouseButton::Left,
+                                                cx.listener(Self::close_settings),
+                                            )
+                                            .child("Close"),
+                                    ),
                                 ),
                         ),
                 )
@@ -535,18 +781,11 @@ impl Render for AiChat {
                                 .flex()
                                 .items_center()
                                 .gap_2()
-                                .child(
-                                    div()
-                                        .text_sm()
-                                        .text_color(rgb(SNOW2))
-                                        .child(format!("{} is thinking...", self.current_provider.name())),
-                                )
-                                .child(
-                                    div()
-                                        .text_sm()
-                                        .text_color(rgb(FROST1))
-                                        .child("●"),
-                                ),
+                                .child(div().text_sm().text_color(rgb(SNOW2)).child(format!(
+                                    "{} is thinking...",
+                                    self.current_provider.name()
+                                )))
+                                .child(div().text_sm().text_color(rgb(FROST1)).child("●")),
                         )
                     }),
             )
