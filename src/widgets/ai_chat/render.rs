@@ -4,6 +4,7 @@ use gpui::prelude::FluentBuilder;
 use gpui::*;
 
 use super::state::AiChat;
+use super::types::ChatMessage;
 
 impl Render for AiChat {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -59,6 +60,17 @@ impl Render for AiChat {
                                             cx.listener(Self::toggle_provider),
                                         )
                                         .child(self.current_provider.name().to_string()),
+                                )
+                                .child(
+                                    // Token counter
+                                    div()
+                                        .px_2()
+                                        .py_1()
+                                        .bg(rgb(POLAR2))
+                                        .rounded_md()
+                                        .text_xs()
+                                        .text_color(rgb(SNOW2))
+                                        .child(format!("~{} tokens", self.total_tokens())),
                                 )
                             }),
                     )
@@ -126,12 +138,17 @@ impl Render for AiChat {
                                 .flex()
                                 .flex_col()
                                 .gap_2()
-                                .children(
-                                    self.messages
+                                .children({
+                                    let messages: Vec<(usize, ChatMessage)> = self.messages
                                         .iter()
-                                        .map(|msg| self.render_message(msg))
-                                        .collect::<Vec<_>>(),
-                                )
+                                        .enumerate()
+                                        .map(|(idx, msg)| (idx, msg.clone()))
+                                        .collect();
+
+                                    messages.iter().map(|(idx, msg)| {
+                                        self.render_message(msg, *idx, cx)
+                                    }).collect::<Vec<_>>()
+                                })
                                 .when(self.is_loading, |this| {
                                     this.child(
                                         div()
@@ -190,6 +207,11 @@ impl Render for AiChat {
                                 .flex()
                                 .items_center()
                                 .gap_2()
+                                .on_key_down(cx.listener(|this, event: &KeyDownEvent, _window, cx| {
+                                    if event.keystroke.key.as_str() == "enter" {
+                                        this.send_message(cx);
+                                    }
+                                }))
                                 .child(
                                     div()
                                         .flex_1()
@@ -211,30 +233,36 @@ impl Render for AiChat {
                                         .child(""), // Nerd Font send icon
                                 ),
                         )
-                        // Bottom row: model selector + search button (if Gemini)
+                        // Bottom row: model selector + search button (if Gemini) + context info
                         .child(
                             div()
                                 .w_full()
                                 .flex()
                                 .items_center()
+                                .justify_between()
                                 .gap_2()
                                 .relative()
                                 .child(
-                                    // Model selector button
                                     div()
-                                        .relative()
+                                        .flex()
+                                        .items_center()
+                                        .gap_2()
                                         .child(
+                                            // Model selector button
                                             div()
-                                                .px_3()
-                                                .py_1()
-                                                .bg(rgb(POLAR2))
-                                                .rounded_lg()
-                                                .text_xs()
-                                                .text_color(rgb(SNOW2))
-                                                .cursor_pointer()
-                                                .hover(|style| style.bg(rgb(POLAR3)))
-                                                .on_mouse_down(gpui::MouseButton::Left, cx.listener(Self::toggle_model_dropdown))
-                                                .child(format!("{} ▼", &current_model_name)),
+                                                .relative()
+                                                .child(
+                                                    div()
+                                                        .px_3()
+                                                        .py_1()
+                                                        .bg(rgb(POLAR2))
+                                                        .rounded_lg()
+                                                        .text_xs()
+                                                        .text_color(rgb(SNOW2))
+                                                        .cursor_pointer()
+                                                        .hover(|style| style.bg(rgb(POLAR3)))
+                                                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(Self::toggle_model_dropdown))
+                                                        .child(format!("{} ▼", &current_model_name)),
                                         )
                                         .when(self.show_model_dropdown, |this| {
                                             this.child(
@@ -298,7 +326,24 @@ impl Render for AiChat {
                                             .on_mouse_down(gpui::MouseButton::Left, cx.listener(Self::toggle_search))
                                             .child(if self.use_search { " Search" } else { " Search" }),
                                     )
-                                }),
+                                })
+                                )
+                                .child(
+                                    // Context info (right side)
+                                    div()
+                                        .px_2()
+                                        .py_1()
+                                        .text_xs()
+                                        .text_color(rgb(SNOW2))
+                                        .child({
+                                            let context_msgs = if self.messages.len() > self.context_limit {
+                                                self.context_limit
+                                            } else {
+                                                self.messages.len()
+                                            };
+                                            format!("{}/{} msgs", context_msgs, self.messages.len())
+                                        })
+                                )
                         )
                 )
             })

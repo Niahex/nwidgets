@@ -54,18 +54,79 @@ impl AiChat {
         self.is_loading = true;
         cx.notify();
 
-        // Prepare messages for AI
-        let ai_messages: Vec<AiMessage> = self
-            .messages
+        // ========== TOKEN OPTIMIZATION ==========
+
+        // 1. Limiter le contexte aux derniers N messages
+        let start_idx = if self.messages.len() > self.context_limit {
+            self.messages.len() - self.context_limit
+        } else {
+            0
+        };
+
+        let mut context_messages: Vec<ChatMessage> = self.messages
             .iter()
-            .map(|msg| AiMessage {
+            .skip(start_idx)
+            .cloned()
+            .collect();
+
+        // 2. Auto-summarize: Résumer les messages exclus si activé
+        let mut optimized_messages = if self.auto_summarize && start_idx > 0 {
+            // Créer un résumé des messages exclus
+            let excluded_messages: Vec<ChatMessage> = self.messages
+                .iter()
+                .take(start_idx)
+                .cloned()
+                .collect();
+
+            let summary = super::optimizer::summarize_messages(&excluded_messages);
+
+            // Commencer avec le résumé, puis ajouter les messages récents
+            let mut result = vec![summary];
+            result.extend(context_messages);
+            result
+        } else {
+            context_messages
+        };
+
+        // 3. Supprimer la redondance (formules de politesse, répétitions)
+        optimized_messages = super::optimizer::remove_redundancy(&optimized_messages);
+
+        // 4. Compresser les anciens messages si activé (garde les 3 derniers intacts)
+        if self.compress_context && optimized_messages.len() > 5 {
+            let keep_recent = 3;
+            let compress_until = optimized_messages.len().saturating_sub(keep_recent);
+
+            for i in 0..compress_until {
+                if let Some(msg) = optimized_messages.get_mut(i) {
+                    *msg = super::optimizer::compress_message(msg);
+                }
+            }
+        }
+
+        // 5. Générer le system prompt optimisé
+        let system_prompt = super::optimizer::generate_system_prompt(
+            self.concise_mode,
+            self.use_search
+        );
+
+        // Convertir en format API avec system prompt en premier
+        let mut ai_messages: Vec<AiMessage> = vec![
+            AiMessage {
+                role: "system".to_string(),
+                content: system_prompt,
+            }
+        ];
+
+        // Ajouter les messages optimisés
+        ai_messages.extend(
+            optimized_messages.iter().map(|msg| AiMessage {
                 role: match msg.role {
                     MessageRole::User => "user".to_string(),
                     MessageRole::Assistant => "assistant".to_string(),
                 },
                 content: msg.content.clone(),
             })
-            .collect();
+        );
 
         let provider = self.current_provider.clone();
         let model = self.current_model.clone();
@@ -353,5 +414,106 @@ impl AiChat {
             }
         })
         .detach();
+    }
+
+    // ========== Message Actions ==========
+
+    /// Copy message content to clipboard
+    pub fn copy_message(&mut self, content: String, cx: &mut Context<Self>) {
+        let item = gpui::ClipboardItem::new_string(content);
+        cx.write_to_clipboard(item);
+    }
+
+    /// Delete a message at the given index
+    pub fn delete_message(&mut self, index: usize, cx: &mut Context<Self>) {
+        if index < self.messages.len() {
+            self.messages.remove(index);
+            cx.notify();
+        }
+    }
+
+    /// Enter edit mode for a user message
+    pub fn edit_message(&mut self, index: usize, cx: &mut Context<Self>) {
+        if index >= self.messages.len() {
+            return;
+        }
+
+        // Verify it's a user message
+        if let Some(msg) = self.messages.get(index) {
+            if !matches!(msg.role, MessageRole::User) {
+                return; // Only edit user messages
+            }
+
+            // Put the message content in edit input
+            let content = msg.content.clone();
+            self.edit_input.update(cx, |input, cx| {
+                input.set_text(content, cx);
+            });
+
+            // Enter edit mode
+            self.editing_message_index = Some(index);
+            cx.notify();
+        }
+    }
+
+    /// Save the edited message
+    pub fn save_edit(&mut self, cx: &mut Context<Self>) {
+        if let Some(index) = self.editing_message_index {
+            let new_content = self.edit_input.read(cx).text().trim().to_string();
+
+            if !new_content.is_empty() && index < self.messages.len() {
+                // Update message content
+                self.messages[index].content = new_content;
+
+                // Remove all messages after this one (they're now outdated)
+                self.messages.truncate(index + 1);
+            }
+
+            // Exit edit mode
+            self.editing_message_index = None;
+            self.edit_input.update(cx, |input, cx| input.clear(cx));
+            cx.notify();
+        }
+    }
+
+    /// Cancel editing
+    pub fn cancel_edit(&mut self, cx: &mut Context<Self>) {
+        self.editing_message_index = None;
+        self.edit_input.update(cx, |input, cx| input.clear(cx));
+        cx.notify();
+    }
+
+    /// Regenerate assistant response (resend the conversation up to this point)
+    pub fn regenerate_message(&mut self, index: usize, cx: &mut Context<Self>) {
+        if index >= self.messages.len() {
+            return;
+        }
+
+        // Verify it's an assistant message
+        if let Some(msg) = self.messages.get(index) {
+            if !matches!(msg.role, MessageRole::Assistant) {
+                return;
+            }
+
+            // Remove this assistant message and all subsequent messages
+            self.messages.truncate(index);
+
+            // Resend the last user message
+            if let Some(last_user_msg) = self.messages.iter().rev().find(|m| matches!(m.role, MessageRole::User)) {
+                let user_text = last_user_msg.content.clone();
+
+                // Remove the last user message from history (we'll re-add it in send_message)
+                if let Some(last_idx) = self.messages.iter().rposition(|m| matches!(m.role, MessageRole::User)) {
+                    self.messages.remove(last_idx);
+                }
+
+                // Put it in the input and send
+                self.input.update(cx, |input, cx| {
+                    input.set_text(user_text, cx);
+                });
+
+                self.send_message(cx);
+            }
+        }
     }
 }
