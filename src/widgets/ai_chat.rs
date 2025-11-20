@@ -26,6 +26,11 @@ pub struct AiChat {
     show_settings: bool,
     new_openai_key_input: Entity<TextInput>,
     new_gemini_key_input: Entity<TextInput>,
+    show_import_dialog: bool,
+    import_provider: AiProvider,
+    bulk_keys_input: Entity<TextInput>,
+    import_status: String,
+    is_validating: bool,
 }
 
 impl AiChat {
@@ -33,6 +38,7 @@ impl AiChat {
         let input = cx.new(|cx| TextInput::new(cx, "Type a message..."));
         let new_openai_key_input = cx.new(|cx| TextInput::new(cx, "sk-..."));
         let new_gemini_key_input = cx.new(|cx| TextInput::new(cx, "AIza..."));
+        let bulk_keys_input = cx.new(|cx| TextInput::new(cx, "Paste keys here (one per line)..."));
 
         Self {
             messages: Vec::new(),
@@ -44,6 +50,11 @@ impl AiChat {
             show_settings: false,
             new_openai_key_input,
             new_gemini_key_input,
+            show_import_dialog: false,
+            import_provider: AiProvider::ChatGPT,
+            bulk_keys_input,
+            import_status: String::new(),
+            is_validating: false,
         }
     }
 
@@ -224,6 +235,124 @@ impl AiChat {
     ) {
         self.show_settings = false;
         cx.notify();
+    }
+
+    fn open_import_dialog(
+        &mut self,
+        provider: AiProvider,
+        _: &gpui::MouseDownEvent,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.import_provider = provider;
+        self.show_import_dialog = true;
+        self.import_status.clear();
+        self.bulk_keys_input.update(cx, |input, cx| input.clear(cx));
+        cx.notify();
+    }
+
+    fn close_import_dialog(
+        &mut self,
+        _: &gpui::MouseDownEvent,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.show_import_dialog = false;
+        cx.notify();
+    }
+
+    fn validate_and_import_keys(
+        &mut self,
+        _: &gpui::MouseDownEvent,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let keys_text = self.bulk_keys_input.read(cx).text().to_string();
+        let keys: Vec<String> = keys_text
+            .lines()
+            .map(|line| line.trim().to_string())
+            .filter(|line| !line.is_empty())
+            .collect();
+
+        if keys.is_empty() {
+            self.import_status = "No keys to import".to_string();
+            cx.notify();
+            return;
+        }
+
+        self.is_validating = true;
+        self.import_status = format!("Validating {} key(s)...", keys.len());
+        cx.notify();
+
+        let provider = self.import_provider.clone();
+
+        // Spawn async validation task
+        cx.spawn(async move |this, cx| {
+            use crate::services::AiService;
+
+            let mut valid_keys = Vec::new();
+            let mut invalid_count = 0;
+
+            for (i, key) in keys.iter().enumerate() {
+                // Update status
+                let _ = cx.update_entity(&this.upgrade().unwrap(), |this: &mut AiChat, cx| {
+                    this.import_status = format!(
+                        "Validating key {}/{}...",
+                        i + 1,
+                        keys.len()
+                    );
+                    cx.notify();
+                });
+
+                // Validate the key in a separate thread to avoid blocking
+                let key_clone = key.clone();
+                let provider_clone = provider.clone();
+                let is_valid = std::thread::spawn(move || {
+                    match provider_clone {
+                        AiProvider::ChatGPT => AiService::validate_openai_key(&key_clone),
+                        AiProvider::Gemini => AiService::validate_gemini_key(&key_clone),
+                    }
+                })
+                .join()
+                .unwrap_or(false);
+
+                if is_valid {
+                    valid_keys.push(key.clone());
+                } else {
+                    invalid_count += 1;
+                }
+            }
+
+            // Add valid keys and update status
+            if let Some(entity) = this.upgrade() {
+                let _ = cx.update_entity(&entity, |this: &mut AiChat, cx| {
+                    // Add all valid keys
+                    for key in valid_keys.iter() {
+                        match provider {
+                            AiProvider::ChatGPT => {
+                                this.ai_service.get_config_mut().openai_keys.add_key(key.clone());
+                            }
+                            AiProvider::Gemini => {
+                                this.ai_service.get_config_mut().gemini_keys.add_key(key.clone());
+                            }
+                        }
+                    }
+
+                    // Save config
+                    let _ = this.ai_service.save_config();
+
+                    // Update status
+                    this.is_validating = false;
+                    this.import_status = format!(
+                        "✓ {} valid key(s) added, {} invalid",
+                        valid_keys.len(),
+                        invalid_count
+                    );
+                    cx.notify();
+                });
+            }
+        })
+        .detach();
     }
 
     fn render_message(&self, message: &ChatMessage) -> impl IntoElement {
@@ -508,9 +637,33 @@ impl Render for AiChat {
                                                         .child("OpenAI API Keys"),
                                                 )
                                                 .child(
-                                                    div().text_xs().text_color(rgb(SNOW2)).child(
-                                                        format!("{} key(s)", openai_keys.len()),
-                                                    ),
+                                                    div()
+                                                        .flex()
+                                                        .items_center()
+                                                        .gap_2()
+                                                        .child(
+                                                            div()
+                                                                .px_2()
+                                                                .py_1()
+                                                                .bg(rgb(POLAR3))
+                                                                .rounded_md()
+                                                                .text_xs()
+                                                                .text_color(rgb(FROST1))
+                                                                .cursor_pointer()
+                                                                .hover(|style| style.bg(rgb(FROST1)).text_color(rgb(POLAR0)))
+                                                                .on_mouse_down(
+                                                                    gpui::MouseButton::Left,
+                                                                    cx.listener(move |this, e, w, cx| {
+                                                                        this.open_import_dialog(AiProvider::ChatGPT, e, w, cx);
+                                                                    }),
+                                                                )
+                                                                .child("Import")
+                                                        )
+                                                        .child(
+                                                            div().text_xs().text_color(rgb(SNOW2)).child(
+                                                                format!("{} key(s)", openai_keys.len()),
+                                                            )
+                                                        ),
                                                 ),
                                         )
                                         // Existing keys
@@ -631,9 +784,33 @@ impl Render for AiChat {
                                                         .child("Google Gemini API Keys"),
                                                 )
                                                 .child(
-                                                    div().text_xs().text_color(rgb(SNOW2)).child(
-                                                        format!("{} key(s)", gemini_keys.len()),
-                                                    ),
+                                                    div()
+                                                        .flex()
+                                                        .items_center()
+                                                        .gap_2()
+                                                        .child(
+                                                            div()
+                                                                .px_2()
+                                                                .py_1()
+                                                                .bg(rgb(POLAR3))
+                                                                .rounded_md()
+                                                                .text_xs()
+                                                                .text_color(rgb(FROST1))
+                                                                .cursor_pointer()
+                                                                .hover(|style| style.bg(rgb(FROST1)).text_color(rgb(POLAR0)))
+                                                                .on_mouse_down(
+                                                                    gpui::MouseButton::Left,
+                                                                    cx.listener(move |this, e, w, cx| {
+                                                                        this.open_import_dialog(AiProvider::Gemini, e, w, cx);
+                                                                    }),
+                                                                )
+                                                                .child("Import")
+                                                        )
+                                                        .child(
+                                                            div().text_xs().text_color(rgb(SNOW2)).child(
+                                                                format!("{} key(s)", gemini_keys.len()),
+                                                            )
+                                                        ),
                                                 ),
                                         )
                                         // Existing keys
@@ -754,6 +931,109 @@ impl Render for AiChat {
                                             )
                                             .child("Close"),
                                     ),
+                                ),
+                        ),
+                )
+            })
+            // Import dialog (if shown)
+            .when(self.show_import_dialog, |this| {
+                this.child(
+                    div()
+                        .absolute()
+                        .top_0()
+                        .left_0()
+                        .size_full()
+                        .bg(rgba(0x00000088))
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .child(
+                            div()
+                                .w(px(500.0))
+                                .bg(rgb(POLAR0))
+                                .rounded_lg()
+                                .p_6()
+                                .flex()
+                                .flex_col()
+                                .gap_4()
+                                // Header
+                                .child(
+                                    div()
+                                        .text_lg()
+                                        .font_weight(FontWeight::SEMIBOLD)
+                                        .text_color(rgb(SNOW0))
+                                        .child(format!("Import {} Keys", self.import_provider.name())),
+                                )
+                                // Description
+                                .child(
+                                    div()
+                                        .text_sm()
+                                        .text_color(rgb(SNOW2))
+                                        .child("Paste multiple API keys below (one per line). Each key will be validated before being added."),
+                                )
+                                // Textarea for keys
+                                .child(
+                                    div()
+                                        .w_full()
+                                        .h(px(200.0))
+                                        .bg(rgb(POLAR2))
+                                        .rounded_md()
+                                        .p_3()
+                                        .child(self.bulk_keys_input.clone()),
+                                )
+                                // Status message
+                                .when(!self.import_status.is_empty(), |this| {
+                                    this.child(
+                                        div()
+                                            .w_full()
+                                            .p_3()
+                                            .bg(rgb(POLAR2))
+                                            .rounded_md()
+                                            .text_sm()
+                                            .text_color(if self.import_status.starts_with("✓") {
+                                                rgb(GREEN)
+                                            } else {
+                                                rgb(SNOW2)
+                                            })
+                                            .child(self.import_status.clone()),
+                                    )
+                                })
+                                // Buttons
+                                .child(
+                                    div()
+                                        .flex()
+                                        .gap_2()
+                                        .justify_end()
+                                        .child(
+                                            div()
+                                                .px_4()
+                                                .py_2()
+                                                .bg(rgb(POLAR2))
+                                                .rounded_md()
+                                                .text_sm()
+                                                .font_weight(FontWeight::MEDIUM)
+                                                .text_color(rgb(SNOW1))
+                                                .cursor_pointer()
+                                                .hover(|style| style.bg(rgb(POLAR3)))
+                                                .on_mouse_down(gpui::MouseButton::Left, cx.listener(Self::close_import_dialog))
+                                                .child("Cancel"),
+                                        )
+                                        .child(
+                                            div()
+                                                .px_4()
+                                                .py_2()
+                                                .bg(if self.is_validating { rgb(POLAR3) } else { rgb(FROST1) })
+                                                .rounded_md()
+                                                .text_sm()
+                                                .font_weight(FontWeight::MEDIUM)
+                                                .text_color(if self.is_validating { rgb(SNOW2) } else { rgb(POLAR0) })
+                                                .when(!self.is_validating, |this| {
+                                                    this.cursor_pointer()
+                                                        .hover(|style| style.bg(rgb(FROST2)))
+                                                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(Self::validate_and_import_keys))
+                                                })
+                                                .child(if self.is_validating { "Validating..." } else { "Validate & Import" }),
+                                        ),
                                 ),
                         ),
                 )

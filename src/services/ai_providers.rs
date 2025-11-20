@@ -168,6 +168,33 @@ impl AiService {
         self.config.gemini_keys.has_keys()
     }
 
+    /// Validate an OpenAI API key by making a test request
+    /// This is a blocking function that should be called from an async context
+    pub fn validate_openai_key(key: &str) -> bool {
+        // Try to list models - lightweight API call
+        match ureq::get("https://api.openai.com/v1/models")
+            .header("Authorization", &format!("Bearer {}", key))
+            .call()
+        {
+            Ok(response) => response.status() == 200,
+            Err(_) => false,
+        }
+    }
+
+    /// Validate a Gemini API key by making a test request
+    /// This is a blocking function that should be called from an async context
+    pub fn validate_gemini_key(key: &str) -> bool {
+        let url = format!(
+            "https://generativelanguage.googleapis.com/v1beta/models?key={}",
+            key
+        );
+
+        match ureq::get(&url).call() {
+            Ok(response) => response.status() == 200,
+            Err(_) => false,
+        }
+    }
+
     pub async fn send_message(
         &mut self,
         provider: AiProvider,
