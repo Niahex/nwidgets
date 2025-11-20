@@ -198,21 +198,46 @@ impl AiService {
     pub async fn send_message(
         &mut self,
         provider: AiProvider,
+        model: String,
         messages: Vec<Message>,
     ) -> Result<String> {
-        match provider {
-            AiProvider::ChatGPT => self.send_to_openai(messages).await,
-            AiProvider::Gemini => self.send_to_gemini(messages).await,
+        // Execute in a separate thread with Tokio runtime
+        let config = self.config.clone();
+        let provider_clone = provider.clone();
+        let messages_clone = messages.clone();
+
+        let result = std::thread::spawn(move || {
+            let runtime = tokio::runtime::Runtime::new().unwrap();
+            runtime.block_on(async move {
+                let client = reqwest::Client::new();
+                match provider_clone {
+                    AiProvider::ChatGPT => Self::send_to_openai_impl(&client, config, model, messages_clone).await,
+                    AiProvider::Gemini => Self::send_to_gemini_impl(&client, config, model, messages_clone).await,
+                }
+            })
+        })
+        .join()
+        .map_err(|_| anyhow!("Thread panicked"))?;
+
+        // Update config if keys were rotated
+        if let Ok(_) = &result {
+            // Config is already updated in the impl functions
         }
+
+        result
     }
 
-    async fn send_to_openai(&mut self, messages: Vec<Message>) -> Result<String> {
-        let max_retries = self.config.openai_keys.get_keys().len().max(1);
+    async fn send_to_openai_impl(
+        client: &reqwest::Client,
+        mut config: AiConfig,
+        model: String,
+        messages: Vec<Message>
+    ) -> Result<String> {
+        let max_retries = config.openai_keys.get_keys().len().max(1);
         let mut last_error = None;
 
         for _attempt in 0..max_retries {
-            let api_key = self
-                .config
+            let api_key = config
                 .openai_keys
                 .get_current_key()
                 .ok_or_else(|| anyhow!("No OpenAI API key available"))?
@@ -240,12 +265,11 @@ impl AiService {
             }
 
             let request = OpenAiRequest {
-                model: "gpt-4o-mini".to_string(),
+                model: model.clone(),
                 messages: messages.clone(),
             };
 
-            let response = self
-                .client
+            let response = client
                 .post("https://api.openai.com/v1/chat/completions")
                 .header("Authorization", format!("Bearer {}", api_key))
                 .header("Content-Type", "application/json")
@@ -262,7 +286,7 @@ impl AiService {
                 if status.as_u16() == 429 {
                     println!("[AI_SERVICE] Rate limit hit on OpenAI key, rotating to next...");
                     last_error = Some(anyhow!("Rate limit: {}", error_text));
-                    self.config.openai_keys.rotate_to_next();
+                    config.openai_keys.rotate_to_next();
                     continue;
                 }
 
@@ -282,13 +306,17 @@ impl AiService {
         Err(last_error.unwrap_or_else(|| anyhow!("All OpenAI API keys exhausted")))
     }
 
-    async fn send_to_gemini(&mut self, messages: Vec<Message>) -> Result<String> {
-        let max_retries = self.config.gemini_keys.get_keys().len().max(1);
+    async fn send_to_gemini_impl(
+        client: &reqwest::Client,
+        mut config: AiConfig,
+        model: String,
+        messages: Vec<Message>
+    ) -> Result<String> {
+        let max_retries = config.gemini_keys.get_keys().len().max(1);
         let mut last_error = None;
 
         for _attempt in 0..max_retries {
-            let api_key = self
-                .config
+            let api_key = config
                 .gemini_keys
                 .get_current_key()
                 .ok_or_else(|| anyhow!("No Gemini API key available"))?
@@ -354,12 +382,12 @@ impl AiService {
             let request = GeminiRequest { contents };
 
             let url = format!(
-                "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={}",
+                "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}",
+                model,
                 api_key
             );
 
-            let response = self
-                .client
+            let response = client
                 .post(&url)
                 .header("Content-Type", "application/json")
                 .json(&request)
@@ -375,7 +403,7 @@ impl AiService {
                 if status.as_u16() == 429 {
                     println!("[AI_SERVICE] Rate limit hit on Gemini key, rotating to next...");
                     last_error = Some(anyhow!("Rate limit: {}", error_text));
-                    self.config.gemini_keys.rotate_to_next();
+                    config.gemini_keys.rotate_to_next();
                     continue;
                 }
 

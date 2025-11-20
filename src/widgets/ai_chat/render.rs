@@ -1,3 +1,4 @@
+use crate::services::AiProvider;
 use crate::theme::*;
 use gpui::prelude::FluentBuilder;
 use gpui::*;
@@ -155,42 +156,150 @@ impl Render for AiChat {
             })
             // Input area (only when not in settings)
             .when(!self.show_settings, |this| {
+                let models: Vec<(String, String)> = self.get_available_models()
+                    .into_iter()
+                    .map(|(id, name)| (id.to_string(), name.to_string()))
+                    .collect();
+
+                let current_model = self.current_model.clone();
+                let current_model_name = models.iter()
+                    .find(|(id, _)| id == &current_model)
+                    .map(|(_, name)| name.clone())
+                    .unwrap_or_else(|| current_model.clone());
+
+                let is_gemini = matches!(self.current_provider, AiProvider::Gemini);
+
                 this.child(
                     div()
                         .w_full()
-                        .h(px(64.0))
                         .bg(rgb(POLAR0))
                         .border_t_1()
                         .border_color(rgb(POLAR3))
                         .flex()
-                        .items_center()
-                        .gap_3()
-                        .px_4()
+                        .flex_col()
+                        .gap_2()
+                        .p_4()
+                        // Input with integrated send button
                         .child(
                             div()
-                                .flex_1()
+                                .w_full()
                                 .h(px(40.0))
                                 .bg(rgb(POLAR2))
                                 .rounded_lg()
                                 .px_3()
                                 .flex()
                                 .items_center()
-                                .child(self.input.clone()),
+                                .gap_2()
+                                .child(
+                                    div()
+                                        .flex_1()
+                                        .child(self.input.clone())
+                                )
+                                .child(
+                                    // Send icon button
+                                    div()
+                                        .w(px(32.0))
+                                        .h(px(32.0))
+                                        .flex()
+                                        .items_center()
+                                        .justify_center()
+                                        .rounded_md()
+                                        .text_color(rgb(FROST1))
+                                        .cursor_pointer()
+                                        .hover(|style| style.bg(rgb(POLAR3)))
+                                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(Self::on_send))
+                                        .child(""), // Nerd Font send icon
+                                ),
                         )
+                        // Bottom row: model selector + search button (if Gemini)
                         .child(
                             div()
-                                .px_4()
-                                .py_2()
-                                .bg(rgb(FROST1))
-                                .rounded_lg()
-                                .text_sm()
-                                .font_weight(FontWeight::MEDIUM)
-                                .text_color(rgb(POLAR0))
-                                .cursor_pointer()
-                                .hover(|style| style.bg(rgb(FROST2)))
-                                .on_mouse_down(gpui::MouseButton::Left, cx.listener(Self::on_send))
-                                .child("Send"),
-                        ),
+                                .w_full()
+                                .flex()
+                                .items_center()
+                                .gap_2()
+                                .relative()
+                                .child(
+                                    // Model selector button
+                                    div()
+                                        .relative()
+                                        .child(
+                                            div()
+                                                .px_3()
+                                                .py_1()
+                                                .bg(rgb(POLAR2))
+                                                .rounded_lg()
+                                                .text_xs()
+                                                .text_color(rgb(SNOW2))
+                                                .cursor_pointer()
+                                                .hover(|style| style.bg(rgb(POLAR3)))
+                                                .on_mouse_down(gpui::MouseButton::Left, cx.listener(Self::toggle_model_dropdown))
+                                                .child(format!("{} ▼", &current_model_name)),
+                                        )
+                                        .when(self.show_model_dropdown, |this| {
+                                            this.child(
+                                                div()
+                                                    .absolute()
+                                                    .bottom(px(32.0))
+                                                    .left(px(0.0))
+                                                    .min_w(px(200.0))
+                                                    .bg(rgb(POLAR0))
+                                                    .border_1()
+                                                    .border_color(rgb(POLAR3))
+                                                    .rounded_lg()
+                                                    .shadow_lg()
+                                                    .py_1()
+                                                    .children(
+                                                        models.iter().map(|(model_id, model_name)| {
+                                                            let model_id_clone = model_id.clone();
+                                                            let is_current = model_id == &current_model;
+                                                            div()
+                                                                .w_full()
+                                                                .px_3()
+                                                                .py_2()
+                                                                .text_sm()
+                                                                .text_color(if is_current {
+                                                                    rgb(FROST1)
+                                                                } else {
+                                                                    rgb(SNOW2)
+                                                                })
+                                                                .cursor_pointer()
+                                                                .hover(|style| style.bg(rgb(POLAR2)))
+                                                                .on_mouse_down(
+                                                                    gpui::MouseButton::Left,
+                                                                    cx.listener(move |this, e, w, cx| {
+                                                                        this.select_model(model_id_clone.clone(), e, w, cx);
+                                                                    }),
+                                                                )
+                                                                .child(model_name.clone())
+                                                        }).collect::<Vec<_>>()
+                                                    )
+                                            )
+                                        })
+                                )
+                                .when(is_gemini, |this| {
+                                    // Search button (only for Gemini)
+                                    this.child(
+                                        div()
+                                            .px_3()
+                                            .py_1()
+                                            .bg(if self.use_search { rgb(FROST1) } else { rgb(POLAR2) })
+                                            .rounded_lg()
+                                            .text_xs()
+                                            .text_color(if self.use_search { rgb(POLAR0) } else { rgb(SNOW2) })
+                                            .cursor_pointer()
+                                            .hover(|style| {
+                                                if self.use_search {
+                                                    style.bg(rgb(FROST2))
+                                                } else {
+                                                    style.bg(rgb(POLAR3))
+                                                }
+                                            })
+                                            .on_mouse_down(gpui::MouseButton::Left, cx.listener(Self::toggle_search))
+                                            .child(if self.use_search { " Search" } else { " Search" }),
+                                    )
+                                }),
+                        )
                 )
             })
     }

@@ -19,6 +19,9 @@ pub struct AiChat {
     pub bulk_keys_input: Entity<TextInput>,
     pub import_status: String,
     pub is_validating: bool,
+    pub show_model_dropdown: bool,
+    pub current_model: String,
+    pub use_search: bool,
 }
 
 impl AiChat {
@@ -43,6 +46,9 @@ impl AiChat {
             bulk_keys_input,
             import_status: String::new(),
             is_validating: false,
+            show_model_dropdown: false,
+            current_model: "gpt-4o-mini".to_string(),
+            use_search: false,
         }
     }
 }

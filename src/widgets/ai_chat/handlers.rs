@@ -68,11 +68,12 @@ impl AiChat {
             .collect();
 
         let provider = self.current_provider.clone();
+        let model = self.current_model.clone();
         let mut ai_service = self.ai_service.clone();
 
         // Spawn async task to call AI API
         cx.spawn(async move |this, cx| {
-            let result = ai_service.send_message(provider, ai_messages).await;
+            let result = ai_service.send_message(provider, model, ai_messages).await;
 
             if let Some(entity) = this.upgrade() {
                 let _ = cx.update_entity(&entity, |this: &mut AiChat, cx| {
@@ -108,10 +109,64 @@ impl AiChat {
         cx: &mut Context<Self>,
     ) {
         self.current_provider = match self.current_provider {
-            AiProvider::ChatGPT => AiProvider::Gemini,
-            AiProvider::Gemini => AiProvider::ChatGPT,
+            AiProvider::ChatGPT => {
+                self.current_model = "gemini-2.5-flash".to_string();
+                AiProvider::Gemini
+            },
+            AiProvider::Gemini => {
+                self.current_model = "gpt-4o-mini".to_string();
+                AiProvider::ChatGPT
+            },
         };
         cx.notify();
+    }
+
+    pub fn toggle_model_dropdown(
+        &mut self,
+        _: &gpui::MouseDownEvent,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.show_model_dropdown = !self.show_model_dropdown;
+        cx.notify();
+    }
+
+    pub fn select_model(
+        &mut self,
+        model: String,
+        _: &gpui::MouseDownEvent,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.current_model = model;
+        self.show_model_dropdown = false;
+        cx.notify();
+    }
+
+    pub fn toggle_search(
+        &mut self,
+        _: &gpui::MouseDownEvent,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.use_search = !self.use_search;
+        cx.notify();
+    }
+
+    pub fn get_available_models(&self) -> Vec<(&str, &str)> {
+        match self.current_provider {
+            AiProvider::ChatGPT => vec![
+                ("gpt-4o", "GPT-4o"),
+                ("gpt-4o-mini", "GPT-4o Mini"),
+                ("gpt-4-turbo", "GPT-4 Turbo"),
+                ("gpt-4", "GPT-4"),
+                ("gpt-3.5-turbo", "GPT-3.5 Turbo"),
+            ],
+            AiProvider::Gemini => vec![
+                ("gemini-2.5-flash", "Gemini 2.5 Flash (Rapide)"),
+                ("gemini-2.5-pro", "Gemini 2.5 Pro (Puissant)"),
+            ],
+        }
     }
 
     pub fn toggle_settings(
