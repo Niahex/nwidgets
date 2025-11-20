@@ -1,3 +1,4 @@
+pub mod ai_providers;
 pub mod bluetooth;
 pub mod capslock;
 pub mod hotkey;
@@ -11,6 +12,7 @@ pub mod speech;
 pub mod systray;
 pub mod transcription_events;
 
+pub use ai_providers::{AiProvider, AiService, Message};
 pub use bluetooth::{BluetoothService, BluetoothState};
 pub use capslock::CapsLockService;
 pub use hotkey::ToggleDictation;
