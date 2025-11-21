@@ -49,6 +49,7 @@
           udev # For libinput (hotkey detection)
           gtk4 # For GTK4 webview
           webkitgtk_6_0 # For webkit6 - GTK4 version
+          gtk4-layer-shell # GTK4 Layer Shell for Wayland
           libsoup_3 # For webkit6 networking
           gdk-pixbuf # Required by GTK
           glib-networking # For TLS support
@@ -57,8 +58,6 @@
           gnutls # TLS library
           atk # Accessibility toolkit
           at-spi2-atk # AT-SPI bridge
-          gtk3 # For wry GTK3 support
-          webkitgtk_4_1 # For wry webkit2gtk
         ];
 
         # Dependencies needed only at runtime

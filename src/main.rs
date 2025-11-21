@@ -16,6 +16,10 @@ use widgets::osd;
 use widgets::{GeminiChat, Panel, TranscriptionViewer};
 
 fn main() {
+    // Initialize GTK4 for Linux webview support
+    #[cfg(target_os = "linux")]
+    gtk4::init().unwrap();
+
     // Check if this is a CLI command
     let args: Vec<String> = std::env::args().collect();
     if args.len() > 1 {

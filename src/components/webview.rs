@@ -6,6 +6,22 @@ use gpui::{
     MouseDownEvent, ParentElement as _, Pixels, Render, Size, Style, Styled as _, Window,
 };
 
+/// Extension trait for Pixels to provide convenient conversion methods
+trait PixelsExt {
+    fn as_f32(&self) -> f32;
+    fn as_f64(&self) -> f64;
+}
+
+impl PixelsExt for Pixels {
+    fn as_f32(&self) -> f32 {
+        f32::from(*self)
+    }
+
+    fn as_f64(&self) -> f64 {
+        f64::from(*self)
+    }
+}
+
 pub struct WebView {
     focus_handle: FocusHandle,
     webview: Rc<wry::WebView>,
@@ -21,7 +37,10 @@ impl Drop for WebView {
 
 impl WebView {
     pub fn new(webview: wry::WebView, _: &mut Window, cx: &mut App) -> Self {
+        println!("[WEBVIEW] Initializing WebView");
         let _ = webview.set_bounds(Rect::default());
+        let _ = webview.set_visible(true);
+        println!("[WEBVIEW] WebView visibility set to true");
 
         Self {
             focus_handle: cx.focus_handle(),
@@ -51,7 +70,19 @@ impl WebView {
     }
 
     pub fn load_url(&mut self, url: &str) {
-        self.webview.load_url(url).unwrap();
+        println!("[WEBVIEW] Loading URL: {}", url);
+        match self.webview.load_url(url) {
+            Ok(_) => println!("[WEBVIEW] URL loaded successfully"),
+            Err(e) => eprintln!("[WEBVIEW] Error loading URL: {:?}", e),
+        }
+    }
+
+    pub fn load_html(&mut self, html: &str) {
+        println!("[WEBVIEW] Loading HTML content");
+        match self.webview.load_html(html) {
+            Ok(_) => println!("[WEBVIEW] HTML loaded successfully"),
+            Err(e) => eprintln!("[WEBVIEW] Error loading HTML: {:?}", e),
+        }
     }
 
     pub fn inner(&self) -> &wry::WebView {
@@ -152,21 +183,31 @@ impl Element for WebViewElement {
         cx: &mut App,
     ) -> Self::PrepaintState {
         if !self.parent.read(cx).visible() {
+            println!("[WEBVIEW] Parent not visible, skipping prepaint");
             return None;
         }
+
+        let width = bounds.size.width.as_f32();
+        let height = bounds.size.height.as_f32();
+        let x = f32::from(bounds.origin.x);
+        let y = f32::from(bounds.origin.y);
+
+        println!("[WEBVIEW] Setting bounds: x={}, y={}, width={}, height={}", x, y, width, height);
 
         self.view
             .set_bounds(Rect {
                 size: dpi::Size::Logical(LogicalSize {
-                    width: (bounds.size.width.0 as f64).into(),
-                    height: (bounds.size.height.0 as f64).into(),
+                    width: width.into(),
+                    height: height.into(),
                 }),
                 position: dpi::Position::Logical(dpi::LogicalPosition::new(
-                    bounds.origin.x.0 as f64,
-                    bounds.origin.y.0 as f64,
+                    x as f64,
+                    y as f64,
                 )),
             })
             .unwrap();
+
+        println!("[WEBVIEW] Bounds set successfully");
 
         Some(window.insert_hitbox(bounds, gpui::HitboxBehavior::Normal))
     }
