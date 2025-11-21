@@ -1,5 +1,6 @@
 pub mod bluetooth;
 pub mod capslock;
+pub mod clipboard;
 pub mod hyprland;
 // pub mod notifications;
 pub mod numlock;
@@ -12,6 +13,7 @@ pub mod systray;
 
 pub use bluetooth::{BluetoothService, BluetoothState};
 pub use capslock::CapsLockService;
+pub use clipboard::ClipboardService;
 pub use hyprland::HyprlandService;
 pub use systray::{SystemTrayService, TrayItem};
 pub use pipewire::{PipeWireService, AudioState};

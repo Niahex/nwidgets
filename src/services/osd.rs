@@ -7,6 +7,7 @@ pub enum OsdEvent {
     Microphone(bool), // muted
     CapsLock(bool),   // enabled
     NumLock(bool),    // enabled
+    Clipboard,        // copied
     DictationStarted,
     DictationStopped,
 }

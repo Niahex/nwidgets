@@ -11,6 +11,7 @@ use crate::services::systray::SystemTrayService;
 use crate::services::pipewire::PipeWireService;
 use crate::services::capslock::CapsLockService;
 use crate::services::numlock::NumLockService;
+use crate::services::clipboard::ClipboardService;
 use crate::services::osd::OsdEventService;
 use gtk4::{prelude::*, Application};
 
@@ -87,6 +88,11 @@ fn main() {
         // S'abonner aux changements NumLock
         NumLockService::subscribe_numlock(move |enabled| {
             OsdEventService::send_event(crate::services::osd::OsdEvent::NumLock(enabled));
+        });
+
+        // S'abonner aux changements du clipboard
+        ClipboardService::subscribe_clipboard(move || {
+            OsdEventService::send_event(crate::services::osd::OsdEvent::Clipboard);
         });
     });
 

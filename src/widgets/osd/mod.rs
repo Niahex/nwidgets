@@ -82,6 +82,7 @@ pub fn create_osd_window(application: &gtk::Application) -> gtk::ApplicationWind
             OsdEvent::Microphone(muted) => create_mic_osd(muted),
             OsdEvent::CapsLock(enabled) => create_capslock_osd(enabled),
             OsdEvent::NumLock(enabled) => create_numlock_osd(enabled),
+            OsdEvent::Clipboard => create_clipboard_osd(),
             OsdEvent::DictationStarted => create_dictation_osd(true),
             OsdEvent::DictationStopped => create_dictation_osd(false),
         };
@@ -186,6 +187,20 @@ fn create_numlock_osd(enabled: bool) -> gtk::Widget {
 
     let text = if enabled { "NUM LOCK ON" } else { "NUM LOCK OFF" };
     let text_label = gtk::Label::new(Some(text));
+    text_label.add_css_class("osd-text");
+    container.append(&text_label);
+
+    container.upcast()
+}
+
+fn create_clipboard_osd() -> gtk::Widget {
+    let container = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+
+    let icon_label = gtk::Label::new(Some(icons::ICONS.clipboard));
+    icon_label.add_css_class("osd-icon");
+    container.append(&icon_label);
+
+    let text_label = gtk::Label::new(Some("Copy"));
     text_label.add_css_class("osd-text");
     container.append(&text_label);
 

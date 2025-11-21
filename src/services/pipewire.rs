@@ -103,7 +103,7 @@ impl PipeWireService {
             let _ = tx.send(last_state.clone());
 
             loop {
-                std::thread::sleep(std::time::Duration::from_millis(500));
+                std::thread::sleep(std::time::Duration::from_millis(100));
                 let new_state = Self::get_audio_state();
 
                 if new_state.volume != last_state.volume
