@@ -1,7 +1,8 @@
 use zbus::{Connection, proxy, interface, SignalContext, MessageHeader};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, mpsc};
+use glib::{MainContext, ControlFlow, Priority};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrayItem {
@@ -210,5 +211,55 @@ impl SystemTrayService {
 
     pub fn get_items(&self) -> Vec<TrayItem> {
         self.items.values().cloned().collect()
+    }
+
+    /// Abonne un callback aux changements du systray
+    /// Le callback sera appelé sur le thread principal GTK
+    pub fn subscribe_systray<F>(callback: F)
+    where
+        F: Fn(Vec<TrayItem>) + 'static,
+    {
+        let (tx, rx) = mpsc::channel();
+
+        // Thread qui monitore le systray
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                let mut service = SystemTrayService::new();
+
+                // Démarrer le monitoring et obtenir les items initiaux
+                match service.start_monitoring().await {
+                    Ok(items) => {
+                        let _ = tx.send(items);
+                    }
+                    Err(e) => {
+                        eprintln!("[SYSTRAY] Failed to start monitoring: {:?}", e);
+                        return;
+                    }
+                }
+
+                // Pour l'instant, on envoie les items une seule fois
+                // TODO: Implémenter un vrai monitoring continu qui écoute les signaux DBus
+                // pour détecter quand de nouveaux items s'enregistrent ou se désenregistrent
+            });
+        });
+
+        // Créer un channel GTK pour exécuter le callback sur le thread principal
+        let (tx_glib, rx_glib) = MainContext::channel(Priority::DEFAULT);
+
+        // Thread qui reçoit les mises à jour et les transfère au channel GTK
+        std::thread::spawn(move || {
+            while let Ok(items) = rx.recv() {
+                if tx_glib.send(items).is_err() {
+                    break;
+                }
+            }
+        });
+
+        // Attacher le callback au channel GTK
+        rx_glib.attach(None, move |items| {
+            callback(items);
+            ControlFlow::Continue
+        });
     }
 }

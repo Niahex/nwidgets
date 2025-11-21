@@ -182,6 +182,30 @@ impl Icons {
             _ => self.window,
         }
     }
+
+    pub fn get_for_tray_item(&self, title: &str, id: &str) -> &'static str {
+        // Chercher dans le titre ou l'id (en minuscules)
+        let search_str = format!("{} {}", title.to_lowercase(), id.to_lowercase());
+
+        match search_str.as_str() {
+            s if s.contains("steam") => self.steam,
+            s if s.contains("vesktop") || s.contains("discord") => self.vesktop,
+            s if s.contains("firefox") => self.firefox,
+            s if s.contains("vlc") => self.vlc,
+            s if s.contains("1password") || s.contains("keepass") || s.contains("bitwarden") => {
+                self.password
+            }
+            s if s.contains("obs") || s.contains("stream") => self.stream,
+            s if s.contains("bluetooth") => self.bluetooth_on,
+            s if s.contains("volume") || s.contains("sound") || s.contains("audio") => {
+                self.volume_high
+            }
+            s if s.contains("network") || s.contains("wifi") => self.wifi,
+            s if s.contains("battery") || s.contains("power") => self.battery_full,
+            s if s.contains("notification") => self.bell,
+            _ => self.systray,
+        }
+    }
 }
 
 impl Default for Icons {

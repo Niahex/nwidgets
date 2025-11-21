@@ -6,8 +6,12 @@ use modules::active_window::ActiveWindowModule;
 use modules::workspaces::WorkspacesModule;
 use modules::datetime::DateTimeModule;
 use modules::bluetooth::BluetoothModule;
+use modules::systray::SystrayModule;
+use modules::volume::VolumeModule;
+use modules::mic::MicModule;
+use modules::pomodoro::PomodoroModule;
 
-pub fn create_panel_window(application: &gtk::Application) -> (gtk::ApplicationWindow, ActiveWindowModule, WorkspacesModule, BluetoothModule) {
+pub fn create_panel_window(application: &gtk::Application) -> (gtk::ApplicationWindow, ActiveWindowModule, WorkspacesModule, BluetoothModule, SystrayModule, VolumeModule, MicModule, PomodoroModule) {
     let window = gtk::ApplicationWindow::builder()
         .application(application)
         .build();
@@ -42,8 +46,16 @@ pub fn create_panel_window(application: &gtk::Application) -> (gtk::ApplicationW
     spacer_right.set_hexpand(true);
     layout.append(&spacer_right);
 
-    // Section droite : Bluetooth, DateTime et autres modules
+    // Section droite : Systray, Pomodoro, Mic, Volume, Bluetooth, DateTime
     let right_section = gtk::Box::new(gtk::Orientation::Horizontal, 12); // gap-3
+    let systray_module = SystrayModule::new();
+    right_section.append(&systray_module.container);
+    let pomodoro_module = PomodoroModule::new();
+    right_section.append(&pomodoro_module.container);
+    let mic_module = MicModule::new();
+    right_section.append(&mic_module.container);
+    let volume_module = VolumeModule::new();
+    right_section.append(&volume_module.container);
     let bluetooth_module = BluetoothModule::new();
     right_section.append(&bluetooth_module.container);
     let datetime_module = DateTimeModule::new();
@@ -52,5 +64,5 @@ pub fn create_panel_window(application: &gtk::Application) -> (gtk::ApplicationW
 
     window.set_child(Some(&layout));
 
-    (window, active_window_module, workspaces_module, bluetooth_module)
+    (window, active_window_module, workspaces_module, bluetooth_module, systray_module, volume_module, mic_module, pomodoro_module)
 }
