@@ -1,5 +1,6 @@
 use zbus::{Connection, proxy};
 use std::sync::mpsc;
+use glib::{MainContext, ControlFlow, Priority};
 
 #[derive(Debug, Clone)]
 pub struct BluetoothState {
@@ -50,7 +51,51 @@ impl BluetoothService {
         Self
     }
 
-    /// Start monitoring Bluetooth state changes
+    /// Abonne un callback aux changements d'état Bluetooth
+    /// Le callback sera appelé sur le thread principal GTK
+    pub fn subscribe_bluetooth<F>(callback: F)
+    where
+        F: Fn(BluetoothState) + 'static,
+    {
+        let (tx, rx) = mpsc::channel();
+
+        // Thread qui monitore le bluetooth
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                loop {
+                    if let Ok(state) = Self::get_bluetooth_state().await {
+                        if tx.send(state).is_err() {
+                            break;
+                        }
+                    }
+
+                    // Poll every 5 seconds
+                    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                }
+            });
+        });
+
+        // Créer un channel GTK pour exécuter le callback sur le thread principal
+        let (tx_glib, rx_glib) = MainContext::channel(Priority::DEFAULT);
+
+        // Thread qui reçoit les mises à jour et les transfère au channel GTK
+        std::thread::spawn(move || {
+            while let Ok(state) = rx.recv() {
+                if tx_glib.send(state).is_err() {
+                    break;
+                }
+            }
+        });
+
+        // Attacher le callback au channel GTK
+        rx_glib.attach(None, move |state| {
+            callback(state);
+            ControlFlow::Continue
+        });
+    }
+
+    /// Start monitoring Bluetooth state changes (ancienne méthode conservée pour compatibilité)
     pub fn start_monitoring() -> mpsc::Receiver<BluetoothState> {
         let (tx, rx) = mpsc::channel();
 

@@ -1,8 +1,10 @@
 use std::process::Command;
 use std::os::unix::net::UnixStream;
 use std::io::{Read, Write, BufReader, BufRead};
-use std::sync::mpsc;
+use std::sync::{Arc, Mutex, mpsc};
 use serde::{Deserialize, Serialize};
+use glib::{MainContext, ControlFlow, Priority};
+use once_cell::sync::Lazy;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Workspace {
@@ -20,16 +22,35 @@ pub struct ActiveWindow {
     pub initial_title: String,
 }
 
-pub struct HyprlandService;
+// Types pour les callbacks
+type WorkspaceSender = mpsc::Sender<(Vec<Workspace>, i32)>;
+type ActiveWindowSender = mpsc::Sender<Option<ActiveWindow>>;
 
-impl HyprlandService {
-    pub fn new() -> Self {
-        Self
+/// Structure pour gérer le monitoring centralisé de Hyprland
+struct HyprlandMonitor {
+    workspace_subscribers: Arc<Mutex<Vec<WorkspaceSender>>>,
+    active_window_subscribers: Arc<Mutex<Vec<ActiveWindowSender>>>,
+    started: Arc<Mutex<bool>>,
+}
+
+impl HyprlandMonitor {
+    fn new() -> Self {
+        Self {
+            workspace_subscribers: Arc::new(Mutex::new(Vec::new())),
+            active_window_subscribers: Arc::new(Mutex::new(Vec::new())),
+            started: Arc::new(Mutex::new(false)),
+        }
     }
 
-    /// Start monitoring Hyprland events and send workspace + active window updates through the channel
-    pub fn start_monitoring() -> mpsc::Receiver<(Vec<Workspace>, i32, Option<ActiveWindow>)> {
-        let (tx, rx) = mpsc::channel();
+    fn ensure_started(&self) {
+        let mut started = self.started.lock().unwrap();
+        if *started {
+            return;
+        }
+        *started = true;
+
+        let workspace_subscribers = Arc::clone(&self.workspace_subscribers);
+        let active_window_subscribers = Arc::clone(&self.active_window_subscribers);
 
         std::thread::spawn(move || {
             if let Ok(hypr_sig) = std::env::var("HYPRLAND_INSTANCE_SIGNATURE") {
@@ -38,28 +59,132 @@ impl HyprlandService {
                 if let Ok(stream) = UnixStream::connect(&socket_path) {
                     let reader = BufReader::new(stream);
 
+                    // Envoyer l'état initial
+                    Self::broadcast_updates(&workspace_subscribers, &active_window_subscribers);
+
                     for line in reader.lines() {
                         if let Ok(line) = line {
-                            // Monitor workspace changes
+                            // Monitor workspace et active window changes
                             if line.starts_with("workspace>>") ||
                                line.starts_with("createworkspace>>") ||
                                line.starts_with("destroyworkspace>>") ||
                                line.starts_with("activewindow>>") ||
                                line.starts_with("closewindow>>") ||
                                line.starts_with("openwindow>>") {
-                                let (workspaces, active_workspace) = Self::get_hyprland_data();
-                                let active_window = Self::get_active_window();
-                                if tx.send((workspaces, active_workspace, active_window)).is_err() {
-                                    break;
-                                }
+                                Self::broadcast_updates(&workspace_subscribers, &active_window_subscribers);
                             }
                         }
                     }
                 }
             }
         });
+    }
 
-        rx
+    fn broadcast_updates(
+        workspace_subscribers: &Arc<Mutex<Vec<WorkspaceSender>>>,
+        active_window_subscribers: &Arc<Mutex<Vec<ActiveWindowSender>>>,
+    ) {
+        let (workspaces, active_workspace) = HyprlandService::get_hyprland_data();
+        let active_window = HyprlandService::get_active_window();
+
+        // Broadcast aux workspace subscribers
+        if let Ok(mut subs) = workspace_subscribers.lock() {
+            subs.retain(|tx| tx.send((workspaces.clone(), active_workspace)).is_ok());
+        }
+
+        // Broadcast aux active window subscribers
+        if let Ok(mut subs) = active_window_subscribers.lock() {
+            subs.retain(|tx| tx.send(active_window.clone()).is_ok());
+        }
+    }
+
+    fn add_workspace_subscriber(&self, tx: WorkspaceSender) {
+        if let Ok(mut subs) = self.workspace_subscribers.lock() {
+            subs.push(tx);
+        }
+    }
+
+    fn add_active_window_subscriber(&self, tx: ActiveWindowSender) {
+        if let Ok(mut subs) = self.active_window_subscribers.lock() {
+            subs.push(tx);
+        }
+    }
+}
+
+/// Instance statique globale du moniteur
+static MONITOR: Lazy<HyprlandMonitor> = Lazy::new(|| HyprlandMonitor::new());
+
+pub struct HyprlandService;
+
+impl HyprlandService {
+    pub fn new() -> Self {
+        Self
+    }
+
+    /// Abonne un callback aux changements de workspace
+    /// Le callback sera appelé sur le thread principal GTK
+    pub fn subscribe_workspace<F>(callback: F)
+    where
+        F: Fn(Vec<Workspace>, i32) + 'static,
+    {
+        let (tx, rx) = mpsc::channel();
+
+        // Ajouter le sender à la liste des subscribers
+        MONITOR.add_workspace_subscriber(tx);
+
+        // Créer un channel GTK pour exécuter le callback sur le thread principal
+        let (tx_glib, rx_glib) = MainContext::channel(Priority::DEFAULT);
+
+        // Thread qui reçoit les mises à jour et les transfère au channel GTK
+        std::thread::spawn(move || {
+            while let Ok((workspaces, active_workspace)) = rx.recv() {
+                if tx_glib.send((workspaces, active_workspace)).is_err() {
+                    break;
+                }
+            }
+        });
+
+        // Attacher le callback au channel GTK
+        rx_glib.attach(None, move |(workspaces, active_workspace)| {
+            callback(workspaces, active_workspace);
+            ControlFlow::Continue
+        });
+
+        // Démarrer le monitoring si ce n'est pas déjà fait
+        MONITOR.ensure_started();
+    }
+
+    /// Abonne un callback aux changements de la fenêtre active
+    /// Le callback sera appelé sur le thread principal GTK
+    pub fn subscribe_active_window<F>(callback: F)
+    where
+        F: Fn(Option<ActiveWindow>) + 'static,
+    {
+        let (tx, rx) = mpsc::channel();
+
+        // Ajouter le sender à la liste des subscribers
+        MONITOR.add_active_window_subscriber(tx);
+
+        // Créer un channel GTK pour exécuter le callback sur le thread principal
+        let (tx_glib, rx_glib) = MainContext::channel(Priority::DEFAULT);
+
+        // Thread qui reçoit les mises à jour et les transfère au channel GTK
+        std::thread::spawn(move || {
+            while let Ok(active_window) = rx.recv() {
+                if tx_glib.send(active_window).is_err() {
+                    break;
+                }
+            }
+        });
+
+        // Attacher le callback au channel GTK
+        rx_glib.attach(None, move |active_window| {
+            callback(active_window);
+            ControlFlow::Continue
+        });
+
+        // Démarrer le monitoring si ce n'est pas déjà fait
+        MONITOR.ensure_started();
     }
 
     pub fn get_socket_path() -> Option<String> {
@@ -113,4 +238,5 @@ impl HyprlandService {
 
         (workspaces, active_workspace)
     }
+
 }

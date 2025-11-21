@@ -1,27 +1,25 @@
-pub mod ai_providers;
 pub mod bluetooth;
-pub mod capslock;
-pub mod hotkey;
+// pub mod capslock;
 pub mod hyprland;
-pub mod notifications;
-pub mod numlock;
-pub mod osd_events;
-pub mod pipewire;
-pub mod pomodoro;
-pub mod speech;
-pub mod systray;
-pub mod transcription_events;
+// pub mod notifications;
+// pub mod numlock;
+// pub mod osd;
+// pub mod pipewire;
+// pub mod pomodoro;
+// pub mod speech;
+// pub mod systray;
+// pub mod transcription;
 
-pub use ai_providers::{AiConfig, AiProvider, AiService, ApiKeyManager, Message};
 pub use bluetooth::{BluetoothService, BluetoothState};
-pub use capslock::CapsLockService;
-pub use hotkey::ToggleDictation;
+// pub use capslock::CapsLockService;
 pub use hyprland::HyprlandService;
-pub use notifications::{Notification, NotificationService, NotificationManager};
-pub use numlock::NumLockService;
-pub use osd_events::{OsdEvent, OsdEventService, receive_osd_events};
-pub use pipewire::PipeWireService;
-pub use pomodoro::{PomodoroService, PomodoroState};
-pub use speech::SpeechRecognitionService;
-pub use systray::{SystemTrayService, TrayItem};
-pub use transcription_events::{TranscriptionEvent, TranscriptionEventService, receive_transcription_events};
+// pub use notifications::{Notification, NotificationManager, NotificationService};
+// pub use numlock::NumLockService;
+// pub use osd::{receive_osd_events, OsdEvent, OsdEventService};
+// pub use pipewire::PipeWireService;
+// pub use pomodoro::{PomodoroService, PomodoroState};
+// pub use speech::SpeechRecognitionService;
+// pub use systray::{SystemTrayService, TrayItem};
+// pub use transcription::{
+//     receive_transcription_events, TranscriptionEvent, TranscriptionEventService,
+// };

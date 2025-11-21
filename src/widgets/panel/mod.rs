@@ -1,8 +1,13 @@
 use gtk4 as gtk;
 use gtk::prelude::*;
 use gtk4_layer_shell::{Edge, Layer, LayerShell};
+pub mod modules; // Changed from `mod modules;` to `pub mod modules;`
+use modules::active_window::ActiveWindowModule;
+use modules::workspaces::WorkspacesModule;
+use modules::datetime::DateTimeModule;
+use modules::bluetooth::BluetoothModule;
 
-pub fn create_panel_window(application: &gtk::Application) -> gtk::ApplicationWindow {
+pub fn create_panel_window(application: &gtk::Application) -> (gtk::ApplicationWindow, ActiveWindowModule, WorkspacesModule, BluetoothModule) {
     let window = gtk::ApplicationWindow::builder()
         .application(application)
         .build();
@@ -17,11 +22,35 @@ pub fn create_panel_window(application: &gtk::Application) -> gtk::ApplicationWi
 
     let layout = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     layout.set_height_request(45);
-    
-    let label = gtk::Label::new(Some("Hello from the panel!"));
-    layout.append(&label);
+    layout.set_hexpand(true);
+
+    // Section gauche : Active Window
+    let active_window_module = ActiveWindowModule::new();
+    layout.append(&active_window_module.container);
+
+    // Spacer pour centrer les workspaces
+    let spacer_left = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    spacer_left.set_hexpand(true);
+    layout.append(&spacer_left);
+
+    // Section centrale : Workspaces
+    let workspaces_module = WorkspacesModule::new();
+    layout.append(&workspaces_module.container);
+
+    // Spacer pour pousser les autres modules à droite
+    let spacer_right = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    spacer_right.set_hexpand(true);
+    layout.append(&spacer_right);
+
+    // Section droite : Bluetooth, DateTime et autres modules
+    let right_section = gtk::Box::new(gtk::Orientation::Horizontal, 12); // gap-3
+    let bluetooth_module = BluetoothModule::new();
+    right_section.append(&bluetooth_module.container);
+    let datetime_module = DateTimeModule::new();
+    right_section.append(&datetime_module.container);
+    layout.append(&right_section);
 
     window.set_child(Some(&layout));
 
-    window
+    (window, active_window_module, workspaces_module, bluetooth_module)
 }
