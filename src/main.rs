@@ -7,6 +7,7 @@ use crate::widgets::panel::create_panel_window;
 use crate::widgets::osd::create_osd_window;
 use crate::widgets::notifications::create_notifications_window;
 use crate::widgets::tasker::create_tasker_window;
+use crate::widgets::power_menu::create_power_menu_window;
 use crate::services::hyprland::HyprlandService;
 use crate::services::bluetooth::BluetoothService;
 use crate::services::systray::SystemTrayService;
@@ -15,7 +16,7 @@ use crate::services::capslock::CapsLockService;
 use crate::services::numlock::NumLockService;
 use crate::services::clipboard::ClipboardService;
 use crate::services::osd::OsdEventService;
-use gtk4::{prelude::*, Application};
+use gtk4::{self as gtk, prelude::*, Application};
 
 const APP_ID: &str = "com.nwidgets";
 
@@ -26,10 +27,37 @@ fn main() {
     // Connect to "activate" signal of `app`
     app.connect_activate(|app| {
         // Créer la fenêtre de chat (cachée par défaut, toggle avec l'action "toggle-chat")
-        let _chat_window = create_chat_window(app);
+        // Retourne aussi les contrôles pour le pin
+        let (chat_window, chat_pin_controller) = create_chat_window(app);
 
         // Créer la fenêtre de tasker (cachée par défaut, toggle avec l'action "toggle-tasker")
-        let _tasker_window = create_tasker_window(app);
+        // Retourne aussi les contrôles pour le pin
+        let (tasker_window, tasker_pin_controller) = create_tasker_window(app);
+
+        // Créer le power menu (caché par défaut, toggle avec l'action "toggle-power-menu")
+        let _power_menu_window = create_power_menu_window(app);
+
+        // Action pour pin la fenêtre actuellement focus
+        let pin_action = gtk::gio::SimpleAction::new("pin-focused-window", None);
+        let chat_window_clone = chat_window.clone();
+        let tasker_window_clone = tasker_window.clone();
+        let chat_pin_clone = chat_pin_controller.clone();
+        let tasker_pin_clone = tasker_pin_controller.clone();
+
+        pin_action.connect_activate(move |_, _| {
+            // Vérifier quelle fenêtre est visible et focus
+            if chat_window_clone.is_visible() && chat_window_clone.is_active() {
+                println!("[PIN] Chat window is focused, toggling pin");
+                chat_pin_clone.toggle();
+            } else if tasker_window_clone.is_visible() && tasker_window_clone.is_active() {
+                println!("[PIN] Tasker window is focused, toggling pin");
+                tasker_pin_clone.toggle();
+            } else {
+                println!("[PIN] No pinnable window is focused");
+            }
+        });
+
+        app.add_action(&pin_action);
 
         let (panel_window, active_window_module, workspaces_module, bluetooth_module, systray_module, volume_module, mic_module, _pomodoro_module) = create_panel_window(app);
         panel_window.present();

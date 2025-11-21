@@ -9,6 +9,7 @@ use webkit6::{
     CookiePersistentStorage, HardwareAccelerationPolicy, Settings, UserMediaPermissionRequest,
     WebContext, WebView,
 };
+use crate::services::PinController;
 
 const SITES: &[(&str, &str)] = &[
     ("Gemini", "https://gemini.google.com/"),
@@ -23,7 +24,7 @@ const SITES: &[(&str, &str)] = &[
 const ICON_RESERVE_SPACE: &str = "󰐃"; // Icon for reserving space
 const ICON_RELEASE_SPACE: &str = "󰐄"; // Icon for releasing space
 
-pub fn create_chat_window(application: &gtk::Application) -> gtk::ApplicationWindow {
+pub fn create_chat_window(application: &gtk::Application) -> (gtk::ApplicationWindow, PinController) {
     // --- WebView Settings ---
     let settings = Settings::new();
     settings.set_javascript_can_access_clipboard(true);
@@ -114,16 +115,17 @@ pub fn create_chat_window(application: &gtk::Application) -> gtk::ApplicationWin
     // --- Toggle Button ---
     let toggle_button = gtk::Button::with_label(ICON_RESERVE_SPACE);
     let is_exclusive = Rc::new(Cell::new(false));
+    let is_exclusive_for_button = Rc::clone(&is_exclusive);
     let window_clone = window.clone();
     let toggle_button_clone = toggle_button.clone();
     toggle_button.connect_clicked(move |_| {
-        if is_exclusive.get() {
+        if is_exclusive_for_button.get() {
             window_clone.set_exclusive_zone(0);
-            is_exclusive.set(false);
+            is_exclusive_for_button.set(false);
             toggle_button_clone.set_label(ICON_RESERVE_SPACE);
         } else {
             window_clone.auto_exclusive_zone_enable();
-            is_exclusive.set(true);
+            is_exclusive_for_button.set(true);
             toggle_button_clone.set_label(ICON_RELEASE_SPACE);
         }
     });
@@ -161,5 +163,41 @@ pub fn create_chat_window(application: &gtk::Application) -> gtk::ApplicationWin
 
     application.add_action(&toggle_action);
 
-    window
+    // Gestionnaire de raccourci clavier Meta+P pour pin/unpin
+    let key_controller = gtk::EventControllerKey::new();
+    let window_clone = window.clone();
+    let is_exclusive_clone = Rc::clone(&is_exclusive);
+    let toggle_button_clone2 = toggle_button.clone();
+
+    key_controller.connect_key_pressed(move |_, keyval, _, modifiers| {
+        // Meta+P (Super+P)
+        if keyval == gtk::gdk::Key::p && modifiers.contains(gtk::gdk::ModifierType::SUPER_MASK) {
+            if is_exclusive_clone.get() {
+                window_clone.set_exclusive_zone(0);
+                is_exclusive_clone.set(false);
+                toggle_button_clone2.set_label(ICON_RESERVE_SPACE);
+                println!("[CHAT] Released exclusive space (Meta+P)");
+            } else {
+                window_clone.auto_exclusive_zone_enable();
+                is_exclusive_clone.set(true);
+                toggle_button_clone2.set_label(ICON_RELEASE_SPACE);
+                println!("[CHAT] Reserved exclusive space (Meta+P)");
+            }
+            return gtk::glib::Propagation::Stop;
+        }
+        gtk::glib::Propagation::Proceed
+    });
+
+    window.add_controller(key_controller);
+
+    // Créer le PinController pour permettre le contrôle externe
+    let pin_controller = PinController::new(
+        window.clone(),
+        Rc::clone(&is_exclusive),
+        toggle_button.clone(),
+        ICON_RESERVE_SPACE,
+        ICON_RELEASE_SPACE,
+    );
+
+    (window, pin_controller)
 }

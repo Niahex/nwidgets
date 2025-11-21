@@ -7,6 +7,7 @@ pub mod numlock;
 pub mod osd;
 pub mod pipewire;
 pub mod pomodoro;
+pub mod pin_controller;
 // pub mod speech;
 pub mod systray;
 // pub mod transcription;
@@ -21,6 +22,7 @@ pub use pomodoro::{PomodoroService, PomodoroState};
 pub use numlock::NumLockService;
 pub use osd::{receive_osd_events, OsdEvent, OsdEventService};
 pub use notifications::{Notification, NotificationService};
+pub use pin_controller::PinController;
 // pub use speech::SpeechRecognitionService;
 // pub use transcription::{
 //     receive_transcription_events, TranscriptionEvent, TranscriptionEventService,

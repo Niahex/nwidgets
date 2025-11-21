@@ -2,10 +2,14 @@ use gtk4 as gtk;
 use gtk::prelude::*;
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use crate::theme::colors::COLORS;
+use crate::services::PinController;
 use std::cell::Cell;
 use std::rc::Rc;
 
-pub fn create_tasker_window(application: &gtk::Application) -> gtk::ApplicationWindow {
+const ICON_RESERVE_SPACE: &str = "󰐃"; // Icon for reserving space
+const ICON_RELEASE_SPACE: &str = "󰐄"; // Icon for releasing space
+
+pub fn create_tasker_window(application: &gtk::Application) -> (gtk::ApplicationWindow, PinController) {
     // Créer la fenêtre
     let window = gtk::ApplicationWindow::builder()
         .application(application)
@@ -28,8 +32,8 @@ pub fn create_tasker_window(application: &gtk::Application) -> gtk::ApplicationW
     // Container principal
     let main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
 
-    // Header avec titre et bouton pin/unpin
-    let header = create_header(&window);
+    // Header avec titre et bouton pin/unpin (retourne aussi is_exclusive et toggle_button)
+    let (header, is_exclusive, toggle_button) = create_header(&window);
     main_box.append(&header);
 
     // Zone de contenu pour les tâches
@@ -53,10 +57,46 @@ pub fn create_tasker_window(application: &gtk::Application) -> gtk::ApplicationW
 
     application.add_action(&toggle_action);
 
-    window
+    // Gestionnaire de raccourci clavier Meta+P pour pin/unpin
+    let key_controller = gtk::EventControllerKey::new();
+    let window_clone2 = window.clone();
+    let is_exclusive_clone = Rc::clone(&is_exclusive);
+    let toggle_button_clone2 = toggle_button.clone();
+
+    key_controller.connect_key_pressed(move |_, keyval, _, modifiers| {
+        // Meta+P (Super+P)
+        if keyval == gtk::gdk::Key::p && modifiers.contains(gtk::gdk::ModifierType::SUPER_MASK) {
+            if is_exclusive_clone.get() {
+                window_clone2.set_exclusive_zone(0);
+                is_exclusive_clone.set(false);
+                toggle_button_clone2.set_label("󰐃");  // ICON_RESERVE_SPACE
+                println!("[TASKER] Released exclusive space (Meta+P)");
+            } else {
+                window_clone2.auto_exclusive_zone_enable();
+                is_exclusive_clone.set(true);
+                toggle_button_clone2.set_label("󰐄");  // ICON_RELEASE_SPACE
+                println!("[TASKER] Reserved exclusive space (Meta+P)");
+            }
+            return gtk::glib::Propagation::Stop;
+        }
+        gtk::glib::Propagation::Proceed
+    });
+
+    window.add_controller(key_controller);
+
+    // Créer le PinController pour permettre le contrôle externe
+    let pin_controller = PinController::new(
+        window.clone(),
+        Rc::clone(&is_exclusive),
+        toggle_button.clone(),
+        ICON_RESERVE_SPACE,
+        ICON_RELEASE_SPACE,
+    );
+
+    (window, pin_controller)
 }
 
-fn create_header(window: &gtk::ApplicationWindow) -> gtk::Box {
+fn create_header(window: &gtk::ApplicationWindow) -> (gtk::Box, Rc<Cell<bool>>, gtk::Button) {
     let header = gtk::Box::new(gtk::Orientation::Horizontal, 10);
     header.set_margin_start(16);
     header.set_margin_end(16);
@@ -122,9 +162,6 @@ fn create_header(window: &gtk::ApplicationWindow) -> gtk::Box {
     header.append(&count_label);
 
     // Bouton toggle pin/unpin (réserver/libérer l'espace)
-    const ICON_RESERVE_SPACE: &str = "󰐃"; // Icon for reserving space
-    const ICON_RELEASE_SPACE: &str = "󰐄"; // Icon for releasing space
-
     let toggle_button = gtk::Button::with_label(ICON_RESERVE_SPACE);
     let toggle_css = gtk::CssProvider::new();
     toggle_css.load_from_data(&format!(
@@ -145,17 +182,18 @@ fn create_header(window: &gtk::ApplicationWindow) -> gtk::Box {
     );
 
     let is_exclusive = Rc::new(Cell::new(false));
+    let is_exclusive_for_button = Rc::clone(&is_exclusive);
     let window_clone = window.clone();
     let toggle_button_clone = toggle_button.clone();
     toggle_button.connect_clicked(move |_| {
-        if is_exclusive.get() {
+        if is_exclusive_for_button.get() {
             window_clone.set_exclusive_zone(0);
-            is_exclusive.set(false);
+            is_exclusive_for_button.set(false);
             toggle_button_clone.set_label(ICON_RESERVE_SPACE);
             println!("[TASKER] Released exclusive space");
         } else {
             window_clone.auto_exclusive_zone_enable();
-            is_exclusive.set(true);
+            is_exclusive_for_button.set(true);
             toggle_button_clone.set_label(ICON_RELEASE_SPACE);
             println!("[TASKER] Reserved exclusive space");
         }
@@ -163,7 +201,7 @@ fn create_header(window: &gtk::ApplicationWindow) -> gtk::Box {
 
     header.append(&toggle_button);
 
-    header
+    (header, is_exclusive, toggle_button)
 }
 
 fn create_tasks_container() -> gtk::ScrolledWindow {
