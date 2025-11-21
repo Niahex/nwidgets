@@ -1,7 +1,7 @@
-use gpui::*;
-use gpui::prelude::*;
-use crate::theme::*;
 use crate::components::WebView;
+use crate::theme::*;
+use gpui::prelude::*;
+use gpui::*;
 
 pub struct GeminiChat {
     pub focus_handle: FocusHandle,
@@ -43,13 +43,23 @@ impl GeminiChat {
         }
     }
 
-    pub fn reload(&mut self, _event: &MouseDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
+    pub fn reload(
+        &mut self,
+        _event: &MouseDownEvent,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         self.webview.update(cx, |view, _| {
             let _ = view.inner().evaluate_script("location.reload();");
         });
     }
 
-    pub fn on_close(&mut self, _event: &MouseDownEvent, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn on_close(
+        &mut self,
+        _event: &MouseDownEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         self.webview.update(cx, |view, _| {
             view.hide();
         });
@@ -83,17 +93,13 @@ impl Render for GeminiChat {
                     .justify_between()
                     .px_4()
                     .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap_3()
-                            .child(
-                                div()
-                                    .text_base()
-                                    .font_weight(FontWeight::SEMIBOLD)
-                                    .text_color(rgb(SNOW0))
-                                    .child("Gemini Chat"),
-                            ),
+                        div().flex().items_center().gap_3().child(
+                            div()
+                                .text_base()
+                                .font_weight(FontWeight::SEMIBOLD)
+                                .text_color(rgb(SNOW0))
+                                .child("Gemini Chat"),
+                        ),
                     )
                     .child(
                         div()
@@ -138,11 +144,6 @@ impl Render for GeminiChat {
                             ),
                     ),
             )
-            .child(
-                div()
-                    .flex_1()
-                    .w_full()
-                    .child(self.webview.clone()),
-            )
+            .child(div().flex_1().w_full().child(self.webview.clone()))
     }
 }
