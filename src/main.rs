@@ -13,7 +13,7 @@ mod theme;
 mod widgets;
 
 use widgets::osd;
-use widgets::{AiChat, Panel, TranscriptionViewer};
+use widgets::{GeminiChat, Panel, TranscriptionViewer};
 
 fn main() {
     // Check if this is a CLI command
@@ -172,14 +172,14 @@ fn main() {
             eprintln!("[IPC] Failed to start IPC server: {}", e);
         }
 
-        // AI Chat window management
-        let ai_chat_window: std::sync::Arc<std::sync::Mutex<Option<gpui::WindowHandle<AiChat>>>> =
+        // Gemini Chat window management
+        let gemini_chat_window: std::sync::Arc<std::sync::Mutex<Option<gpui::WindowHandle<GeminiChat>>>> =
             std::sync::Arc::new(std::sync::Mutex::new(None));
 
         // Poll for IPC commands
         let panel_for_ipc = panel_entity.clone();
         let transcription_window_for_ipc = transcription_window.clone();
-        let ai_chat_window_for_ipc = ai_chat_window.clone();
+        let gemini_chat_window_for_ipc = gemini_chat_window.clone();
         cx.spawn(async move |cx| {
             loop {
                 gpui::Timer::after(std::time::Duration::from_millis(100)).await;
@@ -254,48 +254,44 @@ fn main() {
                             });
                         }
                         ipc::IpcCommand::ToggleAiChat => {
-                            println!("[IPC] Toggle AI chat command received");
+                            println!("[IPC] Toggle Gemini chat command received");
 
-                            // Check if chat window already exists
-                            let mut window_lock = ai_chat_window_for_ipc.lock().unwrap();
+                            let mut window_lock = gemini_chat_window_for_ipc.lock().unwrap();
                             if window_lock.is_some() {
-                                // Close existing window
                                 if let Some(window) = window_lock.take() {
-                                    println!("[IPC] Closing AI chat window");
+                                    println!("[IPC] Closing Gemini chat window");
                                     let _ = window.update(cx, |_, window, _| {
                                         window.remove_window();
                                     });
                                 }
                             } else {
-                                // Create new chat window
-                                println!("[IPC] Creating AI chat window");
+                                println!("[IPC] Creating Gemini chat window");
                                 match cx.open_window(
                                     WindowOptions {
                                         titlebar: None,
                                         window_bounds: Some(WindowBounds::Windowed(Bounds {
                                             origin: point(px(0.), px(0.)),
-                                            size: Size::new(px(500.), px(0.)), // Height ignored with TOP|BOTTOM anchor
+                                            size: Size::new(px(500.), px(0.)),
                                         })),
-                                        app_id: Some("nwidgets-ai-chat".to_string()),
+                                        app_id: Some("nwidgets-gemini-chat".to_string()),
                                         window_background: WindowBackgroundAppearance::Transparent,
                                         kind: WindowKind::LayerShell(LayerShellOptions {
-                                            namespace: "nwidgets-ai-chat".to_string(),
+                                            namespace: "nwidgets-gemini-chat".to_string(),
                                             layer: Layer::Overlay,
                                             anchor: Anchor::LEFT | Anchor::TOP | Anchor::BOTTOM,
-                                            keyboard_interactivity:
-                                                KeyboardInteractivity::OnDemand,
+                                            keyboard_interactivity: KeyboardInteractivity::OnDemand,
                                             ..Default::default()
                                         }),
                                         ..Default::default()
                                     },
-                                    |_, cx| cx.new(AiChat::new),
+                                    |window, cx| cx.new(|cx| GeminiChat::new(window, cx)),
                                 ) {
                                     Ok(window) => {
                                         *window_lock = Some(window);
-                                        println!("[IPC] AI chat window created");
+                                        println!("[IPC] Gemini chat window created");
                                     }
                                     Err(e) => {
-                                        eprintln!("[IPC] Failed to create AI chat window: {:?}", e);
+                                        eprintln!("[IPC] Failed to create Gemini chat window: {:?}", e);
                                     }
                                 }
                             }

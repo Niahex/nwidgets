@@ -47,6 +47,18 @@
           libnotify
           alsa-lib # For audio capture (cpal/vosk)
           udev # For libinput (hotkey detection)
+          gtk4 # For GTK4 webview
+          webkitgtk_6_0 # For webkit6 - GTK4 version
+          libsoup_3 # For webkit6 networking
+          gdk-pixbuf # Required by GTK
+          glib-networking # For TLS support
+          gsettings-desktop-schemas # For WebKit settings
+          cacert # SSL certificates
+          gnutls # TLS library
+          atk # Accessibility toolkit
+          at-spi2-atk # AT-SPI bridge
+          gtk3 # For wry GTK3 support
+          webkitgtk_4_1 # For wry webkit2gtk
         ];
 
         # Dependencies needed only at runtime
@@ -64,6 +76,10 @@
 
         envVars = {
           RUST_BACKTRACE = "full";
+          GIO_USE_TLS = "gnutls";
+          SSL_CERT_FILE = "/nix/var/nix/profiles/system/etc/ssl/certs/ca-bundle.crt";
+          NIX_SSL_CERT_FILE = "/nix/var/nix/profiles/system/etc/ssl/certs/ca-bundle.crt";
+          GIO_MODULE_DIR = "/run/current-system/sw/lib/gio/modules";
         };
 
         # Build artifacts

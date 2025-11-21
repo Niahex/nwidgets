@@ -6,6 +6,7 @@ include = ["data/**/*", "src/**/*", "Cargo.toml", "assets/**/*"]
 
 [dependencies]
 gpui = { git = "https://github.com/zed-industries/zed", tag = "v0.212.6", features = ["wayland"] }
+wry = { version = "0.53.3", package = "lb-wry" }
 freedesktop-desktop-entry = "0.5.0"
 freedesktop-icons = "0.4.0"
 walkdir = "2.5.0"
@@ -29,5 +30,6 @@ reqwest = { version = "0.12", features = ["json"] }
 parking_lot = "0.12"
 ureq = "3.1.4"
 pulldown-cmark = "0.12"
+# wry and gtk are now provided by gpui-component
 
 [workspace]
