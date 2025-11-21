@@ -9,6 +9,8 @@ use crate::services::hyprland::HyprlandService;
 use crate::services::bluetooth::BluetoothService;
 use crate::services::systray::SystemTrayService;
 use crate::services::pipewire::PipeWireService;
+use crate::services::capslock::CapsLockService;
+use crate::services::numlock::NumLockService;
 use crate::services::osd::OsdEventService;
 use gtk4::{prelude::*, Application};
 
@@ -75,6 +77,16 @@ fn main() {
                 OsdEventService::send_event(crate::services::osd::OsdEvent::Microphone(state.mic_muted));
                 last_mic_muted.set(state.mic_muted);
             }
+        });
+
+        // S'abonner aux changements CapsLock
+        CapsLockService::subscribe_capslock(move |enabled| {
+            OsdEventService::send_event(crate::services::osd::OsdEvent::CapsLock(enabled));
+        });
+
+        // S'abonner aux changements NumLock
+        NumLockService::subscribe_numlock(move |enabled| {
+            OsdEventService::send_event(crate::services::osd::OsdEvent::NumLock(enabled));
         });
     });
 

@@ -1,4 +1,15 @@
 use std::fs;
+use std::sync::mpsc::{self, Sender};
+use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::Duration;
+use glib::{MainContext, ControlFlow, Priority};
+use once_cell::sync::Lazy;
+
+static SUBSCRIBERS: Lazy<Arc<Mutex<Vec<Sender<bool>>>>> =
+    Lazy::new(|| Arc::new(Mutex::new(Vec::new())));
+
+static MONITOR_STARTED: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
 
 pub struct CapsLockService;
 
@@ -18,5 +29,55 @@ impl CapsLockService {
 
     pub fn is_enabled(&self) -> bool {
         Self::get_caps_lock_state()
+    }
+
+    pub fn subscribe_capslock<F>(callback: F)
+    where
+        F: Fn(bool) + 'static,
+    {
+        let mut started = MONITOR_STARTED.lock().unwrap();
+        if !*started {
+            *started = true;
+            drop(started);
+            Self::start_monitoring();
+        }
+
+        let (tx_glib, rx_glib) = MainContext::channel(Priority::DEFAULT);
+        let (tx, rx) = mpsc::channel();
+
+        SUBSCRIBERS.lock().unwrap().push(tx);
+
+        thread::spawn(move || {
+            while let Ok(state) = rx.recv() {
+                if tx_glib.send(state).is_err() {
+                    break;
+                }
+            }
+        });
+
+        rx_glib.attach(None, move |state| {
+            callback(state);
+            ControlFlow::Continue
+        });
+    }
+
+    fn start_monitoring() {
+        let subscribers = Arc::clone(&SUBSCRIBERS);
+
+        thread::spawn(move || {
+            let mut last_state = Self::get_caps_lock_state();
+
+            loop {
+                thread::sleep(Duration::from_millis(100));
+                let current_state = Self::get_caps_lock_state();
+
+                if current_state != last_state {
+                    last_state = current_state;
+
+                    let mut subs = subscribers.lock().unwrap();
+                    subs.retain(|tx| tx.send(current_state).is_ok());
+                }
+            }
+        });
     }
 }
