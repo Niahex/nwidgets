@@ -5,31 +5,36 @@ edition = "2021"
 include = ["data/**/*", "src/**/*", "Cargo.toml", "assets/**/*"]
 
 [dependencies]
-gpui = { git = "https://github.com/zed-industries/zed", tag = "v0.212.6", features = ["wayland"] }
-wry = { version = "0.53.3", package = "lb-wry" }
+gtk4 = "0.10.0"
+webkit6 = "0.5.0"
+webkit6-sys = "0.5.0"
+gtk4-layer-shell = "0.6.3"
+glib = "0.18.0"
+gdk4 = "0.10.0"
 freedesktop-desktop-entry = "0.5.0"
 freedesktop-icons = "0.4.0"
 walkdir = "2.5.0"
 log = "0.4.22"
 env_logger = "0.11.5"
 dirs = "6.0.0"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde = { version = "1.0.203", features = ["derive"] }
+serde_json = "1.0.120"
 image = "0.25.1"
-tokio = { version = "1", features = ["full"] }
-anyhow = "1.0.100"
-zbus = "4.0"
-futures = "0.3"
-raw-window-handle = "0.6.2"
-libc = "0.2"
-chrono = "0.4"
-cpal = "0.15"
-hound = "3.5"
-base64 = "0.22"
-reqwest = { version = "0.12", features = ["json"] }
-parking_lot = "0.12"
-ureq = "3.1.4"
-pulldown-cmark = "0.12"
-# wry and gtk are now provided by gpui-component
+tokio = { version = "1", features = ["full", "macros", "rt-multi-thread"] }
+anyhow = "1.0.86"
+zbus = "4.1.1"
+futures = "0.3.30"
+libc = "0.2.153"
+chrono = "0.4.38"
+cpal = "0.15.3"
+hound = "3.5.1"
+base64 = "0.22.1"
+reqwest = { version = "0.12.5", features = ["json"] }
+parking_lot = "0.12.2"
+ureq = "2.9.1"
+pulldown-cmark = "0.12.0"
+once_cell = "1.19.0"
+url = "2.5.2"
+mime_guess = "2.0.5"
 
 [workspace]

@@ -1,5 +1,5 @@
 {
-  description = "nwidgets - A GPUI-based application launcher";
+  description = "nwidgets - A GTK4-based application launcher";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
@@ -32,9 +32,6 @@
 
         # Dependencies for building the application
         buildInputs = with pkgs; [
-          xorg.libxcb
-          xorg.libX11
-          libxkbcommon
           fontconfig
           dbus
           openssl
@@ -50,15 +47,13 @@
           gtk4 # For GTK4 webview
           webkitgtk_6_0 # For webkit6 - GTK4 version
           libsoup_3 # For webkit6 networking
-          gdk-pixbuf # Required by GTK
           glib-networking # For TLS support
           gsettings-desktop-schemas # For WebKit settings
           cacert # SSL certificates
           gnutls # TLS library
           atk # Accessibility toolkit
           at-spi2-atk # AT-SPI bridge
-          gtk3 # For wry GTK3 support
-          webkitgtk_4_1 # For wry webkit2gtk
+          gtk4-layer-shell # For GTK4 layer shell
         ];
 
         # Dependencies needed only at runtime
@@ -79,7 +74,6 @@
           GIO_USE_TLS = "gnutls";
           SSL_CERT_FILE = "/nix/var/nix/profiles/system/etc/ssl/certs/ca-bundle.crt";
           NIX_SSL_CERT_FILE = "/nix/var/nix/profiles/system/etc/ssl/certs/ca-bundle.crt";
-          GIO_MODULE_DIR = "/run/current-system/sw/lib/gio/modules";
         };
 
         # Build artifacts
@@ -131,6 +125,7 @@
           FONTCONFIG_FILE = pkgs.makeFontsConf {fontDirectories = buildInputs;};
 
           shellHook = ''
+            export GIO_MODULE_DIR="${pkgs.glib-networking}/lib/gio/modules"
             echo "[🦀 Rust $(rustc --version)] - Ready to develop nwidgets!"
           '';
         };
