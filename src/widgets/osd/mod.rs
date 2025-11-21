@@ -1,304 +1,161 @@
-use crate::services::{CapsLockService, NumLockService, OsdEvent, PipeWireService, receive_osd_events};
-use crate::theme::*;
-use gpui::*;
-use std::sync::mpsc::Receiver;
-use std::time::{Duration, Instant};
+use gtk4 as gtk;
+use gtk::prelude::*;
+use gtk4_layer_shell::{Edge, Layer, LayerShell, KeyboardMode};
+use crate::services::osd::{OsdEvent, OsdEventService};
+use crate::services::pipewire::AudioState;
+use crate::theme::icons;
+use std::cell::RefCell;
+use std::rc::Rc;
 
-#[derive(Clone, Debug)]
-pub enum OsdType {
-    CapsLock(bool),
-    NumLock(bool),
-    Volume(u8),
-    Microphone(bool),
-    Dictation(bool),
-}
+pub fn create_osd_window(application: &gtk::Application) -> gtk::ApplicationWindow {
+    let window = gtk::ApplicationWindow::builder()
+        .application(application)
+        .build();
 
-pub struct Osd {
-    osd_type: OsdType,
-    visible: bool,
-    show_until: Option<Instant>,
-    volume_text: String,
-}
+    window.init_layer_shell();
+    window.set_layer(Layer::Overlay);
+    window.set_anchor(Edge::Bottom, true);
+    window.set_margin(Edge::Bottom, 80);
+    window.set_keyboard_mode(KeyboardMode::None);
 
-impl Osd {
-    pub fn new(osd_type: OsdType, osd_event_receiver: Receiver<OsdEvent>, cx: &mut Context<Self>) -> Self {
-        let osd = Self {
-            osd_type,
-            visible: false,
-            show_until: None,
-            volume_text: String::new(),
-        };
+    let container = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+    container.set_width_request(400);
+    container.set_height_request(64);
+    container.set_halign(gtk::Align::Center);
+    container.set_valign(gtk::Align::Center);
+    container.set_margin_start(16);
+    container.set_margin_end(16);
+    container.add_css_class("osd-container");
 
-        // Monitor OSD events from other parts of the app
-        cx.spawn(async move |this, cx| {
-            loop {
-                if let Some(event) = receive_osd_events(&osd_event_receiver) {
-                    let _ = this.update(cx, |osd, cx| {
-                        match event {
-                            OsdEvent::DictationStarted => {
-                                println!("[OSD] 🎤 Transcription Start");
-                                osd.osd_type = OsdType::Dictation(true);
-                                osd.visible = true;
-                                osd.show_until = Some(Instant::now() + Duration::from_millis(2500));
-                                cx.notify();
-                            }
-                            OsdEvent::DictationStopped => {
-                                println!("[OSD] 🎤 Transcription Stop");
-                                osd.osd_type = OsdType::Dictation(false);
-                                osd.visible = true;
-                                osd.show_until = Some(Instant::now() + Duration::from_millis(2500));
-                                cx.notify();
-                            }
-                        }
-                    });
-                }
-                gpui::Timer::after(Duration::from_millis(100)).await;
+    window.set_child(Some(&container));
+    window.set_visible(false);
+
+    // Compteur de génération pour invalider les anciens timeouts
+    let generation: Rc<RefCell<u32>> = Rc::new(RefCell::new(0));
+
+    let show_osd = {
+        let window = window.clone();
+        let generation = Rc::clone(&generation);
+        move |content: gtk::Widget| {
+            // Remplacer le contenu
+            let container: gtk::Box = window.child().unwrap().downcast().unwrap();
+            while let Some(child) = container.first_child() {
+                container.remove(&child);
             }
-        })
-        .detach();
+            container.append(&content);
 
-        // Monitor CapsLock, NumLock and Volume changes
-        cx.spawn(async move |this, cx| {
-            let capslock_service = CapsLockService::new();
-            let numlock_service = NumLockService::new();
-            let pipewire_service = PipeWireService::new();
+            // Afficher
+            window.set_visible(true);
 
-            let mut last_caps = capslock_service.is_enabled();
-            let mut last_num = numlock_service.is_enabled();
-            let mut last_volume = pipewire_service.get_volume();
+            // Incrémenter génération pour invalider l'ancien timeout
+            *generation.borrow_mut() += 1;
+            let current_gen = *generation.borrow();
 
-            loop {
-                gpui::Timer::after(Duration::from_millis(100)).await;
-
-                let caps_on = capslock_service.is_enabled();
-                let num_on = numlock_service.is_enabled();
-                let volume = pipewire_service.get_volume();
-
-                let _ = this.update(cx, |osd, cx| {
-                    // Check CapsLock change
-                    if caps_on != last_caps {
-                        println!("[OSD] ⇪ CapsLock: {}", if caps_on { "ON" } else { "OFF" });
-                        osd.osd_type = OsdType::CapsLock(caps_on);
-                        osd.visible = true;
-                        osd.show_until = Some(Instant::now() + Duration::from_millis(2500));
-                        cx.notify();
-                    }
-
-                    // Check NumLock change
-                    if num_on != last_num {
-                        println!("[OSD] ⇭ NumLock: {}", if num_on { "ON" } else { "OFF" });
-                        osd.osd_type = OsdType::NumLock(num_on);
-                        osd.visible = true;
-                        osd.show_until = Some(Instant::now() + Duration::from_millis(2500));
-                        cx.notify();
-                    }
-
-                    // Check volume change
-                    if volume != last_volume {
-                        println!("[OSD] 🔊 Volume: {}%", volume);
-                        osd.volume_text = format!("{}%", volume);
-                        osd.osd_type = OsdType::Volume(volume);
-                        osd.visible = true;
-                        osd.show_until = Some(Instant::now() + Duration::from_millis(2500));
-                        cx.notify();
-                    }
-                });
-
-                last_caps = caps_on;
-                last_num = num_on;
-                last_volume = volume;
-            }
-        })
-        .detach();
-
-        // Timer to hide OSD after timeout
-        cx.spawn(async move |this, cx| loop {
-            gpui::Timer::after(Duration::from_millis(100)).await;
-            let _ = this.update(cx, |osd, cx| {
-                if let Some(hide_time) = osd.show_until {
-                    if Instant::now() >= hide_time && osd.visible {
-                        osd.visible = false;
-                        osd.show_until = None;
-                        cx.notify();
-                    }
+            // Nouveau timeout 2.5s
+            let window_clone = window.clone();
+            let generation_clone = Rc::clone(&generation);
+            glib::timeout_add_seconds_local(2, move || {
+                // Ne cacher que si c'est toujours la même génération
+                if *generation_clone.borrow() == current_gen {
+                    window_clone.set_visible(false);
                 }
+                glib::ControlFlow::Break
             });
-        })
-        .detach();
+        }
+    };
 
-        osd
-    }
+    // Écouter les événements OSD
+    let osd_rx = OsdEventService::init();
+    let (tx_glib, rx_glib) = glib::MainContext::channel(glib::Priority::DEFAULT);
+
+    std::thread::spawn(move || {
+        while let Ok(event) = osd_rx.recv() {
+            if tx_glib.send(event).is_err() {
+                break;
+            }
+        }
+    });
+
+    rx_glib.attach(None, move |event| {
+        let content = match event {
+            OsdEvent::Volume(level, muted) => create_volume_osd(level, muted),
+            OsdEvent::Microphone(muted) => create_mic_osd(muted),
+            OsdEvent::DictationStarted => create_dictation_osd(true),
+            OsdEvent::DictationStopped => create_dictation_osd(false),
+        };
+        show_osd(content);
+        glib::ControlFlow::Continue
+    });
+
+    window
 }
 
-impl Render for Osd {
-    fn render(&mut self, _: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-        if !self.visible {
-            return div();
-        }
+fn create_volume_osd(level: u8, muted: bool) -> gtk::Widget {
+    let container = gtk::Box::new(gtk::Orientation::Horizontal, 12);
 
-        match &self.osd_type {
-            OsdType::Volume(level) => {
-                // Volume icon based on level (same as panel module)
-                let volume_icon = if *level == 0 {
-                    ""
-                } else if *level < 50 {
-                    ""
-                } else {
-                    ""
-                };
+    let icon = if muted {
+        icons::ICONS.volume_mute
+    } else if level < 33 {
+        icons::ICONS.volume_low
+    } else {
+        icons::ICONS.volume_high
+    };
 
-                let volume_percent = *level as f32 / 100.0;
+    let icon_label = gtk::Label::new(Some(icon));
+    icon_label.add_css_class("osd-icon");
+    container.append(&icon_label);
 
-                div()
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .w(px(400.))
-                    .h_16()
-                    .bg(rgb(POLAR0))
-                    .border_2()
-                    .border_color(rgb(FROST1))
-                    .rounded_lg()
-                    .shadow_lg()
-                    .px_4()
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap_4()
-                            .w_full()
-                            // Icon - fixed width
-                            .child(
-                                div()
-                                    .w(px(24.))
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .text_xl()
-                                    .text_color(rgb(SNOW0))
-                                    .child(volume_icon)
-                            )
-                            // Progress bar - takes remaining space
-                            .child(
-                                div().flex_1().h(px(8.)).bg(rgb(POLAR2)).rounded_sm().child(
-                                    div()
-                                        .h_full()
-                                        .w(relative(volume_percent))
-                                        .bg(rgb(FROST1))
-                                        .rounded_sm(),
-                                ),
-                            )
-                            // Percentage text - fixed width
-                            .child(
-                                div()
-                                    .w(px(48.))
-                                    .text_sm()
-                                    .text_color(rgb(SNOW0))
-                                    .text_right()
-                                    .child(format!("{}%", level)),
-                            ),
-                    )
-            }
-            OsdType::CapsLock(enabled) => {
-                let text = if *enabled { "CAPS ON" } else { "CAPS OFF" };
-                let color = if *enabled { rgb(FROST1) } else { rgb(POLAR3) };
+    // Progress bar
+    let progress = gtk::ProgressBar::new();
+    progress.set_fraction(level as f64 / 100.0);
+    progress.set_hexpand(true);
+    progress.add_css_class("osd-progress");
+    container.append(&progress);
 
-                div()
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .w(px(400.))
-                    .h_16()
-                    .bg(rgb(POLAR0))
-                    .border_2()
-                    .border_color(color)
-                    .rounded_lg()
-                    .shadow_lg()
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap_3()
-                            .child(div().text_xl().text_color(color).child("⇪"))
-                            .child(div().text_sm().text_color(rgb(SNOW0)).child(text)),
-                    )
-            }
-            OsdType::NumLock(enabled) => {
-                let text = if *enabled { "NUM ON" } else { "NUM OFF" };
-                let color = if *enabled { rgb(FROST1) } else { rgb(POLAR3) };
+    // Percentage
+    let percent_label = gtk::Label::new(Some(&format!("{}%", level)));
+    percent_label.add_css_class("osd-text");
+    container.append(&percent_label);
 
-                div()
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .w(px(400.))
-                    .h_16()
-                    .bg(rgb(POLAR0))
-                    .border_2()
-                    .border_color(color)
-                    .rounded_lg()
-                    .shadow_lg()
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap_3()
-                            .child(div().text_xl().text_color(color).child("⇭"))
-                            .child(div().text_sm().text_color(rgb(SNOW0)).child(text)),
-                    )
-            }
-            OsdType::Microphone(enabled) => {
-                let text = if *enabled { "MIC ON" } else { "MIC OFF" };
-                let color = if *enabled { rgb(FROST1) } else { rgb(RED) };
+    container.upcast()
+}
 
-                div()
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .w(px(400.))
-                    .h_16()
-                    .bg(rgb(POLAR0))
-                    .border_2()
-                    .border_color(color)
-                    .rounded_lg()
-                    .shadow_lg()
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap_3()
-                            .child(div().text_xl().text_color(color).child("🎤"))
-                            .child(div().text_sm().text_color(rgb(SNOW0)).child(text)),
-                    )
-            }
-            OsdType::Dictation(enabled) => {
-                let text = if *enabled {
-                    "Transcription Start"
-                } else {
-                    "Transcription Stop"
-                };
-                let color = if *enabled { rgb(FROST1) } else { rgb(POLAR3) };
+fn create_mic_osd(muted: bool) -> gtk::Widget {
+    let container = gtk::Box::new(gtk::Orientation::Horizontal, 12);
 
-                div()
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .w(px(400.))
-                    .h_16()
-                    .bg(rgb(POLAR0))
-                    .border_2()
-                    .border_color(color)
-                    .rounded_lg()
-                    .shadow_lg()
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap_3()
-                            .child(div().text_xl().text_color(color).child(icons::MICROPHONE))
-                            .child(div().text_sm().text_color(rgb(SNOW0)).child(text)),
-                    )
-            }
-        }
-    }
+    let icon = if muted {
+        icons::ICONS.microphone_slash
+    } else {
+        icons::ICONS.microphone
+    };
+
+    let icon_label = gtk::Label::new(Some(icon));
+    icon_label.add_css_class("osd-icon");
+    container.append(&icon_label);
+
+    let text = if muted { "MIC OFF" } else { "MIC ON" };
+    let text_label = gtk::Label::new(Some(text));
+    text_label.add_css_class("osd-text");
+    container.append(&text_label);
+
+    container.upcast()
+}
+
+fn create_dictation_osd(started: bool) -> gtk::Widget {
+    let container = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+
+    let icon_label = gtk::Label::new(Some(icons::ICONS.microphone));
+    icon_label.add_css_class("osd-icon");
+    container.append(&icon_label);
+
+    let text = if started {
+        "Transcription Started"
+    } else {
+        "Transcription Stopped"
+    };
+    let text_label = gtk::Label::new(Some(text));
+    text_label.add_css_class("osd-text");
+    container.append(&text_label);
+
+    container.upcast()
 }

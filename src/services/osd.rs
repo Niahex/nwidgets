@@ -3,6 +3,8 @@ use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone)]
 pub enum OsdEvent {
+    Volume(u8, bool), // volume %, muted
+    Microphone(bool), // muted
     DictationStarted,
     DictationStopped,
 }
