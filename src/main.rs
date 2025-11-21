@@ -58,15 +58,22 @@ fn main() {
         let mic_module_clone = mic_module.clone();
         let last_volume = std::cell::Cell::new(0u8);
         let last_muted = std::cell::Cell::new(false);
+        let last_mic_muted = std::cell::Cell::new(false);
         PipeWireService::subscribe_audio(move |state| {
             volume_module_clone.update(&state);
             mic_module_clone.update(&state);
 
-            // Envoyer OSD si changement
+            // Envoyer OSD volume si changement
             if state.volume != last_volume.get() || state.muted != last_muted.get() {
                 OsdEventService::send_event(crate::services::osd::OsdEvent::Volume(state.volume, state.muted));
                 last_volume.set(state.volume);
                 last_muted.set(state.muted);
+            }
+
+            // Envoyer OSD micro si changement
+            if state.mic_muted != last_mic_muted.get() {
+                OsdEventService::send_event(crate::services::osd::OsdEvent::Microphone(state.mic_muted));
+                last_mic_muted.set(state.mic_muted);
             }
         });
     });
