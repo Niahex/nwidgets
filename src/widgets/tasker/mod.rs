@@ -1,3 +1,5 @@
+mod day_carousel;
+
 use gtk4 as gtk;
 use gtk::prelude::*;
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
@@ -5,6 +7,7 @@ use crate::theme::colors::COLORS;
 use crate::services::PinController;
 use std::cell::Cell;
 use std::rc::Rc;
+use day_carousel::create_day_carousel;
 
 const ICON_RESERVE_SPACE: &str = "󰐃"; // Icon for reserving space
 const ICON_RELEASE_SPACE: &str = "󰐄"; // Icon for releasing space
@@ -35,6 +38,10 @@ pub fn create_tasker_window(application: &gtk::Application) -> (gtk::Application
     // Header avec titre et bouton pin/unpin (retourne aussi is_exclusive et toggle_button)
     let (header, is_exclusive, toggle_button) = create_header(&window);
     main_box.append(&header);
+
+    // Carrousel de jours
+    let day_carousel = create_day_carousel();
+    main_box.append(&day_carousel);
 
     // Zone de contenu pour les tâches
     let tasks_container = create_tasks_container();
@@ -95,6 +102,7 @@ pub fn create_tasker_window(application: &gtk::Application) -> (gtk::Application
 
     (window, pin_controller)
 }
+
 
 fn create_header(window: &gtk::ApplicationWindow) -> (gtk::Box, Rc<Cell<bool>>, gtk::Button) {
     let header = gtk::Box::new(gtk::Orientation::Horizontal, 10);
