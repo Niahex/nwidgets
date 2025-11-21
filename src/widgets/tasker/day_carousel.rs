@@ -33,8 +33,12 @@ pub fn create_day_carousel() -> gtk::Box {
     // État partagé : index du jour sélectionné (relatif aux 7 jours visibles, 3 = milieu)
     let selected_day_index = Rc::new(RefCell::new(3usize));
 
-    // Fonction pour reconstruire le carrousel
-    let rebuild_carousel = {
+    // Fonction pour reconstruire le carrousel.
+    // On utilise Rc<RefCell<Option<...>>> pour permettre à la fermeture de se capturer elle-même (récursion).
+    let rebuild_carousel = Rc::new(RefCell::new(None::<Box<dyn Fn()>>));
+    let rebuild_carousel_clone = rebuild_carousel.clone();
+
+    let closure = {
         let days_container = days_container.clone();
         let carousel_offset = Rc::clone(&carousel_offset);
         let selected_day_index = Rc::clone(&selected_day_index);
@@ -67,16 +71,18 @@ pub fn create_day_carousel() -> gtk::Box {
             // Ajouter les handlers de clic
             let carousel_offset_clone = Rc::clone(&carousel_offset);
             let selected_day_index_clone = Rc::clone(&selected_day_index);
-            let rebuild_carousel_clone = rebuild_carousel.clone();
+            
+            // On clone le Rc qui contient la fermeture pour le passer aux handlers
+            let rebuild_carousel_for_handlers = rebuild_carousel_clone.clone();
 
             for (visual_index, day_button) in day_buttons.iter().enumerate() {
                 let carousel_offset_click = Rc::clone(&carousel_offset_clone);
                 let selected_day_index_click = Rc::clone(&selected_day_index_clone);
-                let rebuild_carousel_click = rebuild_carousel_clone.clone();
+                let rebuild_carousel_click = rebuild_carousel_for_handlers.clone();
 
                 let gesture = gtk::GestureClick::new();
                 gesture.connect_released(move |_, _, _, _| {
-                    let current_selected = *selected_day_index_click.borrow();
+                    let _current_selected = *selected_day_index_click.borrow();
 
                     // Calculer la différence entre le jour cliqué et le centre (index 3)
                     let click_offset = visual_index as i32 - 3;
@@ -92,7 +98,9 @@ pub fn create_day_carousel() -> gtk::Box {
                         *selected_day_index_click.borrow_mut() = 3;
 
                         // Reconstruire le carrousel avec le nouvel offset
-                        rebuild_carousel_click();
+                        if let Some(rebuild_fn) = &*rebuild_carousel_click.borrow() {
+                            rebuild_fn();
+                        }
 
                         println!("[CAROUSEL] Shifted by {}, new offset: {}",
                                  click_offset,
@@ -107,8 +115,13 @@ pub fn create_day_carousel() -> gtk::Box {
         }
     };
 
+    // On place la fermeture dans le RefCell
+    *rebuild_carousel.borrow_mut() = Some(Box::new(closure));
+
     // Construction initiale
-    rebuild_carousel();
+    if let Some(rebuild_fn) = &*rebuild_carousel.borrow() {
+        rebuild_fn();
+    }
 
     carousel_box.append(&days_container);
     carousel_box
