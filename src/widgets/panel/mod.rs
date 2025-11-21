@@ -1,17 +1,28 @@
-use gtk4 as gtk;
 use gtk::prelude::*;
+use gtk4 as gtk;
 use gtk4_layer_shell::{Edge, Layer, LayerShell};
 pub mod modules; // Changed from `mod modules;` to `pub mod modules;`
 use modules::active_window::ActiveWindowModule;
-use modules::workspaces::WorkspacesModule;
-use modules::datetime::DateTimeModule;
 use modules::bluetooth::BluetoothModule;
-use modules::systray::SystrayModule;
-use modules::volume::VolumeModule;
+use modules::datetime::DateTimeModule;
 use modules::mic::MicModule;
 use modules::pomodoro::PomodoroModule;
+use modules::systray::SystrayModule;
+use modules::volume::VolumeModule;
+use modules::workspaces::WorkspacesModule;
 
-pub fn create_panel_window(application: &gtk::Application) -> (gtk::ApplicationWindow, ActiveWindowModule, WorkspacesModule, BluetoothModule, SystrayModule, VolumeModule, MicModule, PomodoroModule) {
+pub fn create_panel_window(
+    application: &gtk::Application,
+) -> (
+    gtk::ApplicationWindow,
+    ActiveWindowModule,
+    WorkspacesModule,
+    BluetoothModule,
+    SystrayModule,
+    VolumeModule,
+    MicModule,
+    PomodoroModule,
+) {
     let window = gtk::ApplicationWindow::builder()
         .application(application)
         .build();
@@ -64,5 +75,14 @@ pub fn create_panel_window(application: &gtk::Application) -> (gtk::ApplicationW
 
     window.set_child(Some(&layout));
 
-    (window, active_window_module, workspaces_module, bluetooth_module, systray_module, volume_module, mic_module, pomodoro_module)
+    (
+        window,
+        active_window_module,
+        workspaces_module,
+        bluetooth_module,
+        systray_module,
+        volume_module,
+        mic_module,
+        pomodoro_module,
+    )
 }

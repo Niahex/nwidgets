@@ -147,5 +147,19 @@ pub fn create_chat_window(application: &gtk::Application) -> gtk::ApplicationWin
     // Load the initial URL
     webview.load_uri(SITES[0].1);
 
+    // Cacher la fenêtre par défaut au démarrage
+    window.set_visible(false);
+
+    // Ajouter l'action toggle-chat
+    let toggle_action = gtk::gio::SimpleAction::new("toggle-chat", None);
+    let window_clone = window.clone();
+    toggle_action.connect_activate(move |_, _| {
+        let is_visible = window_clone.is_visible();
+        window_clone.set_visible(!is_visible);
+        println!("[CHAT] Toggle chat window: {}", !is_visible);
+    });
+
+    application.add_action(&toggle_action);
+
     window
 }

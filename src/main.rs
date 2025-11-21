@@ -5,6 +5,8 @@ mod services;
 use crate::widgets::chat::create_chat_window;
 use crate::widgets::panel::create_panel_window;
 use crate::widgets::osd::create_osd_window;
+use crate::widgets::notifications::create_notifications_window;
+use crate::widgets::tasker::create_tasker_window;
 use crate::services::hyprland::HyprlandService;
 use crate::services::bluetooth::BluetoothService;
 use crate::services::systray::SystemTrayService;
@@ -23,14 +25,20 @@ fn main() {
 
     // Connect to "activate" signal of `app`
     app.connect_activate(|app| {
-        let chat_window = create_chat_window(app);
-        chat_window.present();
+        // Créer la fenêtre de chat (cachée par défaut, toggle avec l'action "toggle-chat")
+        let _chat_window = create_chat_window(app);
+
+        // Créer la fenêtre de tasker (cachée par défaut, toggle avec l'action "toggle-tasker")
+        let _tasker_window = create_tasker_window(app);
 
         let (panel_window, active_window_module, workspaces_module, bluetooth_module, systray_module, volume_module, mic_module, _pomodoro_module) = create_panel_window(app);
         panel_window.present();
 
         let osd_window = create_osd_window(app);
         osd_window.present();
+
+        // Créer la fenêtre de notifications (mais ne pas la présenter car elle est cachée au démarrage)
+        let _notifications_window = create_notifications_window(app);
 
         // S'abonner aux mises à jour de la fenêtre active
         let active_window_module_clone = active_window_module.clone();
