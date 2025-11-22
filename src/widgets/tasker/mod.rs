@@ -5,9 +5,10 @@ use gtk::prelude::*;
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use crate::theme::colors::COLORS;
 use crate::services::PinController;
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use day_carousel::create_day_carousel;
+use chrono::Local;
 
 const ICON_RESERVE_SPACE: &str = "󰐃"; // Icon for reserving space
 const ICON_RELEASE_SPACE: &str = "󰐄"; // Icon for releasing space
@@ -35,13 +36,22 @@ pub fn create_tasker_window(application: &gtk::Application) -> (gtk::Application
     // Container principal
     let main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
 
+    // Carrousel de jours
+    let (day_carousel, on_date_changed, reset_to_today) = create_day_carousel();
+
     // Header avec titre et bouton pin/unpin (retourne aussi is_exclusive et toggle_button)
-    let (header, is_exclusive, toggle_button) = create_header(&window);
+    let (header, is_exclusive, toggle_button, title_label) = create_header(&window, reset_to_today);
     main_box.append(&header);
 
-    // Carrousel de jours
-    let day_carousel = create_day_carousel();
     main_box.append(&day_carousel);
+
+    // Configurer le callback pour mettre à jour le label quand la date change
+    *on_date_changed.borrow_mut() = Some(Box::new(move |date| {
+        let month_abbr = date.format("%b").to_string();
+        let year_short = date.format("%y").to_string();
+        let title_text = format!("{} {}", month_abbr, year_short);
+        title_label.set_text(&title_text);
+    }));
 
     // Zone de contenu pour les tâches
     let tasks_container = create_tasks_container();
@@ -104,7 +114,7 @@ pub fn create_tasker_window(application: &gtk::Application) -> (gtk::Application
 }
 
 
-fn create_header(window: &gtk::ApplicationWindow) -> (gtk::Box, Rc<Cell<bool>>, gtk::Button) {
+fn create_header(window: &gtk::ApplicationWindow, reset_to_today: Rc<RefCell<Option<Box<dyn Fn()>>>>) -> (gtk::Box, Rc<Cell<bool>>, gtk::Button, gtk::Label) {
     let header = gtk::Box::new(gtk::Orientation::Horizontal, 10);
     header.set_margin_start(16);
     header.set_margin_end(16);
@@ -139,7 +149,13 @@ fn create_header(window: &gtk::ApplicationWindow) -> (gtk::Box, Rc<Cell<bool>>, 
     );
     header.append(&icon_label);
 
-    let title_label = gtk::Label::new(Some("Tasks"));
+    // Obtenir le mois en cours (abrégé) et l'année (2 derniers chiffres)
+    let now = Local::now();
+    let month_abbr = now.format("%b").to_string();
+    let year_short = now.format("%y").to_string();
+    let title_text = format!("{} {}", month_abbr, year_short);
+
+    let title_label = gtk::Label::new(Some(&title_text));
     let title_css = gtk::CssProvider::new();
     title_css.load_from_data(&format!(
         "label {{ color: {}; font-size: 20px; font-weight: bold; }}",
@@ -149,6 +165,17 @@ fn create_header(window: &gtk::ApplicationWindow) -> (gtk::Box, Rc<Cell<bool>>, 
         &title_css,
         gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
     );
+
+    // Ajouter un gestionnaire de clic pour revenir au jour actuel
+    title_label.set_cursor_from_name(Some("pointer"));
+    let gesture = gtk::GestureClick::new();
+    gesture.connect_released(move |_, _, _, _| {
+        if let Some(reset_fn) = &*reset_to_today.borrow() {
+            reset_fn();
+        }
+    });
+    title_label.add_controller(gesture);
+
     header.append(&title_label);
 
     // Spacer
@@ -209,7 +236,7 @@ fn create_header(window: &gtk::ApplicationWindow) -> (gtk::Box, Rc<Cell<bool>>, 
 
     header.append(&toggle_button);
 
-    (header, is_exclusive, toggle_button)
+    (header, is_exclusive, toggle_button, title_label)
 }
 
 fn create_tasks_container() -> gtk::ScrolledWindow {

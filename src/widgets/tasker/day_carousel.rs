@@ -5,7 +5,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use chrono::{Datelike, Duration, Local, NaiveDate, Weekday};
 
-pub fn create_day_carousel() -> gtk::Box {
+pub fn create_day_carousel() -> (gtk::Box, Rc<RefCell<Option<Box<dyn Fn(NaiveDate)>>>>, Rc<RefCell<Option<Box<dyn Fn()>>>>) {
     let carousel_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     carousel_box.set_margin_start(16);
     carousel_box.set_margin_end(16);
@@ -33,6 +33,9 @@ pub fn create_day_carousel() -> gtk::Box {
     // État partagé : index du jour sélectionné (relatif aux 7 jours visibles, 3 = milieu)
     let selected_day_index = Rc::new(RefCell::new(3usize));
 
+    // Callback pour notifier le changement de date sélectionnée
+    let on_date_changed: Rc<RefCell<Option<Box<dyn Fn(NaiveDate)>>>> = Rc::new(RefCell::new(None));
+
     // Fonction pour reconstruire le carrousel.
     // On utilise Rc<RefCell<Option<...>>> pour permettre à la fermeture de se capturer elle-même (récursion).
     let rebuild_carousel = Rc::new(RefCell::new(None::<Box<dyn Fn()>>));
@@ -42,6 +45,7 @@ pub fn create_day_carousel() -> gtk::Box {
         let days_container = days_container.clone();
         let carousel_offset = Rc::clone(&carousel_offset);
         let selected_day_index = Rc::clone(&selected_day_index);
+        let on_date_changed = Rc::clone(&on_date_changed);
 
         move || {
             // Vider le container
@@ -68,10 +72,16 @@ pub fn create_day_carousel() -> gtk::Box {
                 days_container.append(&day_button);
             }
 
+            // Notifier le changement de date sélectionnée
+            let selected_date = today + Duration::days(offset as i64);
+            if let Some(callback) = &*on_date_changed.borrow() {
+                callback(selected_date);
+            }
+
             // Ajouter les handlers de clic
             let carousel_offset_clone = Rc::clone(&carousel_offset);
             let selected_day_index_clone = Rc::clone(&selected_day_index);
-            
+
             // On clone le Rc qui contient la fermeture pour le passer aux handlers
             let rebuild_carousel_for_handlers = rebuild_carousel_clone.clone();
 
@@ -124,7 +134,25 @@ pub fn create_day_carousel() -> gtk::Box {
     }
 
     carousel_box.append(&days_container);
-    carousel_box
+
+    // Callback pour réinitialiser au jour actuel
+    let reset_to_today: Rc<RefCell<Option<Box<dyn Fn()>>>> = Rc::new(RefCell::new(None));
+    let reset_closure = {
+        let carousel_offset = Rc::clone(&carousel_offset);
+        let selected_day_index = Rc::clone(&selected_day_index);
+        let rebuild_carousel = Rc::clone(&rebuild_carousel);
+
+        Box::new(move || {
+            *carousel_offset.borrow_mut() = 0;
+            *selected_day_index.borrow_mut() = 3;
+            if let Some(rebuild_fn) = &*rebuild_carousel.borrow() {
+                rebuild_fn();
+            }
+        })
+    };
+    *reset_to_today.borrow_mut() = Some(reset_closure);
+
+    (carousel_box, on_date_changed, reset_to_today)
 }
 
 fn get_weekday_abbr(weekday: Weekday) -> String {
