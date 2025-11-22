@@ -1,4 +1,6 @@
 mod day_carousel;
+mod week_carousel;
+mod month_carousel;
 mod views;
 
 use gtk4 as gtk;
@@ -9,6 +11,8 @@ use crate::services::PinController;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use day_carousel::create_day_carousel;
+use week_carousel::create_week_carousel;
+use month_carousel::create_month_carousel;
 use chrono::Local;
 use views::{ViewMode, dayview, weekview, monthview};
 
@@ -38,28 +42,61 @@ pub fn create_tasker_window(application: &gtk::Application) -> (gtk::Application
     // Container principal
     let main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
 
-    // Carrousel de jours
-    let (day_carousel, on_date_changed, reset_to_today) = create_day_carousel();
+    // Carrousels
+    let (day_carousel, day_on_date_changed, day_reset) = create_day_carousel();
+    let (week_carousel, week_on_date_changed, week_reset) = create_week_carousel();
+    let (month_carousel, month_on_date_changed, month_reset) = create_month_carousel();
 
     // État de la vue actuelle
     let current_view = Rc::new(RefCell::new(ViewMode::Day));
+
+    // Container pour le carrousel (changera selon la vue)
+    let carousel_container = gtk::Box::new(gtk::Orientation::Vertical, 0);
 
     // Container pour le contenu de la vue
     let view_container = gtk::Box::new(gtk::Orientation::Vertical, 0);
     view_container.set_vexpand(true);
 
-    // Header avec titre et bouton pin/unpin (retourne aussi is_exclusive et toggle_button)
-    let (header, is_exclusive, toggle_button, title_label) = create_header(&window, reset_to_today, Rc::clone(&current_view), view_container.clone());
+    // Header avec titre et bouton pin/unpin
+    let (header, is_exclusive, toggle_button, title_label) = create_header(
+        &window,
+        Rc::clone(&current_view),
+        view_container.clone(),
+        carousel_container.clone(),
+        day_reset.clone(),
+        week_reset.clone(),
+        month_reset.clone(),
+        day_carousel.clone(),
+        week_carousel.clone(),
+        month_carousel.clone(),
+    );
     main_box.append(&header);
 
-    main_box.append(&day_carousel);
+    main_box.append(&carousel_container);
 
-    // Configurer le callback pour mettre à jour le label quand la date change
-    *on_date_changed.borrow_mut() = Some(Box::new(move |date| {
+    // Configurer les callbacks pour mettre à jour le label
+    let title_label_clone1 = title_label.clone();
+    *day_on_date_changed.borrow_mut() = Some(Box::new(move |date| {
         let month_abbr = date.format("%b").to_string();
         let year_short = date.format("%y").to_string();
         let title_text = format!("{} {}", month_abbr, year_short);
-        title_label.set_text(&title_text);
+        title_label_clone1.set_text(&title_text);
+    }));
+
+    let title_label_clone2 = title_label.clone();
+    *week_on_date_changed.borrow_mut() = Some(Box::new(move |date| {
+        let month_abbr = date.format("%b").to_string();
+        let year_short = date.format("%y").to_string();
+        let title_text = format!("{} {}", month_abbr, year_short);
+        title_label_clone2.set_text(&title_text);
+    }));
+
+    let title_label_clone3 = title_label.clone();
+    *month_on_date_changed.borrow_mut() = Some(Box::new(move |date| {
+        let month_abbr = date.format("%b").to_string();
+        let year_short = date.format("%y").to_string();
+        let title_text = format!("{} {}", month_abbr, year_short);
+        title_label_clone3.set_text(&title_text);
     }));
 
     // Ajouter le container de vue
@@ -71,6 +108,7 @@ pub fn create_tasker_window(application: &gtk::Application) -> (gtk::Application
 
     // Initialiser avec la vue jour
     update_view(&view_container, ViewMode::Day);
+    update_carousel(&carousel_container, ViewMode::Day, &day_carousel, &week_carousel, &month_carousel);
 
     window.set_child(Some(&main_box));
 
@@ -127,9 +165,15 @@ pub fn create_tasker_window(application: &gtk::Application) -> (gtk::Application
 
 fn create_header(
     window: &gtk::ApplicationWindow,
-    reset_to_today: Rc<RefCell<Option<Box<dyn Fn()>>>>,
     current_view: Rc<RefCell<ViewMode>>,
     view_container: gtk::Box,
+    carousel_container: gtk::Box,
+    day_reset: Rc<RefCell<Option<Box<dyn Fn()>>>>,
+    week_reset: Rc<RefCell<Option<Box<dyn Fn()>>>>,
+    month_reset: Rc<RefCell<Option<Box<dyn Fn()>>>>,
+    day_carousel: gtk::Box,
+    week_carousel: gtk::Box,
+    month_carousel: gtk::Box,
 ) -> (gtk::Box, Rc<Cell<bool>>, gtk::Button, gtk::Label) {
     let header = gtk::Box::new(gtk::Orientation::Horizontal, 10);
     header.set_margin_start(16);
@@ -182,12 +226,28 @@ fn create_header(
         gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
     );
 
-    // Ajouter un gestionnaire de clic pour revenir au jour actuel
+    // Ajouter un gestionnaire de clic pour revenir à aujourd'hui
     title_label.set_cursor_from_name(Some("pointer"));
     let gesture = gtk::GestureClick::new();
+    let current_view_for_click = Rc::clone(&current_view);
     gesture.connect_released(move |_, _, _, _| {
-        if let Some(reset_fn) = &*reset_to_today.borrow() {
-            reset_fn();
+        let view = *current_view_for_click.borrow();
+        match view {
+            ViewMode::Day => {
+                if let Some(reset_fn) = &*day_reset.borrow() {
+                    reset_fn();
+                }
+            }
+            ViewMode::Week => {
+                if let Some(reset_fn) = &*week_reset.borrow() {
+                    reset_fn();
+                }
+            }
+            ViewMode::Month => {
+                if let Some(reset_fn) = &*month_reset.borrow() {
+                    reset_fn();
+                }
+            }
         }
     });
     title_label.add_controller(gesture);
@@ -235,6 +295,7 @@ fn create_header(
         window_clone.set_default_size(width, height);
 
         update_view(&view_container, new_view);
+        update_carousel(&carousel_container, new_view, &day_carousel, &week_carousel, &month_carousel);
     });
 
     header.append(&view_button);
@@ -296,6 +357,28 @@ fn update_view(container: &gtk::Box, view_mode: ViewMode) {
     };
 
     container.append(&view_widget);
+}
+
+fn update_carousel(
+    container: &gtk::Box,
+    view_mode: ViewMode,
+    day_carousel: &gtk::Box,
+    week_carousel: &gtk::Box,
+    month_carousel: &gtk::Box,
+) {
+    // Vider le container
+    while let Some(child) = container.first_child() {
+        container.remove(&child);
+    }
+
+    // Ajouter le bon carrousel
+    let carousel_widget = match view_mode {
+        ViewMode::Day => day_carousel,
+        ViewMode::Week => week_carousel,
+        ViewMode::Month => month_carousel,
+    };
+
+    container.append(carousel_widget);
 }
 
 fn create_add_task_area() -> gtk::Box {
