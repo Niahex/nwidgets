@@ -1,4 +1,5 @@
 mod day_carousel;
+mod views;
 
 use gtk4 as gtk;
 use gtk::prelude::*;
@@ -9,6 +10,7 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use day_carousel::create_day_carousel;
 use chrono::Local;
+use views::{ViewMode, dayview, weekview, monthview};
 
 const ICON_RESERVE_SPACE: &str = "󰐃"; // Icon for reserving space
 const ICON_RELEASE_SPACE: &str = "󰐄"; // Icon for releasing space
@@ -39,8 +41,15 @@ pub fn create_tasker_window(application: &gtk::Application) -> (gtk::Application
     // Carrousel de jours
     let (day_carousel, on_date_changed, reset_to_today) = create_day_carousel();
 
+    // État de la vue actuelle
+    let current_view = Rc::new(RefCell::new(ViewMode::Day));
+
+    // Container pour le contenu de la vue
+    let view_container = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    view_container.set_vexpand(true);
+
     // Header avec titre et bouton pin/unpin (retourne aussi is_exclusive et toggle_button)
-    let (header, is_exclusive, toggle_button, title_label) = create_header(&window, reset_to_today);
+    let (header, is_exclusive, toggle_button, title_label) = create_header(&window, reset_to_today, Rc::clone(&current_view), view_container.clone());
     main_box.append(&header);
 
     main_box.append(&day_carousel);
@@ -53,13 +62,15 @@ pub fn create_tasker_window(application: &gtk::Application) -> (gtk::Application
         title_label.set_text(&title_text);
     }));
 
-    // Zone de contenu pour les tâches
-    let tasks_container = create_tasks_container();
-    main_box.append(&tasks_container);
+    // Ajouter le container de vue
+    main_box.append(&view_container);
 
     // Zone d'ajout de tâche
     let add_task_area = create_add_task_area();
     main_box.append(&add_task_area);
+
+    // Initialiser avec la vue jour
+    update_view(&view_container, ViewMode::Day);
 
     window.set_child(Some(&main_box));
 
@@ -114,7 +125,12 @@ pub fn create_tasker_window(application: &gtk::Application) -> (gtk::Application
 }
 
 
-fn create_header(window: &gtk::ApplicationWindow, reset_to_today: Rc<RefCell<Option<Box<dyn Fn()>>>>) -> (gtk::Box, Rc<Cell<bool>>, gtk::Button, gtk::Label) {
+fn create_header(
+    window: &gtk::ApplicationWindow,
+    reset_to_today: Rc<RefCell<Option<Box<dyn Fn()>>>>,
+    current_view: Rc<RefCell<ViewMode>>,
+    view_container: gtk::Box,
+) -> (gtk::Box, Rc<Cell<bool>>, gtk::Button, gtk::Label) {
     let header = gtk::Box::new(gtk::Orientation::Horizontal, 10);
     header.set_margin_start(16);
     header.set_margin_end(16);
@@ -183,18 +199,45 @@ fn create_header(window: &gtk::ApplicationWindow, reset_to_today: Rc<RefCell<Opt
     spacer.set_hexpand(true);
     header.append(&spacer);
 
-    // Compteur de tâches
-    let count_label = gtk::Label::new(Some("0 tasks"));
-    let count_css = gtk::CssProvider::new();
-    count_css.load_from_data(&format!(
-        "label {{ color: {}; font-size: 12px; }}",
-        COLORS.polar3.to_hex_string()
+    // Bouton pour changer de vue
+    let view_mode = *current_view.borrow();
+    let view_button = gtk::Button::with_label(view_mode.icon());
+    let view_btn_css = gtk::CssProvider::new();
+    view_btn_css.load_from_data(&format!(
+        "button {{
+            background-color: {};
+            color: {};
+            border: none;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 16px;
+            margin-right: 8px;
+        }}",
+        COLORS.frost2.to_hex_string(),
+        COLORS.polar0.to_hex_string()
     ));
-    count_label.style_context().add_provider(
-        &count_css,
+    view_button.style_context().add_provider(
+        &view_btn_css,
         gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
     );
-    header.append(&count_label);
+
+    let window_clone = window.clone();
+    let view_button_clone = view_button.clone();
+    view_button.connect_clicked(move |_| {
+        let mut view = current_view.borrow_mut();
+        *view = view.next();
+        let new_view = *view;
+        drop(view);
+
+        view_button_clone.set_label(new_view.icon());
+
+        let (width, height) = new_view.get_window_size();
+        window_clone.set_default_size(width, height);
+
+        update_view(&view_container, new_view);
+    });
+
+    header.append(&view_button);
 
     // Bouton toggle pin/unpin (réserver/libérer l'espace)
     let toggle_button = gtk::Button::with_label(ICON_RESERVE_SPACE);
@@ -239,103 +282,20 @@ fn create_header(window: &gtk::ApplicationWindow, reset_to_today: Rc<RefCell<Opt
     (header, is_exclusive, toggle_button, title_label)
 }
 
-fn create_tasks_container() -> gtk::ScrolledWindow {
-    let scrolled = gtk::ScrolledWindow::new();
-    scrolled.set_vexpand(true);
-    scrolled.set_hscrollbar_policy(gtk::PolicyType::Never);
-    scrolled.set_vscrollbar_policy(gtk::PolicyType::Automatic);
+fn update_view(container: &gtk::Box, view_mode: ViewMode) {
+    // Vider le container
+    while let Some(child) = container.first_child() {
+        container.remove(&child);
+    }
 
-    // Container pour les tâches
-    let tasks_box = gtk::Box::new(gtk::Orientation::Vertical, 8);
-    tasks_box.set_margin_start(16);
-    tasks_box.set_margin_end(16);
-    tasks_box.set_margin_top(16);
-    tasks_box.set_margin_bottom(16);
-
-    // Style du background
-    let bg_css = gtk::CssProvider::new();
-    bg_css.load_from_data(&format!(
-        "box {{ background-color: {}; }}",
-        COLORS.polar0.to_hex_string()
-    ));
-    tasks_box.style_context().add_provider(
-        &bg_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
-
-    // Exemple de tâche (pour la démo)
-    let sample_task = create_sample_task("Example task", false);
-    tasks_box.append(&sample_task);
-
-    scrolled.set_child(Some(&tasks_box));
-    scrolled
-}
-
-fn create_sample_task(text: &str, completed: bool) -> gtk::Box {
-    let task_box = gtk::Box::new(gtk::Orientation::Horizontal, 12);
-    task_box.set_margin_top(8);
-    task_box.set_margin_bottom(8);
-    task_box.set_margin_start(12);
-    task_box.set_margin_end(12);
-
-    // Style de la tâche
-    let task_css = gtk::CssProvider::new();
-    task_css.load_from_data(&format!(
-        "box {{
-            background-color: {};
-            border-radius: 8px;
-            padding: 12px;
-        }}",
-        COLORS.polar2.to_hex_string()
-    ));
-    task_box.style_context().add_provider(
-        &task_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
-
-    // Checkbox
-    let checkbox = gtk::CheckButton::new();
-    checkbox.set_active(completed);
-    task_box.append(&checkbox);
-
-    // Texte de la tâche
-    let task_label = gtk::Label::new(Some(text));
-    task_label.set_halign(gtk::Align::Start);
-    task_label.set_hexpand(true);
-
-    let label_css = gtk::CssProvider::new();
-    let color = if completed {
-        COLORS.polar3.to_hex_string()
-    } else {
-        COLORS.snow0.to_hex_string()
+    // Ajouter la nouvelle vue
+    let view_widget = match view_mode {
+        ViewMode::Day => dayview::create_dayview().upcast::<gtk::Widget>(),
+        ViewMode::Week => weekview::create_weekview().upcast::<gtk::Widget>(),
+        ViewMode::Month => monthview::create_monthview().upcast::<gtk::Widget>(),
     };
-    let decoration = if completed { "line-through" } else { "none" };
 
-    label_css.load_from_data(&format!(
-        "label {{ color: {}; text-decoration: {}; }}",
-        color, decoration
-    ));
-    task_label.style_context().add_provider(
-        &label_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
-    task_box.append(&task_label);
-
-    // Bouton supprimer
-    let delete_btn = gtk::Button::new();
-    delete_btn.set_label("");  // Trash icon
-    let delete_css = gtk::CssProvider::new();
-    delete_css.load_from_data(&format!(
-        "button {{ color: {}; background: transparent; border: none; }}",
-        COLORS.red.to_hex_string()
-    ));
-    delete_btn.style_context().add_provider(
-        &delete_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
-    task_box.append(&delete_btn);
-
-    task_box
+    container.append(&view_widget);
 }
 
 fn create_add_task_area() -> gtk::Box {
