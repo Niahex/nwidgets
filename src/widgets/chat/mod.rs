@@ -95,7 +95,7 @@ pub fn create_chat_window(application: &gtk::Application) -> (gtk::ApplicationWi
     window.set_anchor(Edge::Top, true);
     window.set_anchor(Edge::Bottom, true);
     window.set_anchor(Edge::Left, true);
-    window.set_keyboard_mode(KeyboardMode::OnDemand);
+    window.set_keyboard_mode(KeyboardMode::Exclusive);
 
     // --- Site Selector Dropdown ---
     let site_names: Vec<&str> = SITES.iter().map(|(name, _)| *name).collect();
