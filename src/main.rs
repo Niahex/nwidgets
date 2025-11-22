@@ -1,24 +1,25 @@
+mod services;
 mod theme;
 mod widgets;
-mod services;
 
-use crate::widgets::chat::create_chat_window;
-use crate::widgets::panel::create_panel_window;
-use crate::widgets::osd::create_osd_window;
-use crate::widgets::notifications::create_notifications_window;
-use crate::widgets::tasker::create_tasker_window;
-use crate::widgets::power_menu::create_power_menu_window;
-use crate::services::hyprland::HyprlandService;
 use crate::services::bluetooth::BluetoothService;
-use crate::services::systray::SystemTrayService;
-use crate::services::pipewire::PipeWireService;
 use crate::services::capslock::CapsLockService;
-use crate::services::numlock::NumLockService;
 use crate::services::clipboard::ClipboardService;
+use crate::services::hyprland::HyprlandService;
+use crate::services::numlock::NumLockService;
 use crate::services::osd::OsdEventService;
+use crate::services::pipewire::PipeWireService;
+use crate::services::systray::SystemTrayService;
+use crate::widgets::chat::create_chat_window;
+use crate::widgets::launcher::create_launcher_window;
+use crate::widgets::notifications::create_notifications_window;
+use crate::widgets::osd::create_osd_window;
+use crate::widgets::panel::create_panel_window;
+use crate::widgets::power_menu::create_power_menu_window;
+use crate::widgets::tasker::create_tasker_window;
 use gtk4::{self as gtk, prelude::*, Application};
 
-const APP_ID: &str = "com.nwidgets";
+const APP_ID: &str = "github.niahex.nwidgets";
 
 fn main() {
     // Create a new application
@@ -36,6 +37,9 @@ fn main() {
 
         // Créer le power menu (caché par défaut, toggle avec l'action "toggle-power-menu")
         let _power_menu_window = create_power_menu_window(app);
+
+        // Créer le launcher (caché par défaut, toggle avec l'action "toggle-launcher")
+        let _launcher_window = create_launcher_window(app);
 
         // Action pour pin la fenêtre actuellement focus
         let pin_action = gtk::gio::SimpleAction::new("pin-focused-window", None);
@@ -59,7 +63,16 @@ fn main() {
 
         app.add_action(&pin_action);
 
-        let (panel_window, active_window_module, workspaces_module, bluetooth_module, systray_module, volume_module, mic_module, _pomodoro_module) = create_panel_window(app);
+        let (
+            panel_window,
+            active_window_module,
+            workspaces_module,
+            bluetooth_module,
+            systray_module,
+            volume_module,
+            mic_module,
+            _pomodoro_module,
+        ) = create_panel_window(app);
         panel_window.present();
 
         let osd_window = create_osd_window(app);
@@ -104,14 +117,19 @@ fn main() {
 
             // Envoyer OSD volume si changement
             if state.volume != last_volume.get() || state.muted != last_muted.get() {
-                OsdEventService::send_event(crate::services::osd::OsdEvent::Volume(state.volume, state.muted));
+                OsdEventService::send_event(crate::services::osd::OsdEvent::Volume(
+                    state.volume,
+                    state.muted,
+                ));
                 last_volume.set(state.volume);
                 last_muted.set(state.muted);
             }
 
             // Envoyer OSD micro si changement
             if state.mic_muted != last_mic_muted.get() {
-                OsdEventService::send_event(crate::services::osd::OsdEvent::Microphone(state.mic_muted));
+                OsdEventService::send_event(crate::services::osd::OsdEvent::Microphone(
+                    state.mic_muted,
+                ));
                 last_mic_muted.set(state.mic_muted);
             }
         });
