@@ -103,7 +103,7 @@ pub fn create_tasker_window(application: &gtk::Application) -> (gtk::Application
     main_box.append(&view_container);
 
     // Zone d'ajout de tâche
-    let add_task_area = create_add_task_area();
+    let (add_task_area, task_entry) = create_add_task_area();
     main_box.append(&add_task_area);
 
     // Initialiser avec la vue jour
@@ -115,10 +115,18 @@ pub fn create_tasker_window(application: &gtk::Application) -> (gtk::Application
     // Ajouter l'action toggle-tasker
     let toggle_action = gtk::gio::SimpleAction::new("toggle-tasker", None);
     let window_clone = window.clone();
+    let entry_clone = task_entry.clone();
     toggle_action.connect_activate(move |_, _| {
         let is_visible = window_clone.is_visible();
         window_clone.set_visible(!is_visible);
-        println!("[TASKER] Toggle tasker window: {}", !is_visible);
+
+        // Si on ouvre la fenêtre, donner le focus à l'entrée de tâche
+        if !is_visible {
+            entry_clone.grab_focus();
+            println!("[TASKER] Toggle tasker window: true (focus grabbed)");
+        } else {
+            println!("[TASKER] Toggle tasker window: false");
+        }
     });
 
     application.add_action(&toggle_action);
@@ -130,6 +138,13 @@ pub fn create_tasker_window(application: &gtk::Application) -> (gtk::Application
     let toggle_button_clone2 = toggle_button.clone();
 
     key_controller.connect_key_pressed(move |_, keyval, _, modifiers| {
+        // Escape pour fermer si pas pinné
+        if keyval == gtk::gdk::Key::Escape && !is_exclusive_clone.get() {
+            window_clone2.set_visible(false);
+            println!("[TASKER] Window hidden (Escape pressed, not pinned)");
+            return gtk::glib::Propagation::Stop;
+        }
+
         // Meta+P (Super+P)
         if keyval == gtk::gdk::Key::p && modifiers.contains(gtk::gdk::ModifierType::SUPER_MASK) {
             if is_exclusive_clone.get() {
@@ -381,7 +396,7 @@ fn update_carousel(
     container.append(carousel_widget);
 }
 
-fn create_add_task_area() -> gtk::Box {
+fn create_add_task_area() -> (gtk::Box, gtk::Entry) {
     let add_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     add_box.set_margin_start(16);
     add_box.set_margin_end(16);
@@ -450,5 +465,5 @@ fn create_add_task_area() -> gtk::Box {
     );
     add_box.append(&add_btn);
 
-    add_box
+    (add_box, entry)
 }

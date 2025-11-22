@@ -1,6 +1,6 @@
 use gtk4 as gtk;
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::env;
 use std::fs;
 use std::rc::Rc;
@@ -155,10 +155,18 @@ pub fn create_chat_window(application: &gtk::Application) -> (gtk::ApplicationWi
     // Ajouter l'action toggle-chat
     let toggle_action = gtk::gio::SimpleAction::new("toggle-chat", None);
     let window_clone = window.clone();
+    let webview_clone = webview.clone();
     toggle_action.connect_activate(move |_, _| {
         let is_visible = window_clone.is_visible();
         window_clone.set_visible(!is_visible);
-        println!("[CHAT] Toggle chat window: {}", !is_visible);
+
+        // Si on ouvre la fenêtre, donner le focus au webview
+        if !is_visible {
+            webview_clone.grab_focus();
+            println!("[CHAT] Toggle chat window: true (focus grabbed)");
+        } else {
+            println!("[CHAT] Toggle chat window: false");
+        }
     });
 
     application.add_action(&toggle_action);
@@ -170,6 +178,13 @@ pub fn create_chat_window(application: &gtk::Application) -> (gtk::ApplicationWi
     let toggle_button_clone2 = toggle_button.clone();
 
     key_controller.connect_key_pressed(move |_, keyval, _, modifiers| {
+        // Escape pour fermer si pas pinné
+        if keyval == gtk::gdk::Key::Escape && !is_exclusive_clone.get() {
+            window_clone.set_visible(false);
+            println!("[CHAT] Window hidden (Escape pressed, not pinned)");
+            return gtk::glib::Propagation::Stop;
+        }
+
         // Meta+P (Super+P)
         if keyval == gtk::gdk::Key::p && modifiers.contains(gtk::gdk::ModifierType::SUPER_MASK) {
             if is_exclusive_clone.get() {
