@@ -4,6 +4,7 @@ use std::cell::RefCell;
 
 use super::block_type::BlockType;
 use super::manager::BlockManager;
+use super::block::Block;
 
 /// Configure les événements clavier pour un bloc
 pub fn setup_block_events(
@@ -15,7 +16,7 @@ pub fn setup_block_events(
     let block_id_clone = block_id.clone();
     let manager_clone = manager.clone();
 
-    key_controller.connect_key_pressed(move |_controller, key, _code, _modifier| {
+    key_controller.connect_key_pressed(move |_controller, key, _code, modifier| {
         let block_index = if let Some(idx) = manager_clone.find_block_index(&block_id_clone) {
             idx
         } else {
@@ -23,10 +24,78 @@ pub fn setup_block_events(
         };
 
         match key {
+            gdk::Key::space => {
+                // Détecter les marqueurs markdown quand on tape Espace
+                if let Some(block) = manager_clone.get_block(block_index) {
+                    let content = block.borrow().get_content();
+                    let detected_type = BlockType::from_line(&content);
+                    let current_type = block.borrow().block_type.clone();
+
+                    // Transformer si c'est un paragraphe et qu'on détecte un marqueur
+                    if matches!(current_type, BlockType::Paragraph) && !matches!(detected_type, BlockType::Paragraph) {
+                        // Activer le flag de traitement
+                        *block.borrow().processing.borrow_mut() = true;
+
+                        let stripped = detected_type.strip_marker(&content).to_string();
+
+                        // Ajouter le préfixe visuel pour les listes
+                        let final_text = match &detected_type {
+                            BlockType::BulletList => format!("• {}", stripped),
+                            BlockType::NumberedList(num) => format!("{}. {}", num, stripped),
+                            _ => stripped,
+                        };
+
+                        {
+                            let mut block_mut = block.borrow_mut();
+                            block_mut.block_type = detected_type.clone();
+                            block_mut.set_content(&final_text);
+
+                            if let Some(tv) = &block_mut.text_view {
+                                Block::apply_block_styling(tv, &detected_type);
+                            }
+
+                            if let Some(buf) = &block_mut.buffer {
+                                Block::apply_text_tag(buf, &detected_type);
+                            }
+                        }
+
+                        // Désactiver le flag
+                        *block.borrow().processing.borrow_mut() = false;
+
+                        return glib::Propagation::Stop;
+                    }
+                }
+                glib::Propagation::Proceed
+            }
             gdk::Key::Return => {
-                // Créer un nouveau bloc après celui-ci
-                handle_enter_key(&manager_clone, block_index);
-                glib::Propagation::Stop
+                // Vérifier si Shift est pressé
+                if modifier.contains(gdk::ModifierType::SHIFT_MASK) {
+                    // Shift+Entrée : vérifier le type de bloc
+                    let current_block = if let Some(block) = manager_clone.get_block(block_index) {
+                        block
+                    } else {
+                        return glib::Propagation::Proceed;
+                    };
+
+                    let block_type = &current_block.borrow().block_type;
+
+                    // Seulement pour les paragraphes, callouts et quotes : insérer nouvelle ligne dans le bloc
+                    match block_type {
+                        BlockType::Paragraph | BlockType::Toggle | BlockType::ToggleHeading(_) => {
+                            // Laisser GTK gérer l'insertion de nouvelle ligne
+                            return glib::Propagation::Proceed;
+                        }
+                        _ => {
+                            // Pour les autres (titres, listes), créer un nouveau bloc
+                            handle_enter_key(&manager_clone, block_index);
+                            return glib::Propagation::Stop;
+                        }
+                    }
+                } else {
+                    // Entrée normale : créer un nouveau bloc
+                    handle_enter_key(&manager_clone, block_index);
+                    glib::Propagation::Stop
+                }
             }
             gdk::Key::BackSpace => {
                 // Si le bloc est vide, le supprimer et fusionner avec le précédent
@@ -68,22 +137,35 @@ fn handle_enter_key(manager: &BlockManager, current_index: usize) {
         return;
     };
 
-    let current_type = &current_block.borrow().block_type;
-    let new_type = match current_type {
+    let current_type = current_block.borrow().block_type.clone();
+    let new_type = match &current_type {
         BlockType::BulletList => {
-            // Vérifier si le contenu est vide
+            // Vérifier si le contenu est vide ou seulement le bullet
             let content = current_block.borrow().get_content();
-            if content.trim().is_empty() {
+            let trimmed = content.trim();
+            if trimmed.is_empty() || trimmed == "•" {
                 // Transformer en paragraphe
-                current_block.borrow_mut().change_type(BlockType::Paragraph);
+                {
+                    let mut block_mut = current_block.borrow_mut();
+                    block_mut.change_type(BlockType::Paragraph);
+                    block_mut.set_content("");
+                }
                 return;
             }
             BlockType::BulletList
         }
         BlockType::NumberedList(num) => {
             let content = current_block.borrow().get_content();
-            if content.trim().is_empty() {
-                current_block.borrow_mut().change_type(BlockType::Paragraph);
+            let trimmed = content.trim();
+            // Vérifier si c'est vide ou juste "N." ou "N"
+            let is_empty = trimmed.is_empty() ||
+                          trimmed.chars().all(|c| c.is_ascii_digit() || c == '.');
+            if is_empty {
+                {
+                    let mut block_mut = current_block.borrow_mut();
+                    block_mut.change_type(BlockType::Paragraph);
+                    block_mut.set_content("");
+                }
                 return;
             }
             BlockType::NumberedList(num + 1)

@@ -53,9 +53,15 @@ impl BlockManager {
     pub fn insert_block(&self, index: usize, block: Block) {
         let block = Rc::new(RefCell::new(block));
 
-        // Insérer dans le container visuel
-        if index < self.blocks.borrow().len() {
-            let next_block = &self.blocks.borrow()[index];
+        // Insérer dans la liste AVANT d'ajouter au widget tree
+        // pour éviter que le callback connect_changed ne trouve pas le bloc
+        self.blocks.borrow_mut().insert(index, block.clone());
+
+        // Maintenant insérer dans le container visuel
+        // (le borrow_mut est libéré)
+        let blocks_len = self.blocks.borrow().len();
+        if index < blocks_len - 1 {
+            let next_block = self.blocks.borrow()[index + 1].clone();
             self.container.insert_child_after(
                 &block.borrow().container,
                 Some(&next_block.borrow().container),
@@ -63,9 +69,6 @@ impl BlockManager {
         } else {
             self.container.append(&block.borrow().container);
         }
-
-        // Insérer dans la liste
-        self.blocks.borrow_mut().insert(index, block);
     }
 
     /// Supprime un bloc à une position donnée
@@ -156,7 +159,15 @@ impl BlockManager {
     /// Crée un nouveau bloc après le bloc courant
     pub fn create_block_after(&self, current_index: usize, block_type: BlockType) {
         let manager_ref = self.self_ref.borrow().clone();
-        let new_block = Block::new_with_manager(block_type, "", manager_ref);
+
+        // Ajouter le préfixe approprié pour les listes
+        let initial_content = match &block_type {
+            BlockType::BulletList => "• ",
+            BlockType::NumberedList(num) => &format!("{}. ", num),
+            _ => "",
+        };
+
+        let new_block = Block::new_with_manager(block_type, initial_content, manager_ref);
         self.insert_block(current_index + 1, new_block);
         self.focus_block(current_index + 1);
     }

@@ -106,7 +106,7 @@ impl BlockType {
     }
 
     /// Parse le début d'une liste numérotée
-    fn parse_numbered_list_start(line: &str) -> Option<u32> {
+    pub fn parse_numbered_list_start(line: &str) -> Option<u32> {
         let chars: Vec<char> = line.chars().collect();
         let mut num_str = String::new();
 
@@ -140,10 +140,13 @@ impl BlockType {
                 }
             }
             BlockType::BulletList => {
-                if trimmed.len() > 2 {
+                // Le bullet peut être "- " ou "• "
+                if trimmed.starts_with("• ") {
+                    &trimmed[4..] // "• " fait 3 bytes pour • + 1 byte pour espace
+                } else if trimmed.starts_with("- ") {
                     &trimmed[2..]
                 } else {
-                    ""
+                    trimmed
                 }
             }
             BlockType::NumberedList(_) => {
