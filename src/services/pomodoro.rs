@@ -130,6 +130,7 @@ impl PomodoroService {
         println!("[POMODORO] 🔄 Reset");
     }
 
+    #[allow(dead_code)]
     pub fn toggle(&mut self) {
         match self.state {
             PomodoroState::Idle => self.start_work(),

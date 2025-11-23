@@ -1,6 +1,6 @@
 use gtk4 as gtk;
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::env;
 use std::fs;
 use std::rc::Rc;
@@ -14,7 +14,9 @@ use crate::services::PinController;
 pub struct ChatOverlay {
     pub window: gtk::ApplicationWindow,
     pub pin_controller: PinController,
+    #[allow(dead_code)]
     pub id: String,
+    #[allow(dead_code)]
     is_pinned: Rc<Cell<bool>>,
 }
 

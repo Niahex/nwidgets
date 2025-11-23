@@ -14,6 +14,7 @@ static MONITOR_STARTED: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
 pub struct CapsLockService;
 
 impl CapsLockService {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self
     }
@@ -27,6 +28,7 @@ impl CapsLockService {
         false
     }
 
+    #[allow(dead_code)]
     pub fn is_enabled(&self) -> bool {
         Self::get_caps_lock_state()
     }

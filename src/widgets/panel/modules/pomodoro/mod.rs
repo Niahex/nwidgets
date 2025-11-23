@@ -1,8 +1,6 @@
 use gtk4 as gtk;
 use gtk::prelude::*;
 use std::sync::{Arc, Mutex};
-use std::cell::RefCell;
-use std::rc::Rc;
 use crate::services::pomodoro::{PomodoroService, PomodoroState};
 use crate::theme::icons;
 

@@ -2,7 +2,6 @@ use gtk4 as gtk;
 use gtk::prelude::*;
 use gtk4_layer_shell::{Edge, Layer, LayerShell, KeyboardMode};
 use crate::services::osd::{OsdEvent, OsdEventService};
-use crate::services::pipewire::AudioState;
 use crate::theme::icons;
 use std::cell::RefCell;
 use std::rc::Rc;

@@ -119,6 +119,7 @@ static MONITOR: Lazy<HyprlandMonitor> = Lazy::new(|| HyprlandMonitor::new());
 pub struct HyprlandService;
 
 impl HyprlandService {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self
     }

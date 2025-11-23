@@ -1,5 +1,4 @@
 pub mod active_window;
-pub mod appmenu;
 pub mod workspaces;
 pub mod datetime;
 pub mod bluetooth;

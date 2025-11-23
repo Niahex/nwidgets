@@ -1,12 +1,13 @@
 use glib::MainContext;
 use std::collections::HashMap;
 use std::sync::mpsc;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 use zbus::Connection;
 
 #[derive(Debug, Clone)]
 pub struct Notification {
+    #[allow(dead_code)]
     pub id: u32,
     pub app_name: String,
     pub summary: String,

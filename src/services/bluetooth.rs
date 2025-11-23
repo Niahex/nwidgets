@@ -47,6 +47,7 @@ trait Device {
 pub struct BluetoothService;
 
 impl BluetoothService {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self
     }
@@ -97,6 +98,7 @@ impl BluetoothService {
     }
 
     /// Start monitoring Bluetooth state changes (ancienne méthode conservée pour compatibilité)
+    #[allow(dead_code)]
     pub fn start_monitoring() -> mpsc::Receiver<BluetoothState> {
         let (tx, rx) = mpsc::channel();
 

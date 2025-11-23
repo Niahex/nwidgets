@@ -209,6 +209,7 @@ impl SystemTrayService {
         })
     }
 
+    #[allow(dead_code)]
     pub fn get_items(&self) -> Vec<TrayItem> {
         self.items.values().cloned().collect()
     }

@@ -14,6 +14,7 @@ static MONITOR_STARTED: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
 pub struct NumLockService;
 
 impl NumLockService {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self
     }
@@ -25,6 +26,7 @@ impl NumLockService {
         false
     }
 
+    #[allow(dead_code)]
     pub fn is_enabled(&self) -> bool {
         Self::get_num_lock_state()
     }

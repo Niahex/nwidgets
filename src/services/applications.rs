@@ -144,6 +144,7 @@ impl ApplicationsService {
     }
 
     /// Efface le cache
+    #[allow(dead_code)]
     pub fn clear_cache() -> Result<(), std::io::Error> {
         if let Ok(path) = Self::get_cache_file_path() {
             if path.exists() {
