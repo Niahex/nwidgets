@@ -311,11 +311,20 @@ fn navigate_list(selection_model: &gtk::SingleSelection, _list_view: &gtk::ListV
 }
 
 fn launch_selected_app(application: &gtk::Application, selection_model: &gtk::SingleSelection) {
+    use gtk::gio::prelude::*;
+
     if let Some(selected_item) = selection_model.selected_item() {
         if let Some(app_info) = selected_item.downcast_ref::<gtk::gio::AppInfo>() {
-            match app_info.launch(&[], gtk::gio::AppLaunchContext::NONE) {
+            let app_name = app_info.name().to_string();
+
+            // Create a proper launch context to ensure environment is inherited correctly
+            let display = gtk::gdk::Display::default().expect("Could not get default display");
+            let context = display.app_launch_context();
+
+            // Use the native launch() method which properly handles .desktop files
+            match app_info.launch(&[], Some(&context)) {
                 Ok(_) => {
-                    println!("[LAUNCHER] Launched: {}", app_info.name());
+                    println!("[LAUNCHER] Launched: {}", app_name);
                     // Close launcher after launching app
                     application.lookup_action("toggle-launcher")
                         .and_downcast::<gtk::gio::SimpleAction>()
@@ -323,7 +332,7 @@ fn launch_selected_app(application: &gtk::Application, selection_model: &gtk::Si
                         .activate(None);
                 },
                 Err(e) => {
-                    eprintln!("[LAUNCHER] Error launching application: {}", e);
+                    eprintln!("[LAUNCHER] Error launching {}: {}", app_name, e);
                 }
             }
         }
