@@ -1,6 +1,7 @@
-pub mod components;
-pub mod blocks;
-pub mod widget;
+pub mod core;
+pub mod parser;
+pub mod view;
+pub mod shortcuts;
+pub mod editor;
 
-pub use widget::MarkdownWidget;
-pub use blocks::{BlockType, Block, BlockManager};
+pub use editor::MarkdownEditor;
