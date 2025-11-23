@@ -5,14 +5,13 @@ use gtk4::{self as gtk, CenterBox};
 
 #[derive(Clone)]
 pub struct BluetoothModule {
-    pub container: gtk::Box,
+    pub container: gtk::CenterBox,
     icon_label: gtk::Label,
 }
 
 impl BluetoothModule {
     pub fn new() -> Self {
-        
-        let container = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+        let container = gtk::CenterBox::new();
         container.add_css_class("bluetooth-widget");
         container.set_width_request(50);
         container.set_height_request(50);
@@ -25,7 +24,7 @@ impl BluetoothModule {
         icon_label.set_halign(gtk::Align::Center);
         icon_label.set_valign(gtk::Align::Center);
 
-        container.append(&icon_label);
+        container.set_center_widget(Some(&icon_label));
 
         // Rendre le container cliquable
         let gesture = gtk::GestureClick::new();

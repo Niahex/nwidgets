@@ -6,7 +6,7 @@ use crate::theme::icons;
 
 #[derive(Clone)]
 pub struct PomodoroModule {
-    pub container: gtk::Box,
+    pub container: gtk::CenterBox,
     icon_label: gtk::Label,
     time_label: gtk::Label,
     service: Arc<Mutex<PomodoroService>>,
@@ -14,10 +14,10 @@ pub struct PomodoroModule {
 
 impl PomodoroModule {
     pub fn new() -> Self {
-        let container = gtk::Box::new(gtk::Orientation::Vertical, 2);
+        let container = gtk::CenterBox::new();
         container.add_css_class("pomodoro-widget");
-        container.set_width_request(48);
-        container.set_height_request(48);
+        container.set_width_request(50);
+        container.set_height_request(50);
         container.set_halign(gtk::Align::Center);
         container.set_valign(gtk::Align::Center);
 
@@ -28,8 +28,7 @@ impl PomodoroModule {
         let time_label = gtk::Label::new(Some("00:00"));
         time_label.add_css_class("pomodoro-time");
 
-        container.append(&icon_label);
-        container.append(&time_label);
+        container.set_center_widget(Some(&icon_label));
 
         let service = Arc::new(Mutex::new(PomodoroService::new()));
 
@@ -104,17 +103,12 @@ impl PomodoroModule {
 
         // Show icon only when idle or paused
         if state == PomodoroState::Idle {
-            self.icon_label.set_text(icons::ICONS.play);
-            self.icon_label.set_visible(true);
-            self.time_label.set_visible(false);
+            self.container.set_center_widget(Some(&self.icon_label));
         } else if matches!(state, PomodoroState::WorkPaused | PomodoroState::ShortBreakPaused | PomodoroState::LongBreakPaused) {
-            self.icon_label.set_text(icons::ICONS.pause);
-            self.icon_label.set_visible(true);
-            self.time_label.set_visible(false);
+            self.container.set_center_widget(Some(&self.icon_label));
         } else {
-            self.icon_label.set_visible(false);
             self.time_label.set_text(time_text);
-            self.time_label.set_visible(true);
+            self.container.set_center_widget(Some(&self.time_label));
         }
 
         // Update CSS classes

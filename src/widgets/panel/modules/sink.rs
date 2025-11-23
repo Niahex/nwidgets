@@ -4,26 +4,26 @@ use crate::services::pipewire::AudioState;
 use crate::theme::icons;
 
 #[derive(Clone)]
-pub struct VolumeModule {
-    pub container: gtk::Box,
+pub struct SinkModule {
+    pub container: gtk::CenterBox,
     icon_label: gtk::Label,
 }
 
-impl VolumeModule {
+impl SinkModule {
     pub fn new() -> Self {
-        let container = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-        container.add_css_class("volume-widget");
-        container.set_width_request(32);
-        container.set_height_request(32);
+        let container = gtk::CenterBox::new();
+        container.add_css_class("sink-widget");
+        container.set_width_request(50);
+        container.set_height_request(50);
         container.set_halign(gtk::Align::Center);
         container.set_valign(gtk::Align::Center);
 
         let icon_label = gtk::Label::new(Some(icons::ICONS.volume_high));
-        icon_label.add_css_class("volume-icon");
+        icon_label.add_css_class("sink-icon");
         icon_label.set_halign(gtk::Align::Center);
         icon_label.set_valign(gtk::Align::Center);
 
-        container.append(&icon_label);
+        container.set_center_widget(Some(&icon_label));
 
         Self {
             container,

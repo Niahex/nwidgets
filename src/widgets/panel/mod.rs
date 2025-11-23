@@ -5,10 +5,10 @@ pub mod modules; // Changed from `mod modules;` to `pub mod modules;`
 use modules::active_window::ActiveWindowModule;
 use modules::bluetooth::BluetoothModule;
 use modules::datetime::DateTimeModule;
-use modules::mic::MicModule;
+use modules::source::SourceModule;
 use modules::pomodoro::PomodoroModule;
 use modules::systray::SystrayModule;
-use modules::volume::VolumeModule;
+use modules::sink::SinkModule;
 use modules::workspaces::WorkspacesModule;
 
 pub fn create_panel_window(
@@ -19,8 +19,8 @@ pub fn create_panel_window(
     WorkspacesModule,
     BluetoothModule,
     SystrayModule,
-    VolumeModule,
-    MicModule,
+    SinkModule,
+    SourceModule,
     PomodoroModule,
 ) {
     let window = gtk::ApplicationWindow::builder()
@@ -64,24 +64,21 @@ pub fn create_panel_window(
     layout.append(&spacer_right);
 
     // Section droite : Pomodoro à gauche, puis les autres modules
-    let right_section = gtk::Box::new(gtk::Orientation::Horizontal, 4);
+    let right_section = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     right_section.add_css_class("panel-right");
 
-    // Pomodoro à gauche
-    let pomodoro_module = PomodoroModule::new();
-    right_section.append(&pomodoro_module.container);
-
-    // Spacer entre pomodoro et les autres
-    let pomodoro_spacer = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    pomodoro_spacer.set_width_request(16);
-    right_section.append(&pomodoro_spacer);
-
-    // Autres modules alignés
+    // Systray à gauche (peut changer de taille)
     let systray_module = SystrayModule::new();
     right_section.append(&systray_module.container);
-    let mic_module = MicModule::new();
+    
+    // Pomodoro juste après
+    let pomodoro_module = PomodoroModule::new();
+    right_section.append(&pomodoro_module.container);
+    
+    // Autres modules alignés
+    let mic_module = SourceModule::new();
     right_section.append(&mic_module.container);
-    let volume_module = VolumeModule::new();
+    let volume_module = SinkModule::new();
     right_section.append(&volume_module.container);
     let bluetooth_module = BluetoothModule::new();
     right_section.append(&bluetooth_module.container);

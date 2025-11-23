@@ -3,6 +3,6 @@ pub mod workspaces;
 pub mod datetime;
 pub mod bluetooth;
 pub mod systray;
-pub mod volume;
-pub mod mic;
+pub mod sink;
+pub mod source;
 pub mod pomodoro;

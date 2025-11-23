@@ -5,19 +5,25 @@ use gtk4 as gtk;
 
 #[derive(Clone)]
 pub struct DateTimeModule {
-    pub container: gtk::Box,
+    pub container: gtk::CenterBox,
+    datetime_box: gtk::Box,
     time_label: gtk::Label,
     date_label: gtk::Label,
 }
 
 impl DateTimeModule {
     pub fn new() -> Self {
-        let container = gtk::Box::new(gtk::Orientation::Vertical, 2); // gap-0.5 (2px)
+        let container = gtk::CenterBox::new();
         container.add_css_class("datetime-widget");
-        container.set_width_request(64); // w-16 (64px)
-        container.set_height_request(45); // h-16 (64px)
+        container.set_width_request(64);
+        container.set_height_request(50);
         container.set_halign(gtk::Align::Center);
         container.set_valign(gtk::Align::Center);
+
+        // Box interne pour les labels verticaux
+        let datetime_box = gtk::Box::new(gtk::Orientation::Vertical, 2);
+        datetime_box.set_halign(gtk::Align::Center);
+        datetime_box.set_valign(gtk::Align::Center);
 
         let time_label = gtk::Label::new(None);
         time_label.add_css_class("datetime-time");
@@ -27,11 +33,13 @@ impl DateTimeModule {
         date_label.add_css_class("datetime-date");
         date_label.set_halign(gtk::Align::Center);
 
-        container.append(&time_label);
-        container.append(&date_label);
+        datetime_box.append(&time_label);
+        datetime_box.append(&date_label);
+        container.set_center_widget(Some(&datetime_box));
 
         let module = Self {
             container,
+            datetime_box,
             time_label,
             date_label,
         };
