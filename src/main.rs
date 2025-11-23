@@ -16,7 +16,7 @@ use crate::services::numlock::NumLockService;
 use crate::services::osd::OsdEventService;
 use crate::services::pipewire::PipeWireService;
 use crate::services::systray::SystemTrayService;
-use crate::widgets::chat::create_chat_window;
+use crate::widgets::chat::create_chat_overlay;
 use crate::widgets::launcher::create_launcher_window;
 use crate::widgets::notifications::create_notifications_window;
 use crate::widgets::osd::create_osd_window;
@@ -40,9 +40,9 @@ fn main() {
         log::info!("[APPMENU] Starting AppMenu service...");
         AppMenuService::start();
 
-        // Créer la fenêtre de chat (cachée par défaut, toggle avec l'action "toggle-chat")
-        // Retourne aussi les contrôles pour le pin
-        let (chat_window, chat_pin_controller) = create_chat_window(app);
+        // Créer l'overlay de chat (caché par défaut, toggle avec l'action "toggle-chat")
+        let chat_overlay = create_chat_overlay(app);
+        let chat_pin_controller = chat_overlay.pin_controller.clone();
 
         // Créer la fenêtre de tasker (cachée par défaut, toggle avec l'action "toggle-tasker")
         // Retourne aussi les contrôles pour le pin
@@ -56,7 +56,7 @@ fn main() {
 
         // Action pour pin la fenêtre actuellement focus
         let pin_action = gtk::gio::SimpleAction::new("pin-focused-window", None);
-        let chat_window_clone = chat_window.clone();
+        let chat_window_clone = chat_overlay.window.clone();
         let tasker_window_clone = tasker_window.clone();
         let chat_pin_clone = chat_pin_controller.clone();
         let tasker_pin_clone = tasker_pin_controller.clone();

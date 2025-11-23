@@ -27,6 +27,7 @@ pub fn create_tasker_window(application: &gtk::Application) -> (gtk::Application
         .default_width(500)
         .default_height(600)
         .build();
+    window.add_css_class("tasker-window");
 
     // Cacher la fenêtre par défaut
     window.set_visible(false);
@@ -41,6 +42,7 @@ pub fn create_tasker_window(application: &gtk::Application) -> (gtk::Application
 
     // Container principal
     let main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    main_box.add_css_class("tasker-main");
 
     // Carrousels
     let (day_carousel, day_on_date_changed, day_reset) = create_day_carousel();
@@ -191,6 +193,7 @@ fn create_header(
     month_carousel: gtk::Box,
 ) -> (gtk::Box, Rc<Cell<bool>>, gtk::Button, gtk::Label) {
     let header = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+    header.add_css_class("tasker-header");
     header.set_margin_start(16);
     header.set_margin_end(16);
     header.set_margin_top(16);
@@ -213,15 +216,7 @@ fn create_header(
 
     // Icône et titre
     let icon_label = gtk::Label::new(Some(""));  // Nerd font icon for tasks
-    let icon_css = gtk::CssProvider::new();
-    icon_css.load_from_data(&format!(
-        "label {{ color: {}; font-size: 24px; }}",
-        COLORS.frost1.to_hex_string()
-    ));
-    icon_label.style_context().add_provider(
-        &icon_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
+    icon_label.add_css_class("tasker-icon");
     header.append(&icon_label);
 
     // Obtenir le mois en cours (abrégé) et l'année (2 derniers chiffres)
@@ -231,15 +226,7 @@ fn create_header(
     let title_text = format!("{} {}", month_abbr, year_short);
 
     let title_label = gtk::Label::new(Some(&title_text));
-    let title_css = gtk::CssProvider::new();
-    title_css.load_from_data(&format!(
-        "label {{ color: {}; font-size: 20px; font-weight: bold; }}",
-        COLORS.snow0.to_hex_string()
-    ));
-    title_label.style_context().add_provider(
-        &title_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
+    title_label.add_css_class("tasker-title");
 
     // Ajouter un gestionnaire de clic pour revenir à aujourd'hui
     title_label.set_cursor_from_name(Some("pointer"));
@@ -277,24 +264,7 @@ fn create_header(
     // Bouton pour changer de vue
     let view_mode = *current_view.borrow();
     let view_button = gtk::Button::with_label(view_mode.icon());
-    let view_btn_css = gtk::CssProvider::new();
-    view_btn_css.load_from_data(&format!(
-        "button {{
-            background-color: {};
-            color: {};
-            border: none;
-            border-radius: 6px;
-            padding: 8px 12px;
-            font-size: 16px;
-            margin-right: 8px;
-        }}",
-        COLORS.frost2.to_hex_string(),
-        COLORS.polar0.to_hex_string()
-    ));
-    view_button.style_context().add_provider(
-        &view_btn_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
+    view_button.add_css_class("tasker-view-button");
 
     let window_clone = window.clone();
     let view_button_clone = view_button.clone();
@@ -317,23 +287,7 @@ fn create_header(
 
     // Bouton toggle pin/unpin (réserver/libérer l'espace)
     let toggle_button = gtk::Button::with_label(ICON_RESERVE_SPACE);
-    let toggle_css = gtk::CssProvider::new();
-    toggle_css.load_from_data(&format!(
-        "button {{
-            background-color: {};
-            color: {};
-            border: none;
-            border-radius: 6px;
-            padding: 8px 12px;
-            font-size: 16px;
-        }}",
-        COLORS.frost1.to_hex_string(),
-        COLORS.polar0.to_hex_string()
-    ));
-    toggle_button.style_context().add_provider(
-        &toggle_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
+    toggle_button.add_css_class("tasker-pin-button");
 
     let is_exclusive = Rc::new(Cell::new(false));
     let is_exclusive_for_button = Rc::clone(&is_exclusive);
@@ -398,71 +352,23 @@ fn update_carousel(
 
 fn create_add_task_area() -> (gtk::Box, gtk::Entry) {
     let add_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    add_box.add_css_class("tasker-add-area");
     add_box.set_margin_start(16);
     add_box.set_margin_end(16);
     add_box.set_margin_top(8);
     add_box.set_margin_bottom(16);
 
-    // Style du background
-    let bg_css = gtk::CssProvider::new();
-    bg_css.load_from_data(&format!(
-        "box {{
-            background-color: {};
-            border-top: 2px solid {};
-            padding: 12px;
-        }}",
-        COLORS.polar1.to_hex_string(),
-        COLORS.frost1.to_hex_string()
-    ));
-    add_box.style_context().add_provider(
-        &bg_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
-
     // Entry pour ajouter une tâche
     let entry = gtk::Entry::new();
+    entry.add_css_class("tasker-entry");
     entry.set_placeholder_text(Some("Add a new task..."));
     entry.set_hexpand(true);
-
-    let entry_css = gtk::CssProvider::new();
-    entry_css.load_from_data(&format!(
-        "entry {{
-            background-color: {};
-            color: {};
-            border: 1px solid {};
-            border-radius: 6px;
-            padding: 8px;
-        }}",
-        COLORS.polar2.to_hex_string(),
-        COLORS.snow0.to_hex_string(),
-        COLORS.polar3.to_hex_string()
-    ));
-    entry.style_context().add_provider(
-        &entry_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
     add_box.append(&entry);
 
     // Bouton ajouter
     let add_btn = gtk::Button::new();
+    add_btn.add_css_class("tasker-add-button");
     add_btn.set_label("");  // Plus icon
-    let btn_css = gtk::CssProvider::new();
-    btn_css.load_from_data(&format!(
-        "button {{
-            background-color: {};
-            color: {};
-            border: none;
-            border-radius: 6px;
-            padding: 8px 16px;
-            font-size: 18px;
-        }}",
-        COLORS.frost1.to_hex_string(),
-        COLORS.polar0.to_hex_string()
-    ));
-    add_btn.style_context().add_provider(
-        &btn_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
     add_box.append(&add_btn);
 
     (add_box, entry)

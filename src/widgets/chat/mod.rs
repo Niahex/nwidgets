@@ -11,6 +11,13 @@ use webkit6::{
 };
 use crate::services::PinController;
 
+pub struct ChatOverlay {
+    pub window: gtk::ApplicationWindow,
+    pub pin_controller: PinController,
+    pub id: String,
+    is_pinned: Rc<Cell<bool>>,
+}
+
 const SITES: &[(&str, &str)] = &[
     ("Gemini", "https://gemini.google.com/"),
     ("DeepSeek", "https://chat.deepseek.com/"),
@@ -24,7 +31,7 @@ const SITES: &[(&str, &str)] = &[
 const ICON_RESERVE_SPACE: &str = "󰐃"; // Icon for reserving space
 const ICON_RELEASE_SPACE: &str = "󰐄"; // Icon for releasing space
 
-pub fn create_chat_window(application: &gtk::Application) -> (gtk::ApplicationWindow, PinController) {
+pub fn create_chat_overlay(application: &gtk::Application) -> ChatOverlay {
     // --- WebView Settings ---
     let settings = Settings::new();
     settings.set_javascript_can_access_clipboard(true);
@@ -100,67 +107,17 @@ pub fn create_chat_window(application: &gtk::Application) -> (gtk::ApplicationWi
     window.set_anchor(Edge::Left, true);
     window.set_keyboard_mode(KeyboardMode::Exclusive);
 
-    // --- Site Selector Dropdown ---
-    struct SiteData {
-        name: &'static str,
-        url: &'static str,
-        icon_path: String, // Path to the SVG icon
-    }
-
-    let sites_with_icons: Rc<Vec<SiteData>> = Rc::new(SITES.iter().map(|(name, url)| {
-        let icon_filename = format!("{}.svg", name.to_lowercase().replace(" ", "-")); // e.g., "gemini.svg"
-        let icon_path = format!("/home/nia/Github/nwidgets/assets/{}", icon_filename);
-        SiteData { name, url, icon_path }
-    }).collect());
-
-    let site_names: Vec<&str> = sites_with_icons.iter().map(|s| s.name).collect();
-    let model = gtk::StringList::new(&site_names);
-
-    let dropdown = gtk::DropDown::builder()
-        .model(&model)
-        .factory(&{
-            let factory = gtk::SignalListItemFactory::new();
-
-            factory.connect_setup(move |_, list_item| {
-                let box_container = gtk::Box::new(gtk::Orientation::Horizontal, 5);
-                let icon_image = gtk::Image::new();
-                let label = gtk::Label::new(None);
-
-                box_container.append(&icon_image);
-                box_container.append(&label);
-                list_item.set_child(Some(&box_container));
-            });
-
-            let sites_with_icons_clone = Rc::clone(&sites_with_icons);
-            factory.connect_bind(move |_, list_item| {
-                let box_container = list_item.child().and_then(|c| c.downcast::<gtk::Box>().ok()).unwrap();
-                let icon_image = box_container.first_child().and_then(|c| c.downcast::<gtk::Image>().ok()).unwrap();
-                let label = box_container.last_child().and_then(|c| c.downcast::<gtk::Label>().ok()).unwrap();
-
-                let string_object = list_item.item().and_then(|i| i.downcast::<gtk::StringObject>().ok()).unwrap();
-                let site_name = string_object.string();
-
-                // Find the corresponding SiteData
-                if let Some(index) = sites_with_icons_clone.iter().position(|s| s.name == site_name.as_str()) {
-                    let site_data = &sites_with_icons_clone[index];
-                    icon_image.set_from_file(Some(&site_data.icon_path));
-                    label.set_text(site_data.name);
-                }
-            });
-            factory
-        })
-        .build();
+    // --- Site Selector Dropdown (Simplifié) ---
+    let site_names: Vec<&str> = SITES.iter().map(|(name, _)| *name).collect();
+    let string_list = gtk::StringList::new(&site_names);
+    let dropdown = gtk::DropDown::new(Some(string_list), None::<&gtk::Expression>);
     dropdown.add_css_class("chat-site-dropdown");
 
     let webview_clone = webview.clone();
-    let sites_with_icons_clone_for_dropdown = Rc::clone(&sites_with_icons);
-    dropdown.connect_selected_item_notify(move |dropdown| {
-        if let Some(selected) = dropdown.selected_item() {
-            if let Ok(pos) = selected.downcast::<gtk::StringObject>().map(|s| s.string()) {
-                if let Some(index) = sites_with_icons_clone_for_dropdown.iter().position(|s| s.name == pos.as_str()) {
-                    webview_clone.load_uri(sites_with_icons_clone_for_dropdown[index].url);
-                }
-            }
+    dropdown.connect_selected_notify(move |dropdown| {
+        let selected = dropdown.selected() as usize;
+        if selected < SITES.len() {
+            webview_clone.load_uri(SITES[selected].1);
         }
     });
 
@@ -215,8 +172,10 @@ pub fn create_chat_window(application: &gtk::Application) -> (gtk::ApplicationWi
         let is_visible = window_clone.is_visible();
         window_clone.set_visible(!is_visible);
 
-        // Si on ouvre la fenêtre, donner le focus au webview
+        // Si on ouvre la fenêtre, donner le focus et grab_focus
         if !is_visible {
+            window_clone.present();
+            window_clone.grab_focus();
             webview_clone.grab_focus();
             println!("[CHAT] Toggle chat window: true (focus grabbed)");
         } else {
@@ -260,6 +219,18 @@ pub fn create_chat_window(application: &gtk::Application) -> (gtk::ApplicationWi
 
     window.add_controller(key_controller);
 
+    // Gestionnaire de perte de focus clavier - vérifie périodiquement le focus
+    let window_clone = window.clone();
+    let is_exclusive_clone = Rc::clone(&is_exclusive);
+    
+    gtk::glib::timeout_add_local(std::time::Duration::from_millis(200), move || {
+        if window_clone.is_visible() && !is_exclusive_clone.get() && !window_clone.has_focus() {
+            window_clone.set_visible(false);
+            println!("[CHAT] Window hidden (keyboard focus lost, not pinned)");
+        }
+        gtk::glib::ControlFlow::Continue
+    });
+
     // Créer le PinController pour permettre le contrôle externe
     let pin_controller = PinController::new(
         window.clone(),
@@ -269,5 +240,10 @@ pub fn create_chat_window(application: &gtk::Application) -> (gtk::ApplicationWi
         ICON_RELEASE_SPACE,
     );
 
-    (window, pin_controller)
+    ChatOverlay {
+        window,
+        pin_controller,
+        id: "chat-overlay-main".to_string(),
+        is_pinned: is_exclusive,
+    }
 }

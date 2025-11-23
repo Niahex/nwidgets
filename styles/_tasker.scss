@@ -1,0 +1,112 @@
+// Tasker Widget Styles
+@import 'colors';
+
+.tasker-window {
+  background-color: $polar0;
+  border-radius: 12px;
+  border: 1px solid $polar3;
+}
+
+.tasker-main {
+  background-color: $polar0;
+}
+
+.tasker-header {
+  background-color: $polar1;
+  border-bottom: 2px solid $frost1;
+  padding: 12px;
+  border-radius: 12px 12px 0 0;
+}
+
+.tasker-icon {
+  color: $frost1;
+  font-size: 24px;
+  margin-right: 8px;
+}
+
+.tasker-title {
+  color: $snow0;
+  font-size: 20px;
+  font-weight: bold;
+  cursor: pointer;
+  
+  &:hover {
+    color: $frost1;
+  }
+}
+
+.tasker-view-button {
+  background-color: $frost2;
+  color: $polar0;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 16px;
+  margin-right: 8px;
+  
+  &:hover {
+    background-color: $frost3;
+  }
+  
+  &:active {
+    background-color: $frost1;
+  }
+}
+
+.tasker-pin-button {
+  background-color: $frost1;
+  color: $polar0;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 16px;
+  
+  &:hover {
+    background-color: $frost2;
+  }
+  
+  &:active {
+    background-color: $frost0;
+  }
+}
+
+.tasker-add-area {
+  background-color: $polar1;
+  border-top: 2px solid $frost1;
+  padding: 12px;
+  border-radius: 0 0 12px 12px;
+}
+
+.tasker-entry {
+  background-color: $polar2;
+  color: $snow0;
+  border: 1px solid $polar3;
+  border-radius: 6px;
+  padding: 8px;
+  
+  &:focus {
+    border-color: $frost1;
+    box-shadow: 0 0 0 2px rgba($frost1, 0.3);
+  }
+  
+  &::placeholder {
+    color: $polar3;
+  }
+}
+
+.tasker-add-button {
+  background-color: $frost1;
+  color: $polar0;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 18px;
+  
+  &:hover {
+    background-color: $frost2;
+  }
+  
+  &:active {
+    background-color: $frost0;
+  }
+}
