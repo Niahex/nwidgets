@@ -4,7 +4,6 @@ use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use std::collections::HashSet;
 use std::env;
 use crate::services::ApplicationsService;
-use crate::theme::colors::COLORS;
 
 pub fn create_launcher_window(application: &gtk::Application) -> gtk::ApplicationWindow {
     let window = gtk::ApplicationWindow::builder()

@@ -97,13 +97,29 @@
 }
 
 .pomodoro-widget {
-    .pomo-icon {
-        color: $red;
+    .pomodoro-icon {
         font-size: 18px;
     }
-    .pomo-time {
+    
+    .pomodoro-time {
         font-weight: bold;
-        margin-left: 6px;
+        font-size: 12px;
+        
+        &.pomodoro-work {
+            color: $red;
+        }
+        
+        &.pomodoro-break {
+            color: $green;
+        }
+        
+        &.pomodoro-longbreak {
+            color: $yellow;
+        }
+        
+        &.pomodoro-idle {
+            color: $snow0;
+        }
     }
 }
 

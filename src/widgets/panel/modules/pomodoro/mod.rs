@@ -21,7 +21,7 @@ impl PomodoroModule {
         container.set_halign(gtk::Align::Center);
         container.set_valign(gtk::Align::Center);
 
-        let icon_label = gtk::Label::new(Some(icons::ICONS.timer_outline));
+        let icon_label = gtk::Label::new(Some(icons::ICONS.play));
         icon_label.add_css_class("pomodoro-icon");
         icon_label.add_css_class("pomodoro-idle");
 
@@ -79,21 +79,37 @@ impl PomodoroModule {
         svc.auto_transition();
 
         let state = svc.get_state();
-        let (icon, css_class) = match state {
-            PomodoroState::Idle => (icons::ICONS.timer_outline, "pomodoro-idle"),
-            PomodoroState::Work | PomodoroState::WorkPaused => (icons::ICONS.timer, "pomodoro-work"),
-            PomodoroState::ShortBreak | PomodoroState::ShortBreakPaused => (icons::ICONS.coffee, "pomodoro-break"),
-            PomodoroState::LongBreak | PomodoroState::LongBreakPaused => (icons::ICONS.beach, "pomodoro-longbreak"),
+        let formatted_time = svc.format_time();
+        let (_icon, time_text, css_class) = match state {
+            PomodoroState::Idle => ("", "00:00", "pomodoro-idle"),
+            PomodoroState::Work => ("", formatted_time.as_str(), "pomodoro-work"),
+            PomodoroState::WorkPaused => ("", formatted_time.as_str(), "pomodoro-work"),
+            PomodoroState::ShortBreak => ("", formatted_time.as_str(), "pomodoro-break"),
+            PomodoroState::ShortBreakPaused => ("", formatted_time.as_str(), "pomodoro-break"),
+            PomodoroState::LongBreak => ("", formatted_time.as_str(), "pomodoro-longbreak"),
+            PomodoroState::LongBreakPaused => ("", formatted_time.as_str(), "pomodoro-longbreak"),
         };
 
-        self.icon_label.set_text(icon);
-        self.time_label.set_text(&svc.format_time());
+        // Show icon only when idle or paused
+        if state == PomodoroState::Idle {
+            self.icon_label.set_text(icons::ICONS.play);
+            self.icon_label.set_visible(true);
+            self.time_label.set_visible(false);
+        } else if matches!(state, PomodoroState::WorkPaused | PomodoroState::ShortBreakPaused | PomodoroState::LongBreakPaused) {
+            self.icon_label.set_text(icons::ICONS.pause);
+            self.icon_label.set_visible(true);
+            self.time_label.set_visible(false);
+        } else {
+            self.icon_label.set_visible(false);
+            self.time_label.set_text(time_text);
+            self.time_label.set_visible(true);
+        }
 
         // Update CSS classes
-        self.icon_label.remove_css_class("pomodoro-idle");
-        self.icon_label.remove_css_class("pomodoro-work");
-        self.icon_label.remove_css_class("pomodoro-break");
-        self.icon_label.remove_css_class("pomodoro-longbreak");
-        self.icon_label.add_css_class(css_class);
+        self.time_label.remove_css_class("pomodoro-idle");
+        self.time_label.remove_css_class("pomodoro-work");
+        self.time_label.remove_css_class("pomodoro-break");
+        self.time_label.remove_css_class("pomodoro-longbreak");
+        self.time_label.add_css_class(css_class);
     }
 }
