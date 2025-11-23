@@ -2,7 +2,7 @@ use zbus::{Connection, proxy, interface, SignalContext, MessageHeader};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, mpsc};
-use glib::{MainContext, ControlFlow, Priority};
+use glib::MainContext;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrayItem {
@@ -244,22 +244,23 @@ impl SystemTrayService {
             });
         });
 
-        // Créer un channel GTK pour exécuter le callback sur le thread principal
-        let (tx_glib, rx_glib) = MainContext::channel(Priority::DEFAULT);
+        // Créer un async channel pour exécuter le callback sur le thread principal
+        let (async_tx, async_rx) = async_channel::unbounded();
 
-        // Thread qui reçoit les mises à jour et les transfère au channel GTK
+        // Thread qui reçoit les mises à jour et les transfère au async channel
         std::thread::spawn(move || {
             while let Ok(items) = rx.recv() {
-                if tx_glib.send(items).is_err() {
+                if async_tx.send_blocking(items).is_err() {
                     break;
                 }
             }
         });
 
-        // Attacher le callback au channel GTK
-        rx_glib.attach(None, move |items| {
-            callback(items);
-            ControlFlow::Continue
+        // Attacher le callback au async channel
+        MainContext::default().spawn_local(async move {
+            while let Ok(items) = async_rx.recv().await {
+                callback(items);
+            }
         });
     }
 }

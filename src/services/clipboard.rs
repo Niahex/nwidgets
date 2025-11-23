@@ -3,7 +3,7 @@ use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use glib::{MainContext, ControlFlow, Priority};
+use glib::MainContext;
 use once_cell::sync::Lazy;
 
 static SUBSCRIBERS: Lazy<Arc<Mutex<Vec<Sender<()>>>>> =
@@ -39,22 +39,23 @@ impl ClipboardService {
             Self::start_monitoring();
         }
 
-        let (tx_glib, rx_glib) = MainContext::channel(Priority::DEFAULT);
+        let (async_tx, async_rx) = async_channel::unbounded();
         let (tx, rx) = mpsc::channel();
 
         SUBSCRIBERS.lock().unwrap().push(tx);
 
         thread::spawn(move || {
             while let Ok(()) = rx.recv() {
-                if tx_glib.send(()).is_err() {
+                if async_tx.send_blocking(()).is_err() {
                     break;
                 }
             }
         });
 
-        rx_glib.attach(None, move |()| {
-            callback();
-            ControlFlow::Continue
+        MainContext::default().spawn_local(async move {
+            while let Ok(()) = async_rx.recv().await {
+                callback();
+            }
         });
     }
 

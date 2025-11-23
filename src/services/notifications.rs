@@ -1,4 +1,4 @@
-use glib::{ControlFlow, MainContext, Priority};
+use glib::MainContext;
 use std::collections::HashMap;
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
@@ -177,19 +177,20 @@ impl NotificationService {
         Self::start_dbus_server_once();
 
         // Créer le bridge vers glib
-        let (tx_glib, rx_glib) = MainContext::channel(Priority::DEFAULT);
+        let (async_tx, async_rx) = async_channel::unbounded();
 
         std::thread::spawn(move || {
             while let Ok(notification) = rx.recv() {
-                if tx_glib.send(notification).is_err() {
+                if async_tx.send_blocking(notification).is_err() {
                     break;
                 }
             }
         });
 
-        rx_glib.attach(None, move |notification| {
-            callback(notification);
-            ControlFlow::Continue
+        MainContext::default().spawn_local(async move {
+            while let Ok(notification) = async_rx.recv().await {
+                callback(notification);
+            }
         });
     }
 }

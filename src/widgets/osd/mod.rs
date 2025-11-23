@@ -66,28 +66,29 @@ pub fn create_osd_window(application: &gtk::Application) -> gtk::ApplicationWind
 
     // Écouter les événements OSD
     let osd_rx = OsdEventService::init();
-    let (tx_glib, rx_glib) = glib::MainContext::channel(glib::Priority::DEFAULT);
+    let (async_tx, async_rx) = async_channel::unbounded();
 
     std::thread::spawn(move || {
         while let Ok(event) = osd_rx.recv() {
-            if tx_glib.send(event).is_err() {
+            if async_tx.send_blocking(event).is_err() {
                 break;
             }
         }
     });
 
-    rx_glib.attach(None, move |event| {
-        let content = match event {
-            OsdEvent::Volume(level, muted) => create_volume_osd(level, muted),
-            OsdEvent::Microphone(muted) => create_mic_osd(muted),
-            OsdEvent::CapsLock(enabled) => create_capslock_osd(enabled),
-            OsdEvent::NumLock(enabled) => create_numlock_osd(enabled),
-            OsdEvent::Clipboard => create_clipboard_osd(),
-            OsdEvent::DictationStarted => create_dictation_osd(true),
-            OsdEvent::DictationStopped => create_dictation_osd(false),
-        };
-        show_osd(content);
-        glib::ControlFlow::Continue
+    glib::MainContext::default().spawn_local(async move {
+        while let Ok(event) = async_rx.recv().await {
+            let content = match event {
+                OsdEvent::Volume(level, muted) => create_volume_osd(level, muted),
+                OsdEvent::Microphone(muted) => create_mic_osd(muted),
+                OsdEvent::CapsLock(enabled) => create_capslock_osd(enabled),
+                OsdEvent::NumLock(enabled) => create_numlock_osd(enabled),
+                OsdEvent::Clipboard => create_clipboard_osd(),
+                OsdEvent::DictationStarted => create_dictation_osd(true),
+                OsdEvent::DictationStopped => create_dictation_osd(false),
+            };
+            show_osd(content);
+        }
     });
 
     window

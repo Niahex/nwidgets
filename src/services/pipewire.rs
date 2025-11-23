@@ -1,6 +1,6 @@
 use std::process::Command;
 use std::sync::mpsc;
-use glib::{MainContext, ControlFlow, Priority};
+use glib::MainContext;
 
 #[derive(Debug, Clone)]
 pub struct AudioState {
@@ -119,19 +119,20 @@ impl PipeWireService {
             }
         });
 
-        let (tx_glib, rx_glib) = MainContext::channel(Priority::DEFAULT);
+        let (async_tx, async_rx) = async_channel::unbounded();
 
         std::thread::spawn(move || {
             while let Ok(state) = rx.recv() {
-                if tx_glib.send(state).is_err() {
+                if async_tx.send_blocking(state).is_err() {
                     break;
                 }
             }
         });
 
-        rx_glib.attach(None, move |state| {
-            callback(state);
-            ControlFlow::Continue
+        MainContext::default().spawn_local(async move {
+            while let Ok(state) = async_rx.recv().await {
+                callback(state);
+            }
         });
     }
 }
