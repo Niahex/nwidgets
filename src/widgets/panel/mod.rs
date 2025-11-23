@@ -33,10 +33,10 @@ pub fn create_panel_window(
     window.set_anchor(Edge::Top, true);
     window.set_anchor(Edge::Left, true);
     window.set_anchor(Edge::Right, true);
-    window.set_exclusive_zone(45);
+    window.set_exclusive_zone(50);
 
     let layout = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    layout.set_height_request(45);
+    layout.set_height_request(50);
     layout.set_hexpand(true);
     layout.add_css_class("panel");
 
@@ -63,13 +63,22 @@ pub fn create_panel_window(
     spacer_right.set_hexpand(true);
     layout.append(&spacer_right);
 
-    // Section droite : Systray, Pomodoro, Mic, Volume, Bluetooth, DateTime
-    let right_section = gtk::Box::new(gtk::Orientation::Horizontal, 12); // gap-3
+    // Section droite : Pomodoro à gauche, puis les autres modules
+    let right_section = gtk::Box::new(gtk::Orientation::Horizontal, 4);
     right_section.add_css_class("panel-right");
-    let systray_module = SystrayModule::new();
-    right_section.append(&systray_module.container);
+
+    // Pomodoro à gauche
     let pomodoro_module = PomodoroModule::new();
     right_section.append(&pomodoro_module.container);
+
+    // Spacer entre pomodoro et les autres
+    let pomodoro_spacer = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    pomodoro_spacer.set_width_request(16);
+    right_section.append(&pomodoro_spacer);
+
+    // Autres modules alignés
+    let systray_module = SystrayModule::new();
+    right_section.append(&systray_module.container);
     let mic_module = MicModule::new();
     right_section.append(&mic_module.container);
     let volume_module = VolumeModule::new();

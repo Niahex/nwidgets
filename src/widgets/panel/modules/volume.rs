@@ -11,7 +11,7 @@ pub struct VolumeModule {
 
 impl VolumeModule {
     pub fn new() -> Self {
-        let container = gtk::Box::new(gtk::Orientation::Horizontal, 4);
+        let container = gtk::Box::new(gtk::Orientation::Horizontal, 0);
         container.add_css_class("volume-widget");
         container.set_width_request(32);
         container.set_height_request(32);
@@ -20,6 +20,8 @@ impl VolumeModule {
 
         let icon_label = gtk::Label::new(Some(icons::ICONS.volume_high));
         icon_label.add_css_class("volume-icon");
+        icon_label.set_halign(gtk::Align::Center);
+        icon_label.set_valign(gtk::Align::Center);
 
         container.append(&icon_label);
 

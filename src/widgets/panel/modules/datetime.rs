@@ -1,7 +1,7 @@
-use gtk4 as gtk;
-use gtk::prelude::*;
 use chrono::Local;
 use glib::ControlFlow;
+use gtk::prelude::*;
+use gtk4 as gtk;
 
 #[derive(Clone)]
 pub struct DateTimeModule {
@@ -14,8 +14,8 @@ impl DateTimeModule {
     pub fn new() -> Self {
         let container = gtk::Box::new(gtk::Orientation::Vertical, 2); // gap-0.5 (2px)
         container.add_css_class("datetime-widget");
-        container.set_width_request(64);  // w-16 (64px)
-        container.set_height_request(64); // h-16 (64px)
+        container.set_width_request(64); // w-16 (64px)
+        container.set_height_request(45); // h-16 (64px)
         container.set_halign(gtk::Align::Center);
         container.set_valign(gtk::Align::Center);
 
@@ -52,6 +52,7 @@ impl DateTimeModule {
     fn update(&self) {
         let now = Local::now();
         self.time_label.set_text(&now.format("%H:%M").to_string());
-        self.date_label.set_text(&now.format("%d/%m/%y").to_string());
+        self.date_label
+            .set_text(&now.format("%d/%m/%y").to_string());
     }
 }

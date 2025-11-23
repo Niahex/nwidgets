@@ -2,12 +2,33 @@
 @import "colors";
 
 .panel {
-    background-color: rgba($polar0, 0.95);
+    background-color: $purple;
     color: $snow2;
     padding: 0 12px;
 
-    .panel-left, .panel-center, .panel-right {
+    .panel-left,
+    .panel-center,
+    .panel-right {
         padding: 0 8px;
+    }
+
+    .panel-right {
+        // Tous les modules de la section droite ont la même taille et alignement
+        > * {
+            min-width: 32px;
+            min-height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        // Icônes uniformes
+        .bluetooth-icon,
+        .volume-icon,
+        .mic-icon,
+        .systray-icon {
+            font-size: 16px;
+        }
     }
 }
 
@@ -49,7 +70,6 @@
     }
 }
 
-
 // Specific module styles
 .active-window-widget {
     padding: 0 12px;
@@ -85,7 +105,10 @@
     }
 }
 
-.datetime-widget, .volume-widget, .mic-widget, .bluetooth-widget {
+.datetime-widget,
+.volume-widget,
+.mic-widget,
+.bluetooth-widget {
     font-size: 14px;
 }
 
@@ -97,35 +120,43 @@
 }
 
 .pomodoro-widget {
+    // Pomodoro aligné à gauche dans sa section
+    justify-content: flex-start !important;
+
     .pomodoro-icon {
         font-size: 18px;
     }
-    
+
     .pomodoro-time {
         font-weight: bold;
         font-size: 12px;
-        
+
         &.pomodoro-work {
             color: $red;
         }
-        
+
         &.pomodoro-break {
             color: $green;
         }
-        
+
         &.pomodoro-longbreak {
             color: $yellow;
         }
-        
+
         &.pomodoro-idle {
             color: $snow0;
         }
     }
 }
 
-.volume-widget, .mic-widget {
+.volume-widget,
+.mic-widget {
     .icon {
         font-size: 18px;
         margin-right: 6px;
     }
+}
+
+.bluetooth-widget {
+    background-color: $red;
 }
