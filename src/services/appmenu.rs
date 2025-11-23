@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex, mpsc};
 use zbus::{Connection, proxy};
 use once_cell::sync::Lazy;
 use futures::stream::StreamExt;
-use glib::{MainContext, Priority};
+use glib::MainContext;
 
 // Structure pour stocker les informations du menu d'une application
 #[derive(Debug, Clone)]
@@ -197,20 +197,21 @@ impl AppMenuService {
 
         let rx = APPMENU_MONITOR.subscribe();
 
-        // Envoyer les updates via glib MainContext
-        let (tx_glib, rx_glib) = MainContext::channel(Priority::DEFAULT);
+        // Envoyer les updates via async channel
+        let (async_tx, async_rx) = async_channel::unbounded();
 
-        // Thread pour recevoir les updates et les envoyer à glib
+        // Thread pour recevoir les updates et les envoyer à async channel
         std::thread::spawn(move || {
             while let Ok(menu_info) = rx.recv() {
-                let _ = tx_glib.send(menu_info);
+                let _ = async_tx.send_blocking(menu_info);
             }
         });
 
         // Recevoir dans le contexte glib et appeler le callback
-        rx_glib.attach(None, move |menu_info| {
-            callback(menu_info);
-            glib::ControlFlow::Continue
+        MainContext::default().spawn_local(async move {
+            while let Ok(menu_info) = async_rx.recv().await {
+                callback(menu_info);
+            }
         });
     }
 

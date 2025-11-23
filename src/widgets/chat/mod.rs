@@ -219,18 +219,6 @@ pub fn create_chat_overlay(application: &gtk::Application) -> ChatOverlay {
 
     window.add_controller(key_controller);
 
-    // Gestionnaire de perte de focus clavier - vérifie périodiquement le focus
-    let window_clone = window.clone();
-    let is_exclusive_clone = Rc::clone(&is_exclusive);
-    
-    gtk::glib::timeout_add_local(std::time::Duration::from_millis(200), move || {
-        if window_clone.is_visible() && !is_exclusive_clone.get() && !window_clone.has_focus() {
-            window_clone.set_visible(false);
-            println!("[CHAT] Window hidden (keyboard focus lost, not pinned)");
-        }
-        gtk::glib::ControlFlow::Continue
-    });
-
     // Créer le PinController pour permettre le contrôle externe
     let pin_controller = PinController::new(
         window.clone(),
