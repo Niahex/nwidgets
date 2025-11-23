@@ -1,0 +1,44 @@
+// OSD Widget Styles
+@import 'colors';
+
+.osd-container {
+  background-color: rgba($polar0, 0.95);
+  border: 1px solid rgba($frost1, 0.3);
+  border-radius: 12px;
+  padding: 16px 20px;
+  box-shadow: 0 4px 12px rgba(#000000, 0.3);
+  
+  // Animation d'apparition
+  transition: all 200ms ease-out;
+}
+
+.osd-icon {
+  color: $frost1;
+  font-size: 24px;
+  margin-right: 12px;
+}
+
+.osd-text {
+  color: $snow0;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.osd-progress {
+  margin: 0 12px;
+  
+  // Style de la barre de progression
+  trough {
+    background-color: $polar2;
+    border-radius: 4px;
+    min-height: 8px;
+  }
+  
+  progress {
+    background-color: $frost1;
+    border-radius: 4px;
+    min-height: 8px;
+  }
+}
