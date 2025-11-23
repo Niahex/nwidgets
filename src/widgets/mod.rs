@@ -5,4 +5,3 @@ pub mod osd;
 pub mod panel;
 pub mod power_menu;
 pub mod tasker;
-pub mod markdown;
