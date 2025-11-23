@@ -1,8 +1,8 @@
 pub mod chat;
-pub mod panel;
-pub mod osd;
-pub mod notifications;
-pub mod tasker;
-pub mod power_menu;
 pub mod launcher;
-pub mod markdown;
+pub mod notifications;
+pub mod osd;
+pub mod panel;
+pub mod power_menu;
+pub mod tasker;
+// pub mod markdown;
