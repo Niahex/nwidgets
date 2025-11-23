@@ -1,0 +1,176 @@
+/* Reset complet du thème GTK pour le markdown */
+
+/* Container principal */
+
+text {
+    color: black;
+}
+
+.markdown-editor {
+    background-color: #ffffff;
+    border: none;
+}
+
+.markdown-editor > viewport {
+    background-color: #ffffff;
+}
+
+.markdown-container {
+    background-color: #ffffff;
+}
+
+/* Blocs markdown (Notion-like) */
+.markdown-block {
+    background: #ffffff;
+    border: 1px solid #e9e9e7;
+    border-radius: 3px;
+    padding: 8px 12px;
+    margin: 2px 0;
+    min-height: 36px;
+    transition: all 150ms ease;
+}
+
+.markdown-block:hover {
+    background-color: rgba(55, 53, 47, 0.03);
+    border-color: #d3d1cb;
+}
+
+/* TextView - Reset complet */
+.markdown-block textview {
+    background: none;
+    background-color: transparent;
+    background-image: none;
+    color: #37352f;
+    font-family:
+        -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica,
+        "Apple Color Emoji", Arial, sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.5;
+    padding: 0;
+    margin: 0;
+    border: none;
+    outline: none;
+    box-shadow: none;
+    -gtk-outline-radius: 0;
+    caret-color: #37352f;
+    min-height: 20px;
+}
+
+.markdown-block textview:focus {
+    background: none;
+    background-color: transparent;
+    border: none;
+    outline: none;
+    box-shadow: none;
+}
+
+/* Texte à l'intérieur du TextView */
+.markdown-block textview text {
+    background: none;
+    background-color: transparent;
+    background-image: none;
+    color: #37352f;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+}
+
+/* Sélection de texte */
+.markdown-block textview selection,
+.markdown-block textview text selection {
+    background-color: rgba(46, 170, 220, 0.2);
+    color: #37352f;
+}
+
+.markdown-block textview *:selected {
+    background-color: rgba(46, 170, 220, 0.2);
+}
+
+/* Placeholder pour bloc vide */
+.markdown-block textview:focus {
+    background-color: transparent;
+    outline: none;
+}
+
+/* Titres */
+.heading textview {
+    font-weight: 600;
+    color: #37352f;
+}
+
+.heading-1 textview text {
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.heading-2 textview text {
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.heading-3 textview text {
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.heading-4 textview text {
+    font-size: 17px;
+    font-weight: 600;
+}
+
+.heading-5 textview text {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+/* Paragraphe */
+.paragraph textview text {
+    font-size: 14px;
+    line-height: 1.5;
+    color: #37352f;
+}
+
+/* Listes */
+.bullet-list textview,
+.numbered-list textview {
+    padding-left: 8px;
+}
+
+.bullet-list textview text::before {
+    content: "• ";
+    color: #37352f;
+    font-weight: bold;
+}
+
+/* Toggle */
+.toggle textview text::before {
+    content: "▶ ";
+    color: rgba(55, 53, 47, 0.6);
+}
+
+/* Divider */
+separator {
+    background-color: rgba(55, 53, 47, 0.16);
+    min-height: 1px;
+}
+
+/* Code block */
+.code-block textview {
+    font-family:
+        "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Menlo, "Courier New",
+        monospace;
+    font-size: 13px;
+    background-color: #f7f6f3;
+    border-radius: 3px;
+    padding: 8px;
+}
+
+.code-block textview text {
+    color: #eb5757;
+    background-color: #f7f6f3;
+}

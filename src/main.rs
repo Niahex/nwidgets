@@ -12,6 +12,7 @@ use crate::services::pipewire::PipeWireService;
 use crate::services::systray::SystemTrayService;
 use crate::widgets::chat::create_chat_window;
 use crate::widgets::launcher::create_launcher_window;
+use crate::widgets::markdown::MarkdownWidget;
 use crate::widgets::notifications::create_notifications_window;
 use crate::widgets::osd::create_osd_window;
 use crate::widgets::panel::create_panel_window;
@@ -20,6 +21,43 @@ use crate::widgets::tasker::create_tasker_window;
 use gtk4::{self as gtk, prelude::*, Application};
 
 const APP_ID: &str = "github.niahex.nwidgets";
+
+fn create_markdown_window(app: &Application) -> gtk::ApplicationWindow {
+    let window = gtk::ApplicationWindow::builder()
+        .application(app)
+        .title("Markdown Editor")
+        .default_width(800)
+        .default_height(600)
+        .visible(false)
+        .build();
+
+    let markdown_widget = MarkdownWidget::new();
+    let manager = markdown_widget.get_block_manager().clone();
+
+    window.set_child(Some(&markdown_widget.container));
+
+    // Focus sur le premier bloc quand la fenêtre devient visible
+    window.connect_show(move |_| {
+        let manager = manager.clone();
+        // Petite pause pour laisser le widget se render
+        gtk::glib::timeout_add_local_once(std::time::Duration::from_millis(50), move || {
+            manager.focus_block(0);
+        });
+    });
+
+    let toggle_action = gtk::gio::SimpleAction::new("toggle-markdown", None);
+    let window_clone = window.clone();
+    toggle_action.connect_activate(move |_, _| {
+        if window_clone.is_visible() {
+            window_clone.set_visible(false);
+        } else {
+            window_clone.present();
+        }
+    });
+    app.add_action(&toggle_action);
+
+    window
+}
 
 fn main() {
     // Create a new application
@@ -40,6 +78,9 @@ fn main() {
 
         // Créer le launcher (caché par défaut, toggle avec l'action "toggle-launcher")
         let _launcher_window = create_launcher_window(app);
+
+        // Créer l'éditeur markdown (caché par défaut, toggle avec l'action "toggle-markdown")
+        let _markdown_window = create_markdown_window(app);
 
         // Action pour pin la fenêtre actuellement focus
         let pin_action = gtk::gio::SimpleAction::new("pin-focused-window", None);

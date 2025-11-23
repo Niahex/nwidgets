@@ -5,3 +5,4 @@ pub mod notifications;
 pub mod tasker;
 pub mod power_menu;
 pub mod launcher;
+pub mod markdown;
