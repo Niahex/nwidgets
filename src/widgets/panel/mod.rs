@@ -3,7 +3,6 @@ use gtk4 as gtk;
 use gtk4_layer_shell::{Edge, Layer, LayerShell};
 pub mod modules; // Changed from `mod modules;` to `pub mod modules;`
 use modules::active_window::ActiveWindowModule;
-use modules::appmenu::AppMenuModule;
 use modules::bluetooth::BluetoothModule;
 use modules::datetime::DateTimeModule;
 use modules::mic::MicModule;
@@ -17,7 +16,6 @@ pub fn create_panel_window(
 ) -> (
     gtk::ApplicationWindow,
     ActiveWindowModule,
-    AppMenuModule,
     WorkspacesModule,
     BluetoothModule,
     SystrayModule,
@@ -42,15 +40,11 @@ pub fn create_panel_window(
     layout.set_hexpand(true);
     layout.add_css_class("panel");
 
-    // Section gauche : Active Window + AppMenu
     let left_section = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     left_section.add_css_class("panel-left");
 
     let active_window_module = ActiveWindowModule::new();
     left_section.append(&active_window_module.container);
-
-    let appmenu_module = AppMenuModule::new();
-    left_section.append(&appmenu_module.container);
 
     layout.append(&left_section);
 
@@ -91,7 +85,6 @@ pub fn create_panel_window(
     (
         window,
         active_window_module,
-        appmenu_module,
         workspaces_module,
         bluetooth_module,
         systray_module,

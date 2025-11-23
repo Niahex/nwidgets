@@ -10,6 +10,7 @@ fn main() {
     println!("cargo:rerun-if-changed=styles/_colors.scss");
     println!("cargo:rerun-if-changed=styles/_chat.scss");
     println!("cargo:rerun-if-changed=styles/_tasker.scss");
+    println!("cargo:rerun-if-changed=styles/_launcher.scss");
 
     // Compile SCSS to CSS
     let scss_path = "styles/main.scss";

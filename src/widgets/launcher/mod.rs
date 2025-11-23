@@ -13,6 +13,7 @@ pub fn create_launcher_window(application: &gtk::Application) -> gtk::Applicatio
         .default_width(500)
         .default_height(400)
         .build();
+    window.add_css_class("launcher-window");
 
     // --- GTK Layer Shell Setup ---
     window.init_layer_shell();
@@ -30,50 +31,20 @@ pub fn create_launcher_window(application: &gtk::Application) -> gtk::Applicatio
 
     // --- Container ---
     let container = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    container.add_css_class("launcher-container");
     container.set_margin_start(20);
     container.set_margin_end(20);
     container.set_margin_top(20);
     container.set_margin_bottom(20);
-
-    let container_css = gtk::CssProvider::new();
-    container_css.load_from_data(&format!(
-        "box {{
-            background-color: {};
-            border: 1px solid {};
-            border-radius: 10px;
-            padding: 10px;
-        }}",
-        COLORS.polar0.to_hex_string(),
-        COLORS.frost1.with_opacity(25)
-    ));
-    container.style_context().add_provider(
-        &container_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
 
     // --- Search Entry ---
     let search_entry = gtk::Entry::builder()
         .placeholder_text("Search applications...")
         .can_focus(true)
         .build();
+    search_entry.add_css_class("launcher-search");
 
     search_entry.set_icon_from_icon_name(gtk::EntryIconPosition::Primary, Some("system-search-symbolic"));
-
-    let search_css = gtk::CssProvider::new();
-    search_css.load_from_data(&format!(
-        "entry {{
-            background-color: {};
-            border-radius: 5px;
-            padding: 5px;
-            color: {};
-        }}",
-        COLORS.polar2.to_hex_string(),
-        COLORS.snow0.to_hex_string()
-    ));
-    search_entry.style_context().add_provider(
-        &search_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
 
     // --- ListView Setup ---
     // Load from cache first for instant display
@@ -100,12 +71,15 @@ pub fn create_launcher_window(application: &gtk::Application) -> gtk::Applicatio
     factory.connect_setup(move |_factory, item| {
         let item = item.downcast_ref::<gtk::ListItem>().unwrap();
         let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+        hbox.add_css_class("launcher-item");
 
         let icon = gtk::Image::new();
         icon.set_icon_size(gtk::IconSize::Large);
+        icon.add_css_class("launcher-icon");
 
         let label = gtk::Label::new(None);
         label.set_halign(gtk::Align::Start);
+        label.add_css_class("launcher-label");
 
         hbox.append(&icon);
         hbox.append(&label);
@@ -125,34 +99,10 @@ pub fn create_launcher_window(application: &gtk::Application) -> gtk::Applicatio
             icon.set_icon_name(Some("application-x-executable"));
         }
         label.set_text(&app_info.name());
-
-        let label_css = gtk::CssProvider::new();
-        label_css.load_from_data(&format!(
-            "label {{ color: {}; }}",
-            COLORS.snow0.to_hex_string()
-        ));
-        label.style_context().add_provider(
-            &label_css,
-            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-        );
     });
 
     let list_view = gtk::ListView::new(Some(selection_model.clone()), Some(factory));
-
-    let list_css = gtk::CssProvider::new();
-    list_css.load_from_data(&format!(
-        "listview row:selected {{
-            background-color: {};
-            color: {};
-            border-radius: 5px;
-        }}",
-        COLORS.frost1.to_hex_string(),
-        COLORS.polar0.to_hex_string()
-    ));
-    list_view.style_context().add_provider(
-        &list_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
+    list_view.add_css_class("launcher-list");
 
     // Scrolled window for list
     let scrolled = gtk::ScrolledWindow::builder()
@@ -161,6 +111,7 @@ pub fn create_launcher_window(application: &gtk::Application) -> gtk::Applicatio
         .child(&list_view)
         .vexpand(true)
         .build();
+    scrolled.add_css_class("launcher-scrolled");
 
     container.append(&search_entry);
     container.append(&scrolled);
