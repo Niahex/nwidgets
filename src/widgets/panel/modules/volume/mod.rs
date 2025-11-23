@@ -13,6 +13,7 @@ pub struct VolumeModule {
 impl VolumeModule {
     pub fn new() -> Self {
         let container = gtk::Box::new(gtk::Orientation::Horizontal, 4);
+        container.add_css_class("volume-widget");
         container.set_width_request(64);
         container.set_height_request(32);
         container.set_halign(gtk::Align::Center);

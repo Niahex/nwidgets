@@ -49,6 +49,8 @@ pub fn create_chat_window(application: &gtk::Application) -> (gtk::ApplicationWi
     let context = WebContext::new();
     let webview = WebView::builder().web_context(&context).build();
     webview.set_settings(&settings);
+    webview.add_css_class("chat-webview");
+
 
     // --- Handle Permission Requests ---
     webview.connect_permission_request(|_webview, request| {
@@ -88,6 +90,7 @@ pub fn create_chat_window(application: &gtk::Application) -> (gtk::ApplicationWi
         .default_width(500)
         .default_height(600)
         .build();
+    window.add_css_class("chat-window");
 
     // --- GTK Layer Shell Setup ---
     window.init_layer_shell();
@@ -98,15 +101,64 @@ pub fn create_chat_window(application: &gtk::Application) -> (gtk::ApplicationWi
     window.set_keyboard_mode(KeyboardMode::Exclusive);
 
     // --- Site Selector Dropdown ---
-    let site_names: Vec<&str> = SITES.iter().map(|(name, _)| *name).collect();
+    struct SiteData {
+        name: &'static str,
+        url: &'static str,
+        icon_path: String, // Path to the SVG icon
+    }
+
+    let sites_with_icons: Rc<Vec<SiteData>> = Rc::new(SITES.iter().map(|(name, url)| {
+        let icon_filename = format!("{}.svg", name.to_lowercase().replace(" ", "-")); // e.g., "gemini.svg"
+        let icon_path = format!("/home/nia/Github/nwidgets/assets/{}", icon_filename);
+        SiteData { name, url, icon_path }
+    }).collect());
+
+    let site_names: Vec<&str> = sites_with_icons.iter().map(|s| s.name).collect();
     let model = gtk::StringList::new(&site_names);
-    let dropdown = gtk::DropDown::new(Some(model), None::<gtk::Expression>);
+
+    let dropdown = gtk::DropDown::builder()
+        .model(&model)
+        .factory(&{
+            let factory = gtk::SignalListItemFactory::new();
+
+            factory.connect_setup(move |_, list_item| {
+                let box_container = gtk::Box::new(gtk::Orientation::Horizontal, 5);
+                let icon_image = gtk::Image::new();
+                let label = gtk::Label::new(None);
+
+                box_container.append(&icon_image);
+                box_container.append(&label);
+                list_item.set_child(Some(&box_container));
+            });
+
+            let sites_with_icons_clone = Rc::clone(&sites_with_icons);
+            factory.connect_bind(move |_, list_item| {
+                let box_container = list_item.child().and_then(|c| c.downcast::<gtk::Box>().ok()).unwrap();
+                let icon_image = box_container.first_child().and_then(|c| c.downcast::<gtk::Image>().ok()).unwrap();
+                let label = box_container.last_child().and_then(|c| c.downcast::<gtk::Label>().ok()).unwrap();
+
+                let string_object = list_item.item().and_then(|i| i.downcast::<gtk::StringObject>().ok()).unwrap();
+                let site_name = string_object.string();
+
+                // Find the corresponding SiteData
+                if let Some(index) = sites_with_icons_clone.iter().position(|s| s.name == site_name.as_str()) {
+                    let site_data = &sites_with_icons_clone[index];
+                    icon_image.set_from_file(Some(&site_data.icon_path));
+                    label.set_text(site_data.name);
+                }
+            });
+            factory
+        })
+        .build();
+    dropdown.add_css_class("chat-site-dropdown");
+
     let webview_clone = webview.clone();
+    let sites_with_icons_clone_for_dropdown = Rc::clone(&sites_with_icons);
     dropdown.connect_selected_item_notify(move |dropdown| {
         if let Some(selected) = dropdown.selected_item() {
             if let Ok(pos) = selected.downcast::<gtk::StringObject>().map(|s| s.string()) {
-                if let Some(p) = site_names.iter().position(|&name| name == pos) {
-                    webview_clone.load_uri(SITES[p].1);
+                if let Some(index) = sites_with_icons_clone_for_dropdown.iter().position(|s| s.name == pos.as_str()) {
+                    webview_clone.load_uri(sites_with_icons_clone_for_dropdown[index].url);
                 }
             }
         }
@@ -114,6 +166,7 @@ pub fn create_chat_window(application: &gtk::Application) -> (gtk::ApplicationWi
 
     // --- Toggle Button ---
     let toggle_button = gtk::Button::with_label(ICON_RESERVE_SPACE);
+    toggle_button.add_css_class("chat-pin-button");
     let is_exclusive = Rc::new(Cell::new(false));
     let is_exclusive_for_button = Rc::clone(&is_exclusive);
     let window_clone = window.clone();
@@ -132,6 +185,7 @@ pub fn create_chat_window(application: &gtk::Application) -> (gtk::ApplicationWi
 
     // --- Layout ---
     let top_bar = gtk::Box::new(gtk::Orientation::Horizontal, 5);
+    top_bar.add_css_class("chat-top-bar");
     top_bar.append(&dropdown);
     let spacer = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     spacer.set_hexpand(true); // Make the spacer expand horizontally
@@ -139,6 +193,7 @@ pub fn create_chat_window(application: &gtk::Application) -> (gtk::ApplicationWi
     top_bar.append(&toggle_button);
 
     let layout = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    layout.add_css_class("chat-layout");
     layout.append(&top_bar);
     layout.append(&webview);
     webview.set_vexpand(true);

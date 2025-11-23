@@ -1,7 +1,7 @@
-use gtk4 as gtk;
-use gtk::prelude::*;
 use crate::services::bluetooth::BluetoothState;
 use crate::theme::icons;
+use gtk::prelude::*;
+use gtk4 as gtk;
 
 #[derive(Clone)]
 pub struct BluetoothModule {
@@ -13,7 +13,8 @@ pub struct BluetoothModule {
 impl BluetoothModule {
     pub fn new() -> Self {
         let container = gtk::Box::new(gtk::Orientation::Horizontal, 2); // ml-0.5 (2px)
-        container.set_width_request(48);  // w-12 (48px)
+        container.add_css_class("bluetooth-widget");
+        container.set_width_request(48); // w-12 (48px)
         container.set_height_request(32); // h-8 (32px)
         container.set_halign(gtk::Align::Center);
         container.set_valign(gtk::Align::Center);
@@ -76,7 +77,8 @@ impl BluetoothModule {
 
         // Afficher le nombre d'appareils connectés si > 0
         if state.connected_devices > 0 {
-            self.count_label.set_text(&state.connected_devices.to_string());
+            self.count_label
+                .set_text(&state.connected_devices.to_string());
             self.count_label.set_visible(true);
         } else {
             self.count_label.set_visible(false);

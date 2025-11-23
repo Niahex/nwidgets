@@ -3,6 +3,7 @@ use gtk4 as gtk;
 use gtk4_layer_shell::{Edge, Layer, LayerShell};
 pub mod modules; // Changed from `mod modules;` to `pub mod modules;`
 use modules::active_window::ActiveWindowModule;
+use modules::appmenu::AppMenuModule;
 use modules::bluetooth::BluetoothModule;
 use modules::datetime::DateTimeModule;
 use modules::mic::MicModule;
@@ -16,6 +17,7 @@ pub fn create_panel_window(
 ) -> (
     gtk::ApplicationWindow,
     ActiveWindowModule,
+    AppMenuModule,
     WorkspacesModule,
     BluetoothModule,
     SystrayModule,
@@ -38,10 +40,19 @@ pub fn create_panel_window(
     let layout = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     layout.set_height_request(45);
     layout.set_hexpand(true);
+    layout.add_css_class("panel");
 
-    // Section gauche : Active Window
+    // Section gauche : Active Window + AppMenu
+    let left_section = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    left_section.add_css_class("panel-left");
+
     let active_window_module = ActiveWindowModule::new();
-    layout.append(&active_window_module.container);
+    left_section.append(&active_window_module.container);
+
+    let appmenu_module = AppMenuModule::new();
+    left_section.append(&appmenu_module.container);
+
+    layout.append(&left_section);
 
     // Spacer pour centrer les workspaces
     let spacer_left = gtk::Box::new(gtk::Orientation::Horizontal, 0);
@@ -50,6 +61,7 @@ pub fn create_panel_window(
 
     // Section centrale : Workspaces
     let workspaces_module = WorkspacesModule::new();
+    workspaces_module.container.add_css_class("panel-center");
     layout.append(&workspaces_module.container);
 
     // Spacer pour pousser les autres modules à droite
@@ -59,6 +71,7 @@ pub fn create_panel_window(
 
     // Section droite : Systray, Pomodoro, Mic, Volume, Bluetooth, DateTime
     let right_section = gtk::Box::new(gtk::Orientation::Horizontal, 12); // gap-3
+    right_section.add_css_class("panel-right");
     let systray_module = SystrayModule::new();
     right_section.append(&systray_module.container);
     let pomodoro_module = PomodoroModule::new();
@@ -78,6 +91,7 @@ pub fn create_panel_window(
     (
         window,
         active_window_module,
+        appmenu_module,
         workspaces_module,
         bluetooth_module,
         systray_module,

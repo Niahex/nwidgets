@@ -20,6 +20,8 @@ pub struct ActiveWindow {
     pub initial_class: String,
     #[serde(default)]
     pub initial_title: String,
+    #[serde(default)]
+    pub address: String,
 }
 
 // Types pour les callbacks

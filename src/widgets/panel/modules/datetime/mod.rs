@@ -13,6 +13,7 @@ pub struct DateTimeModule {
 impl DateTimeModule {
     pub fn new() -> Self {
         let container = gtk::Box::new(gtk::Orientation::Vertical, 2); // gap-0.5 (2px)
+        container.add_css_class("datetime-widget");
         container.set_width_request(64);  // w-16 (64px)
         container.set_height_request(64); // h-16 (64px)
         container.set_halign(gtk::Align::Center);

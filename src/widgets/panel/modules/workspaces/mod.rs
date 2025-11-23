@@ -12,6 +12,7 @@ impl WorkspacesModule {
     pub fn new() -> Self {
         let container = gtk::Box::new(gtk::Orientation::Horizontal, 8); // gap-2 (8px)
         container.set_halign(gtk::Align::Center);
+        container.add_css_class("workspaces-widget");
 
         // Créer 8 labels pour les workspaces (on affiche max 8)
         let workspace_buttons: Vec<gtk::Label> = (1..=8)

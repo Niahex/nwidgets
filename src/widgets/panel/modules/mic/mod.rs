@@ -12,6 +12,7 @@ pub struct MicModule {
 impl MicModule {
     pub fn new() -> Self {
         let container = gtk::Box::new(gtk::Orientation::Horizontal, 4);
+        container.add_css_class("mic-widget");
         container.set_width_request(32);
         container.set_height_request(32);
         container.set_halign(gtk::Align::Center);

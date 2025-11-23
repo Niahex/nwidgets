@@ -1,3 +1,4 @@
+pub mod appmenu;
 pub mod applications;
 pub mod bluetooth;
 pub mod capslock;
@@ -13,6 +14,7 @@ pub mod pin_controller;
 pub mod systray;
 // pub mod transcription;
 
+pub use appmenu::{AppMenuService, AppMenuInfo};
 pub use applications::ApplicationsService;
 pub use bluetooth::{BluetoothService, BluetoothState};
 pub use capslock::CapsLockService;

@@ -2,6 +2,12 @@ mod services;
 mod theme;
 mod widgets;
 
+// Include generated CSS from build.rs
+mod style {
+    include!(concat!(env!("OUT_DIR"), "/generated_style.rs"));
+}
+
+use crate::services::appmenu::AppMenuService;
 use crate::services::bluetooth::BluetoothService;
 use crate::services::capslock::CapsLockService;
 use crate::services::clipboard::ClipboardService;
@@ -27,6 +33,13 @@ fn main() {
 
     // Connect to "activate" signal of `app`
     app.connect_activate(|app| {
+        // Load CSS styles
+        style::load_css();
+
+        // Start AppMenu service for global menu support
+        log::info!("[APPMENU] Starting AppMenu service...");
+        AppMenuService::start();
+
         // Créer la fenêtre de chat (cachée par défaut, toggle avec l'action "toggle-chat")
         // Retourne aussi les contrôles pour le pin
         let (chat_window, chat_pin_controller) = create_chat_window(app);
@@ -66,6 +79,7 @@ fn main() {
         let (
             panel_window,
             active_window_module,
+            appmenu_module,
             workspaces_module,
             bluetooth_module,
             systray_module,
@@ -83,8 +97,18 @@ fn main() {
 
         // S'abonner aux mises à jour de la fenêtre active
         let active_window_module_clone = active_window_module.clone();
+        let appmenu_module_clone = appmenu_module.clone();
         HyprlandService::subscribe_active_window(move |active_window| {
-            active_window_module_clone.update(active_window);
+            active_window_module_clone.update(active_window.clone());
+
+            // Mettre à jour le module appmenu avec l'address de la fenêtre
+            if let Some(ref window) = active_window {
+                log::debug!("[APPMENU] Active window changed: {} (address: {})", window.class, window.address);
+                appmenu_module_clone.update_for_window(&window.address);
+            } else {
+                log::debug!("[APPMENU] No active window");
+                appmenu_module_clone.update_for_window("");
+            }
         });
 
         // S'abonner aux mises à jour des workspaces

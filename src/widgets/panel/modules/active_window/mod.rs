@@ -1,7 +1,7 @@
-use gtk4 as gtk;
-use gtk::prelude::*;
 use crate::services::hyprland::ActiveWindow;
 use crate::theme::icons;
+use gtk::prelude::*;
+use gtk4 as gtk;
 
 #[derive(Clone)]
 pub struct ActiveWindowModule {
@@ -14,16 +14,17 @@ pub struct ActiveWindowModule {
 impl ActiveWindowModule {
     pub fn new() -> Self {
         let container = gtk::Box::new(gtk::Orientation::Horizontal, 5);
+        container.add_css_class("active-window-widget");
         container.set_width_request(256); // 64 * 4
 
         let icon_label = gtk::Label::new(None);
-        icon_label.add_css_class("frost0"); // Assuming you have a CSS file with this class
+        icon_label.add_css_class("active-window-icon"); // Assuming you have a CSS file with this class
 
         let class_label = gtk::Label::new(None);
-        class_label.add_css_class("frost0-75"); // Assuming you have a CSS file with this class
+        class_label.add_css_class("active-window-class"); // Assuming you have a CSS file with this class
 
         let title_label = gtk::Label::new(None);
-        title_label.add_css_class("snow0"); // Assuming you have a CSS file with this class
+        title_label.add_css_class("active-window-title"); // Assuming you have a CSS file with this class
 
         let content_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
         content_box.append(&class_label);

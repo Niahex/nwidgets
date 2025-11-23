@@ -11,6 +11,7 @@ pub struct SystrayModule {
 impl SystrayModule {
     pub fn new() -> Self {
         let container = gtk::Box::new(gtk::Orientation::Horizontal, 4); // gap-1 (4px)
+        container.add_css_class("systray-widget");
         container.set_halign(gtk::Align::Center);
         container.set_valign(gtk::Align::Center);
 

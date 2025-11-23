@@ -17,6 +17,7 @@ pub struct PomodoroModule {
 impl PomodoroModule {
     pub fn new() -> Self {
         let container = gtk::Box::new(gtk::Orientation::Vertical, 2);
+        container.add_css_class("pomodoro-widget");
         container.set_width_request(48);
         container.set_height_request(48);
         container.set_halign(gtk::Align::Center);
