@@ -33,10 +33,18 @@ impl PomodoroModule {
 
         let service = Arc::new(Mutex::new(PomodoroService::new()));
 
+        let module = Self {
+            container: container.clone(),
+            icon_label: icon_label.clone(),
+            time_label: time_label.clone(),
+            service: service.clone(),
+        };
+
         // Click gauche : toggle start/pause
         let gesture_left = gtk::GestureClick::new();
         gesture_left.set_button(1);
         let service_clone = Arc::clone(&service);
+        let module_clone = module.clone();
         gesture_left.connect_released(move |_, _, _, _| {
             let mut svc = service_clone.lock().unwrap();
             match svc.get_state() {
@@ -44,6 +52,8 @@ impl PomodoroModule {
                 PomodoroState::Work | PomodoroState::ShortBreak | PomodoroState::LongBreak => svc.pause(),
                 PomodoroState::WorkPaused | PomodoroState::ShortBreakPaused | PomodoroState::LongBreakPaused => svc.resume(),
             }
+            drop(svc);
+            module_clone.update();
         });
         container.add_controller(gesture_left);
 
@@ -51,8 +61,10 @@ impl PomodoroModule {
         let gesture_middle = gtk::GestureClick::new();
         gesture_middle.set_button(2);
         let service_clone = Arc::clone(&service);
+        let module_clone = module.clone();
         gesture_middle.connect_released(move |_, _, _, _| {
             service_clone.lock().unwrap().reset();
+            module_clone.update();
         });
         container.add_controller(gesture_middle);
 
