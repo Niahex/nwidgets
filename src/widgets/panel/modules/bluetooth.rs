@@ -6,7 +6,7 @@ use gtk4 as gtk;
 #[derive(Clone)]
 pub struct BluetoothModule {
     pub container: gtk::CenterBox,
-    icon_label: gtk::Label,
+    icon: gtk::Image,
 }
 
 impl BluetoothModule {
@@ -18,13 +18,12 @@ impl BluetoothModule {
         container.set_halign(gtk::Align::Center);
         container.set_valign(gtk::Align::Center);
 
-        let icon_label = gtk::Label::new(Some(icons::ICONS.bluetooth_off));
-        icon_label.add_css_class("bluetooth-icon");
-        icon_label.add_css_class("bluetooth-off");
-        icon_label.set_halign(gtk::Align::Center);
-        icon_label.set_valign(gtk::Align::Center);
+        let icon = icons::create_icon("bluetooth-disabled-symbolic", 24);
+        icon.add_css_class("bluetooth-icon");
+        icon.set_halign(gtk::Align::Center);
+        icon.set_valign(gtk::Align::Center);
 
-        container.set_center_widget(Some(&icon_label));
+        container.set_center_widget(Some(&icon));
 
         // Gestionnaire de clic pour ouvrir le centre de contrôle
         let gesture = gtk::GestureClick::new();
@@ -37,31 +36,18 @@ impl BluetoothModule {
         });
         container.add_controller(gesture);
 
-        Self {
-            container,
-            icon_label,
-        }
+        Self { container, icon }
     }
 
     pub fn update(&self, state: BluetoothState) {
-        // Déterminer l'icône et la classe CSS selon l'état
-        let (icon, css_class) = if !state.powered {
-            (icons::ICONS.bluetooth_off, "bluetooth-off")
+        let icon_name = if !state.powered {
+            "bluetooth-disabled-symbolic"
         } else if state.connected_devices > 0 {
-            (icons::ICONS.bluetooth_connected, "bluetooth-connected")
+            "bluetooth-paired"
         } else {
-            (icons::ICONS.bluetooth_on, "bluetooth-on")
+            "bluetooth"
         };
 
-        // Mettre à jour l'icône
-        self.icon_label.set_text(icon);
-
-        // Retirer toutes les classes de couleur
-        self.icon_label.remove_css_class("bluetooth-off");
-        self.icon_label.remove_css_class("bluetooth-connected");
-        self.icon_label.remove_css_class("bluetooth-on");
-
-        // Ajouter la classe appropriée
-        self.icon_label.add_css_class(css_class);
+        self.icon.set_icon_name(Some(icon_name));
     }
 }

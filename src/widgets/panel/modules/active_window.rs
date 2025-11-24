@@ -8,7 +8,7 @@ pub struct ActiveWindowModule {
     pub container: gtk::CenterBox,
     icon_container: gtk::CenterBox,
     text_container: gtk::CenterBox,
-    icon_label: gtk::Label,
+    icon: gtk::Image,
     class_label: gtk::Label,
     title_label: gtk::Label,
 }
@@ -24,9 +24,9 @@ impl ActiveWindowModule {
         let icon_container = gtk::CenterBox::new();
         icon_container.set_width_request(64);
 
-        let icon_label = gtk::Label::new(None);
-        icon_label.add_css_class("active-window-icon");
-        icon_container.set_center_widget(Some(&icon_label));
+        let icon = icons::create_icon("nixos", 32);
+        icon.add_css_class("active-window-icon");
+        icon_container.set_center_widget(Some(&icon));
 
         // CenterBox pour le texte (class + title)
         let text_container = gtk::CenterBox::new();
@@ -55,14 +55,14 @@ impl ActiveWindowModule {
             container,
             icon_container,
             text_container,
-            icon_label,
+            icon,
             class_label,
             title_label,
         }
     }
 
     pub fn update(&self, active_window: Option<ActiveWindow>) {
-        let (icon, class, title) = if let Some(active_window) = &active_window {
+        let (icon_name, class, title) = if let Some(active_window) = &active_window {
             let title_before_dash = active_window
                 .title
                 .split(" - ")
@@ -78,7 +78,16 @@ impl ActiveWindowModule {
                 title_before_dash
             };
 
-            let icon = icons::ICONS.get_for_class(&active_window.class);
+            let icon_name = match active_window.class.to_lowercase().as_str() {
+                "firefox" => "firefox",
+                "google-chrome" | "chromium" => "google-chrome",
+                "code" | "vscode" => "code",
+                "discord" => "discord",
+                "steam" => "steam",
+                "kitty" | "alacritty" | "terminal" => "terminal",
+                "nautilus" | "thunar" => "folder",
+                _ => "application-default-icon",
+            };
 
             let display_class = active_window
                 .class
@@ -87,12 +96,12 @@ impl ActiveWindowModule {
                 .unwrap_or(&active_window.class)
                 .to_string();
 
-            (icon, display_class, truncated_title)
+            (icon_name, display_class, truncated_title)
         } else {
-            (icons::ICONS.nixos, "NixOS".to_string(), "Nia".to_string())
+            ("nixos", "NixOS".to_string(), "Nia".to_string())
         };
 
-        self.icon_label.set_text(icon);
+        self.icon.set_icon_name(Some(icon_name));
         self.class_label.set_text(&class);
         self.title_label.set_text(&title);
     }

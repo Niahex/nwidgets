@@ -96,17 +96,17 @@ pub fn create_osd_window(application: &gtk::Application) -> gtk::ApplicationWind
 fn create_volume_osd(level: u8, muted: bool) -> gtk::Widget {
     let container = gtk::Box::new(gtk::Orientation::Horizontal, 12);
 
-    let icon = if muted {
-        icons::ICONS.volume_mute
+    let icon_name = if muted {
+        "audio-volume-muted-panel"
     } else if level < 33 {
-        icons::ICONS.volume_low
+        "audio-volume-low-panel"
     } else {
-        icons::ICONS.volume_high
+        "audio-volume-high-panel"
     };
 
-    let icon_label = gtk::Label::new(Some(icon));
-    icon_label.add_css_class("osd-icon");
-    container.append(&icon_label);
+    let icon = icons::create_icon(icon_name, 32);
+    icon.add_css_class("osd-icon");
+    container.append(&icon);
 
     // Progress bar
     let progress = gtk::ProgressBar::new();
@@ -126,15 +126,15 @@ fn create_volume_osd(level: u8, muted: bool) -> gtk::Widget {
 fn create_mic_osd(muted: bool) -> gtk::Widget {
     let container = gtk::Box::new(gtk::Orientation::Horizontal, 12);
 
-    let icon = if muted {
-        icons::ICONS.microphone_slash
+    let icon_name = if muted {
+        "microphone-sensitivity-muted"
     } else {
-        icons::ICONS.microphone
+        "audio-input-microphone"
     };
 
-    let icon_label = gtk::Label::new(Some(icon));
-    icon_label.add_css_class("osd-icon");
-    container.append(&icon_label);
+    let icon = icons::create_icon(icon_name, 32);
+    icon.add_css_class("osd-icon");
+    container.append(&icon);
 
     let text = if muted { "MIC OFF" } else { "MIC ON" };
     let text_label = gtk::Label::new(Some(text));
@@ -147,9 +147,9 @@ fn create_mic_osd(muted: bool) -> gtk::Widget {
 fn create_dictation_osd(started: bool) -> gtk::Widget {
     let container = gtk::Box::new(gtk::Orientation::Horizontal, 12);
 
-    let icon_label = gtk::Label::new(Some(icons::ICONS.microphone));
-    icon_label.add_css_class("osd-icon");
-    container.append(&icon_label);
+    let icon = icons::create_icon("audio-input-microphone", 32);
+    icon.add_css_class("osd-icon");
+    container.append(&icon);
 
     let text = if started {
         "Transcription Started"
@@ -204,9 +204,9 @@ fn create_numlock_osd(enabled: bool) -> gtk::Widget {
 fn create_clipboard_osd() -> gtk::Widget {
     let container = gtk::Box::new(gtk::Orientation::Horizontal, 12);
 
-    let icon_label = gtk::Label::new(Some(icons::ICONS.clipboard));
-    icon_label.add_css_class("osd-icon");
-    container.append(&icon_label);
+    let icon = icons::create_icon("edit-copy", 32);
+    icon.add_css_class("osd-icon");
+    container.append(&icon);
 
     let text_label = gtk::Label::new(Some("Copy"));
     text_label.add_css_class("osd-text");

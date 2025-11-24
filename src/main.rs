@@ -36,6 +36,9 @@ fn main() {
         // Load CSS styles
         style::load_css();
 
+        // Setup icon theme
+        icons::setup_icon_theme();
+
         // Créer l'overlay de chat (caché par défaut, toggle avec l'action "toggle-chat")
         let chat_overlay = create_chat_overlay(app);
         let chat_pin_controller = chat_overlay.pin_controller.clone();

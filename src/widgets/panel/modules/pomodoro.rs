@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 #[derive(Clone)]
 pub struct PomodoroModule {
     pub container: gtk::CenterBox,
-    icon_label: gtk::Label,
+    icon: gtk::Image,
     time_label: gtk::Label,
     service: Arc<Mutex<PomodoroService>>,
 }
@@ -21,20 +21,20 @@ impl PomodoroModule {
         container.set_halign(gtk::Align::Center);
         container.set_valign(gtk::Align::Center);
 
-        let icon_label = gtk::Label::new(Some(icons::ICONS.play));
-        icon_label.add_css_class("pomodoro-icon");
-        icon_label.add_css_class("pomodoro-idle");
+        let icon = icons::create_icon("media-playback-start", 24);
+        icon.add_css_class("pomodoro-icon");
+        icon.add_css_class("pomodoro-idle");
 
         let time_label = gtk::Label::new(Some("00:00"));
         time_label.add_css_class("pomodoro-time");
 
-        container.set_center_widget(Some(&icon_label));
+        container.set_center_widget(Some(&icon));
 
         let service = Arc::new(Mutex::new(PomodoroService::new()));
 
         let module = Self {
             container: container.clone(),
-            icon_label: icon_label.clone(),
+            icon: icon.clone(),
             time_label: time_label.clone(),
             service: service.clone(),
         };
@@ -73,7 +73,7 @@ impl PomodoroModule {
 
         let module = Self {
             container,
-            icon_label,
+            icon,
             time_label,
             service,
         };
@@ -95,26 +95,28 @@ impl PomodoroModule {
 
         let state = svc.get_state();
         let formatted_time = svc.format_time();
-        let (_icon, time_text, css_class) = match state {
-            PomodoroState::Idle => ("", "00:00", "pomodoro-idle"),
+        let (icon_name, time_text, css_class) = match state {
+            PomodoroState::Idle => ("media-playback-start", "00:00", "pomodoro-idle"),
             PomodoroState::Work => ("", formatted_time.as_str(), "pomodoro-work"),
-            PomodoroState::WorkPaused => ("", formatted_time.as_str(), "pomodoro-work"),
+            PomodoroState::WorkPaused => ("media-playback-pause", formatted_time.as_str(), "pomodoro-work"),
             PomodoroState::ShortBreak => ("", formatted_time.as_str(), "pomodoro-break"),
-            PomodoroState::ShortBreakPaused => ("", formatted_time.as_str(), "pomodoro-break"),
+            PomodoroState::ShortBreakPaused => ("media-playback-pause", formatted_time.as_str(), "pomodoro-break"),
             PomodoroState::LongBreak => ("", formatted_time.as_str(), "pomodoro-longbreak"),
-            PomodoroState::LongBreakPaused => ("", formatted_time.as_str(), "pomodoro-longbreak"),
+            PomodoroState::LongBreakPaused => ("media-playback-pause", formatted_time.as_str(), "pomodoro-longbreak"),
         };
 
         // Show icon only when idle or paused
         if state == PomodoroState::Idle {
-            self.container.set_center_widget(Some(&self.icon_label));
+            self.icon.set_icon_name(Some(icon_name));
+            self.container.set_center_widget(Some(&self.icon));
         } else if matches!(
             state,
             PomodoroState::WorkPaused
                 | PomodoroState::ShortBreakPaused
                 | PomodoroState::LongBreakPaused
         ) {
-            self.container.set_center_widget(Some(&self.icon_label));
+            self.icon.set_icon_name(Some(icon_name));
+            self.container.set_center_widget(Some(&self.icon));
         } else {
             self.time_label.set_text(time_text);
             self.container.set_center_widget(Some(&self.time_label));

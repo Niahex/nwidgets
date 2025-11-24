@@ -1,217 +1,77 @@
-// src/theme/icons.rs
+use gtk4::prelude::*;
+use gtk4::{gdk, IconTheme, Image};
 
-use once_cell::sync::Lazy;
+pub fn setup_icon_theme() {
+    if let Some(display) = gdk::Display::default() {
+        let icon_theme = IconTheme::for_display(&display);
 
-#[derive(Debug, Clone, Copy)]
-#[allow(dead_code)]
-pub struct Icons {
-    // Bluetooth
-    pub bluetooth_off: &'static str,
-    pub bluetooth_connected: &'static str,
-    pub bluetooth_on: &'static str,
-    // Volume
-    pub volume_mute: &'static str,
-    pub volume_low: &'static str,
-    pub volume_high: &'static str,
-    // Pomodoro/Timer
-    pub timer_outline: &'static str,
-    pub timer: &'static str,
-    pub coffee: &'static str,
-    pub beach: &'static str,
-    // Workspace/Window
-    pub window: &'static str,
-    pub desktop: &'static str,
-    pub monitor: &'static str,
-    // Notification
-    pub bell: &'static str,
-    pub bell_slash: &'static str,
-    // System tray
-    pub systray: &'static str,
-    // Time/Date
-    pub clock: &'static str,
-    pub calendar: &'static str,
-    // Lock
-    pub capslock: &'static str,
-    pub numlock: &'static str,
-    pub lock: &'static str,
-    pub unlock: &'static str,
-    // Media
-    pub play: &'static str,
-    pub pause: &'static str,
-    pub stop: &'static str,
-    // Network
-    pub wifi: &'static str,
-    pub wifi_off: &'static str,
-    pub ethernet: &'static str,
-    // Power
-    pub battery_full: &'static str,
-    pub battery_half: &'static str,
-    pub battery_low: &'static str,
-    pub battery_empty: &'static str,
-    pub power: &'static str,
-    // Status
-    pub check: &'static str,
-    pub error: &'static str,
-    pub warning: &'static str,
-    pub info: &'static str,
-    // Arrow/Navigation
-    pub arrow_up: &'static str,
-    pub arrow_down: &'static str,
-    pub arrow_left: &'static str,
-    pub arrow_right: &'static str,
-    // App specific
-    pub vesktop: &'static str,
-    pub firefox: &'static str,
-    pub zed: &'static str,
-    pub davinci: &'static str,
-    pub vlc: &'static str,
-    pub password: &'static str,
-    pub launcher: &'static str,
-    pub nixos: &'static str,
-    pub steam: &'static str,
-    pub game: &'static str,
-    pub terminal: &'static str,
-    pub inkscape: &'static str,
-    pub stream: &'static str,
-    // Dictation
-    pub microphone: &'static str,
-    pub microphone_slash: &'static str,
-    // AI Chat
-    pub person: &'static str,
-    pub robot: &'static str,
-    pub refresh: &'static str,
-    pub clipboard: &'static str,
-    pub edit: &'static str,
-    pub code: &'static str,
-    pub close: &'static str,
-}
+        // Ajouter les chemins d'icônes NixOS
+        icon_theme.add_search_path("/run/current-system/sw/share/icons");
+        icon_theme.add_search_path("/home/nia/.local/share/icons");
 
-impl Icons {
-    fn new() -> Self {
-        Self {
-            bluetooth_off: "󰂯",
-            bluetooth_connected: "󰂱",
-            bluetooth_on: "󰂲",
-            volume_mute: "",
-            volume_low: "",
-            volume_high: "",
-            timer_outline: "󰔛",
-            timer: "󱎫",
-            coffee: "󰅶",
-            beach: "󰂒",
-            window: "",
-            desktop: "",
-            monitor: "󰍹",
-            bell: "",
-            bell_slash: "",
-            systray: "",
-            clock: "",
-            calendar: "",
-            capslock: "󰪛",
-            numlock: "",
-            lock: "",
-            unlock: "",
-            play: "",
-            pause: "",
-            stop: "",
-            wifi: "",
-            wifi_off: "󰤭",
-            ethernet: "",
-            battery_full: "",
-            battery_half: "",
-            battery_low: "",
-            battery_empty: "",
-            power: "",
-            check: "",
-            error: "",
-            warning: "",
-            info: "",
-            arrow_up: "",
-            arrow_down: "",
-            arrow_left: "",
-            arrow_right: "",
-            vesktop: "",
-            firefox: "󰈹",
-            zed: "",
-            davinci: "",
-            vlc: "󰕼",
-            password: "󰟵",
-            launcher: "󱓞",
-            nixos: "",
-            steam: "",
-            game: "󰊗",
-            terminal: "",
-            inkscape: "",
-            stream: "󰕵",
-            microphone: "󰍬",
-            microphone_slash: "󰍭",
-            person: "",
-            robot: "󰚩",
-            refresh: "",
-            clipboard: "",
-            edit: "",
-            code: "",
-            close: "",
-        }
-    }
-
-    pub fn get_for_class(&self, class_name: &str) -> &'static str {
-        let class = class_name.to_lowercase();
-        match class.as_str() {
-            // App specific
-            c if c.contains("vesktop") || c.contains("discord") => self.vesktop,
-            c if c.contains("zen") => self.firefox,
-            c if c.contains("zed") => self.zed,
-            c if c.contains("davinci") => self.davinci,
-            c if c.contains("vlc") => self.vlc,
-            c if c.contains("1password") || c.contains("keepass") || c.contains("bitwarden") => {
-                self.password
-            }
-            c if c.contains("rofi") || c.contains("nlauncher") => self.launcher,
-            c if c.contains("steam") => self.steam,
-            c if c.contains("game") || c.contains("minecraft") || c.contains("lutris") => self.game,
-            c if c.contains("kitty")
-                || c.contains("alacritty")
-                || c.contains("wezterm")
-                || c.contains("terminal") =>
-            {
-                self.terminal
-            }
-            c if c.contains("inkscape") => self.inkscape,
-            c if c.contains("obs") || c.contains("stream") => self.stream,
-            _ => self.window,
-        }
-    }
-
-    pub fn get_for_tray_item(&self, title: &str, id: &str) -> &'static str {
-        // Chercher dans le titre ou l'id (en minuscules)
-        let search_str = format!("{} {}", title.to_lowercase(), id.to_lowercase());
-
-        match search_str.as_str() {
-            s if s.contains("steam") => self.steam,
-            s if s.contains("vesktop") || s.contains("discord") => self.vesktop,
-            s if s.contains("firefox") => self.firefox,
-            s if s.contains("vlc") => self.vlc,
-            s if s.contains("1password") || s.contains("keepass") || s.contains("bitwarden") => {
-                self.password
-            }
-            s if s.contains("obs") || s.contains("stream") => self.stream,
-            s if s.contains("bluetooth") => self.bluetooth_on,
-            s if s.contains("volume") || s.contains("sound") || s.contains("audio") => {
-                self.volume_high
-            }
-            s if s.contains("network") || s.contains("wifi") => self.wifi,
-            s if s.contains("battery") || s.contains("power") => self.battery_full,
-            s if s.contains("notification") => self.bell,
-            _ => self.systray,
-        }
+        // Définir le thème Nordzy
+        icon_theme.set_theme_name(Some("Nordzy-turquoise-dark"));
     }
 }
 
-impl Default for Icons {
-    fn default() -> Self {
-        Self::new()
+pub fn create_icon(icon_name: &str, size: i32) -> Image {
+    let image = Image::new();
+
+    // Debug: vérifier si l'icône existe
+    if let Some(display) = gdk::Display::default() {
+        let icon_theme = IconTheme::for_display(&display);
+        let has_icon = icon_theme.has_icon(icon_name);
+        println!(
+            "[ICON DEBUG] Icon '{}' exists in theme: {}",
+            icon_name, has_icon
+        );
+
+        // Afficher aussi le nom du thème actuel
+        let theme_name = icon_theme.theme_name();
+        println!("[ICON DEBUG] Current theme: {}", theme_name);
+
+        // Essayer de lookup l'icône et l'utiliser directement comme paintable
+        let icon_paintable = icon_theme.lookup_icon(
+            icon_name,
+            &[],
+            size,
+            1,
+            gtk4::TextDirection::None,
+            gtk4::IconLookupFlags::empty(),
+        );
+
+        let file = icon_paintable.file();
+        if let Some(file) = file {
+            if let Some(path) = file.path() {
+                println!("[ICON DEBUG] Icon path found: {:?}", path);
+            } else {
+                println!("[ICON DEBUG] File exists but no path");
+            }
+        } else {
+            println!("[ICON DEBUG] No file found for icon '{}', using paintable directly", icon_name);
+        }
+
+        // Utiliser directement le paintable au lieu de set_icon_name
+        image.set_paintable(Some(&icon_paintable));
     }
+
+    image.set_pixel_size(size);
+    image
 }
 
-pub static ICONS: Lazy<Icons> = Lazy::new(Icons::new);
+pub fn get_icon_paintable(icon_name: &str, size: i32) -> Option<gtk4::gdk::Paintable> {
+    if let Some(display) = gdk::Display::default() {
+        let icon_theme = IconTheme::for_display(&display);
+        let icon_paintable = icon_theme.lookup_icon(
+            icon_name,
+            &[],
+            size,
+            1,
+            gtk4::TextDirection::None,
+            gtk4::IconLookupFlags::empty(),
+        );
+        Some(icon_paintable.upcast())
+    } else {
+        None
+    }
+}

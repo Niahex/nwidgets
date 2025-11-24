@@ -6,7 +6,7 @@ use gtk4 as gtk;
 #[derive(Clone)]
 pub struct SourceModule {
     pub container: gtk::CenterBox,
-    icon_label: gtk::Label,
+    icon: gtk::Image,
 }
 
 impl SourceModule {
@@ -18,12 +18,12 @@ impl SourceModule {
         container.set_halign(gtk::Align::Center);
         container.set_valign(gtk::Align::Center);
 
-        let icon_label = gtk::Label::new(Some(icons::ICONS.microphone));
-        icon_label.add_css_class("source-icon");
-        icon_label.set_halign(gtk::Align::Center);
-        icon_label.set_valign(gtk::Align::Center);
+        let icon = icons::create_icon("audio-input-microphone-high-symbolic", 24);
+        icon.add_css_class("source-icon");
+        icon.set_halign(gtk::Align::Center);
+        icon.set_valign(gtk::Align::Center);
 
-        container.set_center_widget(Some(&icon_label));
+        container.set_center_widget(Some(&icon));
 
         // Gestionnaire de clic pour ouvrir le centre de contrôle
         let gesture = gtk::GestureClick::new();
@@ -36,19 +36,16 @@ impl SourceModule {
         });
         container.add_controller(gesture);
 
-        Self {
-            container,
-            icon_label,
-        }
+        Self { container, icon }
     }
 
     pub fn update(&self, state: &AudioState) {
-        let icon = if state.mic_muted {
-            icons::ICONS.microphone_slash
+        let icon_name = if state.mic_muted {
+            "audio-input-microphone-muted-symbolic."
         } else {
-            icons::ICONS.microphone
+            "audio-input-microphone-high-symbolic"
         };
 
-        self.icon_label.set_text(icon);
+        self.icon.set_icon_name(Some(icon_name));
     }
 }

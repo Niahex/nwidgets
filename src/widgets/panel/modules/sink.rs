@@ -6,7 +6,7 @@ use gtk4 as gtk;
 #[derive(Clone)]
 pub struct SinkModule {
     pub container: gtk::CenterBox,
-    icon_label: gtk::Label,
+    icon: gtk::Image,
 }
 
 impl SinkModule {
@@ -18,12 +18,12 @@ impl SinkModule {
         container.set_halign(gtk::Align::Center);
         container.set_valign(gtk::Align::Center);
 
-        let icon_label = gtk::Label::new(Some(icons::ICONS.volume_high));
-        icon_label.add_css_class("sink-icon");
-        icon_label.set_halign(gtk::Align::Center);
-        icon_label.set_valign(gtk::Align::Center);
+        let icon = icons::create_icon("audio-volume-high-panel", 22);
+        icon.add_css_class("sink-icon");
+        icon.set_halign(gtk::Align::Center);
+        icon.set_valign(gtk::Align::Center);
 
-        container.set_center_widget(Some(&icon_label));
+        container.set_center_widget(Some(&icon));
 
         // Gestionnaire de clic pour ouvrir le centre de contrôle
         let gesture = gtk::GestureClick::new();
@@ -36,21 +36,18 @@ impl SinkModule {
         });
         container.add_controller(gesture);
 
-        Self {
-            container,
-            icon_label,
-        }
+        Self { container, icon }
     }
 
     pub fn update(&self, state: &AudioState) {
-        let icon = if state.muted {
-            icons::ICONS.volume_mute
+        let icon_name = if state.muted {
+            "audio-volume-muted-panel"
         } else if state.volume < 33 {
-            icons::ICONS.volume_low
+            "audio-volume-low-panel"
         } else {
-            icons::ICONS.volume_high
+            "audio-volume-high-panel"
         };
 
-        self.icon_label.set_text(icon);
+        self.icon.set_icon_name(Some(icon_name));
     }
 }

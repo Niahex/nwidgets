@@ -26,15 +26,21 @@ impl SystrayModule {
 
         // Ajouter le premier item (ou rien si vide)
         if let Some(item) = items.first() {
-            let icon = icons::ICONS.get_for_tray_item(&item.title, &item.id);
+            let icon_name = match item.title.to_lowercase().as_str() {
+                s if s.contains("discord") => "discord",
+                s if s.contains("firefox") => "firefox",
+                s if s.contains("chrome") => "google-chrome",
+                s if s.contains("steam") => "steam",
+                _ => "application-default-icon",
+            };
 
-            let label = gtk::Label::new(Some(icon));
-            label.set_halign(gtk::Align::Center);
-            label.set_valign(gtk::Align::Center);
-            label.add_css_class("systray-item");
-            label.set_tooltip_text(Some(&format!("{} - {}", item.title, item.id)));
+            let icon = icons::create_icon(icon_name, 24);
+            icon.set_halign(gtk::Align::Center);
+            icon.set_valign(gtk::Align::Center);
+            icon.add_css_class("systray-item");
+            icon.set_tooltip_text(Some(&format!("{} - {}", item.title, item.id)));
 
-            self.container.set_center_widget(Some(&label));
+            self.container.set_center_widget(Some(&icon));
         }
     }
 }
