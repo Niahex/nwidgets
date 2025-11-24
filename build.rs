@@ -3,17 +3,16 @@ use std::fs;
 use std::path::Path;
 
 fn main() {
-    // Watch all SCSS files for changes
-    println!("cargo:rerun-if-changed=styles/main.scss");
-    println!("cargo:rerun-if-changed=styles/_reset.scss");
-    println!("cargo:rerun-if-changed=styles/_panel.scss");
-    println!("cargo:rerun-if-changed=styles/_colors.scss");
-    println!("cargo:rerun-if-changed=styles/_chat.scss");
-    println!("cargo:rerun-if-changed=styles/_tasker.scss");
-    println!("cargo:rerun-if-changed=styles/_launcher.scss");
-    println!("cargo:rerun-if-changed=styles/_osd.scss");
-    println!("cargo:rerun-if-changed=styles/_control_center.scss");
-    println!("cargo:rerun-if-changed=styles/_notifications.scss");
+    // Automatically watch all SCSS files in the styles directory
+    if let Ok(entries) = fs::read_dir("styles") {
+        for entry in entries.flatten() {
+            if let Some(path) = entry.path().to_str() {
+                if path.ends_with(".scss") {
+                    println!("cargo:rerun-if-changed={}", path);
+                }
+            }
+        }
+    }
 
     // Compile SCSS to CSS
     let scss_path = "styles/main.scss";
