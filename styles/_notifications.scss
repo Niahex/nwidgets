@@ -35,6 +35,28 @@
   }
 }
 
+.notification-title {
+  color: $snow0;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.notification-time {
+  color: $polar3;
+  font-size: 11px;
+}
+
+.notification-body {
+  color: $snow0;
+  font-size: 12px;
+}
+
+.notification-app {
+  color: $polar3;
+  font-size: 11px;
+  font-style: italic;
+}
+
 .notification-header {
   display: flex;
   align-items: center;
@@ -49,24 +71,11 @@
   letter-spacing: 0.5px;
 }
 
-.notification-time {
-  color: $polar3;
-  font-size: 11px;
-  margin-left: auto;
-}
-
 .notification-summary {
   color: $snow0;
   font-size: 14px;
   font-weight: 600;
   margin-bottom: 4px;
-}
-
-.notification-body {
-  color: $snow1;
-  font-size: 12px;
-  line-height: 1.4;
-  word-wrap: break-word;
 }
 
 .notification-actions {

@@ -1,8 +1,8 @@
-use gtk4 as gtk;
-use gtk::prelude::*;
-use gtk4_layer_shell::{Edge, Layer, LayerShell, KeyboardMode};
+use crate::icons;
 use crate::services::osd::{OsdEvent, OsdEventService};
-use crate::theme::icons;
+use gtk::prelude::*;
+use gtk4 as gtk;
+use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -170,7 +170,11 @@ fn create_capslock_osd(enabled: bool) -> gtk::Widget {
     icon_label.add_css_class("osd-icon");
     container.append(&icon_label);
 
-    let text = if enabled { "CAPS LOCK ON" } else { "CAPS LOCK OFF" };
+    let text = if enabled {
+        "CAPS LOCK ON"
+    } else {
+        "CAPS LOCK OFF"
+    };
     let text_label = gtk::Label::new(Some(text));
     text_label.add_css_class("osd-text");
     container.append(&text_label);
@@ -185,7 +189,11 @@ fn create_numlock_osd(enabled: bool) -> gtk::Widget {
     icon_label.add_css_class("osd-icon");
     container.append(&icon_label);
 
-    let text = if enabled { "NUM LOCK ON" } else { "NUM LOCK OFF" };
+    let text = if enabled {
+        "NUM LOCK ON"
+    } else {
+        "NUM LOCK OFF"
+    };
     let text_label = gtk::Label::new(Some(text));
     text_label.add_css_class("osd-text");
     container.append(&text_label);

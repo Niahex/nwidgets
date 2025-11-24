@@ -1,5 +1,5 @@
+use crate::icons;
 use crate::services::pomodoro::{PomodoroService, PomodoroState};
-use crate::theme::icons;
 use gtk::prelude::*;
 use gtk4 as gtk;
 use std::sync::{Arc, Mutex};

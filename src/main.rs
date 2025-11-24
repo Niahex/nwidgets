@@ -1,5 +1,5 @@
+mod icons;
 mod services;
-mod theme;
 mod widgets;
 
 // Include generated CSS from build.rs
@@ -55,13 +55,19 @@ fn main() {
 
         // Démarrer le service de notifications pour l'historique
         crate::services::NotificationService::subscribe_notifications(|notification| {
-            println!("[MAIN] Received notification: {} - {}", notification.summary, notification.body);
+            println!(
+                "[MAIN] Received notification: {} - {}",
+                notification.summary, notification.body
+            );
         });
 
         // Ajouter une notification de test pour vérifier l'historique
         crate::services::NotificationService::add_test_notification();
-        
-        println!("[MAIN] Notification history size: {}", crate::services::NotificationService::get_history().len());
+
+        println!(
+            "[MAIN] Notification history size: {}",
+            crate::services::NotificationService::get_history().len()
+        );
 
         // Action pour pin la fenêtre actuellement focus
         let pin_action = gtk::gio::SimpleAction::new("pin-focused-window", None);

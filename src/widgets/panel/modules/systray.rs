@@ -1,5 +1,5 @@
+use crate::icons;
 use crate::services::systray::TrayItem;
-use crate::theme::icons;
 use gtk::prelude::*;
 use gtk4 as gtk;
 

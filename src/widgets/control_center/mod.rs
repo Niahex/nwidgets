@@ -1,9 +1,9 @@
-use gtk4 as gtk;
-use gtk::prelude::*;
-use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
-use crate::theme::icons;
+use crate::icons;
 use crate::services::notifications::{Notification, NotificationService};
 use crate::services::pipewire::{AudioState, PipeWireService};
+use gtk::prelude::*;
+use gtk4 as gtk;
+use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 
 pub fn create_control_center_window(application: &gtk::Application) -> gtk::ApplicationWindow {
     let window = gtk::ApplicationWindow::builder()
@@ -190,15 +190,20 @@ fn create_notifications_section(notifications_list: gtk::Box) -> gtk::Box {
     scrolled.add_css_class("notifications-scroll");
 
     notifications_list.add_css_class("notifications-list");
-    
+
     // Charger l'historique existant
     let history = NotificationService::get_history();
 
-    println!("[CONTROL CENTER] Loading notification history: {} notifications", history.len());
+    println!(
+        "[CONTROL CENTER] Loading notification history: {} notifications",
+        history.len()
+    );
 
     // Si pas d'historique, afficher un message vide
     if history.is_empty() {
-        let empty_label = gtk::Label::new(Some("No notifications yet.\nNotifications will appear here when received."));
+        let empty_label = gtk::Label::new(Some(
+            "No notifications yet.\nNotifications will appear here when received.",
+        ));
         empty_label.add_css_class("notification-empty");
         empty_label.set_halign(gtk::Align::Center);
         empty_label.set_valign(gtk::Align::Center);
@@ -206,11 +211,14 @@ fn create_notifications_section(notifications_list: gtk::Box) -> gtk::Box {
     } else {
         // Afficher l'historique réel (les plus récentes sont déjà en premier dans le Vec)
         for notification in history {
-            println!("[CONTROL CENTER] Adding notification from history: {} - {}", notification.summary, notification.body);
+            println!(
+                "[CONTROL CENTER] Adding notification from history: {} - {}",
+                notification.summary, notification.body
+            );
             add_notification_to_list_from_history(&notifications_list, notification);
         }
     }
-    
+
     scrolled.set_child(Some(&notifications_list));
     section.append(&scrolled);
 
@@ -220,7 +228,10 @@ fn create_notifications_section(notifications_list: gtk::Box) -> gtk::Box {
 fn add_notification_to_list(notifications_list: &gtk::Box, notification: Notification) {
     // Supprimer le message "No notifications" s'il existe
     if let Some(first_child) = notifications_list.first_child() {
-        if first_child.css_classes().contains(&"notification-empty".into()) {
+        if first_child
+            .css_classes()
+            .contains(&"notification-empty".into())
+        {
             notifications_list.remove(&first_child);
         }
     }
@@ -231,10 +242,16 @@ fn add_notification_to_list(notifications_list: &gtk::Box, notification: Notific
     notifications_list.prepend(&notif_box);
 }
 
-fn add_notification_to_list_from_history(notifications_list: &gtk::Box, notification: Notification) {
+fn add_notification_to_list_from_history(
+    notifications_list: &gtk::Box,
+    notification: Notification,
+) {
     // Supprimer le message "No notifications" s'il existe
     if let Some(first_child) = notifications_list.first_child() {
-        if first_child.css_classes().contains(&"notification-empty".into()) {
+        if first_child
+            .css_classes()
+            .contains(&"notification-empty".into())
+        {
             notifications_list.remove(&first_child);
         }
     }
@@ -253,10 +270,15 @@ fn reload_notification_history(notifications_list: &gtk::Box) {
 
     // Recharger l'historique
     let history = NotificationService::get_history();
-    println!("[CONTROL CENTER] Reloading notification history: {} notifications", history.len());
+    println!(
+        "[CONTROL CENTER] Reloading notification history: {} notifications",
+        history.len()
+    );
 
     if history.is_empty() {
-        let empty_label = gtk::Label::new(Some("No notifications yet.\nNotifications will appear here when received."));
+        let empty_label = gtk::Label::new(Some(
+            "No notifications yet.\nNotifications will appear here when received.",
+        ));
         empty_label.add_css_class("notification-empty");
         empty_label.set_halign(gtk::Align::Center);
         empty_label.set_valign(gtk::Align::Center);
@@ -264,7 +286,10 @@ fn reload_notification_history(notifications_list: &gtk::Box) {
     } else {
         // Afficher l'historique réel (les plus récentes sont déjà en premier dans le Vec)
         for notification in history {
-            println!("[CONTROL CENTER] Adding notification from history: {} - {}", notification.summary, notification.body);
+            println!(
+                "[CONTROL CENTER] Adding notification from history: {} - {}",
+                notification.summary, notification.body
+            );
             let notif_box = create_notification_widget(&notification);
             notifications_list.append(&notif_box);
         }

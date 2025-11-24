@@ -2,7 +2,6 @@ use gtk4 as gtk;
 use gtk::prelude::*;
 use gtk4_layer_shell::{Edge, Layer, LayerShell, KeyboardMode};
 use crate::services::notifications::{Notification, NotificationService};
-use crate::theme::colors::COLORS;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -133,17 +132,7 @@ fn create_notification_widget(notification: &Notification) -> gtk::Widget {
     let title = gtk::Label::new(Some(&notification.summary));
     title.set_halign(gtk::Align::Start);
     title.set_hexpand(true);
-
-    // Style pour le titre (couleur snow0, gras)
-    let title_css = gtk::CssProvider::new();
-    title_css.load_from_data(&format!(
-        "label {{ color: {}; font-weight: bold; font-size: 14px; }}",
-        COLORS.snow0.to_hex_string()
-    ));
-    title.style_context().add_provider(
-        &title_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
+    title.add_css_class("notification-title");
     header.append(&title);
 
     // Calculer le temps écoulé
@@ -163,17 +152,7 @@ fn create_notification_widget(notification: &Notification) -> gtk::Widget {
 
     let time_label = gtk::Label::new(Some(&time_str));
     time_label.set_halign(gtk::Align::End);
-
-    // Style pour le timestamp (couleur polar3, petit)
-    let time_css = gtk::CssProvider::new();
-    time_css.load_from_data(&format!(
-        "label {{ color: {}; font-size: 11px; }}",
-        COLORS.polar3.to_hex_string()
-    ));
-    time_label.style_context().add_provider(
-        &time_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
+    time_label.add_css_class("notification-time");
     header.append(&time_label);
 
     // Ajouter le header au container interne
@@ -186,34 +165,14 @@ fn create_notification_widget(notification: &Notification) -> gtk::Widget {
     body.set_wrap(true);
     body.set_wrap_mode(gtk::pango::WrapMode::WordChar);
     body.set_max_width_chars(50);
-
-    // Style pour le body (couleur snow0, taille normale)
-    let body_css = gtk::CssProvider::new();
-    body_css.load_from_data(&format!(
-        "label {{ color: {}; font-size: 12px; }}",
-        COLORS.snow0.to_hex_string()
-    ));
-    body.style_context().add_provider(
-        &body_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
+    body.add_css_class("notification-body");
     inner_container.append(&body);
 
     // App name (si présent)
     if !notification.app_name.is_empty() {
         let app_label = gtk::Label::new(Some(&format!("from {}", notification.app_name)));
         app_label.set_halign(gtk::Align::Start);
-
-        // Style pour l'app name (couleur polar3, petit, italique)
-        let app_css = gtk::CssProvider::new();
-        app_css.load_from_data(&format!(
-            "label {{ color: {}; font-size: 11px; font-style: italic; }}",
-            COLORS.polar3.to_hex_string()
-        ));
-        app_label.style_context().add_provider(
-            &app_css,
-            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-        );
+        app_label.add_css_class("notification-app");
         inner_container.append(&app_label);
     }
 
