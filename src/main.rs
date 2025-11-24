@@ -16,6 +16,7 @@ use crate::services::osd::OsdEventService;
 use crate::services::pipewire::PipeWireService;
 use crate::services::systray::SystemTrayService;
 use crate::widgets::chat::create_chat_overlay;
+use crate::widgets::control_center::create_control_center_window;
 use crate::widgets::launcher::create_launcher_window;
 use crate::widgets::notifications::create_notifications_window;
 use crate::widgets::osd::create_osd_window;
@@ -48,6 +49,19 @@ fn main() {
 
         // Créer le launcher (caché par défaut, toggle avec l'action "toggle-launcher")
         let _launcher_window = create_launcher_window(app);
+
+        // Créer le centre de contrôle (caché par défaut, toggle avec l'action "toggle-control-center")
+        let _control_center_window = create_control_center_window(app);
+
+        // Démarrer le service de notifications pour l'historique
+        crate::services::NotificationService::subscribe_notifications(|notification| {
+            println!("[MAIN] Received notification: {} - {}", notification.summary, notification.body);
+        });
+
+        // Ajouter une notification de test pour vérifier l'historique
+        crate::services::NotificationService::add_test_notification();
+        
+        println!("[MAIN] Notification history size: {}", crate::services::NotificationService::get_history().len());
 
         // Action pour pin la fenêtre actuellement focus
         let pin_action = gtk::gio::SimpleAction::new("pin-focused-window", None);

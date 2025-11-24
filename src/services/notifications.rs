@@ -19,6 +19,7 @@ pub struct Notification {
 pub struct NotificationService;
 
 static NOTIFICATION_SENDER: Mutex<Option<mpsc::Sender<Notification>>> = Mutex::new(None);
+static NOTIFICATION_HISTORY: Mutex<Vec<Notification>> = Mutex::new(Vec::new());
 
 struct NotificationServer {
     next_id: u32,
@@ -75,6 +76,15 @@ impl NotificationServer {
                 .unwrap()
                 .as_secs(),
         };
+
+        // Ajouter à l'historique (garder les 50 dernières)
+        {
+            let mut history = NOTIFICATION_HISTORY.lock().unwrap();
+            history.insert(0, notification.clone());
+            if history.len() > 50 {
+                history.truncate(50);
+            }
+        }
 
         // Envoyer via le sender global
         if let Ok(sender_guard) = NOTIFICATION_SENDER.lock() {
@@ -157,6 +167,43 @@ impl NotificationService {
 
         loop {
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+        }
+    }
+
+    /// Récupérer l'historique des notifications
+    pub fn get_history() -> Vec<Notification> {
+        NOTIFICATION_HISTORY.lock().unwrap().clone()
+    }
+
+    /// Ajouter une notification de test à l'historique
+    #[allow(dead_code)]
+    pub fn add_test_notification() {
+        let notification = Notification {
+            id: 999,
+            app_name: "Test".to_string(),
+            summary: "Test Notification".to_string(),
+            body: "This is a test notification added manually".to_string(),
+            urgency: 1,
+            timestamp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
+        };
+
+        // Ajouter à l'historique
+        {
+            let mut history = NOTIFICATION_HISTORY.lock().unwrap();
+            history.insert(0, notification.clone());
+            if history.len() > 50 {
+                history.truncate(50);
+            }
+        }
+
+        // Envoyer via le sender si disponible
+        if let Ok(sender_guard) = NOTIFICATION_SENDER.lock() {
+            if let Some(sender) = sender_guard.as_ref() {
+                let _ = sender.send(notification);
+            }
         }
     }
 

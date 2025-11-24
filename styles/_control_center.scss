@@ -1,0 +1,131 @@
+// Control Center Styles
+@import 'colors';
+
+.control-center-window {
+  background-color: transparent;
+  border-radius: 12px;
+}
+
+.control-center-container {
+  background-color: $polar0;
+  border: 1px solid rgba($frost1, 0.3);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(#000000, 0.4);
+}
+
+.control-section {
+  background-color: $polar1;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 4px 0;
+  
+  &:first-child {
+    margin-top: 0;
+  }
+  
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.section-title {
+  color: $snow0;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.control-icon {
+  color: $frost1;
+  font-size: 18px;
+  min-width: 24px;
+}
+
+.control-scale {
+  trough {
+    background-color: $polar2;
+    border-radius: 4px;
+    min-height: 6px;
+  }
+  
+  highlight {
+    background-color: $frost1;
+    border-radius: 4px;
+  }
+  
+  slider {
+    background-color: $snow0;
+    border: 2px solid $frost1;
+    border-radius: 50%;
+    min-width: 16px;
+    min-height: 16px;
+    
+    &:hover {
+      background-color: $frost1;
+    }
+  }
+}
+
+.control-switch {
+  slider {
+    background-color: $polar2;
+    border-radius: 12px;
+    min-width: 44px;
+    min-height: 24px;
+    
+    &:checked {
+      background-color: $frost1;
+    }
+  }
+}
+
+.datetime-display {
+  color: $snow0;
+  font-size: 16px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.notifications-scroll {
+  background-color: transparent;
+  border: none;
+}
+
+.notifications-list {
+  padding: 4px;
+}
+
+.notification-item {
+  background-color: $polar2;
+  border-radius: 6px;
+  padding: 8px;
+  margin: 2px 0;
+  
+  &:hover {
+    background-color: rgba($frost1, 0.1);
+  }
+}
+
+.notification-icon {
+  color: $frost1;
+  font-size: 16px;
+  min-width: 20px;
+}
+
+.notification-title {
+  color: $snow0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.notification-body {
+  color: $snow1;
+  font-size: 11px;
+}
+
+.notification-empty {
+  color: $polar3;
+  font-size: 14px;
+  text-align: center;
+  padding: 20px;
+}

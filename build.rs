@@ -12,6 +12,8 @@ fn main() {
     println!("cargo:rerun-if-changed=styles/_tasker.scss");
     println!("cargo:rerun-if-changed=styles/_launcher.scss");
     println!("cargo:rerun-if-changed=styles/_osd.scss");
+    println!("cargo:rerun-if-changed=styles/_control_center.scss");
+    println!("cargo:rerun-if-changed=styles/_notifications.scss");
 
     // Compile SCSS to CSS
     let scss_path = "styles/main.scss";

@@ -11,6 +11,7 @@ pub fn create_notifications_window(application: &gtk::Application) -> gtk::Appli
     let window = gtk::ApplicationWindow::builder()
         .application(application)
         .build();
+    window.add_css_class("notifications-window");
 
     // Cacher la fenêtre au démarrage (avant init_layer_shell)
     window.set_visible(false);
@@ -25,17 +26,10 @@ pub fn create_notifications_window(application: &gtk::Application) -> gtk::Appli
 
     // Container principal pour toutes les notifications
     let container = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    container.add_css_class("notifications-container");
     container.set_width_request(380);
     container.set_halign(gtk::Align::End);
     container.set_valign(gtk::Align::Start);
-
-    // Appliquer un CSS pour rendre le fond du container transparent
-    let container_css = gtk::CssProvider::new();
-    container_css.load_from_data("box { background-color: transparent; }");
-    container.style_context().add_provider(
-        &container_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
 
     window.set_child(Some(&container));
 
@@ -117,36 +111,20 @@ pub fn create_notifications_window(application: &gtk::Application) -> gtk::Appli
 fn create_notification_widget(notification: &Notification) -> gtk::Widget {
     // Container principal (Box) avec background et bordure
     let container = gtk::Box::new(gtk::Orientation::Vertical, 8);
+    container.add_css_class("notification-popup");
+    
+    // Ajouter classe selon l'urgence
+    match notification.urgency {
+        2 => container.add_css_class("notification-critical"),
+        1 => container.add_css_class("notification-normal"),
+        _ => container.add_css_class("notification-low"),
+    }
+    
     container.set_width_request(380);
     container.set_margin_start(12);
     container.set_margin_end(12);
     container.set_margin_top(12);
     container.set_margin_bottom(12);
-
-    // Déterminer la couleur de bordure selon l'urgence
-    let border_color = match notification.urgency {
-        2 => COLORS.red.to_hex_string(),      // Critical - rouge
-        1 => COLORS.yellow.to_hex_string(),   // Normal - jaune
-        _ => COLORS.frost1.to_hex_string(),   // Low - bleu
-    };
-
-    // Appliquer un style CSS inline pour le background et la bordure
-    let css_provider = gtk::CssProvider::new();
-    css_provider.load_from_data(&format!(
-        "box {{
-            background-color: {};
-            border-left: 4px solid {};
-            border-radius: 8px;
-            padding: 12px;
-        }}",
-        COLORS.polar2.to_hex_string(),
-        border_color
-    ));
-
-    container.style_context().add_provider(
-        &css_provider,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
 
     // Header: titre + timestamp
     let header = gtk::Box::new(gtk::Orientation::Horizontal, 8);

@@ -14,6 +14,7 @@ pub mod systray;
 // pub mod transcription;
 
 pub use applications::ApplicationsService;
+pub use notifications::NotificationService;
 pub use pin_controller::PinController;
 // pub use speech::SpeechRecognitionService;
 // pub use transcription::{

@@ -1,7 +1,7 @@
 use crate::services::bluetooth::BluetoothState;
 use crate::theme::icons;
 use gtk::prelude::*;
-use gtk4::{self as gtk, CenterBox};
+use gtk4 as gtk;
 
 #[derive(Clone)]
 pub struct BluetoothModule {
@@ -26,20 +26,14 @@ impl BluetoothModule {
 
         container.set_center_widget(Some(&icon_label));
 
-        // Rendre le container cliquable
+        // Gestionnaire de clic pour ouvrir le centre de contrôle
         let gesture = gtk::GestureClick::new();
-        gesture.connect_released(move |_gesture, _n_press, _x, _y| {
-            // Spawn un thread tokio pour toggle le bluetooth
-            tokio::spawn(async {
-                match crate::services::bluetooth::BluetoothService::toggle_power().await {
-                    Ok(new_state) => {
-                        println!("[BLUETOOTH] 🔵 Toggled to: {}", new_state);
-                    }
-                    Err(e) => {
-                        println!("[BLUETOOTH] ❌ Failed to toggle: {:?}", e);
-                    }
+        gesture.connect_released(move |_, _, _, _| {
+            if let Some(app) = gtk::gio::Application::default() {
+                if let Some(action) = app.lookup_action("toggle-control-center") {
+                    action.activate(None);
                 }
-            });
+            }
         });
         container.add_controller(gesture);
 

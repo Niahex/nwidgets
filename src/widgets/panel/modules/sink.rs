@@ -25,6 +25,17 @@ impl SinkModule {
 
         container.set_center_widget(Some(&icon_label));
 
+        // Gestionnaire de clic pour ouvrir le centre de contrôle
+        let gesture = gtk::GestureClick::new();
+        gesture.connect_released(move |_, _, _, _| {
+            if let Some(app) = gtk::gio::Application::default() {
+                if let Some(action) = app.lookup_action("toggle-control-center") {
+                    action.activate(None);
+                }
+            }
+        });
+        container.add_controller(gesture);
+
         Self {
             container,
             icon_label,

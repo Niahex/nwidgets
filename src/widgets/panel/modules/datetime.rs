@@ -15,7 +15,7 @@ impl DateTimeModule {
     pub fn new() -> Self {
         let container = gtk::CenterBox::new();
         container.add_css_class("datetime-widget");
-        container.set_width_request(64);
+        container.set_width_request(70);
         container.set_height_request(50);
         container.set_halign(gtk::Align::Center);
         container.set_valign(gtk::Align::Center);
@@ -36,6 +36,17 @@ impl DateTimeModule {
         datetime_box.append(&time_label);
         datetime_box.append(&date_label);
         container.set_center_widget(Some(&datetime_box));
+
+        // Gestionnaire de clic pour ouvrir le centre de contrôle
+        let gesture = gtk::GestureClick::new();
+        gesture.connect_released(move |_, _, _, _| {
+            if let Some(app) = gtk::gio::Application::default() {
+                if let Some(action) = app.lookup_action("toggle-control-center") {
+                    action.activate(None);
+                }
+            }
+        });
+        container.add_controller(gesture);
 
         let module = Self {
             container,

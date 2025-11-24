@@ -114,12 +114,26 @@ pub fn create_tasker_window(application: &gtk::Application) -> (gtk::Application
 
     window.set_child(Some(&main_box));
 
-    // Ajouter l'action toggle-tasker
+    // Ajouter l'action toggle-tasker avec fermeture mutuelle
     let toggle_action = gtk::gio::SimpleAction::new("toggle-tasker", None);
     let window_clone = window.clone();
     let entry_clone = task_entry.clone();
+    let app_clone = application.clone();
     toggle_action.connect_activate(move |_, _| {
         let is_visible = window_clone.is_visible();
+        
+        // Si on va ouvrir tasker, fermer control center s'il est ouvert
+        if !is_visible {
+            for window in app_clone.windows() {
+                if window.title().map_or(false, |t| t.contains("Control Center")) && window.is_visible() {
+                    if let Some(action) = app_clone.lookup_action("toggle-control-center") {
+                        action.activate(None);
+                    }
+                    break;
+                }
+            }
+        }
+        
         window_clone.set_visible(!is_visible);
 
         // Si on ouvre la fenêtre, donner le focus à l'entrée de tâche
