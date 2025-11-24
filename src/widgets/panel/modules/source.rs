@@ -18,7 +18,7 @@ impl SourceModule {
         container.set_halign(gtk::Align::Center);
         container.set_valign(gtk::Align::Center);
 
-        let icon = icons::create_icon("audio-input-microphone-high-symbolic", 24);
+        let icon = icons::create_icon("audio-input-microphone-high-symbolic");
         icon.add_css_class("source-icon");
         icon.set_halign(gtk::Align::Center);
         icon.set_valign(gtk::Align::Center);

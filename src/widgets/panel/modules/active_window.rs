@@ -24,7 +24,7 @@ impl ActiveWindowModule {
         let icon_container = gtk::CenterBox::new();
         icon_container.set_width_request(64);
 
-        let icon = icons::create_icon("nixos", 32);
+        let icon = icons::create_icon("nixos");
         icon.add_css_class("active-window-icon");
         icon_container.set_center_widget(Some(&icon));
 

@@ -18,7 +18,7 @@ impl BluetoothModule {
         container.set_halign(gtk::Align::Center);
         container.set_valign(gtk::Align::Center);
 
-        let icon = icons::create_icon("bluetooth-disabled-symbolic", 24);
+        let icon = icons::create_icon("bluetooth-disabled-symbolic");
         icon.add_css_class("bluetooth-icon");
         icon.set_halign(gtk::Align::Center);
         icon.set_valign(gtk::Align::Center);

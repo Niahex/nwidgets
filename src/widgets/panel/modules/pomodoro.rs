@@ -21,7 +21,7 @@ impl PomodoroModule {
         container.set_halign(gtk::Align::Center);
         container.set_valign(gtk::Align::Center);
 
-        let icon = icons::create_icon("media-playback-start", 24);
+        let icon = icons::create_icon("media-playback-start");
         icon.add_css_class("pomodoro-icon");
         icon.add_css_class("pomodoro-idle");
 

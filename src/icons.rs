@@ -1,77 +1,64 @@
+use gdk_pixbuf::Pixbuf;
 use gtk4::prelude::*;
-use gtk4::{gdk, IconTheme, Image};
+use gtk4::{gdk, glib, Image};
+
+// Embarquer les SVG directement dans le binaire
+static SINK_MUTED: &[u8] = include_bytes!("../assets/status/sink-muted.svg");
+static SINK_ZERO: &[u8] = include_bytes!("../assets/status/sink-zero.svg");
+static SINK_LOW: &[u8] = include_bytes!("../assets/status/sink-low.svg");
+static SINK_MEDIUM: &[u8] = include_bytes!("../assets/status/sink-medium.svg");
+static SINK_HIGH: &[u8] = include_bytes!("../assets/status/sink-high.svg");
+
+static SOURCE_MUTED: &[u8] = include_bytes!("../assets/status/source-muted.svg");
+static SOURCE_ZERO: &[u8] = include_bytes!("../assets/status/source-zero.svg");
+static SOURCE_LOW: &[u8] = include_bytes!("../assets/status/source-low.svg");
+static SOURCE_MEDIUM: &[u8] = include_bytes!("../assets/status/source-medium.svg");
+static SOURCE_HIGH: &[u8] = include_bytes!("../assets/status/source-high.svg");
+
+static MEDIA_PLAY: &[u8] = include_bytes!("../assets/actions/24/media-playback-start.svg");
+static MEDIA_PAUSE: &[u8] = include_bytes!("../assets/actions/24/media-playback-pause.svg");
+
+static BLUETOOTH_PAIRED: &[u8] = include_bytes!("../assets/status/bluetooth-paired.svg");
+static BLUETOOTH_ACTIVE: &[u8] = include_bytes!("../assets/status/bluetooth-active.svg");
+static BLUETOOTH_DISABLED: &[u8] = include_bytes!("../assets/status/bluetooth-disabled.svg");
+
+static DIALOG_INFO: &[u8] = include_bytes!("../assets/status/dialog-information.svg");
+static COPY: &[u8] = include_bytes!("../assets/actions/copy.svg");
 
 pub fn setup_icon_theme() {
-    if let Some(display) = gdk::Display::default() {
-        let icon_theme = IconTheme::for_display(&display);
-
-        // Ajouter les chemins d'icônes NixOS
-        icon_theme.add_search_path("/run/current-system/sw/share/icons");
-        icon_theme.add_search_path("/home/nia/.local/share/icons");
-
-        // Définir le thème Nordzy
-        icon_theme.set_theme_name(Some("Nordzy-turquoise-dark"));
-    }
+    // Rien à faire
 }
 
-pub fn create_icon(icon_name: &str, size: i32) -> Image {
-    let image = Image::new();
+pub fn create_icon(icon_name: &str) -> Image {
+    let svg_data = match icon_name {
+        "sink-muted" => SINK_MUTED,
+        "sink-zero" => SINK_ZERO,
+        "sink-low" => SINK_LOW,
+        "sink-medium" => SINK_MEDIUM,
+        "sink-high" => SINK_HIGH,
+        "source-muted" => SOURCE_MUTED,
+        "source-zero" => SOURCE_ZERO,
+        "source-low" => SOURCE_LOW,
+        "source-medium" => SOURCE_MEDIUM,
+        "source-high" => SOURCE_HIGH,
+        "media-playback-start" => MEDIA_PLAY,
+        "media-playback-pause" => MEDIA_PAUSE,
+        "bluetooth-paired" => BLUETOOTH_PAIRED,
+        "bluetooth-active" => BLUETOOTH_ACTIVE,
+        "bluetooth-disabled" => BLUETOOTH_DISABLED,
+        "dialog-information" => DIALOG_INFO,
+        "copy" => COPY,
+        _ => return Image::new(), // Icône vide si non trouvée
+    };
 
-    // Debug: vérifier si l'icône existe
-    if let Some(display) = gdk::Display::default() {
-        let icon_theme = IconTheme::for_display(&display);
-        let has_icon = icon_theme.has_icon(icon_name);
-        println!(
-            "[ICON DEBUG] Icon '{}' exists in theme: {}",
-            icon_name, has_icon
-        );
-
-        // Afficher aussi le nom du thème actuel
-        let theme_name = icon_theme.theme_name();
-        println!("[ICON DEBUG] Current theme: {}", theme_name);
-
-        // Essayer de lookup l'icône et l'utiliser directement comme paintable
-        let icon_paintable = icon_theme.lookup_icon(
-            icon_name,
-            &[],
-            size,
-            1,
-            gtk4::TextDirection::None,
-            gtk4::IconLookupFlags::empty(),
-        );
-
-        let file = icon_paintable.file();
-        if let Some(file) = file {
-            if let Some(path) = file.path() {
-                println!("[ICON DEBUG] Icon path found: {:?}", path);
-            } else {
-                println!("[ICON DEBUG] File exists but no path");
-            }
-        } else {
-            println!("[ICON DEBUG] No file found for icon '{}', using paintable directly", icon_name);
-        }
-
-        // Utiliser directement le paintable au lieu de set_icon_name
-        image.set_paintable(Some(&icon_paintable));
-    }
-
-    image.set_pixel_size(size);
-    image
-}
-
-pub fn get_icon_paintable(icon_name: &str, size: i32) -> Option<gtk4::gdk::Paintable> {
-    if let Some(display) = gdk::Display::default() {
-        let icon_theme = IconTheme::for_display(&display);
-        let icon_paintable = icon_theme.lookup_icon(
-            icon_name,
-            &[],
-            size,
-            1,
-            gtk4::TextDirection::None,
-            gtk4::IconLookupFlags::empty(),
-        );
-        Some(icon_paintable.upcast())
+    let bytes = glib::Bytes::from_static(svg_data);
+    if let Ok(pixbuf) = Pixbuf::from_stream(
+        &gtk4::gio::MemoryInputStream::from_bytes(&bytes),
+        None::<&gtk4::gio::Cancellable>,
+    ) {
+        let texture = gdk::Texture::for_pixbuf(&pixbuf);
+        Image::from_paintable(Some(&texture))
     } else {
-        None
+        Image::new()
     }
 }

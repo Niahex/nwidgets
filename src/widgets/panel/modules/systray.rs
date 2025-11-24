@@ -34,7 +34,7 @@ impl SystrayModule {
                 _ => "application-default-icon",
             };
 
-            let icon = icons::create_icon(icon_name, 24);
+            let icon = icons::create_icon(icon_name);
             icon.set_halign(gtk::Align::Center);
             icon.set_valign(gtk::Align::Center);
             icon.add_css_class("systray-item");

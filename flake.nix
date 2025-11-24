@@ -28,7 +28,26 @@
         };
 
         craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
-        src = craneLib.cleanCargoSource ./.;
+        
+        # When filtering sources, we want to allow assets other than .rs files
+        unfilteredRoot = ./.; # The original, unfiltered source
+        src = pkgs.lib.fileset.toSource {
+          root = unfilteredRoot;
+          fileset = pkgs.lib.fileset.unions [
+            # Default files from crane (Rust and cargo files)
+            (craneLib.fileset.commonCargoSources unfilteredRoot)
+            (pkgs.lib.fileset.fileFilter (
+              file:
+              pkgs.lib.any file.hasExt [
+                "scss"
+                "svg"
+                "xml"
+              ]
+            ) unfilteredRoot)
+            # Assets folder for icons
+            (pkgs.lib.fileset.maybeMissing ./assets)
+          ];
+        };
 
         # Dependencies for building the application
         buildInputs = with pkgs; [

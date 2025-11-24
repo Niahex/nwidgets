@@ -104,7 +104,7 @@ fn create_volume_osd(level: u8, muted: bool) -> gtk::Widget {
         "audio-volume-high-panel"
     };
 
-    let icon = icons::create_icon(icon_name, 32);
+    let icon = icons::create_icon(icon_name);
     icon.add_css_class("osd-icon");
     container.append(&icon);
 
@@ -132,7 +132,7 @@ fn create_mic_osd(muted: bool) -> gtk::Widget {
         "audio-input-microphone"
     };
 
-    let icon = icons::create_icon(icon_name, 32);
+    let icon = icons::create_icon(icon_name);
     icon.add_css_class("osd-icon");
     container.append(&icon);
 
@@ -147,7 +147,7 @@ fn create_mic_osd(muted: bool) -> gtk::Widget {
 fn create_dictation_osd(started: bool) -> gtk::Widget {
     let container = gtk::Box::new(gtk::Orientation::Horizontal, 12);
 
-    let icon = icons::create_icon("audio-input-microphone", 32);
+    let icon = icons::create_icon("audio-input-microphone");
     icon.add_css_class("osd-icon");
     container.append(&icon);
 
@@ -204,7 +204,7 @@ fn create_numlock_osd(enabled: bool) -> gtk::Widget {
 fn create_clipboard_osd() -> gtk::Widget {
     let container = gtk::Box::new(gtk::Orientation::Horizontal, 12);
 
-    let icon = icons::create_icon("edit-copy", 32);
+    let icon = icons::create_icon("edit-copy");
     icon.add_css_class("osd-icon");
     container.append(&icon);
 

@@ -18,7 +18,7 @@ impl SinkModule {
         container.set_halign(gtk::Align::Center);
         container.set_valign(gtk::Align::Center);
 
-        let icon = icons::create_icon("audio-volume-high-panel", 22);
+        let icon = icons::create_icon("sink-high");
         icon.add_css_class("sink-icon");
         icon.set_halign(gtk::Align::Center);
         icon.set_valign(gtk::Align::Center);
@@ -41,13 +41,19 @@ impl SinkModule {
 
     pub fn update(&self, state: &AudioState) {
         let icon_name = if state.muted {
-            "audio-volume-muted-panel"
+            "sink-muted"
         } else if state.volume < 33 {
-            "audio-volume-low-panel"
+            "sink-low"
         } else {
-            "audio-volume-high-panel"
+            "sink-high"
         };
 
-        self.icon.set_icon_name(Some(icon_name));
+        // Créer une nouvelle icône et remplacer l'ancienne
+        let new_icon = icons::create_icon(icon_name);
+        new_icon.add_css_class("sink-icon");
+        new_icon.set_halign(gtk::Align::Center);
+        new_icon.set_valign(gtk::Align::Center);
+        
+        self.container.set_center_widget(Some(&new_icon));
     }
 }

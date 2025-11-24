@@ -116,7 +116,7 @@ fn create_audio_section() -> (gtk::Box, gtk::Scale, gtk::Scale) {
 
     // Volume controls
     let volume_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-    let volume_icon = icons::create_icon("audio-volume-high", 24);
+    let volume_icon = icons::create_icon("audio-volume-high");
     volume_icon.add_css_class("control-icon");
     let volume_scale = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.0, 100.0, 1.0);
     volume_scale.set_hexpand(true);
@@ -136,7 +136,7 @@ fn create_audio_section() -> (gtk::Box, gtk::Scale, gtk::Scale) {
 
     // Mic controls
     let mic_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-    let mic_icon = icons::create_icon("audio-input-microphone", 24);
+    let mic_icon = icons::create_icon("audio-input-microphone");
     mic_icon.add_css_class("control-icon");
     let mic_scale = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.0, 100.0, 1.0);
     mic_scale.set_hexpand(true);
@@ -300,7 +300,7 @@ fn create_notification_widget(notification: &Notification) -> gtk::Box {
     let notif_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     notif_box.add_css_class("notification-item");
 
-    let icon = icons::create_icon("dialog-information", 24);
+    let icon = icons::create_icon("dialog-information");
     icon.add_css_class("notification-icon");
 
     let content_box = gtk::Box::new(gtk::Orientation::Vertical, 2);
