@@ -52,9 +52,13 @@ pub fn create_control_center_window(application: &gtk::Application) -> gtk::Appl
         mic_scale.set_value(state.mic_volume as f64);
     });
 
+    // Clone pour les différents usages
+    let notifications_list_for_subscribe = notifications_list.clone();
+    let notifications_list_for_toggle = notifications_list.clone();
+
     // Subscribe to notifications
     NotificationService::subscribe_notifications(move |notification: Notification| {
-        add_notification_to_list(&notifications_list, notification);
+        add_notification_to_list(&notifications_list_for_subscribe, notification);
     });
 
     // Toggle action avec fermeture mutuelle
@@ -63,9 +67,12 @@ pub fn create_control_center_window(application: &gtk::Application) -> gtk::Appl
     let app_clone = application.clone();
     toggle_action.connect_activate(move |_, _| {
         let is_visible = window_clone.is_visible();
-        
+
         // Si on va ouvrir control center, fermer tasker s'il est ouvert
         if !is_visible {
+            // Recharger l'historique des notifications avant d'ouvrir
+            reload_notification_history(&notifications_list_for_toggle);
+
             for window in app_clone.windows() {
                 if window.title().map_or(false, |t| t.contains("Tasker")) && window.is_visible() {
                     if let Some(action) = app_clone.lookup_action("toggle-tasker") {
@@ -75,7 +82,7 @@ pub fn create_control_center_window(application: &gtk::Application) -> gtk::Appl
                 }
             }
         }
-        
+
         window_clone.set_visible(!is_visible);
         println!("[CONTROL CENTER] Toggle: {}", !is_visible);
     });
@@ -167,26 +174,22 @@ fn create_notifications_section(notifications_list: gtk::Box) -> gtk::Box {
     notifications_list.add_css_class("notifications-list");
     
     // Charger l'historique existant
-    let mut history = NotificationService::get_history();
-    
-    // Si pas d'historique, ajouter quelques notifications de test au service
+    let history = NotificationService::get_history();
+
+    println!("[CONTROL CENTER] Loading notification history: {} notifications", history.len());
+
+    // Si pas d'historique, afficher un message vide
     if history.is_empty() {
-        // Simuler l'arrivée de notifications via le service D-Bus
-        use std::time::{SystemTime, UNIX_EPOCH};
-        
-        // Ces notifications seront ajoutées à l'historique du service
-        println!("[CONTROL CENTER] Adding test notifications to service history");
-        
-        // On ne peut pas facilement injecter dans l'historique, donc on affiche juste un message
         let empty_label = gtk::Label::new(Some("No notifications yet.\nNotifications will appear here when received."));
         empty_label.add_css_class("notification-empty");
         empty_label.set_halign(gtk::Align::Center);
         empty_label.set_valign(gtk::Align::Center);
         notifications_list.append(&empty_label);
     } else {
-        // Afficher l'historique réel
+        // Afficher l'historique réel (les plus récentes sont déjà en premier dans le Vec)
         for notification in history {
-            add_notification_to_list(&notifications_list, notification);
+            println!("[CONTROL CENTER] Adding notification from history: {} - {}", notification.summary, notification.body);
+            add_notification_to_list_from_history(&notifications_list, notification);
         }
     }
     
@@ -203,7 +206,54 @@ fn add_notification_to_list(notifications_list: &gtk::Box, notification: Notific
             notifications_list.remove(&first_child);
         }
     }
-    
+
+    let notif_box = create_notification_widget(&notification);
+
+    // Add to top of list (pour les nouvelles notifications)
+    notifications_list.prepend(&notif_box);
+}
+
+fn add_notification_to_list_from_history(notifications_list: &gtk::Box, notification: Notification) {
+    // Supprimer le message "No notifications" s'il existe
+    if let Some(first_child) = notifications_list.first_child() {
+        if first_child.css_classes().contains(&"notification-empty".into()) {
+            notifications_list.remove(&first_child);
+        }
+    }
+
+    let notif_box = create_notification_widget(&notification);
+
+    // Add to bottom of list (pour l'historique qui est déjà dans l'ordre)
+    notifications_list.append(&notif_box);
+}
+
+fn reload_notification_history(notifications_list: &gtk::Box) {
+    // Supprimer tous les widgets existants
+    while let Some(child) = notifications_list.first_child() {
+        notifications_list.remove(&child);
+    }
+
+    // Recharger l'historique
+    let history = NotificationService::get_history();
+    println!("[CONTROL CENTER] Reloading notification history: {} notifications", history.len());
+
+    if history.is_empty() {
+        let empty_label = gtk::Label::new(Some("No notifications yet.\nNotifications will appear here when received."));
+        empty_label.add_css_class("notification-empty");
+        empty_label.set_halign(gtk::Align::Center);
+        empty_label.set_valign(gtk::Align::Center);
+        notifications_list.append(&empty_label);
+    } else {
+        // Afficher l'historique réel (les plus récentes sont déjà en premier dans le Vec)
+        for notification in history {
+            println!("[CONTROL CENTER] Adding notification from history: {} - {}", notification.summary, notification.body);
+            let notif_box = create_notification_widget(&notification);
+            notifications_list.append(&notif_box);
+        }
+    }
+}
+
+fn create_notification_widget(notification: &Notification) -> gtk::Box {
     let notif_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     notif_box.add_css_class("notification-item");
 
@@ -215,21 +265,20 @@ fn add_notification_to_list(notifications_list: &gtk::Box, notification: Notific
     title.add_css_class("notification-title");
     title.set_halign(gtk::Align::Start);
     title.set_ellipsize(gtk::pango::EllipsizeMode::End);
-    
+
     let body = gtk::Label::new(Some(&notification.body));
     body.add_css_class("notification-body");
     body.set_halign(gtk::Align::Start);
     body.set_ellipsize(gtk::pango::EllipsizeMode::End);
     body.set_wrap(true);
     body.set_lines(2);
-    
+
     content_box.append(&title);
     content_box.append(&body);
     content_box.set_hexpand(true);
 
     notif_box.append(&icon);
     notif_box.append(&content_box);
-    
-    // Add to top of list
-    notifications_list.prepend(&notif_box);
+
+    notif_box
 }
