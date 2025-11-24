@@ -45,6 +45,7 @@
           alsa-lib # For audio capture (cpal/vosk)
           udev # For libinput (hotkey detection)
           gtk4 # For GTK4 webview
+          glib # Ajout explicite de glib
           webkitgtk_6_0 # For webkit6 - GTK4 version
           libsoup_3 # For webkit6 networking
           glib-networking # For TLS support
@@ -71,7 +72,7 @@
 
         envVars = {
           RUST_BACKTRACE = "full";
-          GIO_USE_TLS = "gnutls";
+          # GIO_USE_TLS = "gnutls"; # Souvent inutile si glib-networking est bien chargé, mais on peut le laisser si nécessaire
           SSL_CERT_FILE = "/nix/var/nix/profiles/system/etc/ssl/certs/ca-bundle.crt";
           NIX_SSL_CERT_FILE = "/nix/var/nix/profiles/system/etc/ssl/certs/ca-bundle.crt";
         };
@@ -88,6 +89,12 @@
           env = envVars;
           pname = "nwidgets";
           version = "0.1.0";
+
+          # CORRECTION : Utilisation de GIO_EXTRA_MODULES au lieu de GIO_MODULE_DIR
+          postFixup = ''
+            wrapProgram $out/bin/nwidgets \
+              --prefix GIO_EXTRA_MODULES : "${pkgs.glib-networking}/lib/gio/modules"
+          '';
         };
 
         # Development shell tools
@@ -124,8 +131,9 @@
           LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (buildInputs ++ runtimeDependencies);
           FONTCONFIG_FILE = pkgs.makeFontsConf {fontDirectories = buildInputs;};
 
+          # CORRECTION : Même chose pour le shell de dev
           shellHook = ''
-            export GIO_MODULE_DIR="${pkgs.glib-networking}/lib/gio/modules"
+            export GIO_EXTRA_MODULES="${pkgs.glib-networking}/lib/gio/modules:$GIO_EXTRA_MODULES"
             echo "[🦀 Rust $(rustc --version)] - Ready to develop nwidgets!"
           '';
         };

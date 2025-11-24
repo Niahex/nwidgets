@@ -5,7 +5,9 @@ use gtk4 as gtk;
 
 #[derive(Clone)]
 pub struct ActiveWindowModule {
-    pub container: gtk::Box,
+    pub container: gtk::CenterBox,
+    icon_container: gtk::CenterBox,
+    text_container: gtk::CenterBox,
     icon_label: gtk::Label,
     class_label: gtk::Label,
     title_label: gtk::Label,
@@ -13,28 +15,46 @@ pub struct ActiveWindowModule {
 
 impl ActiveWindowModule {
     pub fn new() -> Self {
-        let container = gtk::Box::new(gtk::Orientation::Horizontal, 5);
+        // Container principal
+        let container = gtk::CenterBox::new();
         container.add_css_class("active-window-widget");
-        container.set_width_request(256); // 64 * 4
+        container.set_width_request(250);
+
+        // CenterBox pour l'icône
+        let icon_container = gtk::CenterBox::new();
+        icon_container.set_width_request(64);
 
         let icon_label = gtk::Label::new(None);
-        icon_label.add_css_class("active-window-icon"); // Assuming you have a CSS file with this class
+        icon_label.add_css_class("active-window-icon");
+        icon_container.set_center_widget(Some(&icon_label));
+
+        // CenterBox pour le texte (class + title)
+        let text_container = gtk::CenterBox::new();
+        text_container.set_hexpand(true);
+
+        let text_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        text_box.set_halign(gtk::Align::Center);
+        text_box.set_valign(gtk::Align::Center);
 
         let class_label = gtk::Label::new(None);
-        class_label.add_css_class("active-window-class"); // Assuming you have a CSS file with this class
+        class_label.add_css_class("active-window-class");
+        class_label.set_halign(gtk::Align::Center);
 
         let title_label = gtk::Label::new(None);
-        title_label.add_css_class("active-window-title"); // Assuming you have a CSS file with this class
+        title_label.add_css_class("active-window-title");
+        title_label.set_halign(gtk::Align::Center);
 
-        let content_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        content_box.append(&class_label);
-        content_box.append(&title_label);
+        text_box.append(&class_label);
+        text_box.append(&title_label);
+        text_container.set_center_widget(Some(&text_box));
 
-        container.append(&icon_label);
-        container.append(&content_box);
+        container.set_start_widget(Some(&icon_container));
+        container.set_center_widget(Some(&text_container));
 
         Self {
             container,
+            icon_container,
+            text_container,
             icon_label,
             class_label,
             title_label,

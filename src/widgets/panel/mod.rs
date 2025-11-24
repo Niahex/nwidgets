@@ -66,6 +66,7 @@ pub fn create_panel_window(
     // Section droite : Pomodoro à gauche, puis les autres modules
     let right_section = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     right_section.add_css_class("panel-right");
+    right_section.set_halign(gtk::Align::End);
 
     // Systray à gauche (peut changer de taille)
     let systray_module = SystrayModule::new();

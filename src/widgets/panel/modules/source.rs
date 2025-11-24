@@ -1,7 +1,7 @@
-use gtk4 as gtk;
-use gtk::prelude::*;
 use crate::services::pipewire::AudioState;
 use crate::theme::icons;
+use gtk::prelude::*;
+use gtk4 as gtk;
 
 #[derive(Clone)]
 pub struct SourceModule {
@@ -13,7 +13,7 @@ impl SourceModule {
     pub fn new() -> Self {
         let container = gtk::CenterBox::new();
         container.add_css_class("source-widget");
-        container.set_width_request(50);
+        container.set_width_request(35);
         container.set_height_request(50);
         container.set_halign(gtk::Align::Center);
         container.set_valign(gtk::Align::Center);

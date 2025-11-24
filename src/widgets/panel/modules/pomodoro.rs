@@ -1,8 +1,8 @@
-use gtk4 as gtk;
-use gtk::prelude::*;
-use std::sync::{Arc, Mutex};
 use crate::services::pomodoro::{PomodoroService, PomodoroState};
 use crate::theme::icons;
+use gtk::prelude::*;
+use gtk4 as gtk;
+use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub struct PomodoroModule {
@@ -16,7 +16,7 @@ impl PomodoroModule {
     pub fn new() -> Self {
         let container = gtk::CenterBox::new();
         container.add_css_class("pomodoro-widget");
-        container.set_width_request(50);
+        container.set_width_request(35);
         container.set_height_request(50);
         container.set_halign(gtk::Align::Center);
         container.set_valign(gtk::Align::Center);
@@ -48,8 +48,12 @@ impl PomodoroModule {
             let mut svc = service_clone.lock().unwrap();
             match svc.get_state() {
                 PomodoroState::Idle => svc.start_work(),
-                PomodoroState::Work | PomodoroState::ShortBreak | PomodoroState::LongBreak => svc.pause(),
-                PomodoroState::WorkPaused | PomodoroState::ShortBreakPaused | PomodoroState::LongBreakPaused => svc.resume(),
+                PomodoroState::Work | PomodoroState::ShortBreak | PomodoroState::LongBreak => {
+                    svc.pause()
+                }
+                PomodoroState::WorkPaused
+                | PomodoroState::ShortBreakPaused
+                | PomodoroState::LongBreakPaused => svc.resume(),
             }
             drop(svc);
             module_clone.update();
@@ -104,7 +108,12 @@ impl PomodoroModule {
         // Show icon only when idle or paused
         if state == PomodoroState::Idle {
             self.container.set_center_widget(Some(&self.icon_label));
-        } else if matches!(state, PomodoroState::WorkPaused | PomodoroState::ShortBreakPaused | PomodoroState::LongBreakPaused) {
+        } else if matches!(
+            state,
+            PomodoroState::WorkPaused
+                | PomodoroState::ShortBreakPaused
+                | PomodoroState::LongBreakPaused
+        ) {
             self.container.set_center_widget(Some(&self.icon_label));
         } else {
             self.time_label.set_text(time_text);

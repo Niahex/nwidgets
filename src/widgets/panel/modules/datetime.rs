@@ -15,7 +15,7 @@ impl DateTimeModule {
     pub fn new() -> Self {
         let container = gtk::CenterBox::new();
         container.add_css_class("datetime-widget");
-        container.set_width_request(70);
+        container.set_width_request(100);
         container.set_height_request(50);
         container.set_halign(gtk::Align::Center);
         container.set_valign(gtk::Align::Center);
