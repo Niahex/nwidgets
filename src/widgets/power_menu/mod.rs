@@ -1,7 +1,6 @@
 use gtk4 as gtk;
 use gtk::prelude::*;
 use gtk4_layer_shell::{KeyboardMode, Layer, LayerShell};
-use crate::theme::colors::COLORS;
 use std::cell::Cell;
 use std::rc::Rc;
 use std::process::Command;
@@ -98,17 +97,7 @@ pub fn create_power_menu_window(application: &gtk::Application) -> gtk::Applicat
     overlay_box.set_valign(gtk::Align::Fill);
     overlay_box.set_hexpand(true);
     overlay_box.set_vexpand(true);
-
-    // Background semi-transparent
-    let bg_css = gtk::CssProvider::new();
-    bg_css.load_from_data(&format!(
-        "box {{ background-color: {}; }}",
-        COLORS.polar0.with_opacity(85)
-    ));
-    overlay_box.style_context().add_provider(
-        &bg_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
+    overlay_box.add_css_class("power-menu-overlay");
 
     // Container centré pour les boutons
     let center_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
@@ -120,15 +109,7 @@ pub fn create_power_menu_window(application: &gtk::Application) -> gtk::Applicat
     // Titre
     let title_label = gtk::Label::new(Some("Power Menu"));
     title_label.set_margin_bottom(32);
-    let title_css = gtk::CssProvider::new();
-    title_css.load_from_data(&format!(
-        "label {{ color: {}; font-size: 32px; font-weight: bold; }}",
-        COLORS.snow0.to_hex_string()
-    ));
-    title_label.style_context().add_provider(
-        &title_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
+    title_label.add_css_class("power-menu-title");
     center_box.append(&title_label);
 
     // Container horizontal pour les boutons
@@ -157,15 +138,7 @@ pub fn create_power_menu_window(application: &gtk::Application) -> gtk::Applicat
     // Hint pour la navigation
     let hint_label = gtk::Label::new(Some("← → to navigate  •  Enter to execute  •  Escape to cancel"));
     hint_label.set_margin_top(32);
-    let hint_css = gtk::CssProvider::new();
-    hint_css.load_from_data(&format!(
-        "label {{ color: {}; font-size: 14px; }}",
-        COLORS.polar3.to_hex_string()
-    ));
-    hint_label.style_context().add_provider(
-        &hint_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
+    hint_label.add_css_class("power-menu-hint");
     center_box.append(&hint_label);
 
     overlay_box.append(&center_box);
@@ -256,84 +229,27 @@ pub fn create_power_menu_window(application: &gtk::Application) -> gtk::Applicat
 fn create_power_button(action: PowerAction) -> gtk::Box {
     let button_box = gtk::Box::new(gtk::Orientation::Vertical, 12);
     button_box.set_size_request(120, 140);
-
-    // Style par défaut (non sélectionné)
-    let default_css = gtk::CssProvider::new();
-    default_css.load_from_data(&format!(
-        "box {{
-            background-color: {};
-            border: 2px solid {};
-            border-radius: 12px;
-            padding: 24px;
-        }}",
-        COLORS.polar2.to_hex_string(),
-        COLORS.polar3.to_hex_string()
-    ));
-    button_box.style_context().add_provider(
-        &default_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
+    button_box.add_css_class("power-button");
 
     // Icône
     let icon_label = gtk::Label::new(Some(action.icon()));
-    let icon_css = gtk::CssProvider::new();
-    icon_css.load_from_data(&format!(
-        "label {{ color: {}; font-size: 48px; }}",
-        COLORS.snow0.to_hex_string()
-    ));
-    icon_label.style_context().add_provider(
-        &icon_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
+    icon_label.add_css_class("power-button-icon");
     button_box.append(&icon_label);
 
     // Label
     let text_label = gtk::Label::new(Some(action.label()));
-    let text_css = gtk::CssProvider::new();
-    text_css.load_from_data(&format!(
-        "label {{ color: {}; font-size: 16px; }}",
-        COLORS.snow0.to_hex_string()
-    ));
-    text_label.style_context().add_provider(
-        &text_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
+    text_label.add_css_class("power-button-text");
     button_box.append(&text_label);
 
     button_box
 }
 
 fn update_button_selection(button_box: &gtk::Box, selected: bool) {
-    let css_provider = gtk::CssProvider::new();
-
     if selected {
-        // Style sélectionné
-        css_provider.load_from_data(&format!(
-            "box {{
-                background-color: {};
-                border: 3px solid {};
-                border-radius: 12px;
-                padding: 24px;
-            }}",
-            COLORS.frost1.with_opacity(30),
-            COLORS.frost1.to_hex_string()
-        ));
+        button_box.add_css_class("power-button-selected");
+        button_box.remove_css_class("power-button");
     } else {
-        // Style non sélectionné
-        css_provider.load_from_data(&format!(
-            "box {{
-                background-color: {};
-                border: 2px solid {};
-                border-radius: 12px;
-                padding: 24px;
-            }}",
-            COLORS.polar2.to_hex_string(),
-            COLORS.polar3.to_hex_string()
-        ));
+        button_box.add_css_class("power-button");
+        button_box.remove_css_class("power-button-selected");
     }
-
-    button_box.style_context().add_provider(
-        &css_provider,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION + 1,
-    );
 }
