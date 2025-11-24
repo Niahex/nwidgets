@@ -82,6 +82,20 @@ impl PipeWireService {
         false
     }
 
+    pub fn set_volume(volume: u8) {
+        let volume_str = format!("{}%", volume.min(100));
+        let _ = Command::new("wpctl")
+            .args(&["set-volume", "@DEFAULT_AUDIO_SINK@", &volume_str])
+            .output();
+    }
+
+    pub fn set_mic_volume(volume: u8) {
+        let volume_str = format!("{}%", volume.min(100));
+        let _ = Command::new("wpctl")
+            .args(&["set-volume", "@DEFAULT_AUDIO_SOURCE@", &volume_str])
+            .output();
+    }
+
     fn get_audio_state() -> AudioState {
         let service = Self::new();
         AudioState {

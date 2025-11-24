@@ -121,6 +121,15 @@ fn create_audio_section() -> (gtk::Box, gtk::Scale, gtk::Scale) {
     let volume_scale = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.0, 100.0, 1.0);
     volume_scale.set_hexpand(true);
     volume_scale.add_css_class("control-scale");
+    volume_scale.set_draw_value(true);
+    volume_scale.set_value_pos(gtk::PositionType::Right);
+
+    // Connect volume change
+    volume_scale.connect_value_changed(|scale| {
+        let volume = scale.value() as u8;
+        PipeWireService::set_volume(volume);
+    });
+
     volume_box.append(&volume_icon);
     volume_box.append(&volume_scale);
     section.append(&volume_box);
@@ -132,6 +141,15 @@ fn create_audio_section() -> (gtk::Box, gtk::Scale, gtk::Scale) {
     let mic_scale = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.0, 100.0, 1.0);
     mic_scale.set_hexpand(true);
     mic_scale.add_css_class("control-scale");
+    mic_scale.set_draw_value(true);
+    mic_scale.set_value_pos(gtk::PositionType::Right);
+
+    // Connect mic volume change
+    mic_scale.connect_value_changed(|scale| {
+        let volume = scale.value() as u8;
+        PipeWireService::set_mic_volume(volume);
+    });
+
     mic_box.append(&mic_icon);
     mic_box.append(&mic_scale);
     section.append(&mic_box);
