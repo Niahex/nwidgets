@@ -1,25 +1,26 @@
 mod day_carousel;
-mod week_carousel;
 mod month_carousel;
 mod views;
+mod week_carousel;
 
-use gtk4 as gtk;
-use gtk::prelude::*;
-use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
-use crate::theme::colors::COLORS;
 use crate::services::PinController;
+use chrono::Local;
+use day_carousel::create_day_carousel;
+use gtk::prelude::*;
+use gtk4 as gtk;
+use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
+use month_carousel::create_month_carousel;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
-use day_carousel::create_day_carousel;
+use views::{dayview, monthview, weekview, ViewMode};
 use week_carousel::create_week_carousel;
-use month_carousel::create_month_carousel;
-use chrono::Local;
-use views::{ViewMode, dayview, weekview, monthview};
 
 const ICON_RESERVE_SPACE: &str = "󰐃"; // Icon for reserving space
 const ICON_RELEASE_SPACE: &str = "󰐄"; // Icon for releasing space
 
-pub fn create_tasker_window(application: &gtk::Application) -> (gtk::ApplicationWindow, PinController) {
+pub fn create_tasker_window(
+    application: &gtk::Application,
+) -> (gtk::ApplicationWindow, PinController) {
     // Créer la fenêtre
     let window = gtk::ApplicationWindow::builder()
         .application(application)
@@ -110,7 +111,13 @@ pub fn create_tasker_window(application: &gtk::Application) -> (gtk::Application
 
     // Initialiser avec la vue jour
     update_view(&view_container, ViewMode::Day);
-    update_carousel(&carousel_container, ViewMode::Day, &day_carousel, &week_carousel, &month_carousel);
+    update_carousel(
+        &carousel_container,
+        ViewMode::Day,
+        &day_carousel,
+        &week_carousel,
+        &month_carousel,
+    );
 
     window.set_child(Some(&main_box));
 
@@ -121,11 +128,15 @@ pub fn create_tasker_window(application: &gtk::Application) -> (gtk::Application
     let app_clone = application.clone();
     toggle_action.connect_activate(move |_, _| {
         let is_visible = window_clone.is_visible();
-        
+
         // Si on va ouvrir tasker, fermer control center s'il est ouvert
         if !is_visible {
             for window in app_clone.windows() {
-                if window.title().map_or(false, |t| t.contains("Control Center")) && window.is_visible() {
+                if window
+                    .title()
+                    .map_or(false, |t| t.contains("Control Center"))
+                    && window.is_visible()
+                {
                     if let Some(action) = app_clone.lookup_action("toggle-control-center") {
                         action.activate(None);
                     }
@@ -133,7 +144,7 @@ pub fn create_tasker_window(application: &gtk::Application) -> (gtk::Application
                 }
             }
         }
-        
+
         window_clone.set_visible(!is_visible);
 
         // Si on ouvre la fenêtre, donner le focus à l'entrée de tâche
@@ -166,12 +177,12 @@ pub fn create_tasker_window(application: &gtk::Application) -> (gtk::Application
             if is_exclusive_clone.get() {
                 window_clone2.set_exclusive_zone(0);
                 is_exclusive_clone.set(false);
-                toggle_button_clone2.set_label("󰐃");  // ICON_RESERVE_SPACE
+                toggle_button_clone2.set_label("󰐃"); // ICON_RESERVE_SPACE
                 println!("[TASKER] Released exclusive space (Meta+P)");
             } else {
                 window_clone2.auto_exclusive_zone_enable();
                 is_exclusive_clone.set(true);
-                toggle_button_clone2.set_label("󰐄");  // ICON_RELEASE_SPACE
+                toggle_button_clone2.set_label("󰐄"); // ICON_RELEASE_SPACE
                 println!("[TASKER] Reserved exclusive space (Meta+P)");
             }
             return gtk::glib::Propagation::Stop;
@@ -193,7 +204,6 @@ pub fn create_tasker_window(application: &gtk::Application) -> (gtk::Application
     (window, pin_controller)
 }
 
-
 fn create_header(
     window: &gtk::ApplicationWindow,
     current_view: Rc<RefCell<ViewMode>>,
@@ -213,23 +223,8 @@ fn create_header(
     header.set_margin_top(16);
     header.set_margin_bottom(16);
 
-    // Appliquer un style au header
-    let header_css = gtk::CssProvider::new();
-    header_css.load_from_data(&format!(
-        "box {{
-            background-color: {};
-            border-bottom: 2px solid {};
-        }}",
-        COLORS.polar1.to_hex_string(),
-        COLORS.frost1.to_hex_string()
-    ));
-    header.style_context().add_provider(
-        &header_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
-
     // Icône et titre
-    let icon_label = gtk::Label::new(Some(""));  // Nerd font icon for tasks
+    let icon_label = gtk::Label::new(Some("")); // Nerd font icon for tasks
     icon_label.add_css_class("tasker-icon");
     header.append(&icon_label);
 
@@ -294,7 +289,13 @@ fn create_header(
         window_clone.set_default_size(width, height);
 
         update_view(&view_container, new_view);
-        update_carousel(&carousel_container, new_view, &day_carousel, &week_carousel, &month_carousel);
+        update_carousel(
+            &carousel_container,
+            new_view,
+            &day_carousel,
+            &week_carousel,
+            &month_carousel,
+        );
     });
 
     header.append(&view_button);
@@ -382,7 +383,7 @@ fn create_add_task_area() -> (gtk::Box, gtk::Entry) {
     // Bouton ajouter
     let add_btn = gtk::Button::new();
     add_btn.add_css_class("tasker-add-button");
-    add_btn.set_label("");  // Plus icon
+    add_btn.set_label(""); // Plus icon
     add_box.append(&add_btn);
 
     (add_box, entry)
