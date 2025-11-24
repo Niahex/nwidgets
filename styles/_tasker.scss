@@ -187,7 +187,118 @@
   font-size: 10px;
 }
 
-.week-month-selected {
+// Month Carousel Styles
+.month-carousel {
+  background-color: $polar1;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.month-button {
+  background-color: $polar2;
+  border: 1px solid $polar3;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.month-button-selected {
+  background-color: rgba($frost1, 0.3);
+  border: 2px solid $frost1;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.month-name {
+  color: $snow0;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.month-name-selected {
   color: $frost1;
-  font-size: 10px;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.month-year {
+  color: $polar3;
+  font-size: 11px;
+}
+
+// View Styles
+.dayview-tasks {
+  background-color: $polar0;
+}
+
+.task-item {
+  background-color: $polar2;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.task-label {
+  color: $snow0;
+}
+
+.task-label-completed {
+  color: $polar3;
+  text-decoration: line-through;
+}
+
+.task-delete-button {
+  color: $red;
+  background: transparent;
+  border: none;
+}
+
+.weekview-container {
+  background-color: $polar0;
+}
+
+.weekview-day-label {
+  color: $frost1;
+  font-weight: bold;
+  font-size: 14px;
+  padding: 8px;
+}
+
+.weekview-tasks-container {
+  background-color: $polar2;
+  border-radius: 8px;
+  padding: 8px;
+  min-height: 100px;
+}
+
+.monthview-container {
+  background-color: $polar0;
+}
+
+.monthview-day-header {
+  color: $frost1;
+  font-weight: bold;
+  padding: 8px;
+}
+
+.monthview-day {
+  background-color: $polar2;
+  border: 1px solid $polar3;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.monthview-day-today {
+  background-color: rgba($frost1, 0.3);
+  border: 2px solid $frost1;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.monthview-day-number {
+  color: $snow0;
+  font-weight: bold;
+}
+
+.monthview-day-number-today {
+  color: $frost1;
+  font-weight: bold;
 }

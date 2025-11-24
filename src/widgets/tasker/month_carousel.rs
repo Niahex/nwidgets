@@ -1,6 +1,5 @@
 use gtk4 as gtk;
 use gtk::prelude::*;
-use crate::theme::colors::COLORS;
 use std::cell::RefCell;
 use std::rc::Rc;
 use chrono::{Datelike, Local, NaiveDate};
@@ -12,16 +11,7 @@ pub fn create_month_carousel() -> (gtk::Box, Rc<RefCell<Option<Box<dyn Fn(NaiveD
     carousel_box.set_margin_top(8);
     carousel_box.set_margin_bottom(8);
     carousel_box.set_halign(gtk::Align::Center);
-
-    let carousel_css = gtk::CssProvider::new();
-    carousel_css.load_from_data(&format!(
-        "box {{ background-color: {}; padding: 8px; border-radius: 8px; }}",
-        COLORS.polar1.to_hex_string()
-    ));
-    carousel_box.style_context().add_provider(
-        &carousel_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
+    carousel_box.add_css_class("month-carousel");
 
     let months_container = gtk::Box::new(gtk::Orientation::Horizontal, 8);
 
@@ -150,73 +140,33 @@ fn create_month_button(month_date: &NaiveDate, is_selected: bool) -> gtk::Box {
     month_box.set_size_request(100, 70);
     month_box.set_halign(gtk::Align::Center);
     month_box.set_valign(gtk::Align::Center);
+    month_box.set_cursor_from_name(Some("pointer"));
 
-    let month_css = gtk::CssProvider::new();
     if is_selected {
-        month_css.load_from_data(&format!(
-            "box {{
-                background-color: {};
-                border: 2px solid {};
-                border-radius: 8px;
-                padding: 8px;
-            }}",
-            COLORS.frost1.with_opacity(30),
-            COLORS.frost1.to_hex_string()
-        ));
+        month_box.add_css_class("month-button-selected");
     } else {
-        month_css.load_from_data(&format!(
-            "box {{
-                background-color: {};
-                border: 1px solid {};
-                border-radius: 8px;
-                padding: 8px;
-            }}",
-            COLORS.polar2.to_hex_string(),
-            COLORS.polar3.to_hex_string()
-        ));
+        month_box.add_css_class("month-button");
     }
-    month_box.style_context().add_provider(
-        &month_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
 
     // Mois (abrégé)
     let month_name = month_date.format("%b").to_string();
     let month_label = gtk::Label::new(Some(&month_name));
-    let month_label_css = gtk::CssProvider::new();
-    month_label_css.load_from_data(&format!(
-        "label {{ color: {}; font-size: 20px; font-weight: bold; }}",
-        if is_selected {
-            COLORS.frost1.to_hex_string()
-        } else {
-            COLORS.snow0.to_hex_string()
-        }
-    ));
-    month_label.style_context().add_provider(
-        &month_label_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
+    if is_selected {
+        month_label.add_css_class("month-name-selected");
+    } else {
+        month_label.add_css_class("month-name");
+    }
     month_box.append(&month_label);
 
     // Année (2 chiffres)
     let year_text = month_date.format("%y").to_string();
     let year_label = gtk::Label::new(Some(&year_text));
-    let year_css = gtk::CssProvider::new();
-    year_css.load_from_data(&format!(
-        "label {{ color: {}; font-size: 11px; }}",
-        if is_selected {
-            COLORS.frost1.to_hex_string()
-        } else {
-            COLORS.polar3.to_hex_string()
-        }
-    ));
-    year_label.style_context().add_provider(
-        &year_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
+    if is_selected {
+        year_label.add_css_class("month-year-selected");
+    } else {
+        year_label.add_css_class("month-year");
+    }
     month_box.append(&year_label);
-
-    month_box.set_cursor_from_name(Some("pointer"));
 
     month_box
 }

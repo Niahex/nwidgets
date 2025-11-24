@@ -1,6 +1,5 @@
 use gtk4 as gtk;
 use gtk::prelude::*;
-use crate::theme::colors::COLORS;
 use chrono::{Datelike, Local, NaiveDate};
 
 pub fn create_monthview() -> gtk::ScrolledWindow {
@@ -14,16 +13,7 @@ pub fn create_monthview() -> gtk::ScrolledWindow {
     month_box.set_margin_end(16);
     month_box.set_margin_top(16);
     month_box.set_margin_bottom(16);
-
-    let bg_css = gtk::CssProvider::new();
-    bg_css.load_from_data(&format!(
-        "box {{ background-color: {}; }}",
-        COLORS.polar0.to_hex_string()
-    ));
-    month_box.style_context().add_provider(
-        &bg_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
+    month_box.add_css_class("monthview-container");
 
     // En-tête des jours de la semaine
     let days_header = create_days_header();
@@ -45,19 +35,7 @@ fn create_days_header() -> gtk::Box {
 
     for day in days.iter() {
         let label = gtk::Label::new(Some(day));
-        let css = gtk::CssProvider::new();
-        css.load_from_data(&format!(
-            "label {{
-                color: {};
-                font-weight: bold;
-                padding: 8px;
-            }}",
-            COLORS.frost1.to_hex_string()
-        ));
-        label.style_context().add_provider(
-            &css,
-            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-        );
+        label.add_css_class("monthview-day-header");
         header.append(&label);
     }
 
@@ -92,47 +70,18 @@ fn create_day_cell(day: u32, is_today: bool) -> gtk::Box {
     let cell = gtk::Box::new(gtk::Orientation::Vertical, 4);
     cell.set_size_request(120, 90);
 
-    let css = gtk::CssProvider::new();
-    let (bg_color, border) = if is_today {
-        (
-            COLORS.frost1.with_opacity(30),
-            format!("border: 2px solid {};", COLORS.frost1.to_hex_string())
-        )
+    if is_today {
+        cell.add_css_class("monthview-day-today");
     } else {
-        (COLORS.polar2.to_hex_string(), String::from("border: 1px solid ") + &COLORS.polar3.to_hex_string() + ";")
-    };
-
-    css.load_from_data(&format!(
-        "box {{
-            background-color: {};
-            {}
-            border-radius: 8px;
-            padding: 8px;
-        }}",
-        bg_color, border
-    ));
-    cell.style_context().add_provider(
-        &css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
+        cell.add_css_class("monthview-day");
+    }
 
     let day_label = gtk::Label::new(Some(&day.to_string()));
-    let label_css = gtk::CssProvider::new();
-    label_css.load_from_data(&format!(
-        "label {{
-            color: {};
-            font-weight: bold;
-        }}",
-        if is_today {
-            COLORS.frost1.to_hex_string()
-        } else {
-            COLORS.snow0.to_hex_string()
-        }
-    ));
-    day_label.style_context().add_provider(
-        &label_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
+    if is_today {
+        day_label.add_css_class("monthview-day-number-today");
+    } else {
+        day_label.add_css_class("monthview-day-number");
+    }
     day_label.set_halign(gtk::Align::Start);
     cell.append(&day_label);
 
