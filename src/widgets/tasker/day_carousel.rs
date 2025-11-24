@@ -1,6 +1,5 @@
 use gtk4 as gtk;
 use gtk::prelude::*;
-use crate::theme::colors::COLORS;
 use std::cell::RefCell;
 use std::rc::Rc;
 use chrono::{Datelike, Duration, Local, NaiveDate, Weekday};
@@ -12,17 +11,7 @@ pub fn create_day_carousel() -> (gtk::Box, Rc<RefCell<Option<Box<dyn Fn(NaiveDat
     carousel_box.set_margin_top(8);
     carousel_box.set_margin_bottom(8);
     carousel_box.set_halign(gtk::Align::Center);
-
-    // Style du carousel
-    let carousel_css = gtk::CssProvider::new();
-    carousel_css.load_from_data(&format!(
-        "box {{ background-color: {}; padding: 8px; border-radius: 8px; }}",
-        COLORS.polar1.to_hex_string()
-    ));
-    carousel_box.style_context().add_provider(
-        &carousel_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
+    carousel_box.add_css_class("day-carousel");
 
     // Container pour les jours
     let days_container = gtk::Box::new(gtk::Orientation::Horizontal, 8);
@@ -172,73 +161,31 @@ fn create_day_button(day_num: u32, weekday: &str, is_selected: bool) -> gtk::Box
     day_box.set_size_request(60, 70);
     day_box.set_halign(gtk::Align::Center);
     day_box.set_valign(gtk::Align::Center);
+    day_box.set_cursor_from_name(Some("pointer"));
 
-    // Style selon si c'est le jour sélectionné ou non
-    let day_css = gtk::CssProvider::new();
     if is_selected {
-        day_css.load_from_data(&format!(
-            "box {{
-                background-color: {};
-                border: 2px solid {};
-                border-radius: 8px;
-                padding: 8px;
-            }}",
-            COLORS.frost1.with_opacity(30),
-            COLORS.frost1.to_hex_string()
-        ));
+        day_box.add_css_class("day-button-selected");
     } else {
-        day_css.load_from_data(&format!(
-            "box {{
-                background-color: {};
-                border: 1px solid {};
-                border-radius: 8px;
-                padding: 8px;
-            }}",
-            COLORS.polar2.to_hex_string(),
-            COLORS.polar3.to_hex_string()
-        ));
+        day_box.add_css_class("day-button");
     }
-    day_box.style_context().add_provider(
-        &day_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
 
     // Numéro du jour
     let day_label = gtk::Label::new(Some(&day_num.to_string()));
-    let num_css = gtk::CssProvider::new();
-    num_css.load_from_data(&format!(
-        "label {{ color: {}; font-size: 20px; font-weight: bold; }}",
-        if is_selected {
-            COLORS.frost1.to_hex_string()
-        } else {
-            COLORS.snow0.to_hex_string()
-        }
-    ));
-    day_label.style_context().add_provider(
-        &num_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
+    if is_selected {
+        day_label.add_css_class("day-number-selected");
+    } else {
+        day_label.add_css_class("day-number");
+    }
     day_box.append(&day_label);
 
     // Nom du jour (abrégé)
     let weekday_label = gtk::Label::new(Some(weekday));
-    let weekday_css = gtk::CssProvider::new();
-    weekday_css.load_from_data(&format!(
-        "label {{ color: {}; font-size: 11px; }}",
-        if is_selected {
-            COLORS.frost1.to_hex_string()
-        } else {
-            COLORS.polar3.to_hex_string()
-        }
-    ));
-    weekday_label.style_context().add_provider(
-        &weekday_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
+    if is_selected {
+        weekday_label.add_css_class("day-weekday-selected");
+    } else {
+        weekday_label.add_css_class("day-weekday");
+    }
     day_box.append(&weekday_label);
-
-    // Ajouter un cursor pointer pour indiquer que c'est cliquable
-    day_box.set_cursor_from_name(Some("pointer"));
 
     day_box
 }

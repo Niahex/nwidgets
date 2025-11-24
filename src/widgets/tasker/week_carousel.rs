@@ -1,6 +1,5 @@
 use gtk4 as gtk;
 use gtk::prelude::*;
-use crate::theme::colors::COLORS;
 use std::cell::RefCell;
 use std::rc::Rc;
 use chrono::{Datelike, Duration, Local, NaiveDate};
@@ -12,16 +11,7 @@ pub fn create_week_carousel() -> (gtk::Box, Rc<RefCell<Option<Box<dyn Fn(NaiveDa
     carousel_box.set_margin_top(8);
     carousel_box.set_margin_bottom(8);
     carousel_box.set_halign(gtk::Align::Center);
-
-    let carousel_css = gtk::CssProvider::new();
-    carousel_css.load_from_data(&format!(
-        "box {{ background-color: {}; padding: 8px; border-radius: 8px; }}",
-        COLORS.polar1.to_hex_string()
-    ));
-    carousel_box.style_context().add_provider(
-        &carousel_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
+    carousel_box.add_css_class("week-carousel");
 
     let weeks_container = gtk::Box::new(gtk::Orientation::Horizontal, 8);
 
@@ -140,70 +130,32 @@ fn create_week_button(week_start: &NaiveDate, week_end: &NaiveDate, is_selected:
     week_box.set_size_request(80, 80);
     week_box.set_halign(gtk::Align::Center);
     week_box.set_valign(gtk::Align::Center);
+    week_box.set_cursor_from_name(Some("pointer"));
 
-    let week_css = gtk::CssProvider::new();
     if is_selected {
-        week_css.load_from_data(&format!(
-            "box {{
-                background-color: {};
-                border: 2px solid {};
-                border-radius: 8px;
-                padding: 8px;
-            }}",
-            COLORS.frost1.with_opacity(30),
-            COLORS.frost1.to_hex_string()
-        ));
+        week_box.add_css_class("week-button-selected");
     } else {
-        week_css.load_from_data(&format!(
-            "box {{
-                background-color: {};
-                border: 1px solid {};
-                border-radius: 8px;
-                padding: 8px;
-            }}",
-            COLORS.polar2.to_hex_string(),
-            COLORS.polar3.to_hex_string()
-        ));
+        week_box.add_css_class("week-button");
     }
-    week_box.style_context().add_provider(
-        &week_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
 
     // Jour de début
     let start_day = week_start.day();
     let start_label = gtk::Label::new(Some(&start_day.to_string()));
-    let start_css = gtk::CssProvider::new();
-    start_css.load_from_data(&format!(
-        "label {{ color: {}; font-size: 18px; font-weight: bold; }}",
-        if is_selected {
-            COLORS.frost1.to_hex_string()
-        } else {
-            COLORS.snow0.to_hex_string()
-        }
-    ));
-    start_label.style_context().add_provider(
-        &start_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
+    if is_selected {
+        start_label.add_css_class("week-day-selected");
+    } else {
+        start_label.add_css_class("week-day");
+    }
     week_box.append(&start_label);
 
     // Jour de fin
     let end_day = week_end.day();
     let end_label = gtk::Label::new(Some(&end_day.to_string()));
-    let end_css = gtk::CssProvider::new();
-    end_css.load_from_data(&format!(
-        "label {{ color: {}; font-size: 18px; font-weight: bold; }}",
-        if is_selected {
-            COLORS.frost1.to_hex_string()
-        } else {
-            COLORS.snow0.to_hex_string()
-        }
-    ));
-    end_label.style_context().add_provider(
-        &end_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
+    if is_selected {
+        end_label.add_css_class("week-day-selected");
+    } else {
+        end_label.add_css_class("week-day");
+    }
     week_box.append(&end_label);
 
     // Mois et année
@@ -212,22 +164,12 @@ fn create_week_button(week_start: &NaiveDate, week_end: &NaiveDate, is_selected:
         week_start.format("%y")
     );
     let month_label = gtk::Label::new(Some(&month_year));
-    let month_css = gtk::CssProvider::new();
-    month_css.load_from_data(&format!(
-        "label {{ color: {}; font-size: 10px; }}",
-        if is_selected {
-            COLORS.frost1.to_hex_string()
-        } else {
-            COLORS.polar3.to_hex_string()
-        }
-    ));
-    month_label.style_context().add_provider(
-        &month_css,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
+    if is_selected {
+        month_label.add_css_class("week-month-selected");
+    } else {
+        month_label.add_css_class("week-month");
+    }
     week_box.append(&month_label);
-
-    week_box.set_cursor_from_name(Some("pointer"));
 
     week_box
 }
