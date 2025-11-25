@@ -5,6 +5,7 @@ pub mod modules; // Changed from `mod modules;` to `pub mod modules;`
 use modules::active_window::ActiveWindowModule;
 use modules::bluetooth::BluetoothModule;
 use modules::datetime::DateTimeModule;
+use modules::network::NetworkModule;
 use modules::source::SourceModule;
 use modules::pomodoro::PomodoroModule;
 use modules::systray::SystrayModule;
@@ -18,6 +19,7 @@ pub fn create_panel_window(
     ActiveWindowModule,
     WorkspacesModule,
     BluetoothModule,
+    NetworkModule,
     SystrayModule,
     SinkModule,
     SourceModule,
@@ -81,6 +83,8 @@ pub fn create_panel_window(
     right_section.append(&mic_module.container);
     let volume_module = SinkModule::new();
     right_section.append(&volume_module.container);
+    let network_module = NetworkModule::new();
+    right_section.append(&network_module.container);
     let bluetooth_module = BluetoothModule::new();
     right_section.append(&bluetooth_module.container);
     let datetime_module = DateTimeModule::new();
@@ -94,6 +98,7 @@ pub fn create_panel_window(
         active_window_module,
         workspaces_module,
         bluetooth_module,
+        network_module,
         systray_module,
         volume_module,
         mic_module,

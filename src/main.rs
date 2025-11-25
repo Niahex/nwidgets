@@ -11,6 +11,7 @@ use crate::services::bluetooth::BluetoothService;
 use crate::services::capslock::CapsLockService;
 use crate::services::clipboard::ClipboardService;
 use crate::services::hyprland::HyprlandService;
+use crate::services::network::NetworkService;
 use crate::services::numlock::NumLockService;
 use crate::services::osd::OsdEventService;
 use crate::services::pipewire::PipeWireService;
@@ -99,6 +100,7 @@ fn main() {
             active_window_module,
             workspaces_module,
             bluetooth_module,
+            network_module,
             systray_module,
             volume_module,
             mic_module,
@@ -128,6 +130,12 @@ fn main() {
         let bluetooth_module_clone = bluetooth_module.clone();
         BluetoothService::subscribe_bluetooth(move |state| {
             bluetooth_module_clone.update(state);
+        });
+
+        // S'abonner aux mises à jour du network
+        let network_module_clone = network_module.clone();
+        NetworkService::subscribe_network(move |state| {
+            network_module_clone.update(state);
         });
 
         // S'abonner aux mises à jour du systray

@@ -3,6 +3,7 @@ pub mod bluetooth;
 pub mod capslock;
 pub mod clipboard;
 pub mod hyprland;
+pub mod network;
 pub mod notifications;
 pub mod numlock;
 pub mod osd;
