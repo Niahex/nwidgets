@@ -78,7 +78,7 @@ pub fn create_osd_window(application: &gtk::Application) -> gtk::ApplicationWind
     glib::MainContext::default().spawn_local(async move {
         while let Ok(event) = async_rx.recv().await {
             let content = match event {
-                OsdEvent::Volume(level, muted) => create_volume_osd(level, muted),
+                OsdEvent::Volume(icon_name, level, _muted) => create_volume_osd(&icon_name, level),
                 OsdEvent::Microphone(muted) => create_mic_osd(muted),
                 OsdEvent::CapsLock(enabled) => create_capslock_osd(enabled),
                 OsdEvent::NumLock(enabled) => create_numlock_osd(enabled),
@@ -93,16 +93,8 @@ pub fn create_osd_window(application: &gtk::Application) -> gtk::ApplicationWind
     window
 }
 
-fn create_volume_osd(level: u8, muted: bool) -> gtk::Widget {
+fn create_volume_osd(icon_name: &str, level: u8) -> gtk::Widget {
     let container = gtk::Box::new(gtk::Orientation::Horizontal, 12);
-
-    let icon_name = if muted {
-        "audio-volume-muted-panel"
-    } else if level < 33 {
-        "audio-volume-low-panel"
-    } else {
-        "audio-volume-high-panel"
-    };
 
     let icon = icons::create_icon(icon_name);
     icon.add_css_class("osd-icon");
@@ -166,9 +158,14 @@ fn create_dictation_osd(started: bool) -> gtk::Widget {
 fn create_capslock_osd(enabled: bool) -> gtk::Widget {
     let container = gtk::Box::new(gtk::Orientation::Horizontal, 12);
 
-    let icon_label = gtk::Label::new(Some("󰌎")); // nerd font keyboard icon
-    icon_label.add_css_class("osd-icon");
-    container.append(&icon_label);
+    let icon_name = if enabled {
+        "capslock-on"
+    } else {
+        "capslock-off"
+    };
+    let icon = icons::create_icon(icon_name);
+    icon.add_css_class("osd-icon");
+    container.append(&icon);
 
     let text = if enabled {
         "CAPS LOCK ON"

@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone)]
 pub enum OsdEvent {
-    Volume(u8, bool), // volume %, muted
+    Volume(String, u8, bool), // icon_name, volume %, muted
     Microphone(bool), // muted
     CapsLock(bool),   // enabled
     NumLock(bool),    // enabled

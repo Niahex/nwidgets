@@ -31,9 +31,8 @@
         .sink-icon,
         .source-icon,
         .systray-icon {
-            font-size: 16px;
             min-width: 20px;
-            text-align: center;
+            min-height: 20px;
         }
     }
 }
@@ -83,7 +82,8 @@
     align-items: center;
 
     .active-window-icon {
-        font-size: 18px;
+        min-width: 48px;
+        min-height: 48px;
         margin-right: 10px;
     }
 

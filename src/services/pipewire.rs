@@ -1,6 +1,7 @@
+use crate::services::osd::{OsdEvent, OsdEventService};
+use glib::MainContext;
 use std::process::Command;
 use std::sync::mpsc;
-use glib::MainContext;
 
 #[derive(Debug, Clone)]
 pub struct AudioState {
@@ -8,6 +9,38 @@ pub struct AudioState {
     pub muted: bool,
     pub mic_volume: u8,
     pub mic_muted: bool,
+}
+
+impl AudioState {
+    /// Retourne le nom de l'icône pour le sink (sortie audio) en fonction du volume et de l'état muted
+    pub fn get_sink_icon_name(&self) -> &'static str {
+        if self.muted {
+            "sink-muted"
+        } else if self.volume == 0 {
+            "sink-zero"
+        } else if self.volume < 33 {
+            "sink-low"
+        } else if self.volume < 66 {
+            "sink-medium"
+        } else {
+            "sink-high"
+        }
+    }
+
+    /// Retourne le nom de l'icône pour la source (entrée audio/micro) en fonction du volume et de l'état muted
+    pub fn get_source_icon_name(&self) -> &'static str {
+        if self.mic_muted {
+            "source-muted"
+        } else if self.mic_volume == 0 {
+            "source-zero"
+        } else if self.mic_volume < 33 {
+            "source-low"
+        } else if self.mic_volume < 66 {
+            "source-medium"
+        } else {
+            "source-high"
+        }
+    }
 }
 
 pub struct PipeWireService;
@@ -23,15 +56,12 @@ impl PipeWireService {
             .output()
         {
             Ok(output) => {
-                match String::from_utf8(output.stdout) {
-                    Ok(output_str) => {
-                        if let Some(volume_str) = output_str.split_whitespace().nth(1) {
-                            if let Ok(volume) = volume_str.parse::<f32>() {
-                                return (volume * 100.0) as u8;
-                            }
+                if let Ok(output_str) = String::from_utf8(output.stdout) {
+                    if let Some(volume_str) = output_str.split_whitespace().nth(1) {
+                        if let Ok(volume) = volume_str.parse::<f32>() {
+                            return (volume * 100.0) as u8;
                         }
                     }
-                    Err(_) => {}
                 }
             }
             Err(_) => {}
@@ -83,17 +113,27 @@ impl PipeWireService {
     }
 
     pub fn set_volume(volume: u8) {
-        let volume_str = format!("{}%", volume.min(100));
+        let volume_val = volume.min(100);
+        let volume_str = format!("{}%", volume_val);
         let _ = Command::new("wpctl")
             .args(&["set-volume", "@DEFAULT_AUDIO_SINK@", &volume_str])
             .output();
+
+        let state = Self::get_audio_state();
+        let icon_name = state.get_sink_icon_name();
+        OsdEventService::send_event(OsdEvent::Volume(icon_name.to_string(), volume_val, state.muted));
     }
 
     pub fn set_mic_volume(volume: u8) {
-        let volume_str = format!("{}%", volume.min(100));
+        let volume_val = volume.min(100);
+        let volume_str = format!("{}%", volume_val);
         let _ = Command::new("wpctl")
             .args(&["set-volume", "@DEFAULT_AUDIO_SOURCE@", &volume_str])
             .output();
+
+        let state = Self::get_audio_state();
+        let icon_name = state.get_source_icon_name();
+        OsdEventService::send_event(OsdEvent::Volume(icon_name.to_string(), volume_val, state.mic_muted));
     }
 
     fn get_audio_state() -> AudioState {

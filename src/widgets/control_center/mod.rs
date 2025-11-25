@@ -31,7 +31,7 @@ pub fn create_control_center_window(application: &gtk::Application) -> gtk::Appl
     container.set_margin_bottom(16);
 
     // Audio section
-    let (audio_section, volume_scale, mic_scale) = create_audio_section();
+    let (audio_section, volume_scale, mic_scale, volume_icon, mic_icon) = create_audio_section();
     container.append(&audio_section);
 
     // Bluetooth section
@@ -50,6 +50,14 @@ pub fn create_control_center_window(application: &gtk::Application) -> gtk::Appl
     PipeWireService::subscribe_audio(move |state: AudioState| {
         volume_scale.set_value(state.volume as f64);
         mic_scale.set_value(state.mic_volume as f64);
+
+        // Mettre à jour les icônes dynamiquement
+        if let Some(paintable) = icons::get_paintable(state.get_sink_icon_name()) {
+            volume_icon.set_paintable(Some(&paintable));
+        }
+        if let Some(paintable) = icons::get_paintable(state.get_source_icon_name()) {
+            mic_icon.set_paintable(Some(&paintable));
+        }
     });
 
     // Clone pour les différents usages
@@ -105,7 +113,7 @@ pub fn create_control_center_window(application: &gtk::Application) -> gtk::Appl
     window
 }
 
-fn create_audio_section() -> (gtk::Box, gtk::Scale, gtk::Scale) {
+fn create_audio_section() -> (gtk::Box, gtk::Scale, gtk::Scale, gtk::Image, gtk::Image) {
     let section = gtk::Box::new(gtk::Orientation::Vertical, 8);
     section.add_css_class("control-section");
 
@@ -116,7 +124,7 @@ fn create_audio_section() -> (gtk::Box, gtk::Scale, gtk::Scale) {
 
     // Volume controls
     let volume_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-    let volume_icon = icons::create_icon("audio-volume-high");
+    let volume_icon = icons::create_icon("sink-medium");
     volume_icon.add_css_class("control-icon");
     let volume_scale = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.0, 100.0, 1.0);
     volume_scale.set_hexpand(true);
@@ -136,7 +144,7 @@ fn create_audio_section() -> (gtk::Box, gtk::Scale, gtk::Scale) {
 
     // Mic controls
     let mic_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-    let mic_icon = icons::create_icon("audio-input-microphone");
+    let mic_icon = icons::create_icon("source-medium");
     mic_icon.add_css_class("control-icon");
     let mic_scale = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.0, 100.0, 1.0);
     mic_scale.set_hexpand(true);
@@ -154,7 +162,7 @@ fn create_audio_section() -> (gtk::Box, gtk::Scale, gtk::Scale) {
     mic_box.append(&mic_scale);
     section.append(&mic_box);
 
-    (section, volume_scale, mic_scale)
+    (section, volume_scale, mic_scale, volume_icon, mic_icon)
 }
 
 fn create_bluetooth_section() -> gtk::Box {

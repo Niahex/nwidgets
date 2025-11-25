@@ -30,7 +30,7 @@ impl SystrayModule {
                 s if s.contains("discord") => "discord",
                 s if s.contains("firefox") => "firefox",
                 s if s.contains("chrome") => "google-chrome",
-                s if s.contains("steam") => "steam",
+                s if s.contains("steam") => "steam-tray",
                 _ => "application-default-icon",
             };
 

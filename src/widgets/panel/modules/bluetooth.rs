@@ -18,7 +18,7 @@ impl BluetoothModule {
         container.set_halign(gtk::Align::Center);
         container.set_valign(gtk::Align::Center);
 
-        let icon = icons::create_icon("bluetooth-disabled-symbolic");
+        let icon = icons::create_icon_with_size("bluetooth-disabled", Some(20));
         icon.add_css_class("bluetooth-icon");
         icon.set_halign(gtk::Align::Center);
         icon.set_valign(gtk::Align::Center);
@@ -41,13 +41,15 @@ impl BluetoothModule {
 
     pub fn update(&self, state: BluetoothState) {
         let icon_name = if !state.powered {
-            "bluetooth-disabled-symbolic"
+            "bluetooth-disabled"
         } else if state.connected_devices > 0 {
-            "bluetooth-paired"
+            "bluetooth-active"
         } else {
-            "bluetooth"
+            "bluetooth-paired"
         };
 
-        self.icon.set_icon_name(Some(icon_name));
+        if let Some(paintable) = icons::get_paintable_with_size(icon_name, Some(20)) {
+            self.icon.set_paintable(Some(&paintable));
+        }
     }
 }

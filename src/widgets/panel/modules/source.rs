@@ -18,7 +18,7 @@ impl SourceModule {
         container.set_halign(gtk::Align::Center);
         container.set_valign(gtk::Align::Center);
 
-        let icon = icons::create_icon("audio-input-microphone-high-symbolic");
+        let icon = icons::create_icon_with_size("source-medium", Some(20));
         icon.add_css_class("source-icon");
         icon.set_halign(gtk::Align::Center);
         icon.set_valign(gtk::Align::Center);
@@ -40,12 +40,10 @@ impl SourceModule {
     }
 
     pub fn update(&self, state: &AudioState) {
-        let icon_name = if state.mic_muted {
-            "audio-input-microphone-muted-symbolic."
-        } else {
-            "audio-input-microphone-high-symbolic"
-        };
+        let icon_name = state.get_source_icon_name();
 
-        self.icon.set_icon_name(Some(icon_name));
+        if let Some(paintable) = icons::get_paintable_with_size(icon_name, Some(20)) {
+            self.icon.set_paintable(Some(&paintable));
+        }
     }
 }

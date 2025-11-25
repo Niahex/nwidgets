@@ -24,7 +24,7 @@ impl ActiveWindowModule {
         let icon_container = gtk::CenterBox::new();
         icon_container.set_width_request(64);
 
-        let icon = icons::create_icon("nixos");
+        let icon = icons::create_icon_with_size("test", Some(48));
         icon.add_css_class("active-window-icon");
         icon_container.set_center_widget(Some(&icon));
 
@@ -79,14 +79,13 @@ impl ActiveWindowModule {
             };
 
             let icon_name = match active_window.class.to_lowercase().as_str() {
-                "firefox" => "firefox",
-                "google-chrome" | "chromium" => "google-chrome",
-                "code" | "vscode" => "code",
-                "discord" => "discord",
+                "firefox" | "zen-twilight" => "firefox",
+                "discord" | "vesktop" => "discord",
                 "steam" => "steam",
+                "org.gnome.Nautilus" => "file-manager",
                 "kitty" | "alacritty" | "terminal" => "terminal",
-                "nautilus" | "thunar" => "folder",
-                _ => "application-default-icon",
+                "dev.zed.zed" => "zeditor",
+                _ => "test",
             };
 
             let display_class = active_window
@@ -98,10 +97,12 @@ impl ActiveWindowModule {
 
             (icon_name, display_class, truncated_title)
         } else {
-            ("nixos", "NixOS".to_string(), "Nia".to_string())
+            ("test", "NixOS".to_string(), "Nia".to_string())
         };
 
-        self.icon.set_icon_name(Some(icon_name));
+        if let Some(paintable) = icons::get_paintable_with_size(icon_name, Some(48)) {
+            self.icon.set_paintable(Some(&paintable));
+        }
         self.class_label.set_text(&class);
         self.title_label.set_text(&title);
     }

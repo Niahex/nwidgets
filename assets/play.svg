@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg
-   width="16"
-   height="16"
+   viewBox="0 0 24 24"
    version="1.1"
    id="svg1"
-   sodipodi:docname="firefox-symbolic (Copy).svg"
+   sodipodi:docname="recording-countdown (Copy).svg"
    xml:space="preserve"
    inkscape:version="1.4.2 (ebf0e940d0, 2025-05-08)"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
@@ -20,16 +19,15 @@
      inkscape:pageopacity="0"
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#505050"
-     inkscape:zoom="14.5625"
-     inkscape:cx="21.390558"
-     inkscape:cy="-7.2103004"
+     inkscape:zoom="4.3531261"
+     inkscape:cx="-14.127778"
+     inkscape:cy="28.025836"
      inkscape:window-width="1703"
      inkscape:window-height="1368"
      inkscape:window-x="0"
      inkscape:window-y="0"
      inkscape:window-maximized="1"
      inkscape:current-layer="svg1" /><path
-     fill="url(#prefix__paint0_radial_980_20147)"
-     d="M 16,8.016 A 8.5200001,8.5200001 0 0 0 8.016,16 H 7.984 A 8.5200001,8.5200001 0 0 0 0,8.016 V 7.984 A 8.5200001,8.5200001 0 0 0 7.984,0 H 8.016 A 8.5200001,8.5200001 0 0 0 16,7.984 Z"
-     style="fill:#d8dee9;fill-opacity:1;stroke-width:0.999999"
-     id="path1-2" /></svg>
+     d="m 3.3102259,12.000017 c 0,-11.46754044 0,-11.46754044 9.9311701,-5.7337467 9.931171,5.7337467 9.931171,5.7337467 0,11.4674947 C 3.3102259,23.46751 3.3102259,23.46751 3.3102259,12.000017 Z"
+     id="path1"
+     style="fill:#d8dee9;fill-opacity:1;stroke-width:0.459167" /></svg>
