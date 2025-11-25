@@ -82,10 +82,14 @@ impl ActiveWindowModule {
                 "firefox" | "zen-twilight" => "firefox",
                 "discord" | "vesktop" => "discord",
                 "steam" => "steam",
-                "org.gnome.Nautilus" => "file-manager",
+                "org.gnome.nautilus" => "file-manager",
+                "org.inkscape.inkscape" => "inkscape",
                 "kitty" | "alacritty" | "terminal" => "terminal",
                 "dev.zed.zed" => "zeditor",
-                _ => "test",
+                _ => {
+                    println!("DEBUG: Unknown window class: {}", active_window.class);
+                    "test"
+                }
             };
 
             let display_class = active_window
