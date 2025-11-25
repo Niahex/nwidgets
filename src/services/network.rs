@@ -18,6 +18,15 @@ pub struct NetworkState {
     pub vpn_active: bool, // true if VPN connection is active
 }
 
+#[derive(Debug, Clone)]
+pub struct VpnConnection {
+    pub id: String,
+    pub name: String,
+    pub vpn_type: String, // "openvpn", "wireguard", etc.
+    pub active: bool,
+    pub path: String, // D-Bus path for the connection
+}
+
 impl NetworkState {
     pub fn get_icon_name(&self) -> &'static str {
         if !self.connected {
@@ -129,6 +138,27 @@ trait AccessPoint {
 
     #[zbus(property, name = "Ssid")]
     fn ssid(&self) -> zbus::Result<Vec<u8>>;
+}
+
+// NetworkManager Settings interface
+#[proxy(
+    interface = "org.freedesktop.NetworkManager.Settings",
+    default_service = "org.freedesktop.NetworkManager",
+    default_path = "/org/freedesktop/NetworkManager/Settings"
+)]
+trait Settings {
+    #[zbus(name = "ListConnections")]
+    fn list_connections(&self) -> zbus::Result<Vec<zbus::zvariant::OwnedObjectPath>>;
+}
+
+// NetworkManager Settings Connection interface
+#[proxy(
+    interface = "org.freedesktop.NetworkManager.Settings.Connection",
+    default_service = "org.freedesktop.NetworkManager"
+)]
+trait SettingsConnection {
+    #[zbus(name = "GetSettings")]
+    fn get_settings(&self) -> zbus::Result<std::collections::HashMap<String, std::collections::HashMap<String, zbus::zvariant::OwnedValue>>>;
 }
 
 pub struct NetworkService;
@@ -386,5 +416,163 @@ impl NetworkService {
         };
 
         (strength, ssid)
+    }
+
+    /// List all VPN connections
+    pub fn list_vpn_connections() -> Vec<VpnConnection> {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            Self::list_vpn_connections_async().await.unwrap_or_default()
+        })
+    }
+
+    async fn list_vpn_connections_async() -> zbus::Result<Vec<VpnConnection>> {
+        let connection = Connection::system().await?;
+        let settings_proxy = SettingsProxy::new(&connection).await?;
+        let nm_proxy = NetworkManagerProxy::new(&connection).await?;
+
+        // Get all active connection paths
+        let active_connections = nm_proxy.active_connections().await.unwrap_or_default();
+        let mut active_vpn_paths = std::collections::HashSet::new();
+
+        for active_conn_path in &active_connections {
+            if let Ok(active_conn_proxy) = ActiveConnectionProxy::builder(&connection)
+                .path(active_conn_path.clone())?
+                .build()
+                .await
+            {
+                if let Ok(conn_type) = active_conn_proxy.connection_type().await {
+                    if conn_type.contains("vpn") || conn_type == "wireguard" {
+                        active_vpn_paths.insert(active_conn_path.to_string());
+                    }
+                }
+            }
+        }
+
+        // Get all configured connections
+        let connections = settings_proxy.list_connections().await?;
+        let mut vpn_connections = Vec::new();
+
+        for conn_path in connections {
+            if let Ok(conn_proxy) = SettingsConnectionProxy::builder(&connection)
+                .path(conn_path.clone())?
+                .build()
+                .await
+            {
+                if let Ok(settings) = conn_proxy.get_settings().await {
+                    // Check if this is a VPN connection
+                    if let Some(connection_settings) = settings.get("connection") {
+                        if let Some(type_value) = connection_settings.get("type") {
+                            if let Ok(conn_type) = type_value.downcast_ref::<zbus::zvariant::Str>() {
+                                let conn_type_str = conn_type.as_str();
+
+                                // Check if it's a VPN type
+                                if conn_type_str.contains("vpn") || conn_type_str == "wireguard" {
+                                    let name = if let Some(id_value) = connection_settings.get("id") {
+                                        if let Ok(id) = id_value.downcast_ref::<zbus::zvariant::Str>() {
+                                            id.to_string()
+                                        } else {
+                                            "Unknown VPN".to_string()
+                                        }
+                                    } else {
+                                        "Unknown VPN".to_string()
+                                    };
+
+                                    let uuid = if let Some(uuid_value) = connection_settings.get("uuid") {
+                                        if let Ok(uuid) = uuid_value.downcast_ref::<zbus::zvariant::Str>() {
+                                            uuid.to_string()
+                                        } else {
+                                            String::new()
+                                        }
+                                    } else {
+                                        String::new()
+                                    };
+
+                                    // Check if this connection is currently active
+                                    let active = active_vpn_paths.contains(&conn_path.to_string());
+
+                                    vpn_connections.push(VpnConnection {
+                                        id: uuid,
+                                        name,
+                                        vpn_type: conn_type_str.to_string(),
+                                        active,
+                                        path: conn_path.to_string(),
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(vpn_connections)
+    }
+
+    /// Activate a VPN connection
+    pub fn connect_vpn(connection_path: &str) {
+        let path = connection_path.to_string();
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                if let Err(e) = Self::connect_vpn_async(&path).await {
+                    eprintln!("Failed to connect VPN: {}", e);
+                }
+            });
+        });
+    }
+
+    async fn connect_vpn_async(connection_path: &str) -> zbus::Result<()> {
+        let connection = Connection::system().await?;
+        let nm_proxy = NetworkManagerProxy::new(&connection).await?;
+
+        // ActivateConnection method
+        connection.call_method(
+            Some("org.freedesktop.NetworkManager"),
+            "/org/freedesktop/NetworkManager",
+            Some("org.freedesktop.NetworkManager"),
+            "ActivateConnection",
+            &(
+                zbus::zvariant::ObjectPath::try_from(connection_path)?,
+                zbus::zvariant::ObjectPath::try_from("/")?,
+                zbus::zvariant::ObjectPath::try_from("/")?,
+            ),
+        ).await?;
+
+        Ok(())
+    }
+
+    /// Deactivate a VPN connection
+    pub fn disconnect_vpn(connection_path: &str) {
+        let path = connection_path.to_string();
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                if let Err(e) = Self::disconnect_vpn_async(&path).await {
+                    eprintln!("Failed to disconnect VPN: {}", e);
+                }
+            });
+        });
+    }
+
+    async fn disconnect_vpn_async(connection_path: &str) -> zbus::Result<()> {
+        let connection = Connection::system().await?;
+        let nm_proxy = NetworkManagerProxy::new(&connection).await?;
+
+        // First, find the active connection for this connection path
+        let active_connections = nm_proxy.active_connections().await?;
+
+        for active_conn_path in active_connections {
+            // DeactivateConnection method
+            connection.call_method(
+                Some("org.freedesktop.NetworkManager"),
+                "/org/freedesktop/NetworkManager",
+                Some("org.freedesktop.NetworkManager"),
+                "DeactivateConnection",
+                &(active_conn_path,),
+            ).await?;
+        }
+
+        Ok(())
     }
 }

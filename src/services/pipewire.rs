@@ -26,6 +26,8 @@ pub struct AudioStream {
     pub app_name: String,
     pub volume: u8,
     pub muted: bool,
+    pub window_title: Option<String>,
+    pub app_icon: Option<String>,
 }
 
 impl AudioState {
@@ -219,7 +221,10 @@ impl PipeWireService {
             Err(_) => return Vec::new(),
         };
 
-        Self::parse_devices(&output_str, "Sinks:")
+        let mut devices = Self::parse_devices(&output_str, "Sinks:");
+        // Also get sinks from Filters section
+        devices.extend(Self::parse_filters(&output_str, "Audio/Sink"));
+        devices
     }
 
     /// List all audio input devices (sources)
@@ -234,7 +239,10 @@ impl PipeWireService {
             Err(_) => return Vec::new(),
         };
 
-        Self::parse_devices(&output_str, "Sources:")
+        let mut devices = Self::parse_devices(&output_str, "Sources:");
+        // Also get sources from Filters section
+        devices.extend(Self::parse_filters(&output_str, "Audio/Source"));
+        devices
     }
 
     /// List all audio playback streams (sink-inputs)
@@ -297,42 +305,99 @@ impl PipeWireService {
             .output();
     }
 
-    fn parse_devices(status: &str, section: &str) -> Vec<AudioDevice> {
+    /// Parse devices from Filters section
+    fn parse_filters(status: &str, device_type: &str) -> Vec<AudioDevice> {
         let mut devices = Vec::new();
-        let mut in_section = false;
-        let mut in_audio = false;
+        let mut in_filters = false;
 
         for line in status.lines() {
             let trimmed = line.trim();
 
-            // Check if we're in the Audio section
-            if trimmed == "Audio" {
-                in_audio = true;
+            // Check if we're in the Filters section
+            if trimmed.starts_with("├─ Filters:") {
+                in_filters = true;
                 continue;
             }
 
-            // Exit Audio section if we hit another main section
-            if in_audio && !trimmed.is_empty() && !trimmed.starts_with("│") && !trimmed.starts_with("├") && !trimmed.starts_with("└") {
-                if trimmed != section {
-                    in_audio = false;
-                }
+            // Exit Filters section
+            if in_filters && (trimmed.starts_with("└─") || trimmed == "Video" || trimmed == "Settings") {
+                break;
             }
 
-            // Check if we're in the target section
-            if in_audio && trimmed.starts_with(section) {
+            // Parse filter device lines
+            if in_filters && trimmed.starts_with("│") {
+                let content = trimmed.trim_start_matches("│").trim();
+
+                // Check if this line contains our device type
+                if content.contains(device_type) {
+                    // Check if it's marked as default with *
+                    let is_default = content.starts_with('*');
+                    let content = content.trim_start_matches('*').trim();
+
+                    // Format: "ID. Name [Type]"
+                    let parts: Vec<&str> = content.splitn(2, '.').collect();
+                    if parts.len() == 2 {
+                        if let Ok(id) = parts[0].trim().parse::<u32>() {
+                            let rest = parts[1].trim();
+
+                            // Extract name (everything before [Type])
+                            let name = if let Some(bracket) = rest.find('[') {
+                                rest[..bracket].trim()
+                            } else {
+                                rest
+                            };
+
+                            devices.push(AudioDevice {
+                                id,
+                                name: name.to_string(),
+                                description: name.to_string(),
+                                is_default,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        devices
+    }
+
+    fn parse_devices(status: &str, section: &str) -> Vec<AudioDevice> {
+        let mut devices = Vec::new();
+        let mut in_section = false;
+
+        for line in status.lines() {
+            let trimmed = line.trim();
+
+            // Check if we're in the target section (e.g., "├─ Sinks:")
+            if trimmed.starts_with("├─") && trimmed.contains(section) {
                 in_section = true;
                 continue;
             }
 
-            // Exit section on next header or empty section indicator
-            if in_section && (trimmed.is_empty() || (trimmed.starts_with("├") && !trimmed.contains("."))) {
-                break;
-            }
+            // Exit section when we hit another section header or empty subsection
+            if in_section {
+                // If we hit another "├─" header, we're done with this section
+                if trimmed.starts_with("├─") {
+                    break;
+                }
 
-            // Parse device line
-            if in_section && (trimmed.starts_with("│") || trimmed.starts_with("├") || trimmed.starts_with("└")) {
-                if let Some(device) = Self::parse_device_line(trimmed) {
-                    devices.push(device);
+                // If we hit the Streams section or another top-level section, stop
+                if trimmed.starts_with("└─") || trimmed == "Video" || trimmed == "Settings" {
+                    break;
+                }
+
+                // Parse device line (starts with │)
+                if trimmed.starts_with("│") {
+                    // Skip empty lines (just "│  ")
+                    let content = trimmed.trim_start_matches("│").trim();
+                    if content.is_empty() {
+                        break; // Empty line means end of devices in this section
+                    }
+
+                    if let Some(device) = Self::parse_device_line(trimmed) {
+                        devices.push(device);
+                    }
                 }
             }
         }
@@ -378,38 +443,32 @@ impl PipeWireService {
         })
     }
 
-    fn parse_streams(status: &str, section: &str) -> Vec<AudioStream> {
+    fn parse_streams(status: &str, _section: &str) -> Vec<AudioStream> {
         let mut streams = Vec::new();
-        let mut in_section = false;
         let mut in_streams = false;
 
         for line in status.lines() {
             let trimmed = line.trim();
 
-            // Check if we're in the Streams section
-            if trimmed == "Streams:" {
+            // Check if we're in the Streams section under Audio
+            if trimmed.starts_with("└─ Streams:") {
                 in_streams = true;
                 continue;
             }
 
-            // Exit Streams section
-            if in_streams && !trimmed.is_empty() && !trimmed.starts_with("│") && !trimmed.starts_with("├") && !trimmed.starts_with("└") {
-                in_streams = false;
-            }
-
-            // Check if we're in the target section
-            if in_streams && trimmed.starts_with(section) {
-                in_section = true;
-                continue;
-            }
-
-            // Exit section
-            if in_section && (trimmed.is_empty() || (trimmed.starts_with("├") && !trimmed.contains("."))) {
+            // Exit Streams section when we hit Video or Settings
+            if in_streams && (trimmed == "Video" || trimmed == "Settings") {
                 break;
             }
 
-            // Parse stream line
-            if in_section && (trimmed.starts_with("│") || trimmed.starts_with("├") || trimmed.starts_with("└")) {
+            // Parse stream line (simple format: "ID. App Name")
+            // These lines don't start with tree characters in the Streams section
+            if in_streams && !trimmed.is_empty() {
+                // Skip lines that are sub-items (with deeper indentation or arrows)
+                if trimmed.contains('>') || trimmed.starts_with("│") {
+                    continue;
+                }
+
                 if let Some(stream) = Self::parse_stream_line(trimmed) {
                     streams.push(stream);
                 }
@@ -420,58 +479,95 @@ impl PipeWireService {
     }
 
     fn parse_stream_line(line: &str) -> Option<AudioStream> {
-        // Remove tree characters
-        let clean = line.trim_start_matches(&['│', '├', '└', '─', ' '][..]).trim();
+        let clean = line.trim();
 
-        // Format: "ID. App Name: Stream Name [extra info]"
+        // Format: "ID. App Name" (simple format from Streams section)
         let parts: Vec<&str> = clean.splitn(2, '.').collect();
         if parts.len() != 2 {
             return None;
         }
 
         let id = parts[0].trim().parse::<u32>().ok()?;
-        let rest = parts[1].trim();
-
-        // Split on first colon to get app name and stream name
-        let (app_name, name) = if let Some(colon_pos) = rest.find(':') {
-            let app = rest[..colon_pos].trim();
-            let stream = rest[colon_pos + 1..].trim();
-            // Remove any bracketed info from stream name
-            let stream = if let Some(bracket) = stream.find('[') {
-                stream[..bracket].trim()
-            } else {
-                stream
-            };
-            (app.to_string(), stream.to_string())
-        } else {
-            (rest.to_string(), String::new())
-        };
+        let app_name = parts[1].trim().to_string();
 
         // Get volume info for this stream
-        let volume_output = Command::new("wpctl")
+        let (volume, muted) = match Command::new("wpctl")
             .args(&["get-volume", &id.to_string()])
             .output()
-            .ok()?;
-
-        let volume_str = String::from_utf8(volume_output.stdout).ok()?;
-        let muted = volume_str.contains("[MUTED]");
-
-        let volume = if let Some(vol_str) = volume_str.split_whitespace().nth(1) {
-            if let Ok(vol) = vol_str.parse::<f32>() {
-                (vol * 100.0) as u8
-            } else {
-                100
+        {
+            Ok(output) => {
+                if let Ok(volume_str) = String::from_utf8(output.stdout) {
+                    let muted = volume_str.contains("[MUTED]");
+                    let volume = if let Some(vol_str) = volume_str.split_whitespace().nth(1) {
+                        if let Ok(vol) = vol_str.parse::<f32>() {
+                            (vol * 100.0) as u8
+                        } else {
+                            100
+                        }
+                    } else {
+                        100
+                    };
+                    (volume, muted)
+                } else {
+                    (100, false)
+                }
             }
-        } else {
-            100
+            Err(_) => (100, false),
         };
+
+        // Try to get additional metadata using pw-cli
+        let (window_title, app_icon) = Self::get_stream_metadata(id);
 
         Some(AudioStream {
             id,
-            name,
+            name: app_name.clone(),
             app_name,
             volume,
             muted,
+            window_title,
+            app_icon,
         })
+    }
+
+    /// Get additional stream metadata using pw-cli
+    fn get_stream_metadata(stream_id: u32) -> (Option<String>, Option<String>) {
+        let output = Command::new("pw-cli")
+            .args(&["info", &stream_id.to_string()])
+            .output();
+
+        if let Ok(output) = output {
+            if let Ok(output_str) = String::from_utf8(output.stdout) {
+                let mut window_title = None;
+                let mut app_icon = None;
+
+                for line in output_str.lines() {
+                    let trimmed = line.trim();
+
+                    // Look for media.name or window.title
+                    if trimmed.contains("media.name") || trimmed.contains("window.title") {
+                        if let Some(eq_pos) = trimmed.find('=') {
+                            let value = trimmed[eq_pos + 1..].trim().trim_matches('"').trim();
+                            if !value.is_empty() {
+                                window_title = Some(value.to_string());
+                            }
+                        }
+                    }
+
+                    // Look for application.icon-name
+                    if trimmed.contains("application.icon-name") {
+                        if let Some(eq_pos) = trimmed.find('=') {
+                            let value = trimmed[eq_pos + 1..].trim().trim_matches('"').trim();
+                            if !value.is_empty() {
+                                app_icon = Some(value.to_string());
+                            }
+                        }
+                    }
+                }
+
+                return (window_title, app_icon);
+            }
+        }
+
+        (None, None)
     }
 }

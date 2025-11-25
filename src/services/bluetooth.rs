@@ -8,6 +8,15 @@ pub struct BluetoothState {
     pub connected_devices: usize,
 }
 
+#[derive(Debug, Clone)]
+pub struct BluetoothDevice {
+    pub address: String,
+    pub name: String,
+    pub connected: bool,
+    pub paired: bool,
+    pub path: String,
+}
+
 // BlueZ Adapter interface
 #[proxy(
     interface = "org.bluez.Adapter1",
@@ -42,6 +51,18 @@ trait Device {
 
     #[zbus(property)]
     fn alias(&self) -> zbus::Result<String>;
+
+    #[zbus(property)]
+    fn address(&self) -> zbus::Result<String>;
+
+    #[zbus(property)]
+    fn paired(&self) -> zbus::Result<bool>;
+
+    fn connect(&self) -> zbus::Result<()>;
+
+    fn disconnect(&self) -> zbus::Result<()>;
+
+    fn pair(&self) -> zbus::Result<()>;
 }
 
 pub struct BluetoothService;
@@ -186,5 +207,102 @@ impl BluetoothService {
         adapter_proxy.set_powered(new_state).await?;
 
         Ok(new_state)
+    }
+
+    /// List all Bluetooth devices (paired and available)
+    pub fn list_devices() -> Vec<BluetoothDevice> {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            Self::list_devices_async().await.unwrap_or_default()
+        })
+    }
+
+    async fn list_devices_async() -> zbus::Result<Vec<BluetoothDevice>> {
+        let connection = Connection::system().await?;
+        let obj_manager = zbus::fdo::ObjectManagerProxy::builder(&connection)
+            .destination("org.bluez")?
+            .path("/")?
+            .build()
+            .await?;
+
+        let objects = obj_manager.get_managed_objects().await?;
+        let mut devices = Vec::new();
+
+        for (path, interfaces) in objects {
+            if interfaces.contains_key("org.bluez.Device1") {
+                if let Ok(device_proxy) = DeviceProxy::builder(&connection)
+                    .path(path.clone())?
+                    .build()
+                    .await
+                {
+                    let name = match device_proxy.alias().await {
+                        Ok(alias) => alias,
+                        Err(_) => device_proxy.name().await.unwrap_or_else(|_| "Unknown Device".to_string()),
+                    };
+
+                    let address = device_proxy.address().await.unwrap_or_default();
+                    let connected = device_proxy.connected().await.unwrap_or(false);
+                    let paired = device_proxy.paired().await.unwrap_or(false);
+
+                    devices.push(BluetoothDevice {
+                        address,
+                        name,
+                        connected,
+                        paired,
+                        path: path.to_string(),
+                    });
+                }
+            }
+        }
+
+        Ok(devices)
+    }
+
+    /// Connect to a Bluetooth device
+    pub fn connect_device(device_path: &str) {
+        let path = device_path.to_string();
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                if let Err(e) = Self::connect_device_async(&path).await {
+                    eprintln!("Failed to connect device: {}", e);
+                }
+            });
+        });
+    }
+
+    async fn connect_device_async(device_path: &str) -> zbus::Result<()> {
+        let connection = Connection::system().await?;
+        let device_proxy = DeviceProxy::builder(&connection)
+            .path(device_path)?
+            .build()
+            .await?;
+
+        device_proxy.connect().await?;
+        Ok(())
+    }
+
+    /// Disconnect a Bluetooth device
+    pub fn disconnect_device(device_path: &str) {
+        let path = device_path.to_string();
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                if let Err(e) = Self::disconnect_device_async(&path).await {
+                    eprintln!("Failed to disconnect device: {}", e);
+                }
+            });
+        });
+    }
+
+    async fn disconnect_device_async(device_path: &str) -> zbus::Result<()> {
+        let connection = Connection::system().await?;
+        let device_proxy = DeviceProxy::builder(&connection)
+            .path(device_path)?
+            .build()
+            .await?;
+
+        device_proxy.disconnect().await?;
+        Ok(())
     }
 }
