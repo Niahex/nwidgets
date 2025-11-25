@@ -1,9 +1,13 @@
+mod audio_details;
+
 use crate::icons;
 use crate::services::notifications::{Notification, NotificationService};
 use crate::services::pipewire::{AudioState, PipeWireService};
 use gtk::prelude::*;
 use gtk4 as gtk;
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
+
+use audio_details::{create_volume_details, create_mic_details, populate_volume_details, populate_mic_details};
 
 pub fn create_control_center_window(application: &gtk::Application) -> gtk::ApplicationWindow {
     let window = gtk::ApplicationWindow::builder()
@@ -30,7 +34,7 @@ pub fn create_control_center_window(application: &gtk::Application) -> gtk::Appl
     container.set_margin_top(16);
     container.set_margin_bottom(16);
 
-    // Audio section
+    // Audio section with expanded controls
     let (audio_section, volume_scale, mic_scale, volume_icon, mic_icon) = create_audio_section();
     container.append(&audio_section);
 
@@ -122,7 +126,7 @@ fn create_audio_section() -> (gtk::Box, gtk::Scale, gtk::Scale, gtk::Image, gtk:
     title.set_halign(gtk::Align::Start);
     section.append(&title);
 
-    // Volume controls
+    // Volume controls with expand button
     let volume_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     let volume_icon = icons::create_icon("sink-medium");
     volume_icon.add_css_class("control-icon");
@@ -138,11 +142,20 @@ fn create_audio_section() -> (gtk::Box, gtk::Scale, gtk::Scale, gtk::Image, gtk:
         PipeWireService::set_volume(volume);
     });
 
+    // Expand button for volume
+    let volume_expand_btn = gtk::Button::from_icon_name("go-down-symbolic");
+    volume_expand_btn.add_css_class("expand-button");
+
     volume_box.append(&volume_icon);
     volume_box.append(&volume_scale);
+    volume_box.append(&volume_expand_btn);
     section.append(&volume_box);
 
-    // Mic controls
+    // Expanded box for volume details (initially hidden)
+    let volume_expanded = create_volume_details();
+    section.append(&volume_expanded);
+
+    // Mic controls with expand button
     let mic_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     let mic_icon = icons::create_icon("source-medium");
     mic_icon.add_css_class("control-icon");
@@ -158,9 +171,54 @@ fn create_audio_section() -> (gtk::Box, gtk::Scale, gtk::Scale, gtk::Image, gtk:
         PipeWireService::set_mic_volume(volume);
     });
 
+    // Expand button for mic
+    let mic_expand_btn = gtk::Button::from_icon_name("go-down-symbolic");
+    mic_expand_btn.add_css_class("expand-button");
+
     mic_box.append(&mic_icon);
     mic_box.append(&mic_scale);
+    mic_box.append(&mic_expand_btn);
     section.append(&mic_box);
+
+    // Expanded box for mic details (initially hidden)
+    let mic_expanded = create_mic_details();
+    section.append(&mic_expanded);
+
+    // Setup expand/collapse behavior for volume
+    let volume_expanded_clone = volume_expanded.clone();
+    let volume_expand_btn_clone = volume_expand_btn.clone();
+    volume_expand_btn.connect_clicked(move |_| {
+        let is_visible = volume_expanded_clone.is_visible();
+        volume_expanded_clone.set_visible(!is_visible);
+        volume_expand_btn_clone.set_icon_name(if is_visible {
+            "go-down-symbolic"
+        } else {
+            "go-up-symbolic"
+        });
+
+        if !is_visible {
+            // Refresh the volume details when expanding
+            populate_volume_details(&volume_expanded_clone);
+        }
+    });
+
+    // Setup expand/collapse behavior for mic
+    let mic_expanded_clone = mic_expanded.clone();
+    let mic_expand_btn_clone = mic_expand_btn.clone();
+    mic_expand_btn.connect_clicked(move |_| {
+        let is_visible = mic_expanded_clone.is_visible();
+        mic_expanded_clone.set_visible(!is_visible);
+        mic_expand_btn_clone.set_icon_name(if is_visible {
+            "go-down-symbolic"
+        } else {
+            "go-up-symbolic"
+        });
+
+        if !is_visible {
+            // Refresh the mic details when expanding
+            populate_mic_details(&mic_expanded_clone);
+        }
+    });
 
     (section, volume_scale, mic_scale, volume_icon, mic_icon)
 }
