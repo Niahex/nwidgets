@@ -10,6 +10,7 @@ use webkit6::{
     WebContext, WebView,
 };
 use crate::services::PinController;
+use crate::icons;
 
 pub struct ChatOverlay {
     pub window: gtk::ApplicationWindow,
@@ -30,8 +31,6 @@ const SITES: &[(&str, &str)] = &[
     ),
 ];
 
-const ICON_RESERVE_SPACE: &str = "󰐃"; // Icon for reserving space
-const ICON_RELEASE_SPACE: &str = "󰐄"; // Icon for releasing space
 
 pub fn create_chat_overlay(application: &gtk::Application) -> ChatOverlay {
     // --- WebView Settings ---
@@ -124,21 +123,27 @@ pub fn create_chat_overlay(application: &gtk::Application) -> ChatOverlay {
     });
 
     // --- Toggle Button ---
-    let toggle_button = gtk::Button::with_label(ICON_RESERVE_SPACE);
+    let pin_icon = icons::create_icon("pin");
+    let toggle_button = gtk::Button::new();
+    toggle_button.set_child(Some(&pin_icon));
     toggle_button.add_css_class("chat-pin-button");
     let is_exclusive = Rc::new(Cell::new(false));
     let is_exclusive_for_button = Rc::clone(&is_exclusive);
     let window_clone = window.clone();
-    let toggle_button_clone = toggle_button.clone();
+    let pin_icon_clone = pin_icon.clone();
     toggle_button.connect_clicked(move |_| {
         if is_exclusive_for_button.get() {
             window_clone.set_exclusive_zone(0);
             is_exclusive_for_button.set(false);
-            toggle_button_clone.set_label(ICON_RESERVE_SPACE);
+            if let Some(paintable) = icons::get_paintable("pin") {
+                pin_icon_clone.set_paintable(Some(&paintable));
+            }
         } else {
             window_clone.auto_exclusive_zone_enable();
             is_exclusive_for_button.set(true);
-            toggle_button_clone.set_label(ICON_RELEASE_SPACE);
+            if let Some(paintable) = icons::get_paintable("unpin") {
+                pin_icon_clone.set_paintable(Some(&paintable));
+            }
         }
     });
 
@@ -193,6 +198,7 @@ pub fn create_chat_overlay(application: &gtk::Application) -> ChatOverlay {
     let is_exclusive_clone = Rc::clone(&is_exclusive);
     let toggle_button_clone2 = toggle_button.clone();
 
+    let pin_icon_clone2 = pin_icon.clone();
     key_controller.connect_key_pressed(move |_, keyval, _, modifiers| {
         // Escape pour fermer si pas pinné
         if keyval == gtk::gdk::Key::Escape && !is_exclusive_clone.get() {
@@ -206,12 +212,16 @@ pub fn create_chat_overlay(application: &gtk::Application) -> ChatOverlay {
             if is_exclusive_clone.get() {
                 window_clone.set_exclusive_zone(0);
                 is_exclusive_clone.set(false);
-                toggle_button_clone2.set_label(ICON_RESERVE_SPACE);
+                if let Some(paintable) = icons::get_paintable("pin") {
+                    pin_icon_clone2.set_paintable(Some(&paintable));
+                }
                 println!("[CHAT] Released exclusive space (Meta+P)");
             } else {
                 window_clone.auto_exclusive_zone_enable();
                 is_exclusive_clone.set(true);
-                toggle_button_clone2.set_label(ICON_RELEASE_SPACE);
+                if let Some(paintable) = icons::get_paintable("unpin") {
+                    pin_icon_clone2.set_paintable(Some(&paintable));
+                }
                 println!("[CHAT] Reserved exclusive space (Meta+P)");
             }
             return gtk::glib::Propagation::Stop;
@@ -225,9 +235,7 @@ pub fn create_chat_overlay(application: &gtk::Application) -> ChatOverlay {
     let pin_controller = PinController::new(
         window.clone(),
         Rc::clone(&is_exclusive),
-        toggle_button.clone(),
-        ICON_RESERVE_SPACE,
-        ICON_RELEASE_SPACE,
+        pin_icon.clone(),
     );
 
     ChatOverlay {

@@ -21,7 +21,7 @@ impl PomodoroModule {
         container.set_halign(gtk::Align::Center);
         container.set_valign(gtk::Align::Center);
 
-        let icon = icons::create_icon("media-playback-start");
+        let icon = icons::create_icon("play");
         icon.add_css_class("pomodoro-icon");
         icon.add_css_class("pomodoro-idle");
 
@@ -96,18 +96,20 @@ impl PomodoroModule {
         let state = svc.get_state();
         let formatted_time = svc.format_time();
         let (icon_name, time_text, css_class) = match state {
-            PomodoroState::Idle => ("media-playback-start", "00:00", "pomodoro-idle"),
+            PomodoroState::Idle => ("play", "00:00", "pomodoro-idle"),
             PomodoroState::Work => ("", formatted_time.as_str(), "pomodoro-work"),
-            PomodoroState::WorkPaused => ("media-playback-pause", formatted_time.as_str(), "pomodoro-work"),
+            PomodoroState::WorkPaused => ("pause", formatted_time.as_str(), "pomodoro-work"),
             PomodoroState::ShortBreak => ("", formatted_time.as_str(), "pomodoro-break"),
-            PomodoroState::ShortBreakPaused => ("media-playback-pause", formatted_time.as_str(), "pomodoro-break"),
+            PomodoroState::ShortBreakPaused => ("pause", formatted_time.as_str(), "pomodoro-break"),
             PomodoroState::LongBreak => ("", formatted_time.as_str(), "pomodoro-longbreak"),
-            PomodoroState::LongBreakPaused => ("media-playback-pause", formatted_time.as_str(), "pomodoro-longbreak"),
+            PomodoroState::LongBreakPaused => ("pause", formatted_time.as_str(), "pomodoro-longbreak"),
         };
 
         // Show icon only when idle or paused
         if state == PomodoroState::Idle {
-            self.icon.set_icon_name(Some(icon_name));
+            if let Some(paintable) = icons::get_paintable(icon_name) {
+                self.icon.set_paintable(Some(&paintable));
+            }
             self.container.set_center_widget(Some(&self.icon));
         } else if matches!(
             state,
@@ -115,7 +117,9 @@ impl PomodoroModule {
                 | PomodoroState::ShortBreakPaused
                 | PomodoroState::LongBreakPaused
         ) {
-            self.icon.set_icon_name(Some(icon_name));
+            if let Some(paintable) = icons::get_paintable(icon_name) {
+                self.icon.set_paintable(Some(&paintable));
+            }
             self.container.set_center_widget(Some(&self.icon));
         } else {
             self.time_label.set_text(time_text);

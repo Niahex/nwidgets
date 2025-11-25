@@ -4,6 +4,7 @@ mod views;
 mod week_carousel;
 
 use crate::services::PinController;
+use crate::icons;
 use chrono::Local;
 use day_carousel::create_day_carousel;
 use gtk::prelude::*;
@@ -14,9 +15,6 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use views::{dayview, monthview, weekview, ViewMode};
 use week_carousel::create_week_carousel;
-
-const ICON_RESERVE_SPACE: &str = "󰐃"; // Icon for reserving space
-const ICON_RELEASE_SPACE: &str = "󰐄"; // Icon for releasing space
 
 pub fn create_tasker_window(
     application: &gtk::Application,
@@ -61,7 +59,7 @@ pub fn create_tasker_window(
     view_container.set_vexpand(true);
 
     // Header avec titre et bouton pin/unpin
-    let (header, is_exclusive, toggle_button, title_label) = create_header(
+    let (header, is_exclusive, pin_icon, title_label) = create_header(
         &window,
         Rc::clone(&current_view),
         view_container.clone(),
@@ -158,11 +156,18 @@ pub fn create_tasker_window(
 
     application.add_action(&toggle_action);
 
+    // Créer le PinController pour permettre le contrôle externe
+    let pin_controller = PinController::new(
+        window.clone(),
+        Rc::clone(&is_exclusive),
+        pin_icon.clone(),
+    );
+
     // Gestionnaire de raccourci clavier Meta+P pour pin/unpin
     let key_controller = gtk::EventControllerKey::new();
     let window_clone2 = window.clone();
     let is_exclusive_clone = Rc::clone(&is_exclusive);
-    let toggle_button_clone2 = toggle_button.clone();
+    let pin_controller_clone = pin_controller.clone();
 
     key_controller.connect_key_pressed(move |_, keyval, _, modifiers| {
         // Escape pour fermer si pas pinné
@@ -174,32 +179,13 @@ pub fn create_tasker_window(
 
         // Meta+P (Super+P)
         if keyval == gtk::gdk::Key::p && modifiers.contains(gtk::gdk::ModifierType::SUPER_MASK) {
-            if is_exclusive_clone.get() {
-                window_clone2.set_exclusive_zone(0);
-                is_exclusive_clone.set(false);
-                toggle_button_clone2.set_label("󰐃"); // ICON_RESERVE_SPACE
-                println!("[TASKER] Released exclusive space (Meta+P)");
-            } else {
-                window_clone2.auto_exclusive_zone_enable();
-                is_exclusive_clone.set(true);
-                toggle_button_clone2.set_label("󰐄"); // ICON_RELEASE_SPACE
-                println!("[TASKER] Reserved exclusive space (Meta+P)");
-            }
+            pin_controller_clone.toggle();
             return gtk::glib::Propagation::Stop;
         }
         gtk::glib::Propagation::Proceed
     });
 
     window.add_controller(key_controller);
-
-    // Créer le PinController pour permettre le contrôle externe
-    let pin_controller = PinController::new(
-        window.clone(),
-        Rc::clone(&is_exclusive),
-        toggle_button.clone(),
-        ICON_RESERVE_SPACE,
-        ICON_RELEASE_SPACE,
-    );
 
     (window, pin_controller)
 }
@@ -215,7 +201,7 @@ fn create_header(
     day_carousel: gtk::Box,
     week_carousel: gtk::Box,
     month_carousel: gtk::Box,
-) -> (gtk::Box, Rc<Cell<bool>>, gtk::Button, gtk::Label) {
+) -> (gtk::Box, Rc<Cell<bool>>, gtk::Image, gtk::Label) {
     let header = gtk::Box::new(gtk::Orientation::Horizontal, 10);
     header.add_css_class("tasker-header");
     header.set_margin_start(16);
@@ -272,7 +258,7 @@ fn create_header(
 
     // Bouton pour changer de vue
     let view_mode = *current_view.borrow();
-    let view_button = gtk::Button::with_label(view_mode.icon());
+    let view_button = gtk::Button::with_label(view_mode.label());
     view_button.add_css_class("tasker-view-button");
 
     let window_clone = window.clone();
@@ -283,7 +269,7 @@ fn create_header(
         let new_view = *view;
         drop(view);
 
-        view_button_clone.set_label(new_view.icon());
+        view_button_clone.set_label(new_view.label());
 
         let (width, height) = new_view.get_window_size();
         window_clone.set_default_size(width, height);
@@ -301,30 +287,36 @@ fn create_header(
     header.append(&view_button);
 
     // Bouton toggle pin/unpin (réserver/libérer l'espace)
-    let toggle_button = gtk::Button::with_label(ICON_RESERVE_SPACE);
+    let pin_icon = icons::create_icon("pin");
+    let toggle_button = gtk::Button::new();
+    toggle_button.set_child(Some(&pin_icon));
     toggle_button.add_css_class("tasker-pin-button");
 
     let is_exclusive = Rc::new(Cell::new(false));
     let is_exclusive_for_button = Rc::clone(&is_exclusive);
     let window_clone = window.clone();
-    let toggle_button_clone = toggle_button.clone();
+    let pin_icon_clone = pin_icon.clone();
     toggle_button.connect_clicked(move |_| {
         if is_exclusive_for_button.get() {
             window_clone.set_exclusive_zone(0);
             is_exclusive_for_button.set(false);
-            toggle_button_clone.set_label(ICON_RESERVE_SPACE);
+            if let Some(paintable) = icons::get_paintable("pin") {
+                pin_icon_clone.set_paintable(Some(&paintable));
+            }
             println!("[TASKER] Released exclusive space");
         } else {
             window_clone.auto_exclusive_zone_enable();
             is_exclusive_for_button.set(true);
-            toggle_button_clone.set_label(ICON_RELEASE_SPACE);
+            if let Some(paintable) = icons::get_paintable("unpin") {
+                pin_icon_clone.set_paintable(Some(&paintable));
+            }
             println!("[TASKER] Reserved exclusive space");
         }
     });
 
     header.append(&toggle_button);
 
-    (header, is_exclusive, toggle_button, title_label)
+    (header, is_exclusive, pin_icon, title_label)
 }
 
 fn update_view(container: &gtk::Box, view_mode: ViewMode) {

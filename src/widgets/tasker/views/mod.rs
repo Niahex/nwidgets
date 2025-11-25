@@ -26,11 +26,11 @@ impl ViewMode {
         }
     }
 
-    pub fn icon(&self) -> &'static str {
+    pub fn label(&self) -> &'static str {
         match self {
-            ViewMode::Day => "󰃭", // Calendar day icon
-            ViewMode::Week => "󰨲", // Calendar week icon
-            ViewMode::Month => "󰃮", // Calendar month icon
+            ViewMode::Day => "D",
+            ViewMode::Week => "W",
+            ViewMode::Month => "M",
         }
     }
 }
