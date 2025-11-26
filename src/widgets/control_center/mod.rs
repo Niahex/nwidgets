@@ -39,16 +39,125 @@ pub fn create_control_center_window(application: &gtk::Application) -> gtk::Appl
     container.set_margin_bottom(16);
 
     // Audio section with expanded controls
-    let (audio_section, volume_scale, mic_scale, volume_icon, mic_icon) = create_audio_section();
+    let (audio_section, volume_scale, mic_scale, volume_icon, mic_icon, volume_expanded, volume_expand_btn, mic_expanded, mic_expand_btn) = create_audio_section();
     container.append(&audio_section);
 
     // Bluetooth section
-    let bluetooth_section = create_bluetooth_section();
+    let (bluetooth_section, bt_expanded, bt_expand_btn) = create_bluetooth_section();
     container.append(&bluetooth_section);
 
     // Network/VPN section
-    let network_section = create_network_section();
+    let (network_section, network_expanded, network_expand_btn) = create_network_section();
     container.append(&network_section);
+
+    // Create the shared expandable panels structure
+    let panels = std::rc::Rc::new(ExpandablePanels {
+        volume_panel: volume_expanded.clone(),
+        volume_button: volume_expand_btn.clone(),
+        mic_panel: mic_expanded.clone(),
+        mic_button: mic_expand_btn.clone(),
+        network_panel: network_expanded.clone(),
+        network_button: network_expand_btn.clone(),
+        bluetooth_panel: bt_expanded.clone(),
+        bluetooth_button: bt_expand_btn.clone(),
+    });
+
+    // Setup mutual exclusion for volume expand button
+    let panels_clone = panels.clone();
+    let volume_expanded_clone = volume_expanded.clone();
+    volume_expand_btn.connect_clicked(move |btn| {
+        let is_visible = volume_expanded_clone.is_visible();
+        if !is_visible {
+            panels_clone.collapse_all_except("volume");
+            volume_expanded_clone.set_visible(true);
+            btn.set_icon_name("go-up-symbolic");
+            populate_volume_details(&volume_expanded_clone);
+        } else {
+            volume_expanded_clone.set_visible(false);
+            btn.set_icon_name("go-down-symbolic");
+        }
+    });
+
+    // Setup mutual exclusion for mic expand button
+    let panels_clone = panels.clone();
+    let mic_expanded_clone = mic_expanded.clone();
+    mic_expand_btn.connect_clicked(move |btn| {
+        let is_visible = mic_expanded_clone.is_visible();
+        if !is_visible {
+            panels_clone.collapse_all_except("mic");
+            mic_expanded_clone.set_visible(true);
+            btn.set_icon_name("go-up-symbolic");
+            populate_mic_details(&mic_expanded_clone);
+        } else {
+            mic_expanded_clone.set_visible(false);
+            btn.set_icon_name("go-down-symbolic");
+        }
+    });
+
+    // Setup mutual exclusion for network expand button
+    let panels_clone = panels.clone();
+    let network_expanded_clone = network_expanded.clone();
+    network_expand_btn.connect_clicked(move |btn| {
+        let is_visible = network_expanded_clone.is_visible();
+        if !is_visible {
+            panels_clone.collapse_all_except("network");
+            network_expanded_clone.set_visible(true);
+            btn.set_icon_name("go-up-symbolic");
+            populate_network_details(&network_expanded_clone);
+        } else {
+            network_expanded_clone.set_visible(false);
+            btn.set_icon_name("go-down-symbolic");
+        }
+    });
+
+    // Setup mutual exclusion for bluetooth expand button
+    let panels_clone = panels.clone();
+    let bt_expanded_clone = bt_expanded.clone();
+    bt_expand_btn.connect_clicked(move |btn| {
+        let is_visible = bt_expanded_clone.is_visible();
+        if !is_visible {
+            panels_clone.collapse_all_except("bluetooth");
+            bt_expanded_clone.set_visible(true);
+            btn.set_icon_name("go-up-symbolic");
+            populate_bluetooth_details(&bt_expanded_clone);
+        } else {
+            bt_expanded_clone.set_visible(false);
+            btn.set_icon_name("go-down-symbolic");
+        }
+    });
+
+    // Setup periodic updates (only update if visible)
+    let volume_expanded_for_update = volume_expanded.clone();
+    gtk::glib::timeout_add_local(std::time::Duration::from_secs(2), move || {
+        if volume_expanded_for_update.is_visible() {
+            populate_volume_details(&volume_expanded_for_update);
+        }
+        gtk::glib::ControlFlow::Continue
+    });
+
+    let mic_expanded_for_update = mic_expanded.clone();
+    gtk::glib::timeout_add_local(std::time::Duration::from_secs(2), move || {
+        if mic_expanded_for_update.is_visible() {
+            populate_mic_details(&mic_expanded_for_update);
+        }
+        gtk::glib::ControlFlow::Continue
+    });
+
+    let network_expanded_for_update = network_expanded.clone();
+    gtk::glib::timeout_add_local(std::time::Duration::from_secs(2), move || {
+        if network_expanded_for_update.is_visible() {
+            populate_network_details(&network_expanded_for_update);
+        }
+        gtk::glib::ControlFlow::Continue
+    });
+
+    let bt_expanded_for_update = bt_expanded.clone();
+    gtk::glib::timeout_add_local(std::time::Duration::from_secs(2), move || {
+        if bt_expanded_for_update.is_visible() {
+            populate_bluetooth_details(&bt_expanded_for_update);
+        }
+        gtk::glib::ControlFlow::Continue
+    });
 
     // Notifications history section
     let notifications_list = gtk::Box::new(gtk::Orientation::Vertical, 4);
@@ -85,6 +194,7 @@ pub fn create_control_center_window(application: &gtk::Application) -> gtk::Appl
     let toggle_action = gtk::gio::SimpleAction::new("toggle-control-center", None);
     let window_clone = window.clone();
     let app_clone = application.clone();
+    let panels_for_toggle = panels.clone();
     toggle_action.connect_activate(move |_, _| {
         let is_visible = window_clone.is_visible();
 
@@ -92,6 +202,9 @@ pub fn create_control_center_window(application: &gtk::Application) -> gtk::Appl
         if !is_visible {
             // Recharger l'historique des notifications avant d'ouvrir
             reload_notification_history(&notifications_list_for_toggle);
+
+            // Collapse all panels when opening control center
+            panels_for_toggle.collapse_all_except("");
 
             for window in app_clone.windows() {
                 if window.title().map_or(false, |t| t.contains("Tasker")) && window.is_visible() {
@@ -125,7 +238,40 @@ pub fn create_control_center_window(application: &gtk::Application) -> gtk::Appl
     window
 }
 
-fn create_audio_section() -> (gtk::Box, gtk::Scale, gtk::Scale, gtk::Image, gtk::Image) {
+// Store all expandable panels to ensure only one is open at a time
+struct ExpandablePanels {
+    volume_panel: gtk::Box,
+    volume_button: gtk::Button,
+    mic_panel: gtk::Box,
+    mic_button: gtk::Button,
+    network_panel: gtk::Box,
+    network_button: gtk::Button,
+    bluetooth_panel: gtk::Box,
+    bluetooth_button: gtk::Button,
+}
+
+impl ExpandablePanels {
+    fn collapse_all_except(&self, keep_open: &str) {
+        if keep_open != "volume" {
+            self.volume_panel.set_visible(false);
+            self.volume_button.set_icon_name("go-down-symbolic");
+        }
+        if keep_open != "mic" {
+            self.mic_panel.set_visible(false);
+            self.mic_button.set_icon_name("go-down-symbolic");
+        }
+        if keep_open != "network" {
+            self.network_panel.set_visible(false);
+            self.network_button.set_icon_name("go-down-symbolic");
+        }
+        if keep_open != "bluetooth" {
+            self.bluetooth_panel.set_visible(false);
+            self.bluetooth_button.set_icon_name("go-down-symbolic");
+        }
+    }
+}
+
+fn create_audio_section() -> (gtk::Box, gtk::Scale, gtk::Scale, gtk::Image, gtk::Image, gtk::Box, gtk::Button, gtk::Box, gtk::Button) {
     let section = gtk::Box::new(gtk::Orientation::Vertical, 8);
     section.add_css_class("control-section");
 
@@ -192,66 +338,10 @@ fn create_audio_section() -> (gtk::Box, gtk::Scale, gtk::Scale, gtk::Image, gtk:
     let mic_expanded = create_mic_details();
     section.append(&mic_expanded);
 
-    // Setup expand/collapse behavior for volume
-    let volume_expanded_clone = volume_expanded.clone();
-    let volume_expand_btn_clone = volume_expand_btn.clone();
-    let volume_expanded_for_update = volume_expanded.clone();
-
-    volume_expand_btn.connect_clicked(move |_| {
-        let is_visible = volume_expanded_clone.is_visible();
-        volume_expanded_clone.set_visible(!is_visible);
-        volume_expand_btn_clone.set_icon_name(if is_visible {
-            "go-down-symbolic"
-        } else {
-            "go-up-symbolic"
-        });
-
-        if !is_visible {
-            // Refresh the volume details when expanding
-            populate_volume_details(&volume_expanded_clone);
-        }
-    });
-
-    // Setup periodic updates for volume details (every 2 seconds)
-    gtk::glib::timeout_add_local(std::time::Duration::from_secs(2), move || {
-        if volume_expanded_for_update.is_visible() {
-            populate_volume_details(&volume_expanded_for_update);
-        }
-        gtk::glib::ControlFlow::Continue
-    });
-
-    // Setup expand/collapse behavior for mic
-    let mic_expanded_clone = mic_expanded.clone();
-    let mic_expand_btn_clone = mic_expand_btn.clone();
-    let mic_expanded_for_update = mic_expanded.clone();
-
-    mic_expand_btn.connect_clicked(move |_| {
-        let is_visible = mic_expanded_clone.is_visible();
-        mic_expanded_clone.set_visible(!is_visible);
-        mic_expand_btn_clone.set_icon_name(if is_visible {
-            "go-down-symbolic"
-        } else {
-            "go-up-symbolic"
-        });
-
-        if !is_visible {
-            // Refresh the mic details when expanding
-            populate_mic_details(&mic_expanded_clone);
-        }
-    });
-
-    // Setup periodic updates for mic details (every 2 seconds)
-    gtk::glib::timeout_add_local(std::time::Duration::from_secs(2), move || {
-        if mic_expanded_for_update.is_visible() {
-            populate_mic_details(&mic_expanded_for_update);
-        }
-        gtk::glib::ControlFlow::Continue
-    });
-
-    (section, volume_scale, mic_scale, volume_icon, mic_icon)
+    (section, volume_scale, mic_scale, volume_icon, mic_icon, volume_expanded, volume_expand_btn, mic_expanded, mic_expand_btn)
 }
 
-fn create_network_section() -> gtk::Box {
+fn create_network_section() -> (gtk::Box, gtk::Box, gtk::Button) {
     let section = gtk::Box::new(gtk::Orientation::Vertical, 8);
     section.add_css_class("control-section");
 
@@ -280,38 +370,10 @@ fn create_network_section() -> gtk::Box {
     let network_expanded = create_network_details();
     section.append(&network_expanded);
 
-    // Setup expand/collapse behavior
-    let network_expanded_clone = network_expanded.clone();
-    let network_expand_btn_clone = network_expand_btn.clone();
-    let network_expanded_for_update = network_expanded.clone();
-
-    network_expand_btn.connect_clicked(move |_| {
-        let is_visible = network_expanded_clone.is_visible();
-        network_expanded_clone.set_visible(!is_visible);
-        network_expand_btn_clone.set_icon_name(if is_visible {
-            "go-down-symbolic"
-        } else {
-            "go-up-symbolic"
-        });
-
-        if !is_visible {
-            // Refresh the network details when expanding
-            populate_network_details(&network_expanded_clone);
-        }
-    });
-
-    // Setup periodic updates for network details (every 2 seconds)
-    gtk::glib::timeout_add_local(std::time::Duration::from_secs(2), move || {
-        if network_expanded_for_update.is_visible() {
-            populate_network_details(&network_expanded_for_update);
-        }
-        gtk::glib::ControlFlow::Continue
-    });
-
-    section
+    (section, network_expanded, network_expand_btn)
 }
 
-fn create_bluetooth_section() -> gtk::Box {
+fn create_bluetooth_section() -> (gtk::Box, gtk::Box, gtk::Button) {
     let section = gtk::Box::new(gtk::Orientation::Vertical, 8);
     section.add_css_class("control-section");
 
@@ -338,35 +400,7 @@ fn create_bluetooth_section() -> gtk::Box {
     let bt_expanded = create_bluetooth_details();
     section.append(&bt_expanded);
 
-    // Setup expand/collapse behavior
-    let bt_expanded_clone = bt_expanded.clone();
-    let bt_expand_btn_clone = bt_expand_btn.clone();
-    let bt_expanded_for_update = bt_expanded.clone();
-
-    bt_expand_btn.connect_clicked(move |_| {
-        let is_visible = bt_expanded_clone.is_visible();
-        bt_expanded_clone.set_visible(!is_visible);
-        bt_expand_btn_clone.set_icon_name(if is_visible {
-            "go-down-symbolic"
-        } else {
-            "go-up-symbolic"
-        });
-
-        if !is_visible {
-            // Refresh the bluetooth details when expanding
-            populate_bluetooth_details(&bt_expanded_clone);
-        }
-    });
-
-    // Setup periodic updates for bluetooth details (every 2 seconds)
-    gtk::glib::timeout_add_local(std::time::Duration::from_secs(2), move || {
-        if bt_expanded_for_update.is_visible() {
-            populate_bluetooth_details(&bt_expanded_for_update);
-        }
-        gtk::glib::ControlFlow::Continue
-    });
-
-    section
+    (section, bt_expanded, bt_expand_btn)
 }
 
 fn create_notifications_section(notifications_list: gtk::Box) -> gtk::Box {

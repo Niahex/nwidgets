@@ -18,12 +18,6 @@ pub fn populate_network_details(container: &gtk::Box) {
         container.remove(&child);
     }
 
-    // VPN Connections section
-    let vpn_label = gtk::Label::new(Some("VPN Connections"));
-    vpn_label.add_css_class("subsection-title");
-    vpn_label.set_halign(gtk::Align::Start);
-    container.append(&vpn_label);
-
     let vpn_connections = NetworkService::list_vpn_connections();
 
     if vpn_connections.is_empty() {

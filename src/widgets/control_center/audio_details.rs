@@ -4,7 +4,12 @@ use gtk::prelude::*;
 use gtk4 as gtk;
 
 /// Determine the appropriate icon for a stream based on its title or app name
-fn get_stream_icon(stream: &AudioStream) -> &'static str {
+fn get_stream_icon(stream: &AudioStream) -> String {
+    // First, try to use the app icon from PipeWire metadata
+    if let Some(ref icon) = stream.app_icon {
+        return icon.clone();
+    }
+
     // Check window title first, then app name
     let search_text = stream
         .window_title
@@ -14,25 +19,22 @@ fn get_stream_icon(stream: &AudioStream) -> &'static str {
 
     // Check for specific platforms/apps
     if search_text.contains("youtube") {
-        "youtube"
+        "youtube".to_string()
     } else if search_text.contains("twitch") {
-        "twitch"
-    } else if search_text.contains("spotify") {
-        "spotify"
+        "twitch".to_string()
     } else if search_text.contains("discord") {
-        "discord"
+        "discord".to_string()
     } else if search_text.contains("firefox") {
-        "firefox"
+        "firefox".to_string()
     } else if search_text.contains("chrome") || search_text.contains("chromium") {
-        "chrome"
+        "chrome".to_string()
     } else if search_text.contains("vlc") {
-        "vlc"
-    } else if search_text.contains("mpv") {
-        "mpv"
+        "vlc".to_string()
+    } else if search_text.contains("spotify") {
+        "spotify".to_string()
     } else {
-        // Try to use the app icon from metadata if available
-        // Otherwise fallback to generic application icon
-        "application-x-executable"
+        // Fallback to generic application icon
+        "application-x-executable".to_string()
     }
 }
 
@@ -66,12 +68,6 @@ pub fn populate_volume_details(container: &gtk::Box) {
     container.append(&device_dropdown);
 
     // Applications section
-    let apps_label = gtk::Label::new(Some("Applications"));
-    apps_label.add_css_class("subsection-title");
-    apps_label.set_halign(gtk::Align::Start);
-    apps_label.set_margin_top(12);
-    container.append(&apps_label);
-
     let streams = PipeWireService::list_sink_inputs();
     if streams.is_empty() {
         let empty_label = gtk::Label::new(Some("No active playback"));
@@ -94,21 +90,9 @@ pub fn populate_mic_details(container: &gtk::Box) {
     }
 
     // Input Devices section
-    let devices_label = gtk::Label::new(Some("Input Devices"));
-    devices_label.add_css_class("subsection-title");
-    devices_label.set_halign(gtk::Align::Start);
-    container.append(&devices_label);
-
     let sources = PipeWireService::list_sources();
     let device_dropdown = create_device_dropdown(sources, false);
     container.append(&device_dropdown);
-
-    // Recording Applications section
-    let apps_label = gtk::Label::new(Some("Recording Applications"));
-    apps_label.add_css_class("subsection-title");
-    apps_label.set_halign(gtk::Align::Start);
-    apps_label.set_margin_top(12);
-    container.append(&apps_label);
 
     let streams = PipeWireService::list_source_outputs();
     if streams.is_empty() {
@@ -133,7 +117,16 @@ fn create_device_dropdown(devices: Vec<AudioDevice>, is_sink: bool) -> gtk::Box 
     let dropdown = gtk::DropDown::from_strings(
         &devices
             .iter()
-            .map(|d| d.description.as_str())
+            .map(|d| {
+                if d.description.len() > 50 {
+                    format!("{}...", &d.description[..47])
+                } else {
+                    d.description.clone()
+                }
+            })
+            .collect::<Vec<_>>()
+            .iter()
+            .map(|s| s.as_str())
             .collect::<Vec<_>>(),
     );
     dropdown.add_css_class("device-dropdown");
@@ -161,49 +154,46 @@ fn create_device_dropdown(devices: Vec<AudioDevice>, is_sink: bool) -> gtk::Box 
 }
 
 fn create_stream_row(stream: AudioStream) -> gtk::Box {
-    let row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    let row = gtk::Box::new(gtk::Orientation::Vertical, 4);
     row.add_css_class("stream-row");
     row.set_margin_start(8);
     row.set_margin_top(4);
     row.set_margin_bottom(4);
 
+    // First line: icon, app name, and mute button
+    let first_line = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+
     // Determine icon based on window title or app name
     let icon_name = get_stream_icon(&stream);
-    let app_icon = icons::create_icon(icon_name);
+    let app_icon = icons::create_icon(&icon_name);
     app_icon.set_pixel_size(32);
     app_icon.add_css_class("stream-icon");
-    row.append(&app_icon);
+    first_line.append(&app_icon);
 
-    // Content box with app name and volume control
-    let content_box = gtk::Box::new(gtk::Orientation::Vertical, 4);
-    content_box.set_hexpand(true);
-
-    // Display window title if available, otherwise app name
-    let display_name = stream.window_title.as_deref().unwrap_or(&stream.app_name);
+    // Display app name (from application.name)
+    // Only use window_title if it's more descriptive than generic names like "audio stream" or "playback"
+    let display_name = if let Some(ref title) = stream.window_title {
+        let title_lower = title.to_lowercase();
+        if title_lower == "audio stream" || title_lower == "playback" || title_lower == "record" || title.is_empty() {
+            &stream.app_name
+        } else {
+            title
+        }
+    } else {
+        &stream.app_name
+    };
     let app_label = gtk::Label::new(Some(display_name));
     app_label.add_css_class("stream-app-name");
     app_label.set_halign(gtk::Align::Start);
+    app_label.set_hexpand(true);
     app_label.set_ellipsize(gtk::pango::EllipsizeMode::End);
-    content_box.append(&app_label);
-
-    // Volume slider with label
-    let volume_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-    let volume_scale = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.0, 100.0, 1.0);
-    volume_scale.set_value(stream.volume as f64);
-    volume_scale.set_hexpand(true);
-    volume_scale.add_css_class("stream-scale");
-    volume_scale.set_draw_value(false);
+    first_line.append(&app_label);
 
     // Volume label
     let volume_label = gtk::Label::new(Some(&format!("{}%", stream.volume)));
     volume_label.add_css_class("stream-volume-label");
     volume_label.set_width_chars(4);
-
-    volume_box.append(&volume_scale);
-    volume_box.append(&volume_label);
-    content_box.append(&volume_box);
-
-    row.append(&content_box);
+    first_line.append(&volume_label);
 
     // Mute button
     let mute_btn = gtk::Button::from_icon_name(if stream.muted {
@@ -213,8 +203,18 @@ fn create_stream_row(stream: AudioStream) -> gtk::Box {
     });
     mute_btn.add_css_class("mute-button");
     mute_btn.set_valign(gtk::Align::Center);
-    row.append(&mute_btn);
+    first_line.append(&mute_btn);
 
+    row.append(&first_line);
+
+    // Second line: volume slider only
+    let volume_scale = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.0, 100.0, 1.0);
+    volume_scale.set_value(stream.volume as f64);
+    volume_scale.set_hexpand(true);
+    volume_scale.add_css_class("stream-scale");
+    volume_scale.set_draw_value(false);
+
+    row.append(&volume_scale);
     // Connect volume change
     let stream_id = stream.id;
     let volume_label_clone = volume_label.clone();

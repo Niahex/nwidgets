@@ -1,7 +1,7 @@
-use gtk4 as gtk;
-use gtk::prelude::*;
-use gtk4_layer_shell::{Edge, Layer, LayerShell, KeyboardMode};
 use crate::services::notifications::{Notification, NotificationService};
+use gtk::prelude::*;
+use gtk4 as gtk;
+use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -24,7 +24,7 @@ pub fn create_notifications_window(application: &gtk::Application) -> gtk::Appli
     window.set_keyboard_mode(KeyboardMode::None);
 
     // Container principal pour toutes les notifications
-    let container = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let container = gtk::Box::new(gtk::Orientation::Vertical, 2);
     container.add_css_class("notifications-container");
     container.set_width_request(380);
     container.set_halign(gtk::Align::End);
@@ -69,8 +69,10 @@ pub fn create_notifications_window(application: &gtk::Application) -> gtk::Appli
     let notifications_clone = Rc::clone(&notifications);
     let update_display_clone = update_display.clone();
     NotificationService::subscribe_notifications(move |notification| {
-        println!("[NOTIF_GTK] 📢 Received notification: {} - {}",
-                 notification.summary, notification.body);
+        println!(
+            "[NOTIF_GTK] 📢 Received notification: {} - {}",
+            notification.summary, notification.body
+        );
 
         let mut notifs = notifications_clone.borrow_mut();
         notifs.push(notification);
@@ -95,8 +97,11 @@ pub fn create_notifications_window(application: &gtk::Application) -> gtk::Appli
         notifs.retain(|n| now - n.timestamp < 5);
 
         if notifs.len() != old_count {
-            println!("[NOTIF_GTK] 🗑️  Cleaned up notifications: {} -> {}",
-                     old_count, notifs.len());
+            println!(
+                "[NOTIF_GTK] 🗑️  Cleaned up notifications: {} -> {}",
+                old_count,
+                notifs.len()
+            );
             drop(notifs);
             update_display_cleanup();
         }
@@ -111,14 +116,14 @@ fn create_notification_widget(notification: &Notification) -> gtk::Widget {
     // Container principal (Box) avec background et bordure
     let container = gtk::Box::new(gtk::Orientation::Vertical, 8);
     container.add_css_class("notification-popup");
-    
+
     // Ajouter classe selon l'urgence
     match notification.urgency {
         2 => container.add_css_class("notification-critical"),
         1 => container.add_css_class("notification-normal"),
         _ => container.add_css_class("notification-low"),
     }
-    
+
     container.set_width_request(380);
     container.set_margin_start(12);
     container.set_margin_end(12);

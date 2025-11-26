@@ -18,12 +18,6 @@ pub fn populate_bluetooth_details(container: &gtk::Box) {
         container.remove(&child);
     }
 
-    // Devices section
-    let devices_label = gtk::Label::new(Some("Devices"));
-    devices_label.add_css_class("subsection-title");
-    devices_label.set_halign(gtk::Align::Start);
-    container.append(&devices_label);
-
     let devices = BluetoothService::list_devices();
 
     if devices.is_empty() {

@@ -82,6 +82,8 @@ impl ActiveWindowModule {
                 "firefox" | "zen-twilight" => "firefox",
                 "discord" | "vesktop" => "discord",
                 "steam" => "steam",
+                "vlc" => "vlc",
+                "spotify" => "spotify",
                 "org.gnome.nautilus" => "file-manager",
                 "org.inkscape.inkscape" => "inkscape",
                 "kitty" | "alacritty" | "terminal" => "terminal",
