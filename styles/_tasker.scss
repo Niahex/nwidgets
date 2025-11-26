@@ -302,3 +302,154 @@
   color: $frost1;
   font-weight: bold;
 }
+
+// Task Form Styles
+.task-form-container {
+  background-color: $polar0;
+  padding: 16px;
+}
+
+.task-form-title {
+  color: $snow0;
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 16px;
+}
+
+.task-form-label {
+  color: $frost1;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  margin-top: 8px;
+}
+
+.task-form-entry {
+  background-color: $polar2;
+  color: $snow0;
+  border: 1px solid $polar3;
+  border-radius: 6px;
+  padding: 12px;
+  font-size: 14px;
+  
+  &:focus {
+    border-color: $frost1;
+    box-shadow: 0 0 0 2px rgba($frost1, 0.3);
+    outline: none;
+  }
+  
+  &::placeholder {
+    color: $polar3;
+  }
+}
+
+.task-form-date-button {
+  background-color: $polar2;
+  color: $snow0;
+  border: 1px solid $polar3;
+  border-radius: 6px;
+  padding: 12px;
+  font-size: 14px;
+  text-align: left;
+  
+  &:hover {
+    background-color: $polar3;
+    border-color: $frost1;
+  }
+  
+  &:active {
+    background-color: $frost1;
+    color: $polar0;
+  }
+}
+
+.task-form-priority-btn {
+  background-color: $polar2;
+  color: $snow0;
+  border: 1px solid $polar3;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  
+  &:hover {
+    background-color: $polar3;
+  }
+  
+  &:checked {
+    border-color: $frost1;
+    box-shadow: 0 0 0 2px rgba($frost1, 0.3);
+  }
+}
+
+.priority-low:checked {
+  background-color: rgba($green, 0.2);
+  border-color: $green;
+  color: $green;
+}
+
+.priority-medium:checked {
+  background-color: rgba($yellow, 0.2);
+  border-color: $yellow;
+  color: $yellow;
+}
+
+.priority-high:checked {
+  background-color: rgba($red, 0.2);
+  border-color: $red;
+  color: $red;
+}
+
+.task-form-description-frame {
+  background-color: $polar2;
+  border: 1px solid $polar3;
+  border-radius: 6px;
+}
+
+.task-form-description {
+  background-color: transparent;
+  color: $snow0;
+  font-size: 14px;
+  
+  &:focus {
+    outline: none;
+  }
+}
+
+.task-form-cancel-btn {
+  background-color: $polar2;
+  color: $snow0;
+  border: 1px solid $polar3;
+  border-radius: 6px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  
+  &:hover {
+    background-color: $polar3;
+    border-color: $red;
+    color: $red;
+  }
+  
+  &:active {
+    background-color: rgba($red, 0.2);
+  }
+}
+
+.task-form-save-btn {
+  background-color: $frost1;
+  color: $polar0;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  
+  &:hover {
+    background-color: $frost2;
+  }
+  
+  &:active {
+    background-color: $frost0;
+  }
+}

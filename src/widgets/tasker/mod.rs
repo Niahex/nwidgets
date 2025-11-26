@@ -2,6 +2,7 @@ mod day_carousel;
 mod month_carousel;
 mod views;
 mod week_carousel;
+mod add_task_form;
 
 use crate::services::PinController;
 use crate::icons;
@@ -104,8 +105,20 @@ pub fn create_tasker_window(
     main_box.append(&view_container);
 
     // Zone d'ajout de tâche
-    let (add_task_area, task_entry) = create_add_task_area();
+    let (add_task_area, task_entry, add_button) = create_add_task_area();
     main_box.append(&add_task_area);
+
+    // Connect the add button to show the full form
+    let view_container_clone = view_container.clone();
+    let carousel_container_clone = carousel_container.clone();
+    let current_view_clone = Rc::clone(&current_view);
+    add_button.connect_clicked(move |_| {
+        add_task_form::show_add_task_form(
+            &view_container_clone,
+            &carousel_container_clone,
+            &current_view_clone,
+        );
+    });
 
     // Initialiser avec la vue jour
     update_view(&view_container, ViewMode::Day);
@@ -319,7 +332,7 @@ fn create_header(
     (header, is_exclusive, pin_icon, title_label)
 }
 
-fn update_view(container: &gtk::Box, view_mode: ViewMode) {
+pub fn update_view(container: &gtk::Box, view_mode: ViewMode) {
     // Vider le container
     while let Some(child) = container.first_child() {
         container.remove(&child);
@@ -357,7 +370,7 @@ fn update_carousel(
     container.append(carousel_widget);
 }
 
-fn create_add_task_area() -> (gtk::Box, gtk::Entry) {
+fn create_add_task_area() -> (gtk::Box, gtk::Entry, gtk::Button) {
     let add_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     add_box.add_css_class("tasker-add-area");
     add_box.set_margin_start(16);
@@ -365,18 +378,19 @@ fn create_add_task_area() -> (gtk::Box, gtk::Entry) {
     add_box.set_margin_top(8);
     add_box.set_margin_bottom(16);
 
-    // Entry pour ajouter une tâche
+    // Entry pour ajouter une tâche rapide
     let entry = gtk::Entry::new();
     entry.add_css_class("tasker-entry");
-    entry.set_placeholder_text(Some("Add a new task..."));
+    entry.set_placeholder_text(Some("Quick add task..."));
     entry.set_hexpand(true);
     add_box.append(&entry);
 
-    // Bouton ajouter
+    // Bouton pour ouvrir le formulaire complet
     let add_btn = gtk::Button::new();
     add_btn.add_css_class("tasker-add-button");
-    add_btn.set_label(""); // Plus icon
+    add_btn.set_icon_name("list-add-symbolic");
+    add_btn.set_tooltip_text(Some("Add task with details"));
     add_box.append(&add_btn);
 
-    (add_box, entry)
+    (add_box, entry, add_btn)
 }

@@ -39,6 +39,7 @@ mime_guess = "2.0.5"
 async-channel = "2.3.1"
 resvg = "0.45.0"
 usvg = "0.45.0"
+uuid = { version = "1.18.1", features = ["v4"] }
 
 [build-dependencies]
 grass = "0.13"

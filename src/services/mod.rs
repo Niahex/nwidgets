@@ -12,11 +12,13 @@ pub mod pomodoro;
 pub mod pin_controller;
 // pub mod speech;
 pub mod systray;
+pub mod tasks;
 // pub mod transcription;
 
 pub use applications::ApplicationsService;
 pub use notifications::NotificationService;
 pub use pin_controller::PinController;
+pub use tasks::{Task, TasksService};
 // pub use speech::SpeechRecognitionService;
 // pub use transcription::{
 //     receive_transcription_events, TranscriptionEvent, TranscriptionEventService,
