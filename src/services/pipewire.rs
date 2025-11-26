@@ -624,7 +624,8 @@ impl PipeWireService {
                     }
                 }
 
-                // Detect Discord/Vesktop from Electron apps
+                // Detect Discord from various clients
+                // 1. Vesktop (Electron-based)
                 if process_binary.as_deref() == Some("electron") {
                     if let Some(pid) = process_id {
                         if let Ok(cmdline) = std::fs::read_to_string(format!("/proc/{}/cmdline", pid)) {
@@ -634,6 +635,20 @@ impl PipeWireService {
                             }
                         }
                     }
+                }
+
+                // 2. Official Discord client (uses .Discord-wrapped binary)
+                if let Some(ref binary) = process_binary {
+                    if binary.contains("Discord") {
+                        app_name = Some("Discord".to_string());
+                        app_icon = Some("discord".to_string());
+                    }
+                }
+
+                // 3. WEBRTC VoiceEngine is Discord's audio engine
+                if app_name.as_deref() == Some("WEBRTC VoiceEngine") {
+                    app_name = Some("Discord".to_string());
+                    app_icon = Some("discord".to_string());
                 }
 
                 return (app_name, window_title, app_icon, false);

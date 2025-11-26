@@ -171,10 +171,15 @@ fn create_stream_row(stream: AudioStream) -> gtk::Box {
     first_line.append(&app_icon);
 
     // Display app name (from application.name)
-    // Only use window_title if it's more descriptive than generic names like "audio stream" or "playback"
+    // Only use window_title if it's more descriptive than generic names
     let display_name = if let Some(ref title) = stream.window_title {
         let title_lower = title.to_lowercase();
-        if title_lower == "audio stream" || title_lower == "playback" || title_lower == "record" || title.is_empty() {
+        if title_lower == "audio stream"
+            || title_lower == "playback"
+            || title_lower == "record"
+            || title_lower == "playstream"
+            || title.is_empty()
+        {
             &stream.app_name
         } else {
             title

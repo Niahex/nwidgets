@@ -103,7 +103,7 @@ impl ActiveWindowModule {
 
             (icon_name, display_class, truncated_title)
         } else {
-            ("test", "NixOS".to_string(), "Nia".to_string())
+            ("nixos", "NixOS".to_string(), "Nia".to_string())
         };
 
         if let Some(paintable) = icons::get_paintable_with_size(icon_name, Some(48)) {

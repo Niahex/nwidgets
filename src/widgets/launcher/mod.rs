@@ -262,28 +262,50 @@ fn navigate_list(selection_model: &gtk::SingleSelection, _list_view: &gtk::ListV
 
 fn launch_selected_app(application: &gtk::Application, selection_model: &gtk::SingleSelection) {
     use gtk::gio::prelude::*;
+    use std::process::Command;
+    use std::os::unix::process::CommandExt;
 
     if let Some(selected_item) = selection_model.selected_item() {
         if let Some(app_info) = selected_item.downcast_ref::<gtk::gio::AppInfo>() {
             let app_name = app_info.name().to_string();
 
-            // Create a proper launch context to ensure environment is inherited correctly
-            let display = gtk::gdk::Display::default().expect("Could not get default display");
-            let context = display.app_launch_context();
+            // Get the commandline to execute
+            if let Some(commandline) = app_info.commandline() {
+                let cmd_str = commandline.to_string_lossy().to_string();
 
-            // Use the native launch() method which properly handles .desktop files
-            match app_info.launch(&[], Some(&context)) {
-                Ok(_) => {
-                    println!("[LAUNCHER] Launched: {}", app_name);
-                    // Close launcher after launching app
-                    application.lookup_action("toggle-launcher")
-                        .and_downcast::<gtk::gio::SimpleAction>()
-                        .unwrap()
-                        .activate(None);
-                },
-                Err(e) => {
-                    eprintln!("[LAUNCHER] Error launching {}: {}", app_name, e);
+                if cmd_str.is_empty() {
+                    eprintln!("[LAUNCHER] Empty command for {}", app_name);
+                    return;
                 }
+
+                // Launch the app in a completely detached manner using setsid
+                // This creates a new session and process group, ensuring the app
+                // continues running even when nwidgets exits
+                match unsafe {
+                    Command::new("sh")
+                        .arg("-c")
+                        .arg(format!("setsid -f {} >/dev/null 2>&1", cmd_str))
+                        .pre_exec(|| {
+                            // Additional safety: create new process group
+                            unsafe { libc::setpgid(0, 0) };
+                            Ok(())
+                        })
+                        .spawn()
+                } {
+                    Ok(_) => {
+                        println!("[LAUNCHER] Launched (detached): {}", app_name);
+                        // Close launcher after launching app
+                        application.lookup_action("toggle-launcher")
+                            .and_downcast::<gtk::gio::SimpleAction>()
+                            .unwrap()
+                            .activate(None);
+                    },
+                    Err(e) => {
+                        eprintln!("[LAUNCHER] Error launching {}: {}", app_name, e);
+                    }
+                }
+            } else {
+                eprintln!("[LAUNCHER] No commandline found for {}", app_name);
             }
         }
     }
