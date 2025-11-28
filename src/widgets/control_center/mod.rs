@@ -12,8 +12,8 @@ use gtk4 as gtk;
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 
 use audio_details::{create_audio_section, setup_audio_section_callbacks, setup_audio_updates, PanelManager};
-use bluetooth_details::{create_bluetooth_section, setup_bluetooth_section_callbacks, setup_bluetooth_updates};
-use network_details::{create_network_section, setup_network_section_callbacks, setup_network_updates};
+use bluetooth_details::{populate_bluetooth_details};
+use network_details::{populate_network_details};
 use notifications_details::{create_notifications_section, add_notification_to_list};
 
 pub fn create_control_center_window(application: &gtk::Application) -> gtk::ApplicationWindow {
@@ -34,22 +34,48 @@ pub fn create_control_center_window(application: &gtk::Application) -> gtk::Appl
     window.set_keyboard_mode(KeyboardMode::OnDemand);
 
     // Main container
-    let container = gtk::Box::new(gtk::Orientation::Vertical, 12);
+    let container = gtk::Box::new(gtk::Orientation::Vertical, 0);
     container.add_css_class("control-center-container");
-    container.set_margin_start(16);
-    container.set_margin_end(16);
-    container.set_margin_top(16);
-    container.set_margin_bottom(16);
 
     // Create sections
     let (audio_section, volume_scale, mic_scale, volume_icon, mic_icon, volume_expanded, volume_expand_btn, mic_expanded, mic_expand_btn) = create_audio_section();
     container.append(&audio_section);
 
-    let (bluetooth_section, bt_expanded, bt_expand_btn) = create_bluetooth_section();
-    container.append(&bluetooth_section);
+    // Combined Bluetooth/Network section
+    let combined_section = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    combined_section.add_css_class("control-section");
 
-    let (network_section, network_expanded, network_expand_btn) = create_network_section();
-    container.append(&network_section);
+    // Bluetooth and Network buttons on same line
+    let bt_network_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    bt_network_box.set_hexpand(true);
+
+    // Bluetooth button
+    let bt_icon = icons::create_icon("bluetooth-active");
+    bt_icon.set_size_request(24, 24);
+    let bt_button = gtk::Button::new();
+    bt_button.set_child(Some(&bt_icon));
+    bt_button.add_css_class("section-button");
+    bt_button.set_hexpand(true);
+
+    // Network button  
+    let network_icon = icons::create_icon("network");
+    network_icon.set_size_request(24, 24);
+    let network_button = gtk::Button::new();
+    network_button.set_child(Some(&network_icon));
+    network_button.add_css_class("section-button");
+    network_button.set_hexpand(true);
+
+    bt_network_box.append(&bt_button);
+    bt_network_box.append(&network_button);
+    combined_section.append(&bt_network_box);
+
+    // Shared expanded area (only one visible at a time)
+    let shared_expanded = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    shared_expanded.add_css_class("expanded-section");
+    shared_expanded.set_visible(false);
+    combined_section.append(&shared_expanded);
+
+    container.append(&combined_section);
 
     // Notifications section
     let notifications_list = gtk::Box::new(gtk::Orientation::Vertical, 4);
@@ -63,19 +89,43 @@ pub fn create_control_center_window(application: &gtk::Application) -> gtk::Appl
     let panels = PanelManager::new(
         volume_expanded.clone(),
         mic_expanded.clone(),
-        bt_expanded.clone(),
-        network_expanded.clone(),
+        shared_expanded.clone(),
+        shared_expanded.clone(), // Same for both bt and network
     );
 
     // Setup callbacks
     setup_audio_section_callbacks(&volume_expanded, &volume_expand_btn, &mic_expanded, &mic_expand_btn, &panels);
-    setup_bluetooth_section_callbacks(&bt_expanded, &bt_expand_btn, &panels);
-    setup_network_section_callbacks(&network_expanded, &network_expand_btn, &panels);
+
+    // Bluetooth button callback
+    let shared_expanded_bt = shared_expanded.clone();
+    let panels_bt = panels.clone();
+    bt_button.connect_clicked(move |_| {
+        panels_bt.collapse_all_except("bluetooth");
+        
+        // Clear and populate with bluetooth content
+        while let Some(child) = shared_expanded_bt.first_child() {
+            shared_expanded_bt.remove(&child);
+        }
+        populate_bluetooth_details(&shared_expanded_bt);
+        shared_expanded_bt.set_visible(true);
+    });
+
+    // Network button callback
+    let shared_expanded_net = shared_expanded.clone();
+    let panels_net = panels.clone();
+    network_button.connect_clicked(move |_| {
+        panels_net.collapse_all_except("network");
+        
+        // Clear and populate with network content
+        while let Some(child) = shared_expanded_net.first_child() {
+            shared_expanded_net.remove(&child);
+        }
+        populate_network_details(&shared_expanded_net);
+        shared_expanded_net.set_visible(true);
+    });
 
     // Setup periodic updates
     setup_audio_updates(&volume_expanded, &mic_expanded);
-    setup_bluetooth_updates(&bt_expanded);
-    setup_network_updates(&network_expanded);
 
     // Subscribe to audio updates
     PipeWireService::subscribe_audio(move |state: AudioState| {
@@ -101,8 +151,7 @@ pub fn create_control_center_window(application: &gtk::Application) -> gtk::Appl
     let panels_clone = panels.clone();
     let volume_expanded_clone = volume_expanded.clone();
     let mic_expanded_clone = mic_expanded.clone();
-    let bt_expanded_clone = bt_expanded.clone();
-    let network_expanded_clone = network_expanded.clone();
+    let shared_expanded_clone = shared_expanded.clone();
 
     toggle_action.connect_activate(move |_, param| {
         let is_visible = window_clone.is_visible();
@@ -125,11 +174,19 @@ pub fn create_control_center_window(application: &gtk::Application) -> gtk::Appl
                     }
                     "bluetooth" => {
                         panels_clone.collapse_all_except("bluetooth");
-                        bt_expanded_clone.set_visible(true);
+                        while let Some(child) = shared_expanded_clone.first_child() {
+                            shared_expanded_clone.remove(&child);
+                        }
+                        populate_bluetooth_details(&shared_expanded_clone);
+                        shared_expanded_clone.set_visible(true);
                     }
                     "network" => {
                         panels_clone.collapse_all_except("network");
-                        network_expanded_clone.set_visible(true);
+                        while let Some(child) = shared_expanded_clone.first_child() {
+                            shared_expanded_clone.remove(&child);
+                        }
+                        populate_network_details(&shared_expanded_clone);
+                        shared_expanded_clone.set_visible(true);
                     }
                     _ => {}
                 }
