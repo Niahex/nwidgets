@@ -52,6 +52,12 @@ trait MediaPlayer2Player {
     #[zbus(property)]
     fn metadata(&self) -> zbus::Result<HashMap<String, zbus::zvariant::OwnedValue>>;
 
+    #[zbus(property)]
+    fn volume(&self) -> zbus::Result<f64>;
+
+    #[zbus(property)]
+    fn set_volume(&self, volume: f64) -> zbus::Result<()>;
+
     fn next(&self) -> zbus::Result<()>;
 
     fn previous(&self) -> zbus::Result<()>;
@@ -106,9 +112,9 @@ impl MprisService {
         let proxy = zbus::fdo::DBusProxy::new(&connection).await?;
         let names = proxy.list_names().await?;
 
-        // Chercher le premier lecteur actif
+        // Chercher UNIQUEMENT Spotify
         for name in names {
-            if name.starts_with("org.mpris.MediaPlayer2.") {
+            if name.as_str() == "org.mpris.MediaPlayer2.spotify" {
                 if let Ok(state) = Self::get_player_state(&connection, &name).await {
                     if state.status != PlaybackStatus::Stopped
                         && !state.metadata.title.is_empty()
@@ -204,27 +210,15 @@ impl MprisService {
 
     async fn next_async() -> zbus::Result<()> {
         let connection = Connection::session().await?;
-        let proxy = zbus::fdo::DBusProxy::new(&connection).await?;
-        let names = proxy.list_names().await?;
 
-        for name in names {
-            if name.starts_with("org.mpris.MediaPlayer2.") {
-                let player_proxy = MediaPlayer2PlayerProxy::builder(&connection)
-                    .destination(&*name)?
-                    .path("/org/mpris/MediaPlayer2")?
-                    .build()
-                    .await?;
+        // Uniquement Spotify
+        let player_proxy = MediaPlayer2PlayerProxy::builder(&connection)
+            .destination("org.mpris.MediaPlayer2.spotify")?
+            .path("/org/mpris/MediaPlayer2")?
+            .build()
+            .await?;
 
-                // Vérifier si le lecteur est actif
-                if let Ok(status) = player_proxy.playback_status().await {
-                    if status == "Playing" || status == "Paused" {
-                        return player_proxy.next().await;
-                    }
-                }
-            }
-        }
-
-        Ok(())
+        player_proxy.next().await
     }
 
     /// Revenir à la piste précédente
@@ -240,27 +234,15 @@ impl MprisService {
 
     async fn previous_async() -> zbus::Result<()> {
         let connection = Connection::session().await?;
-        let proxy = zbus::fdo::DBusProxy::new(&connection).await?;
-        let names = proxy.list_names().await?;
 
-        for name in names {
-            if name.starts_with("org.mpris.MediaPlayer2.") {
-                let player_proxy = MediaPlayer2PlayerProxy::builder(&connection)
-                    .destination(&*name)?
-                    .path("/org/mpris/MediaPlayer2")?
-                    .build()
-                    .await?;
+        // Uniquement Spotify
+        let player_proxy = MediaPlayer2PlayerProxy::builder(&connection)
+            .destination("org.mpris.MediaPlayer2.spotify")?
+            .path("/org/mpris/MediaPlayer2")?
+            .build()
+            .await?;
 
-                // Vérifier si le lecteur est actif
-                if let Ok(status) = player_proxy.playback_status().await {
-                    if status == "Playing" || status == "Paused" {
-                        return player_proxy.previous().await;
-                    }
-                }
-            }
-        }
-
-        Ok(())
+        player_proxy.previous().await
     }
 
     /// Toggle play/pause
@@ -276,26 +258,51 @@ impl MprisService {
 
     async fn play_pause_async() -> zbus::Result<()> {
         let connection = Connection::session().await?;
-        let proxy = zbus::fdo::DBusProxy::new(&connection).await?;
-        let names = proxy.list_names().await?;
 
-        for name in names {
-            if name.starts_with("org.mpris.MediaPlayer2.") {
-                let player_proxy = MediaPlayer2PlayerProxy::builder(&connection)
-                    .destination(&*name)?
-                    .path("/org/mpris/MediaPlayer2")?
-                    .build()
-                    .await?;
+        // Uniquement Spotify
+        let player_proxy = MediaPlayer2PlayerProxy::builder(&connection)
+            .destination("org.mpris.MediaPlayer2.spotify")?
+            .path("/org/mpris/MediaPlayer2")?
+            .build()
+            .await?;
 
-                // Vérifier si le lecteur est actif
-                if let Ok(status) = player_proxy.playback_status().await {
-                    if status == "Playing" || status == "Paused" {
-                        return player_proxy.play_pause().await;
-                    }
+        player_proxy.play_pause().await
+    }
+
+    /// Augmenter le volume
+    pub fn volume_up() {
+        std::thread::spawn(|| {
+            crate::utils::runtime::block_on(async {
+                if let Err(e) = Self::adjust_volume_async(0.05).await {
+                    eprintln!("Failed to increase volume: {}", e);
                 }
-            }
-        }
+            });
+        });
+    }
 
-        Ok(())
+    /// Diminuer le volume
+    pub fn volume_down() {
+        std::thread::spawn(|| {
+            crate::utils::runtime::block_on(async {
+                if let Err(e) = Self::adjust_volume_async(-0.05).await {
+                    eprintln!("Failed to decrease volume: {}", e);
+                }
+            });
+        });
+    }
+
+    async fn adjust_volume_async(delta: f64) -> zbus::Result<()> {
+        let connection = Connection::session().await?;
+
+        // Uniquement Spotify
+        let player_proxy = MediaPlayer2PlayerProxy::builder(&connection)
+            .destination("org.mpris.MediaPlayer2.spotify")?
+            .path("/org/mpris/MediaPlayer2")?
+            .build()
+            .await?;
+
+        let current_volume = player_proxy.volume().await?;
+        let new_volume = (current_volume + delta).clamp(0.0, 1.0);
+        player_proxy.set_volume(new_volume).await
     }
 }

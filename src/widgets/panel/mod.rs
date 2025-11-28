@@ -60,26 +60,28 @@ pub fn create_panel_window(
     spacer_left.set_hexpand(true);
     layout.append(&spacer_left);
 
-    // Section centrale : Workspaces
+    // Section centrale : UNIQUEMENT Workspaces (pour centrage absolu)
     let workspaces_module = WorkspacesModule::new();
     workspaces_module.container.add_css_class("panel-center");
     layout.append(&workspaces_module.container);
-
-    // Module MPRIS juste après les workspaces
-    let mpris_module = MprisModule::new();
-    layout.append(&mpris_module.container);
 
     // Spacer pour pousser les autres modules à droite
     let spacer_right = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     spacer_right.set_hexpand(true);
     layout.append(&spacer_right);
 
-    // Section droite : Pomodoro à gauche, puis les autres modules
+    // Module MPRIS dans la section droite (avant les autres modules)
+    let mpris_module = MprisModule::new();
+
+    // Section droite : MPRIS en premier, puis Systray, Pomodoro, etc.
     let right_section = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     right_section.add_css_class("panel-right");
     right_section.set_halign(gtk::Align::End);
 
-    // Systray à gauche (peut changer de taille)
+    // MPRIS en premier dans la section droite
+    right_section.append(&mpris_module.container);
+
+    // Systray après MPRIS (peut changer de taille)
     let systray_module = SystrayModule::new();
     right_section.append(&systray_module.container);
     
