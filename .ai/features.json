@@ -1,0 +1,46 @@
+{
+  "features": [
+    {
+      "id": 1,
+      "app": "all",
+      "summary": "rework style injection",
+      "type": "modification",
+      "status": "planned"
+    },
+    {
+      "id": 2,
+      "app": "Control Panel",
+      "summary": "echap et force focus",
+      "type": "addition",
+      "status": "planned"
+    },
+    {
+      "id": 3,
+      "app": "Control Panel",
+      "summary": "remove quicksettings control panel",
+      "type": "removal",
+      "status": "completed"
+    },
+    {
+      "id": 4,
+      "app": "Jisig",
+      "summary": "echap force focus",
+      "type": "addition",
+      "status": "planned"
+    },
+    {
+      "id": 5,
+      "app": "all",
+      "summary": "overlay unique pour close/open entre Jisig, Control Center et Chat",
+      "type": "modification",
+      "status": "planned"
+    },
+    {
+      "id": 6,
+      "app": "Control Panel",
+      "summary": "rework style control center",
+      "type": "modification",
+      "status": "in_progress"
+    }
+  ]
+}

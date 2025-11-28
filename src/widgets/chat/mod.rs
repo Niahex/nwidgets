@@ -33,7 +33,6 @@ const SITES: &[(&str, &str)] = &[
 
 
 pub fn create_chat_overlay(application: &gtk::Application) -> ChatOverlay {
-    // --- WebView Settings ---
     let settings = Settings::new();
     settings.set_javascript_can_access_clipboard(true);
     settings.set_enable_developer_extras(true);
@@ -53,14 +52,12 @@ pub fn create_chat_overlay(application: &gtk::Application) -> ChatOverlay {
     settings.set_media_playback_allows_inline(true);
     settings.set_media_content_types_requiring_hardware_support(None);
 
-    // --- Create Context and WebView ---
     let context = WebContext::new();
     let webview = WebView::builder().web_context(&context).build();
     webview.set_settings(&settings);
     webview.add_css_class("chat-webview");
 
 
-    // --- Handle Permission Requests ---
     webview.connect_permission_request(|_webview, request| {
         if let Some(media_request) = request.downcast_ref::<UserMediaPermissionRequest>() {
             if media_request.is_for_audio_device() {
@@ -74,7 +71,6 @@ pub fn create_chat_overlay(application: &gtk::Application) -> ChatOverlay {
         false
     });
 
-    // --- Persistent Cookie Setup ---
     if let Some(session) = webview.network_session() {
         if let Some(cookie_manager) = session.cookie_manager() {
             if let Some(home_dir) = env::home_dir() {
@@ -91,16 +87,14 @@ pub fn create_chat_overlay(application: &gtk::Application) -> ChatOverlay {
         }
     }
 
-    // Create a window and set its title
     let window = gtk::ApplicationWindow::builder()
         .application(application)
-        .title("Nwidgets Chat") // Changed title
+        .title("Nwidgets Chat")
         .default_width(500)
         .default_height(600)
         .build();
     window.add_css_class("chat-window");
 
-    // --- GTK Layer Shell Setup ---
     window.init_layer_shell();
     window.set_layer(Layer::Overlay);
     window.set_anchor(Edge::Top, true);
@@ -108,7 +102,6 @@ pub fn create_chat_overlay(application: &gtk::Application) -> ChatOverlay {
     window.set_anchor(Edge::Left, true);
     window.set_keyboard_mode(KeyboardMode::Exclusive);
 
-    // --- Site Selector Dropdown (Simplifié) ---
     let site_names: Vec<&str> = SITES.iter().map(|(name, _)| *name).collect();
     let string_list = gtk::StringList::new(&site_names);
     let dropdown = gtk::DropDown::new(Some(string_list), None::<&gtk::Expression>);
@@ -122,7 +115,6 @@ pub fn create_chat_overlay(application: &gtk::Application) -> ChatOverlay {
         }
     });
 
-    // --- Toggle Button ---
     let pin_icon = icons::create_icon("pin");
     let toggle_button = gtk::Button::new();
     toggle_button.set_child(Some(&pin_icon));
@@ -147,12 +139,11 @@ pub fn create_chat_overlay(application: &gtk::Application) -> ChatOverlay {
         }
     });
 
-    // --- Layout ---
     let top_bar = gtk::Box::new(gtk::Orientation::Horizontal, 5);
     top_bar.add_css_class("chat-top-bar");
     top_bar.append(&dropdown);
     let spacer = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    spacer.set_hexpand(true); // Make the spacer expand horizontally
+    spacer.set_hexpand(true);
     top_bar.append(&spacer);
     top_bar.append(&toggle_button);
 
@@ -162,16 +153,12 @@ pub fn create_chat_overlay(application: &gtk::Application) -> ChatOverlay {
     layout.append(&webview);
     webview.set_vexpand(true);
 
-    // Set the layout as the child of the window
     window.set_child(Some(&layout));
 
-    // Load the initial URL
     webview.load_uri(SITES[0].1);
 
-    // Cacher la fenêtre par défaut au démarrage
     window.set_visible(false);
 
-    // Ajouter l'action toggle-chat
     let toggle_action = gtk::gio::SimpleAction::new("toggle-chat", None);
     let window_clone = window.clone();
     let webview_clone = webview.clone();
@@ -179,7 +166,6 @@ pub fn create_chat_overlay(application: &gtk::Application) -> ChatOverlay {
         let is_visible = window_clone.is_visible();
         window_clone.set_visible(!is_visible);
 
-        // Si on ouvre la fenêtre, donner le focus et grab_focus
         if !is_visible {
             window_clone.present();
             window_clone.grab_focus();

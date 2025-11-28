@@ -1,19 +1,19 @@
-// styles/_chat.scss
+// styles/_jisig.scss
 @import "colors";
 
-.chat-window {
+.jisig-window {
     background-color: $polar0;
     border: 1px solid $polar3;
     border-radius: 8px;
 }
 
-.chat-top-bar {
+.jisig-top-bar {
     padding: 6px;
     background-color: $polar1;
     border-bottom: 1px solid $polar3;
 }
 
-.chat-site-dropdown {
+.jisig-site-dropdown {
     // Style for the dropdown
     &,
     & > .dropdown-list {
@@ -53,7 +53,7 @@
     }
 }
 
-.chat-pin-button {
+.jisig-pin-button {
     background-color: transparent;
     color: $snow1;
     border: none;
@@ -64,12 +64,12 @@
     }
 }
 
-.chat-webview {
+.jisig-webview {
     // The webview itself doesn't have much to style from GTK,
     // as its content is web content.
     // We can style its container if needed.
 }
 
-.chat-layout {
+.jisig-layout {
     // The main vertical box
 }

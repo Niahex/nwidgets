@@ -1,0 +1,11 @@
+{
+  "bugs": [
+    {
+      "id": 1,
+      "app": "Jisig",
+      "summary": "jisig meta p pin controller don't work",
+      "status": "todo",
+      "priority": "high"
+    }
+  ]
+}

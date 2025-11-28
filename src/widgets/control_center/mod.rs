@@ -2,7 +2,6 @@ mod audio_details;
 mod bluetooth_details;
 mod network_details;
 mod notifications_details;
-mod quick_settings;
 mod section_helpers;
 
 use crate::utils::icons;
@@ -16,7 +15,6 @@ use audio_details::{create_audio_section, setup_audio_section_callbacks, setup_a
 use bluetooth_details::{create_bluetooth_section, setup_bluetooth_section_callbacks, setup_bluetooth_updates};
 use network_details::{create_network_section, setup_network_section_callbacks, setup_network_updates};
 use notifications_details::{create_notifications_section, add_notification_to_list};
-use quick_settings::create_quick_settings_section;
 
 pub fn create_control_center_window(application: &gtk::Application) -> gtk::ApplicationWindow {
     let window = gtk::ApplicationWindow::builder()
@@ -52,10 +50,6 @@ pub fn create_control_center_window(application: &gtk::Application) -> gtk::Appl
 
     let (network_section, network_expanded, network_expand_btn) = create_network_section();
     container.append(&network_section);
-
-    // Quick settings section
-    let quick_settings = create_quick_settings_section();
-    container.append(&quick_settings);
 
     // Notifications section
     let notifications_list = gtk::Box::new(gtk::Orientation::Vertical, 4);
