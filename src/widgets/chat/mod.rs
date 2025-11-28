@@ -11,6 +11,8 @@ use webkit6::{
 };
 use crate::utils::PinController;
 use crate::utils::icons;
+use crate::services::ChatStateService;
+use crate::services::chat::ChatState;
 
 pub struct ChatOverlay {
     pub window: gtk::ApplicationWindow,
@@ -102,17 +104,38 @@ pub fn create_chat_overlay(application: &gtk::Application) -> ChatOverlay {
     window.set_anchor(Edge::Left, true);
     window.set_keyboard_mode(KeyboardMode::Exclusive);
 
-    let site_names: Vec<&str> = SITES.iter().map(|(name, _)| *name).collect();
-    let string_list = gtk::StringList::new(&site_names);
-    let dropdown = gtk::DropDown::new(Some(string_list), None::<&gtk::Expression>);
-    dropdown.add_css_class("chat-site-dropdown");
+    // Créer le bouton cyclique avec le nom du premier site
+    let site_label = gtk::Label::new(Some(SITES[0].0));
+    site_label.add_css_class("chat-site-label");
+
+    let site_button = gtk::Button::new();
+    site_button.set_child(Some(&site_label));
+    site_button.add_css_class("chat-site-button");
+
+    // Index du site actuel
+    let current_site_index = Rc::new(Cell::new(0_usize));
 
     let webview_clone = webview.clone();
-    dropdown.connect_selected_notify(move |dropdown| {
-        let selected = dropdown.selected() as usize;
-        if selected < SITES.len() {
-            webview_clone.load_uri(SITES[selected].1);
-        }
+    let current_site_index_clone = Rc::clone(&current_site_index);
+    let site_label_clone = site_label.clone();
+
+    site_button.connect_clicked(move |_| {
+        // Passer au site suivant
+        let current = current_site_index_clone.get();
+        let next = (current + 1) % SITES.len();
+        current_site_index_clone.set(next);
+
+        // Charger le nouveau site
+        webview_clone.load_uri(SITES[next].1);
+
+        // Mettre à jour le label
+        site_label_clone.set_text(SITES[next].0);
+
+        // Notifier le changement de site sélectionné
+        ChatStateService::set_selected_site(
+            SITES[next].0.to_string(),
+            SITES[next].1.to_string(),
+        );
     });
 
     let pin_icon = icons::create_icon("pin");
@@ -139,9 +162,9 @@ pub fn create_chat_overlay(application: &gtk::Application) -> ChatOverlay {
         }
     });
 
-    let top_bar = gtk::Box::new(gtk::Orientation::Horizontal, 5);
+    let top_bar = gtk::Box::new(gtk::Orientation::Horizontal, 4);
     top_bar.add_css_class("chat-top-bar");
-    top_bar.append(&dropdown);
+    top_bar.append(&site_button);
     let spacer = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     spacer.set_hexpand(true);
     top_bar.append(&spacer);
@@ -157,6 +180,12 @@ pub fn create_chat_overlay(application: &gtk::Application) -> ChatOverlay {
 
     webview.load_uri(SITES[0].1);
 
+    // Initialiser l'état avec le premier site
+    ChatStateService::set_selected_site(
+        SITES[0].0.to_string(),
+        SITES[0].1.to_string(),
+    );
+
     window.set_visible(false);
 
     let toggle_action = gtk::gio::SimpleAction::new("toggle-chat", None);
@@ -171,8 +200,14 @@ pub fn create_chat_overlay(application: &gtk::Application) -> ChatOverlay {
             window_clone.grab_focus();
             webview_clone.grab_focus();
             println!("[CHAT] Toggle chat window: true (focus grabbed)");
+
+            // Notifier que le chat est visible
+            ChatStateService::set_visibility(true);
         } else {
             println!("[CHAT] Toggle chat window: false");
+
+            // Notifier que le chat est caché
+            ChatStateService::set_visibility(false);
         }
     });
 
@@ -190,6 +225,9 @@ pub fn create_chat_overlay(application: &gtk::Application) -> ChatOverlay {
         if keyval == gtk::gdk::Key::Escape && !is_exclusive_clone.get() {
             window_clone.set_visible(false);
             println!("[CHAT] Window hidden (Escape pressed, not pinned)");
+
+            // Notifier que le chat est caché
+            ChatStateService::set_visibility(false);
             return gtk::glib::Propagation::Stop;
         }
 

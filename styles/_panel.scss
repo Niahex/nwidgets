@@ -75,6 +75,40 @@
     }
 }
 
+// MPRIS widget
+.mpris-widget {
+    padding: 4px 12px;
+    margin-left: 8px;
+    background-color: rgba($polar1, 0.6);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 200ms ease;
+
+    &:hover {
+        background-color: rgba($polar2, 0.8);
+    }
+
+    .mpris-icon {
+        min-width: 20px;
+        min-height: 20px;
+        color: $frost1;
+    }
+
+    .mpris-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: $snow1;
+    }
+
+    .mpris-artist {
+        font-size: 11px;
+        color: $snow0;
+        opacity: 0.8;
+    }
+}
+
 // Specific module styles
 .active-window-widget {
     padding: 0 12px 0 0;

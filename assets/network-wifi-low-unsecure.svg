@@ -21,7 +21,7 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#505050"
      inkscape:zoom="38.833333"
-     inkscape:cx="12.012876"
+     inkscape:cx="12.038627"
      inkscape:cy="12"
      inkscape:window-width="1703"
      inkscape:window-height="1368"
@@ -46,5 +46,6 @@
   <path
      d="m14.25 16.78c-0.65-0.495-1.422-0.78-2.25-0.78s-1.6 0.285-2.25 0.78l2.25 3.22"
      fill="#d8dee9"
-     id="path3" />
+     id="path3"
+     style="fill:#bf616a;fill-opacity:1" />
 </svg>

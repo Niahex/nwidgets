@@ -8,43 +8,45 @@
 }
 
 .chat-top-bar {
-    padding: 6px;
+    padding: 4px;
     background-color: $polar1;
     border-bottom: 1px solid $polar3;
+    display: flex;
+    align-items: center;
 }
 
-.chat-site-dropdown {
-    // Style for the dropdown
-    &, & > .dropdown-list {
-        background-color: $polar2;
-        color: $snow1;
-        border: 1px solid $polar3;
-        border-radius: 4px;
-    }
+.chat-site-button {
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    padding: 4px 12px;
+    min-height: 28px;
+    transition: all 200ms ease;
 
     &:hover {
-        background-color: $polar3;
+        background-color: rgba($frost1, 0.15);
+        border-color: rgba($frost1, 0.3);
     }
 
-    // Styling for the custom list items (icon + label)
-    .list-item { // This is the default class for GtkListItem
-        padding: 4px 8px;
+    &:active {
+        background-color: rgba($frost1, 0.25);
+        border-color: $frost1;
+    }
 
-        & > box { // The box_container created in Rust
-            display: flex;
-            align-items: center; // Vertically center icon and label
+    &:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba($frost1, 0.4);
+    }
+}
 
-            & > image { // The icon_image
-                margin-right: 8px;
-                min-width: 16px; // Ensure consistent icon size
-                min-height: 16px;
-                // You might need to set max-width/height if icons are too big
-            }
+.chat-site-label {
+    color: $snow1;
+    font-size: 13px;
+    font-weight: 500;
+    transition: color 150ms ease;
 
-            & > label { // The label
-                color: $snow1;
-            }
-        }
+    .chat-site-button:hover & {
+        color: $frost1;
     }
 }
 
@@ -52,7 +54,15 @@
     background-color: transparent;
     color: $snow1;
     border: none;
-    font-size: 18px;
+    padding: 4px;
+    min-width: 28px;
+    min-height: 28px;
+
+    image {
+        min-width: 20px;
+        min-height: 20px;
+        -gtk-icon-size: 20px;
+    }
 
     &:hover {
         color: $frost1;

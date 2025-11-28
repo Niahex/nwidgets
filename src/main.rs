@@ -7,9 +7,11 @@ mod style {
 }
 
 use crate::services::bluetooth::BluetoothService;
+use crate::services::chat::ChatStateService;
 use crate::services::clipboard::ClipboardService;
 use crate::services::hyprland::HyprlandService;
 use crate::services::lock_state::{CapsLockService, NumLockService};
+use crate::services::mpris::MprisService;
 use crate::services::network::NetworkService;
 use crate::services::osd::OsdEventService;
 use crate::services::pipewire::PipeWireService;
@@ -81,6 +83,7 @@ fn main() {
             panel_window,
             active_window_module,
             workspaces_module,
+            mpris_module,
             bluetooth_module,
             network_module,
             systray_module,
@@ -97,12 +100,23 @@ fn main() {
 
         let active_window_module_clone = active_window_module.clone();
         HyprlandService::subscribe_active_window(move |active_window| {
-            active_window_module_clone.update(active_window.clone());
+            active_window_module_clone.update_hyprland_window(active_window.clone());
+        });
+
+        // S'abonner aux changements d'état du chat
+        let active_window_module_clone2 = active_window_module.clone();
+        ChatStateService::subscribe(move |chat_state| {
+            active_window_module_clone2.update_chat_state(chat_state);
         });
 
         let workspaces_module_clone = workspaces_module.clone();
         HyprlandService::subscribe_workspace(move |workspaces, active_workspace| {
             workspaces_module_clone.update(workspaces, active_workspace);
+        });
+
+        let mpris_module_clone = mpris_module.clone();
+        MprisService::subscribe(move |state| {
+            mpris_module_clone.update(state);
         });
 
         let bluetooth_module_clone = bluetooth_module.clone();

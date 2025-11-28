@@ -6,6 +6,7 @@ use modules::active_window::ActiveWindowModule;
 use modules::audio::{AudioDeviceType, AudioModule};
 use modules::bluetooth::BluetoothModule;
 use modules::datetime::DateTimeModule;
+use modules::mpris::MprisModule;
 use modules::network::NetworkModule;
 use modules::pomodoro::PomodoroModule;
 use modules::systray::SystrayModule;
@@ -21,6 +22,7 @@ pub fn create_panel_window(
     gtk::ApplicationWindow,
     ActiveWindowModule,
     WorkspacesModule,
+    MprisModule,
     BluetoothModule,
     NetworkModule,
     SystrayModule,
@@ -63,6 +65,10 @@ pub fn create_panel_window(
     workspaces_module.container.add_css_class("panel-center");
     layout.append(&workspaces_module.container);
 
+    // Module MPRIS juste après les workspaces
+    let mpris_module = MprisModule::new();
+    layout.append(&mpris_module.container);
+
     // Spacer pour pousser les autres modules à droite
     let spacer_right = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     spacer_right.set_hexpand(true);
@@ -100,6 +106,7 @@ pub fn create_panel_window(
         window,
         active_window_module,
         workspaces_module,
+        mpris_module,
         bluetooth_module,
         network_module,
         systray_module,
