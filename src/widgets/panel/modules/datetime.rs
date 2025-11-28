@@ -1,3 +1,4 @@
+use super::base::add_control_center_click_handler;
 use chrono::Local;
 use glib::ControlFlow;
 use gtk::prelude::*;
@@ -38,15 +39,7 @@ impl DateTimeModule {
         container.set_center_widget(Some(&datetime_box));
 
         // Gestionnaire de clic pour ouvrir le centre de contrôle (sans section spécifique)
-        let gesture = gtk::GestureClick::new();
-        gesture.connect_released(move |_, _, _, _| {
-            if let Some(app) = gtk::gio::Application::default() {
-                if let Some(action) = app.lookup_action("toggle-control-center") {
-                    action.activate(Some(&"".to_variant()));
-                }
-            }
-        });
-        container.add_controller(gesture);
+        add_control_center_click_handler(&container, "");
 
         let module = Self {
             container,

@@ -1,6 +1,5 @@
-use crate::icons;
+use super::base::{PanelModuleConfig, update_icon};
 use crate::services::bluetooth::BluetoothState;
-use gtk::prelude::*;
 use gtk4 as gtk;
 
 #[derive(Clone)]
@@ -11,31 +10,13 @@ pub struct BluetoothModule {
 
 impl BluetoothModule {
     pub fn new() -> Self {
-        let container = gtk::CenterBox::new();
-        container.add_css_class("bluetooth-widget");
-        container.set_width_request(35);
-        container.set_height_request(50);
-        container.set_halign(gtk::Align::Center);
-        container.set_valign(gtk::Align::Center);
-
-        let icon = icons::create_icon_with_size("bluetooth-disabled", Some(20));
-        icon.add_css_class("bluetooth-icon");
-        icon.set_halign(gtk::Align::Center);
-        icon.set_valign(gtk::Align::Center);
-
-        container.set_center_widget(Some(&icon));
-
-        // Gestionnaire de clic pour ouvrir le centre de contrôle avec la section bluetooth
-        let gesture = gtk::GestureClick::new();
-        gesture.connect_released(move |_, _, _, _| {
-            if let Some(app) = gtk::gio::Application::default() {
-                if let Some(action) = app.lookup_action("toggle-control-center") {
-                    action.activate(Some(&"bluetooth".to_variant()));
-                }
-            }
-        });
-        container.add_controller(gesture);
-
+        let config = PanelModuleConfig::new(
+            "bluetooth-widget",
+            "bluetooth-icon",
+            "bluetooth-disabled",
+            "bluetooth",
+        );
+        let (container, icon) = config.build();
         Self { container, icon }
     }
 
@@ -48,8 +29,6 @@ impl BluetoothModule {
             "bluetooth-paired"
         };
 
-        if let Some(paintable) = icons::get_paintable_with_size(icon_name, Some(20)) {
-            self.icon.set_paintable(Some(&paintable));
-        }
+        update_icon(&self.icon, icon_name, Some(20));
     }
 }

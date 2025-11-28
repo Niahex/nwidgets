@@ -1,5 +1,6 @@
 pub mod active_window;
 pub mod audio;
+pub mod base;
 pub mod bluetooth;
 pub mod datetime;
 pub mod network;
