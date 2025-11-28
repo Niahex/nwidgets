@@ -18,7 +18,6 @@ use crate::services::pipewire::PipeWireService;
 use crate::services::systray::SystemTrayService;
 use crate::widgets::chat::create_chat_overlay;
 use crate::widgets::control_center::create_control_center_window;
-use crate::widgets::launcher::create_launcher_window;
 use crate::widgets::notifications::create_notifications_window;
 use crate::widgets::osd::create_osd_window;
 use crate::widgets::panel::create_panel_window;
@@ -51,8 +50,6 @@ fn main() {
         // Créer le power menu (caché par défaut, toggle avec l'action "toggle-power-menu")
         let _power_menu_window = create_power_menu_window(app);
 
-        // Créer le launcher (caché par défaut, toggle avec l'action "toggle-launcher")
-        let _launcher_window = create_launcher_window(app);
 
         // Créer le centre de contrôle (caché par défaut, toggle avec l'action "toggle-control-center")
         let _control_center_window = create_control_center_window(app);

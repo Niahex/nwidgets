@@ -1,5 +1,4 @@
 pub mod chat;
-pub mod launcher;
 pub mod notifications;
 pub mod osd;
 pub mod panel;
