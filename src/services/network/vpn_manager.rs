@@ -39,7 +39,7 @@ impl VpnManager {
 
     /// List all VPN connections
     pub fn list_vpn_connections() -> Vec<VpnConnection> {
-        super::super::runtime::block_on(async {
+        crate::utils::runtime::block_on(async {
             Self::list_vpn_connections_async().await.unwrap_or_default()
         })
     }

@@ -1,4 +1,4 @@
-use super::subscription::ServiceSubscription;
+use crate::utils::subscription::ServiceSubscription;
 use once_cell::sync::Lazy;
 use std::process::Command;
 use std::sync::mpsc::Sender;

@@ -1,5 +1,5 @@
-mod icons;
 mod services;
+mod utils;
 mod widgets;
 
 // Include generated CSS from build.rs
@@ -36,7 +36,7 @@ fn main() {
         style::load_css();
 
         // Setup icon theme
-        icons::setup_icon_theme();
+        utils::icons::setup_icon_theme();
 
         // Créer l'overlay de chat (caché par défaut, toggle avec l'action "toggle-chat")
         let chat_overlay = create_chat_overlay(app);

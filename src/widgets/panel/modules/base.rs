@@ -1,4 +1,4 @@
-use crate::icons;
+use crate::utils::icons;
 use gtk::prelude::*;
 use gtk4 as gtk;
 

@@ -7,7 +7,7 @@ mod network_section;
 mod notifications_section;
 mod quick_settings;
 
-use crate::icons;
+use crate::utils::icons;
 use crate::services::notifications::{Notification, NotificationService};
 use crate::services::pipewire::{AudioState, PipeWireService};
 use gtk::prelude::*;

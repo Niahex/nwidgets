@@ -224,7 +224,7 @@ impl SystemTrayService {
 
         // Thread qui monitore le systray
         std::thread::spawn(move || {
-            super::runtime::block_on(async {
+            crate::utils::runtime::block_on(async {
                 let mut service = SystemTrayService::new();
 
                 // Démarrer le monitoring et obtenir les items initiaux
@@ -245,6 +245,6 @@ impl SystemTrayService {
         });
 
         // Utiliser l'abstraction de subscription
-        super::subscription::ServiceSubscription::subscribe(rx, callback);
+        crate::utils::subscription::ServiceSubscription::subscribe(rx, callback);
     }
 }

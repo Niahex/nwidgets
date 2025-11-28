@@ -73,7 +73,7 @@ impl SpeechRecognitionService {
         let audio_buffer_clone = audio_buffer.clone();
         std::thread::spawn(move || {
             // Use the shared tokio runtime
-            super::runtime::block_on(async move {
+            crate::utils::runtime::block_on(async move {
             loop {
                 tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
 

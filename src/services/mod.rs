@@ -8,10 +8,7 @@ pub mod notifications;
 pub mod osd;
 pub mod pipewire;
 pub mod pomodoro;
-pub mod pin_controller;
-pub mod runtime;
 // pub mod speech;
-pub mod subscription;
 pub mod systray;
 // pub mod transcription;
 
@@ -20,7 +17,6 @@ pub use lock_state::{CapsLockService, NumLockService};
 
 pub use applications::ApplicationsService;
 pub use notifications::NotificationService;
-pub use pin_controller::PinController;
 // pub use speech::SpeechRecognitionService;
 // pub use transcription::{
 //     receive_transcription_events, TranscriptionEvent, TranscriptionEventService,

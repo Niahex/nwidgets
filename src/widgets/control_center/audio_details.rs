@@ -1,4 +1,4 @@
-use crate::icons;
+use crate::utils::icons;
 use crate::services::pipewire::{AudioDevice, AudioStream, PipeWireService};
 use gtk::prelude::*;
 use gtk4 as gtk;

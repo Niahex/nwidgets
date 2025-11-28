@@ -131,7 +131,7 @@ impl NotificationService {
 
             std::thread::spawn(move || {
                 println!("[NOTIF] 🔧 D-Bus thread started, using shared runtime");
-                super::runtime::block_on(async {
+                crate::utils::runtime::block_on(async {
                     println!("[NOTIF] 🔧 Running D-Bus server");
                     if let Err(e) = Self::run_dbus_server().await {
                         eprintln!("[NOTIF] ❌ Erreur D-Bus: {}", e);
@@ -224,6 +224,6 @@ impl NotificationService {
         Self::start_dbus_server_once();
 
         // Utiliser l'abstraction de subscription
-        super::subscription::ServiceSubscription::subscribe(rx, callback);
+        crate::utils::subscription::ServiceSubscription::subscribe(rx, callback);
     }
 }

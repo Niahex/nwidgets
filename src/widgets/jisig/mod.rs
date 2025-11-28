@@ -9,8 +9,8 @@ use webkit6::{
     CookiePersistentStorage, HardwareAccelerationPolicy, Settings, UserMediaPermissionRequest,
     WebContext, WebView,
 };
-use crate::services::PinController;
-use crate::icons;
+use crate::utils::PinController;
+use crate::utils::icons;
 
 #[derive(Clone)]
 pub struct JisigOverlay {

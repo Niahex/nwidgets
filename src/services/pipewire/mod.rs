@@ -114,6 +114,6 @@ impl PipeWireService {
         });
 
         // Utiliser l'abstraction de subscription
-        super::subscription::ServiceSubscription::subscribe(rx, callback);
+        crate::utils::subscription::ServiceSubscription::subscribe(rx, callback);
     }
 }

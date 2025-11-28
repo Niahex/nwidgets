@@ -136,7 +136,7 @@ impl HyprlandService {
         MONITOR.add_workspace_subscriber(tx);
 
         // Utiliser l'abstraction de subscription
-        super::subscription::ServiceSubscription::subscribe(rx, move |(workspaces, active_workspace)| {
+        crate::utils::subscription::ServiceSubscription::subscribe(rx, move |(workspaces, active_workspace)| {
             callback(workspaces, active_workspace);
         });
 
@@ -156,7 +156,7 @@ impl HyprlandService {
         MONITOR.add_active_window_subscriber(tx);
 
         // Utiliser l'abstraction de subscription
-        super::subscription::ServiceSubscription::subscribe(rx, callback);
+        crate::utils::subscription::ServiceSubscription::subscribe(rx, callback);
 
         // Démarrer le monitoring si ce n'est pas déjà fait
         MONITOR.ensure_started();

@@ -93,7 +93,7 @@ impl NetworkService {
 
         // Thread that monitors the network
         std::thread::spawn(move || {
-            super::runtime::block_on(async {
+            crate::utils::runtime::block_on(async {
                 let mut last_state = Self::get_network_state().await.unwrap_or_else(|_| NetworkState {
                     connected: false,
                     connection_type: ConnectionType::None,
@@ -127,7 +127,7 @@ impl NetworkService {
         });
 
         // Utiliser l'abstraction de subscription
-        super::subscription::ServiceSubscription::subscribe(rx, callback);
+        crate::utils::subscription::ServiceSubscription::subscribe(rx, callback);
     }
 
     /// Get current network state
