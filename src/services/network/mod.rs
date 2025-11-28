@@ -93,8 +93,7 @@ impl NetworkService {
 
         // Thread that monitors the network
         std::thread::spawn(move || {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(async {
+            super::runtime::block_on(async {
                 let mut last_state = Self::get_network_state().await.unwrap_or_else(|_| NetworkState {
                     connected: false,
                     connection_type: ConnectionType::None,

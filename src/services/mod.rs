@@ -9,6 +9,7 @@ pub mod osd;
 pub mod pipewire;
 pub mod pomodoro;
 pub mod pin_controller;
+pub mod runtime;
 // pub mod speech;
 pub mod subscription;
 pub mod systray;

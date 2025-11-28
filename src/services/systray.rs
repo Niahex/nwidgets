@@ -224,8 +224,7 @@ impl SystemTrayService {
 
         // Thread qui monitore le systray
         std::thread::spawn(move || {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(async {
+            super::runtime::block_on(async {
                 let mut service = SystemTrayService::new();
 
                 // Démarrer le monitoring et obtenir les items initiaux

@@ -72,9 +72,8 @@ impl SpeechRecognitionService {
         let is_recording_clone = is_recording.clone();
         let audio_buffer_clone = audio_buffer.clone();
         std::thread::spawn(move || {
-            // Create a tokio runtime for this thread
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(async move {
+            // Use the shared tokio runtime
+            super::runtime::block_on(async move {
             loop {
                 tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
 

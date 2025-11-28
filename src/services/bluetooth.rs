@@ -83,8 +83,7 @@ impl BluetoothService {
 
         // Thread qui monitore le bluetooth
         std::thread::spawn(move || {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(async {
+            super::runtime::block_on(async {
                 loop {
                     if let Ok(state) = Self::get_bluetooth_state().await {
                         if tx.send(state).is_err() {
@@ -108,8 +107,7 @@ impl BluetoothService {
         let (tx, rx) = mpsc::channel();
 
         std::thread::spawn(move || {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(async {
+            super::runtime::block_on(async {
                 loop {
                     if let Ok(state) = Self::get_bluetooth_state().await {
                         let _ = tx.send(state);
@@ -195,8 +193,7 @@ impl BluetoothService {
 
     /// List all Bluetooth devices (paired and available)
     pub fn list_devices() -> Vec<BluetoothDevice> {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
+        super::runtime::block_on(async {
             Self::list_devices_async().await.unwrap_or_default()
         })
     }
@@ -246,8 +243,7 @@ impl BluetoothService {
     pub fn connect_device(device_path: &str) {
         let path = device_path.to_string();
         std::thread::spawn(move || {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(async {
+            super::runtime::block_on(async {
                 if let Err(e) = Self::connect_device_async(&path).await {
                     eprintln!("Failed to connect device: {}", e);
                 }
@@ -270,8 +266,7 @@ impl BluetoothService {
     pub fn disconnect_device(device_path: &str) {
         let path = device_path.to_string();
         std::thread::spawn(move || {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(async {
+            super::runtime::block_on(async {
                 if let Err(e) = Self::disconnect_device_async(&path).await {
                     eprintln!("Failed to disconnect device: {}", e);
                 }

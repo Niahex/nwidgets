@@ -130,9 +130,8 @@ impl NotificationService {
             println!("[NOTIF] 🚀 Starting D-Bus server thread");
 
             std::thread::spawn(move || {
-                println!("[NOTIF] 🔧 D-Bus thread started, creating runtime");
-                let rt = tokio::runtime::Runtime::new().unwrap();
-                rt.block_on(async {
+                println!("[NOTIF] 🔧 D-Bus thread started, using shared runtime");
+                super::runtime::block_on(async {
                     println!("[NOTIF] 🔧 Running D-Bus server");
                     if let Err(e) = Self::run_dbus_server().await {
                         eprintln!("[NOTIF] ❌ Erreur D-Bus: {}", e);

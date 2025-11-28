@@ -39,8 +39,7 @@ impl VpnManager {
 
     /// List all VPN connections
     pub fn list_vpn_connections() -> Vec<VpnConnection> {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
+        super::super::runtime::block_on(async {
             Self::list_vpn_connections_async().await.unwrap_or_default()
         })
     }
