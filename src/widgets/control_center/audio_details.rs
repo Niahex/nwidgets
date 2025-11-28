@@ -3,6 +3,137 @@ use crate::services::pipewire::{AudioDevice, AudioStream, PipeWireService};
 use gtk::prelude::*;
 use gtk4 as gtk;
 
+use super::section_helpers::{setup_expand_callback, setup_periodic_updates};
+
+pub fn create_audio_section() -> (gtk::Box, gtk::Scale, gtk::Scale, gtk::Image, gtk::Image, gtk::Box, gtk::Button, gtk::Box, gtk::Button) {
+    let section = gtk::Box::new(gtk::Orientation::Vertical, 8);
+    section.add_css_class("control-section");
+
+    let title = gtk::Label::new(Some("Audio"));
+    title.add_css_class("section-title");
+    title.set_halign(gtk::Align::Start);
+    section.append(&title);
+
+    // Volume controls with expand button
+    let volume_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    let volume_icon = icons::create_icon("sink-medium");
+    volume_icon.add_css_class("control-icon");
+    let volume_scale = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.0, 100.0, 1.0);
+    volume_scale.set_hexpand(true);
+    volume_scale.add_css_class("control-scale");
+    volume_scale.set_draw_value(true);
+    volume_scale.set_value_pos(gtk::PositionType::Right);
+
+    // Connect volume change
+    volume_scale.connect_value_changed(|scale| {
+        let volume = scale.value() as u8;
+        PipeWireService::set_volume(volume);
+    });
+
+    // Expand button for volume
+    let volume_expand_btn = gtk::Button::from_icon_name("go-down-symbolic");
+    volume_expand_btn.add_css_class("expand-button");
+
+    volume_box.append(&volume_icon);
+    volume_box.append(&volume_scale);
+    volume_box.append(&volume_expand_btn);
+    section.append(&volume_box);
+
+    // Expanded box for volume details (initially hidden)
+    let volume_expanded = create_volume_details();
+    section.append(&volume_expanded);
+
+    // Mic controls with expand button
+    let mic_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    let mic_icon = icons::create_icon("source-medium");
+    mic_icon.add_css_class("control-icon");
+    let mic_scale = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.0, 100.0, 1.0);
+    mic_scale.set_hexpand(true);
+    mic_scale.add_css_class("control-scale");
+    mic_scale.set_draw_value(true);
+    mic_scale.set_value_pos(gtk::PositionType::Right);
+
+    // Connect mic volume change
+    mic_scale.connect_value_changed(|scale| {
+        let volume = scale.value() as u8;
+        PipeWireService::set_mic_volume(volume);
+    });
+
+    // Expand button for mic
+    let mic_expand_btn = gtk::Button::from_icon_name("go-down-symbolic");
+    mic_expand_btn.add_css_class("expand-button");
+
+    mic_box.append(&mic_icon);
+    mic_box.append(&mic_scale);
+    mic_box.append(&mic_expand_btn);
+    section.append(&mic_box);
+
+    // Expanded box for mic details (initially hidden)
+    let mic_expanded = create_mic_details();
+    section.append(&mic_expanded);
+
+    (section, volume_scale, mic_scale, volume_icon, mic_icon, volume_expanded, volume_expand_btn, mic_expanded, mic_expand_btn)
+}
+
+pub fn setup_audio_section_callbacks(
+    volume_expanded: &gtk::Box,
+    volume_expand_btn: &gtk::Button,
+    mic_expanded: &gtk::Box,
+    mic_expand_btn: &gtk::Button,
+    panels: &PanelManager,
+) {
+    setup_expand_callback(volume_expanded, volume_expand_btn, panels, "volume", populate_volume_details);
+    setup_expand_callback(mic_expanded, mic_expand_btn, panels, "mic", populate_mic_details);
+}
+
+pub fn setup_audio_updates(
+    volume_expanded: &gtk::Box,
+    mic_expanded: &gtk::Box,
+) {
+    setup_periodic_updates(volume_expanded, 2, populate_volume_details);
+    setup_periodic_updates(mic_expanded, 2, populate_mic_details);
+}
+
+// Struct pour gérer l'état des panneaux
+#[derive(Clone)]
+pub struct PanelManager {
+    pub volume_expanded: gtk::Box,
+    pub mic_expanded: gtk::Box,
+    pub bluetooth_expanded: gtk::Box,
+    pub network_expanded: gtk::Box,
+}
+
+impl PanelManager {
+    pub fn new(
+        volume_expanded: gtk::Box,
+        mic_expanded: gtk::Box,
+        bluetooth_expanded: gtk::Box,
+        network_expanded: gtk::Box,
+    ) -> Self {
+        Self {
+            volume_expanded,
+            mic_expanded,
+            bluetooth_expanded,
+            network_expanded,
+        }
+    }
+
+    pub fn collapse_all_except(&self, except: &str) {
+        if except != "volume" {
+            self.volume_expanded.set_visible(false);
+        }
+        if except != "mic" {
+            self.mic_expanded.set_visible(false);
+        }
+        if except != "bluetooth" {
+            self.bluetooth_expanded.set_visible(false);
+        }
+        if except != "network" {
+            self.network_expanded.set_visible(false);
+        }
+    }
+}
+
 /// Determine the appropriate icon for a stream based on its title or app name
 fn get_stream_icon(stream: &AudioStream) -> String {
     // First, try to use the app icon from PipeWire metadata

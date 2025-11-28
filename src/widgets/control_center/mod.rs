@@ -1,11 +1,9 @@
 mod audio_details;
 mod bluetooth_details;
 mod network_details;
-mod audio_section;
-mod bluetooth_section;
-mod network_section;
-mod notifications_section;
+mod notifications_details;
 mod quick_settings;
+mod section_helpers;
 
 use crate::utils::icons;
 use crate::services::notifications::{Notification, NotificationService};
@@ -14,10 +12,10 @@ use gtk::prelude::*;
 use gtk4 as gtk;
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 
-use audio_section::{create_audio_section, setup_audio_section_callbacks, setup_audio_updates, PanelManager};
-use bluetooth_section::{create_bluetooth_section, setup_bluetooth_section_callbacks, setup_bluetooth_updates};
-use network_section::{create_network_section, setup_network_section_callbacks, setup_network_updates};
-use notifications_section::{create_notifications_section, add_notification_to_list};
+use audio_details::{create_audio_section, setup_audio_section_callbacks, setup_audio_updates, PanelManager};
+use bluetooth_details::{create_bluetooth_section, setup_bluetooth_section_callbacks, setup_bluetooth_updates};
+use network_details::{create_network_section, setup_network_section_callbacks, setup_network_updates};
+use notifications_details::{create_notifications_section, add_notification_to_list};
 use quick_settings::create_quick_settings_section;
 
 pub fn create_control_center_window(application: &gtk::Application) -> gtk::ApplicationWindow {
