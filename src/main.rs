@@ -8,11 +8,10 @@ mod style {
 }
 
 use crate::services::bluetooth::BluetoothService;
-use crate::services::capslock::CapsLockService;
 use crate::services::clipboard::ClipboardService;
 use crate::services::hyprland::HyprlandService;
+use crate::services::lock_state::{CapsLockService, NumLockService};
 use crate::services::network::NetworkService;
-use crate::services::numlock::NumLockService;
 use crate::services::osd::OsdEventService;
 use crate::services::pipewire::PipeWireService;
 use crate::services::systray::SystemTrayService;

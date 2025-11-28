@@ -1,3 +1,4 @@
+use once_cell::sync::OnceCell;
 use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
 use std::sync::{Arc, Mutex};
 
@@ -14,7 +15,7 @@ pub enum OsdEvent {
     DictationStopped,
 }
 
-static mut OSD_SENDER: Option<Arc<Mutex<Sender<OsdEvent>>>> = None;
+static OSD_SENDER: OnceCell<Arc<Mutex<Sender<OsdEvent>>>> = OnceCell::new();
 
 pub struct OsdEventService;
 
@@ -22,19 +23,17 @@ impl OsdEventService {
     /// Initialize the global OSD event channel
     pub fn init() -> Receiver<OsdEvent> {
         let (sender, receiver) = channel();
-        unsafe {
-            OSD_SENDER = Some(Arc::new(Mutex::new(sender)));
-        }
+        OSD_SENDER
+            .set(Arc::new(Mutex::new(sender)))
+            .expect("OsdEventService::init() should only be called once");
         receiver
     }
 
     /// Send an OSD event (can be called from anywhere)
     pub fn send_event(event: OsdEvent) {
-        unsafe {
-            if let Some(ref sender) = OSD_SENDER {
-                if let Ok(sender) = sender.lock() {
-                    let _ = sender.send(event);
-                }
+        if let Some(sender) = OSD_SENDER.get() {
+            if let Ok(sender) = sender.lock() {
+                let _ = sender.send(event);
             }
         }
     }

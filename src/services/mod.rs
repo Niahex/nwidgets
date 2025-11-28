@@ -1,11 +1,10 @@
 pub mod applications;
 pub mod bluetooth;
-pub mod capslock;
 pub mod clipboard;
 pub mod hyprland;
+pub mod lock_state;
 pub mod network;
 pub mod notifications;
-pub mod numlock;
 pub mod osd;
 pub mod pipewire;
 pub mod pomodoro;
@@ -13,6 +12,9 @@ pub mod pin_controller;
 // pub mod speech;
 pub mod systray;
 // pub mod transcription;
+
+// Re-export lock state services for backward compatibility
+pub use lock_state::{CapsLockService, NumLockService};
 
 pub use applications::ApplicationsService;
 pub use notifications::NotificationService;

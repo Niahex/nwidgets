@@ -1,9 +1,11 @@
 pub mod active_window;
-pub mod workspaces;
-pub mod datetime;
+pub mod audio;
 pub mod bluetooth;
+pub mod datetime;
 pub mod network;
-pub mod systray;
-pub mod sink;
-pub mod source;
 pub mod pomodoro;
+pub mod systray;
+pub mod workspaces;
+
+// Re-export audio module types for backward compatibility
+pub use audio::{AudioDeviceType, AudioModule, SinkModule, SourceModule};

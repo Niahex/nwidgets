@@ -3,14 +3,17 @@ use gtk4 as gtk;
 use gtk4_layer_shell::{Edge, Layer, LayerShell};
 pub mod modules; // Changed from `mod modules;` to `pub mod modules;`
 use modules::active_window::ActiveWindowModule;
+use modules::audio::{AudioDeviceType, AudioModule};
 use modules::bluetooth::BluetoothModule;
 use modules::datetime::DateTimeModule;
 use modules::network::NetworkModule;
-use modules::source::SourceModule;
 use modules::pomodoro::PomodoroModule;
 use modules::systray::SystrayModule;
-use modules::sink::SinkModule;
 use modules::workspaces::WorkspacesModule;
+
+// Type aliases for clarity
+type SinkModule = AudioModule;
+type SourceModule = AudioModule;
 
 pub fn create_panel_window(
     application: &gtk::Application,
@@ -79,9 +82,9 @@ pub fn create_panel_window(
     right_section.append(&pomodoro_module.container);
     
     // Autres modules alignés
-    let mic_module = SourceModule::new();
+    let mic_module = AudioModule::new(AudioDeviceType::Source);
     right_section.append(&mic_module.container);
-    let volume_module = SinkModule::new();
+    let volume_module = AudioModule::new(AudioDeviceType::Sink);
     right_section.append(&volume_module.container);
     let network_module = NetworkModule::new();
     right_section.append(&network_module.container);
