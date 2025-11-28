@@ -22,7 +22,7 @@ use crate::widgets::notifications::create_notifications_window;
 use crate::widgets::osd::create_osd_window;
 use crate::widgets::panel::create_panel_window;
 use crate::widgets::power_menu::create_power_menu_window;
-use crate::widgets::tasker::create_tasker_window;
+use crate::widgets::jisig::create_jisig_overlay;
 use gtk4::{self as gtk, prelude::*, Application};
 
 const APP_ID: &str = "github.niahex.nwidgets";
@@ -43,9 +43,10 @@ fn main() {
         let chat_overlay = create_chat_overlay(app);
         let chat_pin_controller = chat_overlay.pin_controller.clone();
 
-        // Créer la fenêtre de tasker (cachée par défaut, toggle avec l'action "toggle-tasker")
+        // Créer la fenêtre de jisig (cachée par défaut, toggle avec l'action "toggle-jisig")
         // Retourne aussi les contrôles pour le pin
-        let (tasker_window, tasker_pin_controller) = create_tasker_window(app);
+        let jisig_overlay = create_jisig_overlay(app);
+        let jisig_pin_controller = jisig_overlay.pin_controller.clone();
 
         // Créer le power menu (caché par défaut, toggle avec l'action "toggle-power-menu")
         let _power_menu_window = create_power_menu_window(app);
@@ -73,18 +74,18 @@ fn main() {
         // Action pour pin la fenêtre actuellement focus
         let pin_action = gtk::gio::SimpleAction::new("pin-focused-window", None);
         let chat_window_clone = chat_overlay.window.clone();
-        let tasker_window_clone = tasker_window.clone();
+        let jisig_window_clone = jisig_overlay.clone();
         let chat_pin_clone = chat_pin_controller.clone();
-        let tasker_pin_clone = tasker_pin_controller.clone();
+        let jisig_pin_clone = jisig_pin_controller.clone();
 
         pin_action.connect_activate(move |_, _| {
             // Vérifier quelle fenêtre est visible et focus
             if chat_window_clone.is_visible() && chat_window_clone.is_active() {
                 println!("[PIN] Chat window is focused, toggling pin");
                 chat_pin_clone.toggle();
-            } else if tasker_window_clone.is_visible() && tasker_window_clone.is_active() {
-                println!("[PIN] Tasker window is focused, toggling pin");
-                tasker_pin_clone.toggle();
+            } else if jisig_window_clone.window.is_visible() && jisig_window_clone.window.is_active() {
+                println!("[PIN] jisig window is focused, toggling pin");
+                jisig_pin_clone.toggle();
             } else {
                 println!("[PIN] No pinnable window is focused");
             }

@@ -1,310 +1,133 @@
-mod day_carousel;
-mod month_carousel;
-mod views;
-mod week_carousel;
-mod add_task_form;
-
-use crate::services::PinController;
-use crate::icons;
-use chrono::Local;
-use day_carousel::create_day_carousel;
-use gtk::prelude::*;
 use gtk4 as gtk;
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
-use month_carousel::create_month_carousel;
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
+use std::env;
+use std::fs;
 use std::rc::Rc;
-use views::{dayview, monthview, weekview, ViewMode};
-use week_carousel::create_week_carousel;
+use webkit6::prelude::*;
+use webkit6::{
+    CookiePersistentStorage, HardwareAccelerationPolicy, Settings, UserMediaPermissionRequest,
+    WebContext, WebView,
+};
+use crate::services::PinController;
+use crate::icons;
 
-pub fn create_tasker_window(
-    application: &gtk::Application,
-) -> (gtk::ApplicationWindow, PinController) {
-    // Créer la fenêtre
+#[derive(Clone)]
+pub struct JisigOverlay {
+    pub window: gtk::ApplicationWindow,
+    pub pin_controller: PinController,
+    #[allow(dead_code)]
+    pub id: String,
+    #[allow(dead_code)]
+    is_pinned: Rc<Cell<bool>>,
+}
+
+const SITES: &[(&str, &str)] = &[
+    ("Gemini", "https://gemini.google.com/"),
+    ("DeepSeek", "https://chat.deepseek.com/"),
+    ("AI Studio", "https://aistudio.google.com/apps"),
+    (
+        "DuckDuckGo AI",
+        "https://duckduckgo.com/?q=DuckDuckGo+AI+Chat&ia=chat&duckai=1&atb=v495-1",
+    ),
+];
+
+
+pub fn create_jisig_overlay(application: &gtk::Application) -> JisigOverlay {
+    // --- WebView Settings ---
+    let settings = Settings::new();
+    settings.set_javascript_can_access_clipboard(true);
+    settings.set_enable_developer_extras(true);
+    settings.set_user_agent(Some(
+        "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/119.0",
+    ));
+    settings.set_hardware_acceleration_policy(HardwareAccelerationPolicy::Always);
+    settings.set_enable_media_stream(true);
+    settings.set_enable_webaudio(true);
+    settings.set_enable_webrtc(true);
+    settings.set_enable_mediasource(true);
+    settings.set_enable_media(true);
+    settings.set_enable_media_capabilities(true);
+    settings.set_enable_encrypted_media(true);
+    settings.set_enable_mock_capture_devices(true);
+    settings.set_media_playback_requires_user_gesture(false);
+    settings.set_media_playback_allows_inline(true);
+    settings.set_media_content_types_requiring_hardware_support(None);
+
+    // --- Create Context and WebView ---
+    let context = WebContext::new();
+    let webview = WebView::builder().web_context(&context).build();
+    webview.set_settings(&settings);
+    webview.add_css_class("jisig-webview");
+
+
+    // --- Handle Permission Requests ---
+    webview.connect_permission_request(|_webview, request| {
+        if let Some(media_request) = request.downcast_ref::<UserMediaPermissionRequest>() {
+            if media_request.is_for_audio_device() {
+                println!("Microphone access requested. Granting permission.");
+                request.allow();
+                return true;
+            }
+        }
+        println!("Permission request denied by default.");
+        request.deny();
+        false
+    });
+
+    // --- Persistent Cookie Setup ---
+    if let Some(session) = webview.network_session() {
+        if let Some(cookie_manager) = session.cookie_manager() {
+            if let Some(home_dir) = env::home_dir() {
+                let cookie_file = home_dir.join(".local/share/nwidgets/cookies.sqlite"); // Changed path
+                if let Some(cookie_dir) = cookie_file.parent() {
+                    if fs::create_dir_all(cookie_dir).is_ok() {
+                        if let Some(path_str) = cookie_file.to_str() {
+                            cookie_manager
+                                .set_persistent_storage(path_str, CookiePersistentStorage::Sqlite);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Create a window and set its title
     let window = gtk::ApplicationWindow::builder()
         .application(application)
-        .title("Nwidgets Tasker")
+        .title("Nwidgets jisig") // Changed title
         .default_width(500)
         .default_height(600)
         .build();
-    window.add_css_class("tasker-window");
+    window.add_css_class("jisig-window");
 
-    // Cacher la fenêtre par défaut
-    window.set_visible(false);
-
-    // Configuration Layer Shell - ancré à droite
+    // --- GTK Layer Shell Setup ---
     window.init_layer_shell();
     window.set_layer(Layer::Overlay);
     window.set_anchor(Edge::Top, true);
     window.set_anchor(Edge::Bottom, true);
     window.set_anchor(Edge::Right, true);
-    window.set_keyboard_mode(KeyboardMode::OnDemand);
+    // window.set_keyboard_mode(KeyboardMode::OnDemand);
 
-    // Container principal
-    let main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    main_box.add_css_class("tasker-main");
+    // --- Site Selector Dropdown (Simplifié) ---
+    let site_names: Vec<&str> = SITES.iter().map(|(name, _)| *name).collect();
+    let string_list = gtk::StringList::new(&site_names);
+    let dropdown = gtk::DropDown::new(Some(string_list), None::<&gtk::Expression>);
+    dropdown.add_css_class("jisig-site-dropdown");
 
-    // Carrousels
-    let (day_carousel, day_on_date_changed, day_reset) = create_day_carousel();
-    let (week_carousel, week_on_date_changed, week_reset) = create_week_carousel();
-    let (month_carousel, month_on_date_changed, month_reset) = create_month_carousel();
-
-    // État de la vue actuelle
-    let current_view = Rc::new(RefCell::new(ViewMode::Day));
-
-    // Container pour le carrousel (changera selon la vue)
-    let carousel_container = gtk::Box::new(gtk::Orientation::Vertical, 0);
-
-    // Container pour le contenu de la vue
-    let view_container = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    view_container.set_vexpand(true);
-
-    // Header avec titre et bouton pin/unpin
-    let (header, is_exclusive, pin_icon, title_label) = create_header(
-        &window,
-        Rc::clone(&current_view),
-        view_container.clone(),
-        carousel_container.clone(),
-        day_reset.clone(),
-        week_reset.clone(),
-        month_reset.clone(),
-        day_carousel.clone(),
-        week_carousel.clone(),
-        month_carousel.clone(),
-    );
-    main_box.append(&header);
-
-    main_box.append(&carousel_container);
-
-    // Configurer les callbacks pour mettre à jour le label
-    let title_label_clone1 = title_label.clone();
-    *day_on_date_changed.borrow_mut() = Some(Box::new(move |date| {
-        let month_abbr = date.format("%b").to_string();
-        let year_short = date.format("%y").to_string();
-        let title_text = format!("{} {}", month_abbr, year_short);
-        title_label_clone1.set_text(&title_text);
-    }));
-
-    let title_label_clone2 = title_label.clone();
-    *week_on_date_changed.borrow_mut() = Some(Box::new(move |date| {
-        let month_abbr = date.format("%b").to_string();
-        let year_short = date.format("%y").to_string();
-        let title_text = format!("{} {}", month_abbr, year_short);
-        title_label_clone2.set_text(&title_text);
-    }));
-
-    let title_label_clone3 = title_label.clone();
-    *month_on_date_changed.borrow_mut() = Some(Box::new(move |date| {
-        let month_abbr = date.format("%b").to_string();
-        let year_short = date.format("%y").to_string();
-        let title_text = format!("{} {}", month_abbr, year_short);
-        title_label_clone3.set_text(&title_text);
-    }));
-
-    // Ajouter le container de vue
-    main_box.append(&view_container);
-
-    // Zone d'ajout de tâche
-    let (add_task_area, task_entry, add_button) = create_add_task_area();
-    main_box.append(&add_task_area);
-
-    // Connect the add button to show the full form
-    let view_container_clone = view_container.clone();
-    let carousel_container_clone = carousel_container.clone();
-    let current_view_clone = Rc::clone(&current_view);
-    add_button.connect_clicked(move |_| {
-        add_task_form::show_add_task_form(
-            &view_container_clone,
-            &carousel_container_clone,
-            &current_view_clone,
-        );
-    });
-
-    // Initialiser avec la vue jour
-    update_view(&view_container, ViewMode::Day);
-    update_carousel(
-        &carousel_container,
-        ViewMode::Day,
-        &day_carousel,
-        &week_carousel,
-        &month_carousel,
-    );
-
-    window.set_child(Some(&main_box));
-
-    // Ajouter l'action toggle-tasker avec fermeture mutuelle
-    let toggle_action = gtk::gio::SimpleAction::new("toggle-tasker", None);
-    let window_clone = window.clone();
-    let entry_clone = task_entry.clone();
-    let app_clone = application.clone();
-    toggle_action.connect_activate(move |_, _| {
-        let is_visible = window_clone.is_visible();
-
-        // Si on va ouvrir tasker, fermer control center s'il est ouvert
-        if !is_visible {
-            for window in app_clone.windows() {
-                if window
-                    .title()
-                    .map_or(false, |t| t.contains("Control Center"))
-                    && window.is_visible()
-                {
-                    if let Some(action) = app_clone.lookup_action("toggle-control-center") {
-                        action.activate(None);
-                    }
-                    break;
-                }
-            }
-        }
-
-        window_clone.set_visible(!is_visible);
-
-        // Si on ouvre la fenêtre, donner le focus à l'entrée de tâche
-        if !is_visible {
-            entry_clone.grab_focus();
-            println!("[TASKER] Toggle tasker window: true (focus grabbed)");
-        } else {
-            println!("[TASKER] Toggle tasker window: false");
+    let webview_clone = webview.clone();
+    dropdown.connect_selected_notify(move |dropdown| {
+        let selected = dropdown.selected() as usize;
+        if selected < SITES.len() {
+            webview_clone.load_uri(SITES[selected].1);
         }
     });
 
-    application.add_action(&toggle_action);
-
-    // Créer le PinController pour permettre le contrôle externe
-    let pin_controller = PinController::new(
-        window.clone(),
-        Rc::clone(&is_exclusive),
-        pin_icon.clone(),
-    );
-
-    // Gestionnaire de raccourci clavier Meta+P pour pin/unpin
-    let key_controller = gtk::EventControllerKey::new();
-    let window_clone2 = window.clone();
-    let is_exclusive_clone = Rc::clone(&is_exclusive);
-    let pin_controller_clone = pin_controller.clone();
-
-    key_controller.connect_key_pressed(move |_, keyval, _, modifiers| {
-        // Escape pour fermer si pas pinné
-        if keyval == gtk::gdk::Key::Escape && !is_exclusive_clone.get() {
-            window_clone2.set_visible(false);
-            println!("[TASKER] Window hidden (Escape pressed, not pinned)");
-            return gtk::glib::Propagation::Stop;
-        }
-
-        // Meta+P (Super+P)
-        if keyval == gtk::gdk::Key::p && modifiers.contains(gtk::gdk::ModifierType::SUPER_MASK) {
-            pin_controller_clone.toggle();
-            return gtk::glib::Propagation::Stop;
-        }
-        gtk::glib::Propagation::Proceed
-    });
-
-    window.add_controller(key_controller);
-
-    (window, pin_controller)
-}
-
-fn create_header(
-    window: &gtk::ApplicationWindow,
-    current_view: Rc<RefCell<ViewMode>>,
-    view_container: gtk::Box,
-    carousel_container: gtk::Box,
-    day_reset: Rc<RefCell<Option<Box<dyn Fn()>>>>,
-    week_reset: Rc<RefCell<Option<Box<dyn Fn()>>>>,
-    month_reset: Rc<RefCell<Option<Box<dyn Fn()>>>>,
-    day_carousel: gtk::Box,
-    week_carousel: gtk::Box,
-    month_carousel: gtk::Box,
-) -> (gtk::Box, Rc<Cell<bool>>, gtk::Image, gtk::Label) {
-    let header = gtk::Box::new(gtk::Orientation::Horizontal, 10);
-    header.add_css_class("tasker-header");
-    header.set_margin_start(16);
-    header.set_margin_end(16);
-    header.set_margin_top(16);
-    header.set_margin_bottom(16);
-
-    // Icône et titre
-    let icon_label = gtk::Label::new(Some("")); // Nerd font icon for tasks
-    icon_label.add_css_class("tasker-icon");
-    header.append(&icon_label);
-
-    // Obtenir le mois en cours (abrégé) et l'année (2 derniers chiffres)
-    let now = Local::now();
-    let month_abbr = now.format("%b").to_string();
-    let year_short = now.format("%y").to_string();
-    let title_text = format!("{} {}", month_abbr, year_short);
-
-    let title_label = gtk::Label::new(Some(&title_text));
-    title_label.add_css_class("tasker-title");
-
-    // Ajouter un gestionnaire de clic pour revenir à aujourd'hui
-    title_label.set_cursor_from_name(Some("pointer"));
-    let gesture = gtk::GestureClick::new();
-    let current_view_for_click = Rc::clone(&current_view);
-    gesture.connect_released(move |_, _, _, _| {
-        let view = *current_view_for_click.borrow();
-        match view {
-            ViewMode::Day => {
-                if let Some(reset_fn) = &*day_reset.borrow() {
-                    reset_fn();
-                }
-            }
-            ViewMode::Week => {
-                if let Some(reset_fn) = &*week_reset.borrow() {
-                    reset_fn();
-                }
-            }
-            ViewMode::Month => {
-                if let Some(reset_fn) = &*month_reset.borrow() {
-                    reset_fn();
-                }
-            }
-        }
-    });
-    title_label.add_controller(gesture);
-
-    header.append(&title_label);
-
-    // Spacer
-    let spacer = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    spacer.set_hexpand(true);
-    header.append(&spacer);
-
-    // Bouton pour changer de vue
-    let view_mode = *current_view.borrow();
-    let view_button = gtk::Button::with_label(view_mode.label());
-    view_button.add_css_class("tasker-view-button");
-
-    let window_clone = window.clone();
-    let view_button_clone = view_button.clone();
-    view_button.connect_clicked(move |_| {
-        let mut view = current_view.borrow_mut();
-        *view = view.next();
-        let new_view = *view;
-        drop(view);
-
-        view_button_clone.set_label(new_view.label());
-
-        let (width, height) = new_view.get_window_size();
-        window_clone.set_default_size(width, height);
-
-        update_view(&view_container, new_view);
-        update_carousel(
-            &carousel_container,
-            new_view,
-            &day_carousel,
-            &week_carousel,
-            &month_carousel,
-        );
-    });
-
-    header.append(&view_button);
-
-    // Bouton toggle pin/unpin (réserver/libérer l'espace)
+    // --- Toggle Button ---
     let pin_icon = icons::create_icon("pin");
     let toggle_button = gtk::Button::new();
     toggle_button.set_child(Some(&pin_icon));
-    toggle_button.add_css_class("tasker-pin-button");
-
+    toggle_button.add_css_class("jisig-pin-button");
     let is_exclusive = Rc::new(Cell::new(false));
     let is_exclusive_for_button = Rc::clone(&is_exclusive);
     let window_clone = window.clone();
@@ -316,81 +139,110 @@ fn create_header(
             if let Some(paintable) = icons::get_paintable("pin") {
                 pin_icon_clone.set_paintable(Some(&paintable));
             }
-            println!("[TASKER] Released exclusive space");
         } else {
             window_clone.auto_exclusive_zone_enable();
             is_exclusive_for_button.set(true);
             if let Some(paintable) = icons::get_paintable("unpin") {
                 pin_icon_clone.set_paintable(Some(&paintable));
             }
-            println!("[TASKER] Reserved exclusive space");
         }
     });
 
-    header.append(&toggle_button);
+    // --- Layout ---
+    let top_bar = gtk::Box::new(gtk::Orientation::Horizontal, 5);
+    top_bar.add_css_class("jisig-top-bar");
+    top_bar.append(&dropdown);
+    let spacer = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    spacer.set_hexpand(true); // Make the spacer expand horizontally
+    top_bar.append(&spacer);
+    top_bar.append(&toggle_button);
 
-    (header, is_exclusive, pin_icon, title_label)
-}
+    let layout = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    layout.add_css_class("jisig-layout");
+    layout.append(&top_bar);
+    layout.append(&webview);
+    webview.set_vexpand(true);
 
-pub fn update_view(container: &gtk::Box, view_mode: ViewMode) {
-    // Vider le container
-    while let Some(child) = container.first_child() {
-        container.remove(&child);
+    // Set the layout as the child of the window
+    window.set_child(Some(&layout));
+
+    // Load the initial URL
+    webview.load_uri(SITES[0].1);
+
+    // Cacher la fenêtre par défaut au démarrage
+    window.set_visible(false);
+
+    // Ajouter l'action toggle-jisig
+    let toggle_action = gtk::gio::SimpleAction::new("toggle-jisig", None);
+    let window_clone = window.clone();
+    let webview_clone = webview.clone();
+    toggle_action.connect_activate(move |_, _| {
+        let is_visible = window_clone.is_visible();
+        window_clone.set_visible(!is_visible);
+
+        // Si on ouvre la fenêtre, donner le focus et grab_focus
+        if !is_visible {
+            window_clone.present();
+            window_clone.grab_focus();
+            webview_clone.grab_focus();
+            println!("[jisig] Toggle jisig window: true (focus grabbed)");
+        } else {
+            println!("[jisig] Toggle jisig window: false");
+        }
+    });
+
+    application.add_action(&toggle_action);
+
+    // Gestionnaire de raccourci clavier Meta+P pour pin/unpin
+    let key_controller = gtk::EventControllerKey::new();
+    let window_clone = window.clone();
+    let is_exclusive_clone = Rc::clone(&is_exclusive);
+    let toggle_button_clone2 = toggle_button.clone();
+
+    let pin_icon_clone2 = pin_icon.clone();
+    key_controller.connect_key_pressed(move |_, keyval, _, modifiers| {
+        // Escape pour fermer si pas pinné
+        if keyval == gtk::gdk::Key::Escape && !is_exclusive_clone.get() {
+            window_clone.set_visible(false);
+            println!("[jisig] Window hidden (Escape pressed, not pinned)");
+            return gtk::glib::Propagation::Stop;
+        }
+
+        // Meta+P (Super+P)
+        if keyval == gtk::gdk::Key::p && modifiers.contains(gtk::gdk::ModifierType::SUPER_MASK) {
+            if is_exclusive_clone.get() {
+                window_clone.set_exclusive_zone(0);
+                is_exclusive_clone.set(false);
+                if let Some(paintable) = icons::get_paintable("pin") {
+                    pin_icon_clone2.set_paintable(Some(&paintable));
+                }
+                println!("[jisig] Released exclusive space (Meta+P)");
+            } else {
+                window_clone.auto_exclusive_zone_enable();
+                is_exclusive_clone.set(true);
+                if let Some(paintable) = icons::get_paintable("unpin") {
+                    pin_icon_clone2.set_paintable(Some(&paintable));
+                }
+                println!("[jisig] Reserved exclusive space (Meta+P)");
+            }
+            return gtk::glib::Propagation::Stop;
+        }
+        gtk::glib::Propagation::Proceed
+    });
+
+    window.add_controller(key_controller);
+
+    // Créer le PinController pour permettre le contrôle externe
+    let pin_controller = PinController::new(
+        window.clone(),
+        Rc::clone(&is_exclusive),
+        pin_icon.clone(),
+    );
+
+    JisigOverlay {
+        window,
+        pin_controller,
+        id: "jisig-overlay-main".to_string(),
+        is_pinned: is_exclusive,
     }
-
-    // Ajouter la nouvelle vue
-    let view_widget = match view_mode {
-        ViewMode::Day => dayview::create_dayview().upcast::<gtk::Widget>(),
-        ViewMode::Week => weekview::create_weekview().upcast::<gtk::Widget>(),
-        ViewMode::Month => monthview::create_monthview().upcast::<gtk::Widget>(),
-    };
-
-    container.append(&view_widget);
-}
-
-fn update_carousel(
-    container: &gtk::Box,
-    view_mode: ViewMode,
-    day_carousel: &gtk::Box,
-    week_carousel: &gtk::Box,
-    month_carousel: &gtk::Box,
-) {
-    // Vider le container
-    while let Some(child) = container.first_child() {
-        container.remove(&child);
-    }
-
-    // Ajouter le bon carrousel
-    let carousel_widget = match view_mode {
-        ViewMode::Day => day_carousel,
-        ViewMode::Week => week_carousel,
-        ViewMode::Month => month_carousel,
-    };
-
-    container.append(carousel_widget);
-}
-
-fn create_add_task_area() -> (gtk::Box, gtk::Entry, gtk::Button) {
-    let add_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-    add_box.add_css_class("tasker-add-area");
-    add_box.set_margin_start(16);
-    add_box.set_margin_end(16);
-    add_box.set_margin_top(8);
-    add_box.set_margin_bottom(16);
-
-    // Entry pour ajouter une tâche rapide
-    let entry = gtk::Entry::new();
-    entry.add_css_class("tasker-entry");
-    entry.set_placeholder_text(Some("Quick add task..."));
-    entry.set_hexpand(true);
-    add_box.append(&entry);
-
-    // Bouton pour ouvrir le formulaire complet
-    let add_btn = gtk::Button::new();
-    add_btn.add_css_class("tasker-add-button");
-    add_btn.set_icon_name("list-add-symbolic");
-    add_btn.set_tooltip_text(Some("Add task with details"));
-    add_box.append(&add_btn);
-
-    (add_box, entry, add_btn)
 }
