@@ -83,6 +83,15 @@ impl VolumeControl {
         let _ = Command::new("wpctl")
             .args(&["set-mute", device.wpctl_target(), "toggle"])
             .output();
+
+        let state = Self::get_audio_state();
+        let icon_name = device.get_icon_name(&state);
+        let is_muted = device.is_device_muted(&state);
+        let volume = match device {
+            AudioDevice::Sink => state.volume,
+            AudioDevice::Source => state.mic_volume,
+        };
+        OsdEventService::send_event(OsdEvent::Volume(icon_name.to_string(), volume, is_muted));
     }
 
     // Public API for backward compatibility
