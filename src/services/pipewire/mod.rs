@@ -113,20 +113,7 @@ impl PipeWireService {
             }
         });
 
-        let (async_tx, async_rx) = async_channel::unbounded();
-
-        std::thread::spawn(move || {
-            while let Ok(state) = rx.recv() {
-                if async_tx.send_blocking(state).is_err() {
-                    break;
-                }
-            }
-        });
-
-        MainContext::default().spawn_local(async move {
-            while let Ok(state) = async_rx.recv().await {
-                callback(state);
-            }
-        });
+        // Utiliser l'abstraction de subscription
+        super::subscription::ServiceSubscription::subscribe(rx, callback);
     }
 }

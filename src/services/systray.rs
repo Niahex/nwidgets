@@ -245,23 +245,7 @@ impl SystemTrayService {
             });
         });
 
-        // Créer un async channel pour exécuter le callback sur le thread principal
-        let (async_tx, async_rx) = async_channel::unbounded();
-
-        // Thread qui reçoit les mises à jour et les transfère au async channel
-        std::thread::spawn(move || {
-            while let Ok(items) = rx.recv() {
-                if async_tx.send_blocking(items).is_err() {
-                    break;
-                }
-            }
-        });
-
-        // Attacher le callback au async channel
-        MainContext::default().spawn_local(async move {
-            while let Ok(items) = async_rx.recv().await {
-                callback(items);
-            }
-        });
+        // Utiliser l'abstraction de subscription
+        super::subscription::ServiceSubscription::subscribe(rx, callback);
     }
 }

@@ -10,6 +10,7 @@ pub mod pipewire;
 pub mod pomodoro;
 pub mod pin_controller;
 // pub mod speech;
+pub mod subscription;
 pub mod systray;
 // pub mod transcription;
 

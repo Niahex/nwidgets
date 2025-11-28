@@ -135,23 +135,9 @@ impl HyprlandService {
         // Ajouter le sender à la liste des subscribers
         MONITOR.add_workspace_subscriber(tx);
 
-        // Créer un async channel pour exécuter le callback sur le thread principal
-        let (async_tx, async_rx) = async_channel::unbounded();
-
-        // Thread qui reçoit les mises à jour et les transfère au async channel
-        std::thread::spawn(move || {
-            while let Ok((workspaces, active_workspace)) = rx.recv() {
-                if async_tx.send_blocking((workspaces, active_workspace)).is_err() {
-                    break;
-                }
-            }
-        });
-
-        // Attacher le callback au async channel
-        MainContext::default().spawn_local(async move {
-            while let Ok((workspaces, active_workspace)) = async_rx.recv().await {
-                callback(workspaces, active_workspace);
-            }
+        // Utiliser l'abstraction de subscription
+        super::subscription::ServiceSubscription::subscribe(rx, move |(workspaces, active_workspace)| {
+            callback(workspaces, active_workspace);
         });
 
         // Démarrer le monitoring si ce n'est pas déjà fait
@@ -169,24 +155,8 @@ impl HyprlandService {
         // Ajouter le sender à la liste des subscribers
         MONITOR.add_active_window_subscriber(tx);
 
-        // Créer un async channel pour exécuter le callback sur le thread principal
-        let (async_tx, async_rx) = async_channel::unbounded();
-
-        // Thread qui reçoit les mises à jour et les transfère au async channel
-        std::thread::spawn(move || {
-            while let Ok(active_window) = rx.recv() {
-                if async_tx.send_blocking(active_window).is_err() {
-                    break;
-                }
-            }
-        });
-
-        // Attacher le callback au async channel
-        MainContext::default().spawn_local(async move {
-            while let Ok(active_window) = async_rx.recv().await {
-                callback(active_window);
-            }
-        });
+        // Utiliser l'abstraction de subscription
+        super::subscription::ServiceSubscription::subscribe(rx, callback);
 
         // Démarrer le monitoring si ce n'est pas déjà fait
         MONITOR.ensure_started();

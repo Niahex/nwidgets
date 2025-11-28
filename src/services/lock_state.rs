@@ -1,10 +1,10 @@
+use super::subscription::ServiceSubscription;
+use once_cell::sync::Lazy;
 use std::fs;
-use std::sync::mpsc::{self, Sender};
+use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use glib::MainContext;
-use once_cell::sync::Lazy;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LockType {
@@ -63,24 +63,10 @@ impl LockStateMonitor {
             self.start_monitoring();
         }
 
-        let (tx, rx) = mpsc::channel();
-        let (async_tx, async_rx) = async_channel::unbounded();
-
+        let (tx, rx) = std::sync::mpsc::channel();
         self.subscribers.lock().unwrap().push(tx);
 
-        thread::spawn(move || {
-            while let Ok(state) = rx.recv() {
-                if async_tx.send_blocking(state).is_err() {
-                    break;
-                }
-            }
-        });
-
-        MainContext::default().spawn_local(async move {
-            while let Ok(state) = async_rx.recv().await {
-                callback(state);
-            }
-        });
+        ServiceSubscription::subscribe(rx, callback);
     }
 
     fn start_monitoring(&self) {

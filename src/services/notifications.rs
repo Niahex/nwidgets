@@ -224,21 +224,7 @@ impl NotificationService {
         // Démarrer le serveur D-Bus (une seule fois)
         Self::start_dbus_server_once();
 
-        // Créer le bridge vers glib
-        let (async_tx, async_rx) = async_channel::unbounded();
-
-        std::thread::spawn(move || {
-            while let Ok(notification) = rx.recv() {
-                if async_tx.send_blocking(notification).is_err() {
-                    break;
-                }
-            }
-        });
-
-        MainContext::default().spawn_local(async move {
-            while let Ok(notification) = async_rx.recv().await {
-                callback(notification);
-            }
-        });
+        // Utiliser l'abstraction de subscription
+        super::subscription::ServiceSubscription::subscribe(rx, callback);
     }
 }

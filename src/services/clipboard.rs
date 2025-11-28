@@ -1,10 +1,10 @@
+use super::subscription::ServiceSubscription;
+use once_cell::sync::Lazy;
 use std::process::Command;
-use std::sync::mpsc::{self, Sender};
+use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use glib::MainContext;
-use once_cell::sync::Lazy;
 
 static SUBSCRIBERS: Lazy<Arc<Mutex<Vec<Sender<()>>>>> =
     Lazy::new(|| Arc::new(Mutex::new(Vec::new())));
@@ -39,24 +39,10 @@ impl ClipboardService {
             Self::start_monitoring();
         }
 
-        let (async_tx, async_rx) = async_channel::unbounded();
-        let (tx, rx) = mpsc::channel();
-
+        let (tx, rx) = std::sync::mpsc::channel();
         SUBSCRIBERS.lock().unwrap().push(tx);
 
-        thread::spawn(move || {
-            while let Ok(()) = rx.recv() {
-                if async_tx.send_blocking(()).is_err() {
-                    break;
-                }
-            }
-        });
-
-        MainContext::default().spawn_local(async move {
-            while let Ok(()) = async_rx.recv().await {
-                callback();
-            }
-        });
+        ServiceSubscription::subscribe(rx, move |_| callback());
     }
 
     fn start_monitoring() {
