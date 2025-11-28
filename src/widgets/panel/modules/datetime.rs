@@ -37,12 +37,12 @@ impl DateTimeModule {
         datetime_box.append(&date_label);
         container.set_center_widget(Some(&datetime_box));
 
-        // Gestionnaire de clic pour ouvrir le centre de contrôle
+        // Gestionnaire de clic pour ouvrir le centre de contrôle (sans section spécifique)
         let gesture = gtk::GestureClick::new();
         gesture.connect_released(move |_, _, _, _| {
             if let Some(app) = gtk::gio::Application::default() {
                 if let Some(action) = app.lookup_action("toggle-control-center") {
-                    action.activate(None);
+                    action.activate(Some(&"".to_variant()));
                 }
             }
         });

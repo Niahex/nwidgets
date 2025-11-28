@@ -25,12 +25,12 @@ impl NetworkModule {
 
         container.set_center_widget(Some(&icon));
 
-        // Click handler to open control center
+        // Click handler to open control center with network section
         let gesture = gtk::GestureClick::new();
         gesture.connect_released(move |_, _, _, _| {
             if let Some(app) = gtk::gio::Application::default() {
                 if let Some(action) = app.lookup_action("toggle-control-center") {
-                    action.activate(None);
+                    action.activate(Some(&"network".to_variant()));
                 }
             }
         });

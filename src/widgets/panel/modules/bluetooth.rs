@@ -25,12 +25,12 @@ impl BluetoothModule {
 
         container.set_center_widget(Some(&icon));
 
-        // Gestionnaire de clic pour ouvrir le centre de contrôle
+        // Gestionnaire de clic pour ouvrir le centre de contrôle avec la section bluetooth
         let gesture = gtk::GestureClick::new();
         gesture.connect_released(move |_, _, _, _| {
             if let Some(app) = gtk::gio::Application::default() {
                 if let Some(action) = app.lookup_action("toggle-control-center") {
-                    action.activate(None);
+                    action.activate(Some(&"bluetooth".to_variant()));
                 }
             }
         });
