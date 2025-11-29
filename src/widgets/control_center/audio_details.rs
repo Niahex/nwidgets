@@ -21,7 +21,7 @@ pub fn create_audio_section() -> (gtk::Box, gtk::Scale, gtk::Scale, gtk::Image, 
     let volume_icon = icons::create_icon("sink-medium");
     volume_icon.add_css_class("control-icon");
     volume_icon.set_size_request(24, 24);
-    let volume_scale = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.0, 100.0, 1.0);
+    let volume_scale = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.0, 100.0, 5.0);
     volume_scale.add_css_class("control-scale");
     volume_scale.set_hexpand(true);
     volume_scale.set_draw_value(true);
@@ -54,7 +54,7 @@ pub fn create_audio_section() -> (gtk::Box, gtk::Scale, gtk::Scale, gtk::Image, 
     let mic_icon = icons::create_icon("source-medium");
     mic_icon.add_css_class("control-icon");
     mic_icon.set_size_request(24, 24);
-    let mic_scale = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.0, 100.0, 1.0);
+    let mic_scale = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.0, 100.0, 5.0);
     mic_scale.add_css_class("control-scale");
     mic_scale.set_hexpand(true);
     mic_scale.set_draw_value(true);
@@ -348,7 +348,7 @@ fn create_stream_row(stream: AudioStream) -> gtk::Box {
     row.append(&first_line);
 
     // Second line: volume slider only
-    let volume_scale = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.0, 100.0, 1.0);
+    let volume_scale = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.0, 100.0, 5.0);
     volume_scale.set_value(stream.volume as f64);
     volume_scale.add_css_class("stream-scale");
     volume_scale.set_size_request(150, -1);
