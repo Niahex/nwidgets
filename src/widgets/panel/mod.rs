@@ -55,40 +55,49 @@ pub fn create_panel_window(
 
     layout.append(&left_section);
 
-    // Spacer pour centrer les workspaces
+    // Spacer pour centrer la section centrale
     let spacer_left = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     spacer_left.set_hexpand(true);
     layout.append(&spacer_left);
 
-    // Section centrale : UNIQUEMENT Workspaces (pour centrage absolu)
-    let workspaces_module = WorkspacesModule::new();
-    workspaces_module.container.add_css_class("panel-center");
-    layout.append(&workspaces_module.container);
+    // Section centrale : CenterBox pour centrage absolu des workspaces
+    let center_box = gtk::CenterBox::new();
+    center_box.add_css_class("panel-center");
 
-    // Spacer pour pousser les autres modules à droite
+    // Pomodoro - aligné à droite, s'étend vers la gauche
+    let pomodoro_module = PomodoroModule::new();
+    pomodoro_module.container.set_halign(gtk::Align::End);
+    pomodoro_module.container.set_hexpand(true);
+    center_box.set_start_widget(Some(&pomodoro_module.container));
+
+    // Workspaces au centre (position fixe)
+    let workspaces_module = WorkspacesModule::new();
+    workspaces_module.container.set_halign(gtk::Align::Center);
+    workspaces_module.container.set_hexpand(false);
+    center_box.set_center_widget(Some(&workspaces_module.container));
+
+    // MPRIS - aligné à gauche, s'étend vers la droite
+    let mpris_module = MprisModule::new();
+    mpris_module.container.set_halign(gtk::Align::Start);
+    mpris_module.container.set_hexpand(true);
+    center_box.set_end_widget(Some(&mpris_module.container));
+
+    layout.append(&center_box);
+
+    // Spacer pour pousser la section droite à droite
     let spacer_right = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     spacer_right.set_hexpand(true);
     layout.append(&spacer_right);
 
-    // Module MPRIS dans la section droite (avant les autres modules)
-    let mpris_module = MprisModule::new();
-
-    // Section droite : MPRIS en premier, puis Systray, Pomodoro, etc.
+    // Section droite : Systray, puis les autres modules
     let right_section = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     right_section.add_css_class("panel-right");
     right_section.set_halign(gtk::Align::End);
 
-    // MPRIS en premier dans la section droite
-    right_section.append(&mpris_module.container);
-
-    // Systray après MPRIS (peut changer de taille)
+    // Systray en premier (peut changer de taille)
     let systray_module = SystrayModule::new();
     right_section.append(&systray_module.container);
-    
-    // Pomodoro juste après
-    let pomodoro_module = PomodoroModule::new();
-    right_section.append(&pomodoro_module.container);
-    
+
     // Autres modules alignés
     let mic_module = AudioModule::new(AudioDeviceType::Source);
     right_section.append(&mic_module.container);

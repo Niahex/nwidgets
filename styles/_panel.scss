@@ -12,6 +12,13 @@
 
     .panel-center {
         padding: 0 8px;
+        gap: 8px; // Espacement entre les éléments de la CenterBox
+
+        // Les widgets start et end ne doivent pas expand
+        > :first-child,
+        > :last-child {
+            min-width: auto;
+        }
     }
 
     .panel-right {
