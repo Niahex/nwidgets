@@ -9,7 +9,6 @@ use std::time::{Duration, Instant};
 #[derive(Clone)]
 pub struct MprisModule {
     pub container: gtk::Box,
-    icon: gtk::Image,
     title_label: gtk::Label,
     artist_label: gtk::Label,
 }
@@ -18,11 +17,6 @@ impl MprisModule {
     pub fn new() -> Self {
         let container = gtk::Box::new(gtk::Orientation::Horizontal, 8);
         container.add_css_class("mpris-widget");
-
-        // Icône de lecture
-        let icon = icons::create_icon_with_size("play", Some(20));
-        icon.add_css_class("mpris-icon");
-        container.append(&icon);
 
         // Container pour le texte
         let text_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
@@ -112,7 +106,6 @@ impl MprisModule {
 
         Self {
             container,
-            icon,
             title_label,
             artist_label,
         }
@@ -128,16 +121,15 @@ impl MprisModule {
         // Afficher le widget
         self.container.set_visible(true);
 
-        // Mettre à jour l'icône selon le statut
-        let icon_name = match state.status {
-            PlaybackStatus::Playing => "play",
-            PlaybackStatus::Paused => "pause",
-            PlaybackStatus::Stopped => "play",
+        // Mettre à jour l'opacité selon le statut
+        let opacity = match state.status {
+            PlaybackStatus::Playing => 1.0,      // Opacité normale si playing
+            PlaybackStatus::Paused => 0.4,       // 40% d'opacité si pause
+            PlaybackStatus::Stopped => 1.0,
         };
 
-        if let Some(paintable) = icons::get_paintable_with_size(icon_name, Some(20)) {
-            self.icon.set_paintable(Some(&paintable));
-        }
+        self.title_label.set_opacity(opacity);
+        self.artist_label.set_opacity(opacity);
 
         // Mettre à jour le titre
         self.title_label.set_text(&state.metadata.title);
