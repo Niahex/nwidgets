@@ -1,9 +1,7 @@
-use std::process::Command;
 use std::os::unix::net::UnixStream;
 use std::io::{Read, Write, BufReader, BufRead};
 use std::sync::{Arc, Mutex, mpsc};
 use serde::{Deserialize, Serialize};
-use glib::MainContext;
 use once_cell::sync::Lazy;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -190,25 +188,19 @@ impl HyprlandService {
     }
 
     pub fn get_hyprland_data() -> (Vec<Workspace>, i32) {
-        let workspaces = Command::new("hyprctl")
-            .args(&["workspaces", "-j"])
-            .output()
-            .and_then(|output| {
-                let json_str = String::from_utf8_lossy(&output.stdout);
-                serde_json::from_str::<Vec<Workspace>>(&json_str)
-                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
+        let workspaces = Self::send_command("j/workspaces")
+            .ok()
+            .and_then(|response| {
+                serde_json::from_str::<Vec<Workspace>>(&response).ok()
             })
             .unwrap_or_default();
 
-        let active_workspace = Command::new("hyprctl")
-            .args(&["activeworkspace", "-j"])
-            .output()
-            .and_then(|output| {
-                let json_str = String::from_utf8_lossy(&output.stdout);
-                serde_json::from_str::<Workspace>(&json_str)
-                    .map(|ws| ws.id)
-                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
+        let active_workspace = Self::send_command("j/activeworkspace")
+            .ok()
+            .and_then(|response| {
+                serde_json::from_str::<Workspace>(&response).ok()
             })
+            .map(|ws| ws.id)
             .unwrap_or(1);
 
         (workspaces, active_workspace)
