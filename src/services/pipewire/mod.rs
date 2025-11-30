@@ -8,8 +8,9 @@ pub use device_manager::DeviceManager;
 pub use stream_manager::StreamManager;
 pub use volume_control::VolumeControl;
 
-use glib::MainContext;
 use std::sync::mpsc;
+use std::process::{Command, Stdio};
+use std::io::{BufRead, BufReader};
 
 pub struct PipeWireService;
 
@@ -94,26 +95,78 @@ impl PipeWireService {
 
         std::thread::spawn(move || {
             let mut last_state = Self::get_audio_state();
-            let _ = tx.send(last_state.clone());
+            if tx.send(last_state.clone()).is_err() {
+                return;
+            }
+
+            // Start pw-mon process to monitor changes
+            let mut child = match Command::new("pw-mon")
+                .stdout(Stdio::piped())
+                .spawn() 
+            {
+                Ok(child) => child,
+                Err(e) => {
+                    eprintln!("Failed to start pw-mon: {}. Falling back to polling.", e);
+                    // Fallback polling loop
+                    loop {
+                        std::thread::sleep(std::time::Duration::from_millis(1000));
+                        let new_state = Self::get_audio_state();
+                        if new_state != last_state {
+                            if tx.send(new_state.clone()).is_err() {
+                                break;
+                            }
+                            last_state = new_state;
+                        }
+                    }
+                    return;
+                }
+            };
+
+            let stdout = child.stdout.take().expect("Failed to capture pw-mon stdout");
+            let reader = BufReader::new(stdout);
+            
+            // Channel to signal that an event occurred
+            let (event_tx, event_rx) = mpsc::channel();
+            
+            // Spawn a thread to read pw-mon output
+            std::thread::spawn(move || {
+                for line in reader.lines() {
+                     if let Ok(l) = line {
+                         // "changed:" indicates a state change in the PipeWire graph
+                         if l.trim().starts_with("changed:") {
+                             if event_tx.send(()).is_err() { break; }
+                         }
+                     } else {
+                         break;
+                     }
+                }
+            });
 
             loop {
-                std::thread::sleep(std::time::Duration::from_millis(100));
-                let new_state = Self::get_audio_state();
+                // Wait for an event (blocking)
+                if event_rx.recv().is_err() {
+                    break; 
+                }
 
-                if new_state.volume != last_state.volume
-                    || new_state.muted != last_state.muted
-                    || new_state.mic_volume != last_state.mic_volume
-                    || new_state.mic_muted != last_state.mic_muted
-                {
+                // Debounce: Wait 50ms to coalesce rapid events (like volume sliding)
+                std::thread::sleep(std::time::Duration::from_millis(50));
+                
+                // Drain any other events that came in during the sleep
+                while event_rx.try_recv().is_ok() {}
+
+                let new_state = Self::get_audio_state();
+                if new_state != last_state {
                     if tx.send(new_state.clone()).is_err() {
                         break;
                     }
                     last_state = new_state;
                 }
             }
+            
+            // Cleanup
+            let _ = child.kill();
         });
 
-        // Utiliser l'abstraction de subscription
         crate::utils::subscription::ServiceSubscription::subscribe(rx, callback);
     }
 }
