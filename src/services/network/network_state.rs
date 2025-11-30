@@ -5,7 +5,7 @@ pub enum ConnectionType {
     None,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct NetworkState {
     pub connected: bool,
     pub connection_type: ConnectionType,

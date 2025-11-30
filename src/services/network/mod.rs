@@ -10,7 +10,7 @@ pub use vpn_manager::VpnManager;
 
 use zbus::{Connection, proxy};
 use std::sync::mpsc;
-use glib::MainContext;
+use futures_util::StreamExt;
 
 // NetworkManager main interface
 #[proxy(
@@ -94,6 +94,16 @@ impl NetworkService {
         // Thread that monitors the network
         std::thread::spawn(move || {
             crate::utils::runtime::block_on(async {
+                // Establish connection
+                let connection = match Connection::system().await {
+                    Ok(conn) => conn,
+                    Err(e) => {
+                        eprintln!("Error connecting to system bus: {}", e);
+                        return;
+                    }
+                };
+
+                // Initial state fetch
                 let mut last_state = Self::get_network_state().await.unwrap_or_else(|_| NetworkState {
                     connected: false,
                     connection_type: ConnectionType::None,
@@ -102,24 +112,65 @@ impl NetworkService {
                     vpn_active: false,
                 });
 
-                // Send initial state
-                let _ = tx.send(last_state.clone());
+                if tx.send(last_state.clone()).is_err() {
+                    return;
+                }
+
+                // Setup signal monitoring
+                let nm_proxy = match NetworkManagerProxy::new(&connection).await {
+                    Ok(proxy) => proxy,
+                    Err(e) => {
+                        eprintln!("Error creating NetworkManager proxy: {}", e);
+                        return;
+                    }
+                };
+
+                // Listen for StateChanged signal (connectivity changes)
+                let mut state_changed_stream = Some(nm_proxy.receive_state_changed().await);
+                
+                // Listen for ActiveConnections property changes (VPN, etc.)
+                let mut active_connections_stream = Some(nm_proxy.receive_active_connections_changed().await);
+
+                // Fallback timer (every 5s to catch missed events or ensure consistency)
+                let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(5));
 
                 loop {
-                    tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+                    let mut should_update = false;
 
-                    if let Ok(state) = Self::get_network_state().await {
-                        // Only send updates if state changed
-                        if state.connected != last_state.connected
-                            || state.connection_type != last_state.connection_type
-                            || (state.signal_strength as i16 - last_state.signal_strength as i16).abs() > 5
-                            || state.ssid != last_state.ssid
-                            || state.vpn_active != last_state.vpn_active
-                        {
-                            if tx.send(state.clone()).is_err() {
-                                break;
+                    tokio::select! {
+                        res = async {
+                            if let Some(stream) = state_changed_stream.as_mut() {
+                                if StreamExt::next(stream).await.is_some() {
+                                    return true;
+                                }
                             }
-                            last_state = state;
+                            std::future::pending::<bool>().await
+                        } => {
+                            if res { should_update = true; }
+                        },
+                        res = async {
+                            if let Some(stream) = active_connections_stream.as_mut() {
+                                if StreamExt::next(stream).await.is_some() {
+                                    return true;
+                                }
+                            }
+                            std::future::pending::<bool>().await
+                        } => {
+                            if res { should_update = true; }
+                        },
+                        _ = interval.tick() => {
+                            should_update = true;
+                        }
+                    }
+
+                    if should_update {
+                        if let Ok(state) = Self::get_network_state().await {
+                            if state != last_state {
+                                if tx.send(state.clone()).is_err() {
+                                    break;
+                                }
+                                last_state = state;
+                            }
                         }
                     }
                 }
