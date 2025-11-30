@@ -1,8 +1,8 @@
 use zbus::{Connection, proxy};
 use std::sync::mpsc;
-use glib::MainContext;
+use futures_util::StreamExt;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BluetoothState {
     pub powered: bool,
     pub connected_devices: usize,
@@ -84,15 +84,106 @@ impl BluetoothService {
         // Thread qui monitore le bluetooth
         std::thread::spawn(move || {
             crate::utils::runtime::block_on(async {
+                let connection = match Connection::system().await {
+                    Ok(conn) => conn,
+                    Err(e) => {
+                        eprintln!("Error connecting to system bus: {}", e);
+                        return;
+                    }
+                };
+
+                // Initial state
+                let mut last_state = match Self::get_bluetooth_state().await {
+                    Ok(state) => state,
+                    Err(_) => BluetoothState { powered: false, connected_devices: 0 },
+                };
+                if tx.send(last_state.clone()).is_err() {
+                    return;
+                }
+
+                // Monitor ObjectManager for device changes (InterfacesAdded/Removed)
+                let obj_manager = match zbus::fdo::ObjectManagerProxy::builder(&connection)
+                    .destination("org.bluez")
+                    .ok()
+                    .and_then(|b| b.path("/").ok())
+                {
+                    Some(builder) => builder.build().await.ok(),
+                    None => None,
+                };
+
+                // Monitor PropertiesChanged on Adapter1
+                let adapter_proxy = AdapterProxy::new(&connection).await.ok();
+                
+                let mut interfaces_added_stream = if let Some(ref om) = obj_manager {
+                    om.receive_interfaces_added().await.ok()
+                } else {
+                    None
+                };
+
+                let mut interfaces_removed_stream = if let Some(ref om) = obj_manager {
+                    om.receive_interfaces_removed().await.ok()
+                } else {
+                    None
+                };
+
+                let mut properties_changed_stream = if let Some(ref adapter) = adapter_proxy {
+                    Some(adapter.receive_powered_changed().await)
+                } else {
+                    None
+                };
+
+                // Create a polling fallback stream (every 2s instead of 5s for responsiveness if signals fail)
+                let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(2));
+
                 loop {
-                    if let Ok(state) = Self::get_bluetooth_state().await {
-                        if tx.send(state).is_err() {
-                            break;
+                    let mut should_update = false;
+
+                    tokio::select! {
+                        res = async {
+                            if let Some(stream) = interfaces_added_stream.as_mut() {
+                                if StreamExt::next(stream).await.is_some() {
+                                    return true;
+                                }
+                            }
+                            std::future::pending::<bool>().await
+                        } => {
+                            if res { should_update = true; }
+                        },
+                        res = async {
+                            if let Some(stream) = interfaces_removed_stream.as_mut() {
+                                if StreamExt::next(stream).await.is_some() {
+                                    return true;
+                                }
+                            }
+                            std::future::pending::<bool>().await
+                        } => {
+                            if res { should_update = true; }
+                        },
+                        res = async {
+                             if let Some(stream) = properties_changed_stream.as_mut() {
+                                if StreamExt::next(stream).await.is_some() {
+                                    return true;
+                                }
+                            }
+                            std::future::pending::<bool>().await
+                        } => {
+                            if res { should_update = true; }
+                        },
+                        _ = interval.tick() => {
+                            should_update = true;
                         }
                     }
 
-                    // Poll every 5 seconds
-                    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                    if should_update {
+                        if let Ok(new_state) = Self::get_bluetooth_state().await {
+                            if new_state != last_state {
+                                if tx.send(new_state.clone()).is_err() {
+                                    break;
+                                }
+                                last_state = new_state;
+                            }
+                        }
+                    }
                 }
             });
         });

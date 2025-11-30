@@ -2425,6 +2425,7 @@ dependencies = [
  "freedesktop-desktop-entry",
  "freedesktop-icons",
  "futures",
+ "futures-util",
  "gdk-pixbuf",
  "gdk4",
  "glib 0.18.5",
