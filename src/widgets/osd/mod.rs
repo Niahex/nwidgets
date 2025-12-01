@@ -247,34 +247,15 @@ fn create_stt_processing_osd() -> gtk::Widget {
 }
 
 fn create_stt_complete_osd(text: &str) -> gtk::Widget {
-    let container = gtk::Box::new(gtk::Orientation::Vertical, 8);
-    container.set_halign(gtk::Align::Start);
-
-    let header_box = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+    let container = gtk::Box::new(gtk::Orientation::Horizontal, 12);
 
     let icon = icons::create_icon("emblem-ok-symbolic");
     icon.add_css_class("osd-icon");
-    header_box.append(&icon);
+    container.append(&icon);
 
-    let title_label = gtk::Label::new(Some("Transcription Complete"));
-    title_label.add_css_class("osd-text");
-    header_box.append(&title_label);
-
-    container.append(&header_box);
-
-    // Show preview of transcribed text (truncated)
-    let preview_text = if text.len() > 60 {
-        format!("{}...", &text[..60])
-    } else {
-        text.to_string()
-    };
-
-    let preview_label = gtk::Label::new(Some(&preview_text));
-    preview_label.add_css_class("osd-text-small");
-    preview_label.set_halign(gtk::Align::Start);
-    preview_label.set_wrap(true);
-    preview_label.set_max_width_chars(50);
-    container.append(&preview_label);
+    let text_label = gtk::Label::new(Some(text));
+    text_label.add_css_class("osd-text");
+    container.append(&text_label);
 
     container.upcast()
 }

@@ -11,6 +11,9 @@ static SUBSCRIBERS: Lazy<Arc<Mutex<Vec<Sender<()>>>>> =
 
 static MONITOR_STARTED: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
 
+// Flag pour ignorer le prochain changement de clipboard (pour éviter double notification)
+static IGNORE_NEXT_CHANGE: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
+
 pub struct ClipboardService;
 
 impl ClipboardService {
@@ -48,6 +51,12 @@ impl ClipboardService {
         }
     }
 
+    /// Copie dans le clipboard sans déclencher l'événement de notification
+    pub fn set_clipboard_content_silent(text: &str) -> bool {
+        *IGNORE_NEXT_CHANGE.lock().unwrap() = true;
+        Self::set_clipboard_content(text)
+    }
+
     pub fn subscribe_clipboard<F>(callback: F)
     where
         F: Fn() + 'static,
@@ -78,8 +87,20 @@ impl ClipboardService {
                 if current_content != last_content && current_content.is_some() {
                     last_content = current_content;
 
-                    let mut subs = subscribers.lock().unwrap();
-                    subs.retain(|tx| tx.send(()).is_ok());
+                    // Vérifier si on doit ignorer ce changement
+                    let should_ignore = {
+                        let mut ignore = IGNORE_NEXT_CHANGE.lock().unwrap();
+                        let result = *ignore;
+                        if result {
+                            *ignore = false; // Reset le flag
+                        }
+                        result
+                    };
+
+                    if !should_ignore {
+                        let mut subs = subscribers.lock().unwrap();
+                        subs.retain(|tx| tx.send(()).is_ok());
+                    }
                 }
             }
         });

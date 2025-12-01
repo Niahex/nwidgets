@@ -430,13 +430,14 @@ impl SttService {
                                 Ok(text) => {
                                     let trimmed = text.trim();
                                     if !trimmed.is_empty() {
-                                        // Copy to clipboard
-                                        if ClipboardService::set_clipboard_content(trimmed) {
+                                        // Copy to clipboard silently (sans déclencher l'OSD clipboard)
+                                        if ClipboardService::set_clipboard_content_silent(trimmed) {
                                             println!("Transcription copied to clipboard: {}", trimmed);
+                                            OsdEventService::send_event(OsdEvent::SttComplete("Speech Copied".to_string()));
                                         } else {
                                             eprintln!("Failed to copy to clipboard");
+                                            OsdEventService::send_event(OsdEvent::SttError("Copy failed".to_string()));
                                         }
-                                        OsdEventService::send_event(OsdEvent::SttComplete(trimmed.to_string()));
                                     } else {
                                         OsdEventService::send_event(OsdEvent::SttError("No speech detected".to_string()));
                                     }
