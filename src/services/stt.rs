@@ -80,13 +80,17 @@ impl AudioRecorder {
         let channels = config.channels() as usize;
 
         let stream = match config.sample_format() {
-            cpal::SampleFormat::F32 => {
-                Self::build_stream::<f32>(&device, &config.into(), sample_tx.clone(), channels)
-            }
-            cpal::SampleFormat::I16 => {
-                Self::build_stream::<i16>(&device, &config.into(), sample_tx.clone(), channels)
-            }
-            _ => return Err(anyhow!("Unsupported sample format")),
+            cpal::SampleFormat::F32 => Self::build_stream::<f32>(&device, &config.into(), sample_tx.clone(), channels),
+            cpal::SampleFormat::I16 => Self::build_stream::<i16>(&device, &config.into(), sample_tx.clone(), channels),
+            cpal::SampleFormat::U16 => Self::build_stream::<u16>(&device, &config.into(), sample_tx.clone(), channels),
+            cpal::SampleFormat::I8 => Self::build_stream::<i8>(&device, &config.into(), sample_tx.clone(), channels),
+            cpal::SampleFormat::U8 => Self::build_stream::<u8>(&device, &config.into(), sample_tx.clone(), channels),
+            cpal::SampleFormat::I32 => Self::build_stream::<i32>(&device, &config.into(), sample_tx.clone(), channels),
+            cpal::SampleFormat::U32 => Self::build_stream::<u32>(&device, &config.into(), sample_tx.clone(), channels),
+            cpal::SampleFormat::F64 => Self::build_stream::<f64>(&device, &config.into(), sample_tx.clone(), channels),
+            cpal::SampleFormat::I64 => Self::build_stream::<i64>(&device, &config.into(), sample_tx.clone(), channels),
+            cpal::SampleFormat::U64 => Self::build_stream::<u64>(&device, &config.into(), sample_tx.clone(), channels),
+            _ => return Err(anyhow!("Unsupported sample format: {:?}", config.sample_format())),
         }?;
 
         stream.play()?;
@@ -371,7 +375,7 @@ impl SttService {
         match current_state {
             SttState::Idle => self.start_recording(),
             SttState::Recording => self.stop_recording(),
-            _ => Ok(()),
+            _ => Ok(()), // Ignore toggle pendant le processing
         }
     }
 
@@ -385,8 +389,20 @@ impl SttService {
         let (event_tx, event_rx) = mpsc::channel();
 
         // Create recorder
-        let recorder = AudioRecorder::new(event_tx)?;
-        recorder.start()?;
+        let recorder = match AudioRecorder::new(event_tx) {
+            Ok(r) => r,
+            Err(e) => {
+                let error_msg = format!("Audio error: {}", e);
+                OsdEventService::send_event(OsdEvent::SttError(error_msg.clone()));
+                return Err(anyhow!(error_msg));
+            }
+        };
+
+        if let Err(e) = recorder.start() {
+            let error_msg = format!("Start error: {}", e);
+            OsdEventService::send_event(OsdEvent::SttError(error_msg.clone()));
+            return Err(anyhow!(error_msg));
+        }
 
         *self.recorder.lock().unwrap() = Some(recorder);
         *self.state.lock().unwrap() = SttState::Recording;
@@ -397,12 +413,16 @@ impl SttService {
         // Handle audio events
         let state = self.state.clone();
         let transcriber = self.transcriber.clone();
+        let recorder = self.recorder.clone();
         thread::spawn(move || {
             while let Ok(event) = event_rx.recv() {
                 match event {
                     AudioEvent::AutoStopped(samples) | AudioEvent::ManualStopped(samples) => {
                         *state.lock().unwrap() = SttState::Processing;
                         OsdEventService::send_event(OsdEvent::SttProcessing);
+
+                        // Clear recorder
+                        *recorder.lock().unwrap() = None;
 
                         if let Some(manager) = transcriber.lock().unwrap().as_ref() {
                             match manager.transcribe(&samples) {
@@ -436,10 +456,14 @@ impl SttService {
     }
 
     fn stop_recording(&self) -> Result<()> {
-        if let Some(recorder) = self.recorder.lock().unwrap().as_ref() {
-            recorder.stop()?;
+        let mut recorder_guard = self.recorder.lock().unwrap();
+        if let Some(recorder) = recorder_guard.as_ref() {
+            let result = recorder.stop();
+            // Ne pas clear le recorder ici, le thread audio le fera après avoir envoyé les samples
+            result
+        } else {
+            Ok(())
         }
-        Ok(())
     }
 
     pub fn get_state(&self) -> SttState {
