@@ -52,29 +52,24 @@ impl MprisModule {
         container.add_controller(gesture_click);
 
         // Ajouter le contrôleur de scroll pour volume/pistes
-        // BOTH_AXES pour capturer vertical (volume) et horizontal (pistes)
         let scroll_controller = gtk::EventControllerScroll::new(
             gtk::EventControllerScrollFlags::BOTH_AXES,
         );
 
         // Debounce pour éviter les changements de piste trop rapides
-        // On met Instant::now() - 1 seconde pour autoriser le premier événement
         let last_track_change = Rc::new(Cell::new(Instant::now() - Duration::from_secs(1)));
-        let track_change_cooldown = Duration::from_millis(300); // 300ms entre chaque changement
+        let track_change_cooldown = Duration::from_millis(300);
 
         let container_clone = container.clone();
         let last_track_change_clone = Rc::clone(&last_track_change);
         scroll_controller.connect_scroll(move |_controller, dx, dy| {
-            // Vérifier que le widget est visible avant d'agir
             if !container_clone.is_visible() {
                 return gtk::glib::Propagation::Proceed;
             }
 
             let now = Instant::now();
 
-            // Scroll horizontal (tilt gauche/droite) = Changer de piste
             if dx.abs() > 0.0 {
-                // Vérifier le cooldown pour les changements de piste
                 if now.duration_since(last_track_change_clone.get()) >= track_change_cooldown {
                     if dx < 0.0 {
                         println!("[MPRIS] Scroll LEFT -> Previous track");
@@ -88,7 +83,6 @@ impl MprisModule {
                     println!("[MPRIS] Track change ignored (cooldown)");
                 }
             }
-            // Scroll vertical (haut/bas) = Ajuster le volume
             else if dy.abs() > 0.0 {
                 if dy < 0.0 {
                     println!("[MPRIS] Scroll UP -> Volume up");
@@ -121,15 +115,13 @@ impl MprisModule {
         // Afficher le widget
         self.container.set_visible(true);
 
-        // Mettre à jour l'opacité selon le statut
-        let opacity = match state.status {
-            PlaybackStatus::Playing => 1.0,      // Opacité normale si playing
-            PlaybackStatus::Paused => 0.4,       // 40% d'opacité si pause
-            PlaybackStatus::Stopped => 1.0,
-        };
-
-        self.title_label.set_opacity(opacity);
-        self.artist_label.set_opacity(opacity);
+        // --- GESTION DU STYLE ---
+        // Ajoute ou retire la classe CSS "paused" dynamiquement
+        if state.status == PlaybackStatus::Paused {
+            self.container.add_css_class("paused");
+        } else {
+            self.container.remove_css_class("paused");
+        }
 
         // Mettre à jour le titre
         self.title_label.set_text(&state.metadata.title);

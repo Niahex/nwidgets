@@ -114,6 +114,15 @@
         color: $snow0;
         opacity: 0.8;
     }
+
+    .paused {
+        opacity: 0.5;
+    }
+}
+
+.mpris-widget.paused {
+    opacity: 0.5;
+    // ou n'importe quel autre style (couleur, etc.)
 }
 
 // Specific module styles
