@@ -15,6 +15,7 @@ use crate::services::mpris::MprisService;
 use crate::services::network::NetworkService;
 use crate::services::osd::OsdEventService;
 use crate::services::pipewire::PipeWireService;
+use crate::services::stt::SttService;
 use crate::services::systray::SystemTrayService;
 use crate::widgets::chat::create_chat_overlay;
 use crate::widgets::control_center::create_control_center_window;
@@ -78,6 +79,20 @@ fn main() {
         });
 
         app.add_action(&pin_action);
+
+        // Initialize STT service
+        let stt_service = std::sync::Arc::new(SttService::new());
+        let _ = stt_service.initialize();
+
+        // Create STT toggle action
+        let stt_action = gtk::gio::SimpleAction::new("toggle-stt", None);
+        let stt_service_clone = stt_service.clone();
+        stt_action.connect_activate(move |_, _| {
+            if let Err(e) = stt_service_clone.toggle() {
+                eprintln!("[STT] Toggle error: {}", e);
+            }
+        });
+        app.add_action(&stt_action);
 
         let (
             panel_window,

@@ -74,6 +74,10 @@
           atk # Accessibility toolkit
           at-spi2-atk # AT-SPI bridge
           gtk4-layer-shell # For GTK4 layer shell
+          openblas # For whisper/transcribe-rs
+          llvmPackages.libclang.lib
+          vulkan-headers
+          vulkan-loader
         ];
 
         # Dependencies needed only at runtime
@@ -87,6 +91,11 @@
           pkg-config
           makeWrapper
           autoPatchelfHook
+          clang # For building whisper-rs/transcribe-rs C++ parts
+          mold # Faster linker (optional but good)
+          rustPlatform.bindgenHook
+          cmake
+          shaderc # For glslc (Vulkan shaders)
         ];
 
         envVars = {
@@ -94,6 +103,11 @@
           # GIO_USE_TLS = "gnutls"; # Souvent inutile si glib-networking est bien chargé, mais on peut le laisser si nécessaire
           SSL_CERT_FILE = "/nix/var/nix/profiles/system/etc/ssl/certs/ca-bundle.crt";
           NIX_SSL_CERT_FILE = "/nix/var/nix/profiles/system/etc/ssl/certs/ca-bundle.crt";
+          # Ensure pkg-config finds openblas
+          PKG_CONFIG_PATH = "${pkgs.openblas}/lib/pkgconfig";
+          # For bindgen (used by whisper-rs-sys)
+          LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+          BINDGEN_EXTRA_CLANG_ARGS = "-isystem ${pkgs.llvmPackages.libclang.lib}/lib/clang/${pkgs.lib.getVersion pkgs.clang}/include";
         };
 
         # Build artifacts
@@ -112,7 +126,8 @@
           # CORRECTION : Utilisation de GIO_EXTRA_MODULES au lieu de GIO_MODULE_DIR
           postFixup = ''
             wrapProgram $out/bin/nwidgets \
-              --prefix GIO_EXTRA_MODULES : "${pkgs.glib-networking}/lib/gio/modules"
+              --prefix GIO_EXTRA_MODULES : "${pkgs.glib-networking}/lib/gio/modules" \
+              --prefix LD_LIBRARY_PATH : "${pkgs.lib.makeLibraryPath buildInputs}"
           '';
         };
 

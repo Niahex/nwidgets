@@ -13,6 +13,10 @@ pub enum OsdEvent {
     DictationStarted,
     #[allow(dead_code)]
     DictationStopped,
+    SttRecording,     // STT recording started
+    SttProcessing,    // STT processing
+    SttComplete(String), // STT complete with transcription text
+    SttError(String), // STT error
 }
 
 static OSD_SENDER: OnceCell<Arc<Mutex<Sender<OsdEvent>>>> = OnceCell::new();

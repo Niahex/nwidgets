@@ -85,6 +85,10 @@ pub fn create_osd_window(application: &gtk::Application) -> gtk::ApplicationWind
                 OsdEvent::Clipboard => create_clipboard_osd(),
                 OsdEvent::DictationStarted => create_dictation_osd(true),
                 OsdEvent::DictationStopped => create_dictation_osd(false),
+                OsdEvent::SttRecording => create_stt_recording_osd(),
+                OsdEvent::SttProcessing => create_stt_processing_osd(),
+                OsdEvent::SttComplete(text) => create_stt_complete_osd(&text),
+                OsdEvent::SttError(error) => create_stt_error_osd(&error),
             };
             show_osd(content);
         }
@@ -206,6 +210,83 @@ fn create_clipboard_osd() -> gtk::Widget {
     container.append(&icon);
 
     let text_label = gtk::Label::new(Some("Copy"));
+    text_label.add_css_class("osd-text");
+    container.append(&text_label);
+
+    container.upcast()
+}
+
+fn create_stt_recording_osd() -> gtk::Widget {
+    let container = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+
+    let icon = icons::create_icon("audio-input-microphone");
+    icon.add_css_class("osd-icon");
+    icon.add_css_class("recording-pulse");
+    container.append(&icon);
+
+    let text_label = gtk::Label::new(Some("Recording..."));
+    text_label.add_css_class("osd-text");
+    container.append(&text_label);
+
+    container.upcast()
+}
+
+fn create_stt_processing_osd() -> gtk::Widget {
+    let container = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+
+    let spinner = gtk::Spinner::new();
+    spinner.start();
+    spinner.add_css_class("osd-icon");
+    container.append(&spinner);
+
+    let text_label = gtk::Label::new(Some("Processing..."));
+    text_label.add_css_class("osd-text");
+    container.append(&text_label);
+
+    container.upcast()
+}
+
+fn create_stt_complete_osd(text: &str) -> gtk::Widget {
+    let container = gtk::Box::new(gtk::Orientation::Vertical, 8);
+    container.set_halign(gtk::Align::Start);
+
+    let header_box = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+
+    let icon = icons::create_icon("emblem-ok-symbolic");
+    icon.add_css_class("osd-icon");
+    header_box.append(&icon);
+
+    let title_label = gtk::Label::new(Some("Transcription Complete"));
+    title_label.add_css_class("osd-text");
+    header_box.append(&title_label);
+
+    container.append(&header_box);
+
+    // Show preview of transcribed text (truncated)
+    let preview_text = if text.len() > 60 {
+        format!("{}...", &text[..60])
+    } else {
+        text.to_string()
+    };
+
+    let preview_label = gtk::Label::new(Some(&preview_text));
+    preview_label.add_css_class("osd-text-small");
+    preview_label.set_halign(gtk::Align::Start);
+    preview_label.set_wrap(true);
+    preview_label.set_max_width_chars(50);
+    container.append(&preview_label);
+
+    container.upcast()
+}
+
+fn create_stt_error_osd(error: &str) -> gtk::Widget {
+    let container = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+
+    let icon = icons::create_icon("dialog-error");
+    icon.add_css_class("osd-icon");
+    container.append(&icon);
+
+    let text_label = gtk::Label::new(Some(&format!("Error: {}", error)));
     text_label.add_css_class("osd-text");
     container.append(&text_label);
 

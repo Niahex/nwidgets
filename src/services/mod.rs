@@ -10,6 +10,7 @@ pub mod notifications;
 pub mod osd;
 pub mod pipewire;
 pub mod pomodoro;
+pub mod stt;
 pub mod systray;
 
 // Re-export lock state services for backward compatibility
@@ -19,3 +20,4 @@ pub use applications::ApplicationsService;
 pub use chat::ChatStateService;
 pub use mpris::MprisService;
 pub use notifications::NotificationService;
+pub use stt::SttService;
