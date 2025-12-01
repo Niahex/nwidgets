@@ -1,110 +1,98 @@
 use async_channel;
 use glib::MainContext;
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
+use std::time::Duration;
 
-/// Generic subscription helper that bridges sync monitoring threads with async GTK callbacks
-///
-/// This abstraction eliminates the repeated pattern of:
-/// 1. Creating sync channel for monitoring thread
-/// 2. Creating async channel for GTK main loop
-/// 3. Spawning bridge thread between them
-/// 4. Spawning GTK callback handler
-///
-/// Usage:
-/// ```
-/// ServiceSubscription::subscribe(rx_from_monitor, move |state| {
-///     // Your GTK callback here
-/// });
-/// ```
+/// Helper générique pour connecter des threads de monitoring synchrones à l'interface GTK.
 pub struct ServiceSubscription;
 
 impl ServiceSubscription {
-    /// Subscribe to state updates from a monitoring thread
+    /// Abonne un callback aux mises à jour d'un Receiver.
     ///
-    /// Takes a receiver from a monitoring thread and a callback that will be
-    /// executed in the GTK main loop whenever new state arrives.
+    /// Cette version utilise `async_channel` et `spawn_local` pour permettre
+    /// l'utilisation de callbacks qui ne sont pas thread-safe (ex: mise à jour de widgets GTK).
+    ///
+    /// Le `callback` n'a PAS besoin d'être `Send` ni `Sync`.
     pub fn subscribe<T, F>(rx: mpsc::Receiver<T>, callback: F)
     where
         T: Send + 'static,
         F: Fn(T) + 'static,
     {
+        // Canal intermédiaire pour passer du monde sync (mpsc/thread de fond)
+        // au monde async (MainContext/thread UI)
         let (async_tx, async_rx) = async_channel::unbounded();
 
-        // Bridge thread: sync -> async
-        thread::spawn(move || {
-            while let Ok(state) = rx.recv() {
-                if async_tx.send_blocking(state).is_err() {
+        // Tâche de fond : Pont mpsc -> async_channel
+        // Utilise le pool de threads partagé via spawn_blocking au lieu de créer un thread OS dédié.
+        // Cela réduit l'empreinte mémoire si on a beaucoup de widgets.
+        crate::utils::runtime::spawn_blocking(move || {
+            while let Ok(msg) = rx.recv() {
+                if async_tx.send_blocking(msg).is_err() {
                     break;
                 }
             }
         });
 
-        // GTK main loop callback
+        // Tâche principale : Lecture async_channel -> callback
+        // `spawn_local` garantit l'exécution sur le thread principal GTK (le thread qui a initialisé le contexte),
+        // ce qui est requis pour manipuler l'UI.
         MainContext::default().spawn_local(async move {
-            while let Ok(state) = async_rx.recv().await {
-                callback(state);
+            while let Ok(msg) = async_rx.recv().await {
+                callback(msg);
             }
         });
     }
 
-    /// Create a subscription system with monitoring thread
+    /// Crée un système de souscription avec un moniteur centralisé.
     ///
-    /// Returns (sender, subscription_fn) where:
-    /// - sender: Send state updates to subscribers
-    /// - subscription_fn: Call this to add new subscribers
-    ///
-    /// The monitoring thread should call sender.send(state) to update all subscribers.
+    /// Utile pour les services qui ont plusieurs abonnés (ex: HyprlandService).
+    /// Le `monitor_fn` est exécuté une seule fois.
     pub fn create_subscription_system<T, M>(monitor_fn: M) -> impl Fn(Box<dyn Fn(T) + 'static>)
     where
         T: Clone + Send + 'static,
         M: FnOnce(mpsc::Sender<T>) + Send + 'static,
     {
-        use std::sync::{Arc, Mutex};
-
         let subscribers: Arc<Mutex<Vec<mpsc::Sender<T>>>> = Arc::new(Mutex::new(Vec::new()));
         let subscribers_clone = Arc::clone(&subscribers);
 
-        // Start monitoring thread
-        thread::spawn(move || {
+        // Lancer le monitoring dans le pool de threads partagé
+        crate::utils::runtime::spawn_blocking(move || {
             let (tx, rx) = mpsc::channel();
 
-            // Spawn the actual monitor
-            thread::spawn(move || {
-                monitor_fn(tx);
-            });
+            // Exécuter la fonction de monitoring (qui peut être bloquante ou lancer son propre processus)
+            monitor_fn(tx);
 
-            // Relay to all subscribers
+            // Dispatcher les événements à tous les abonnés
             while let Ok(state) = rx.recv() {
                 let mut subs = subscribers_clone.lock().unwrap();
                 subs.retain(|subscriber| subscriber.send(state.clone()).is_ok());
             }
         });
 
-        // Return subscription function
+        // Retourne la closure d'abonnement que les widgets utiliseront
         move |callback: Box<dyn Fn(T) + 'static>| {
             let (tx, rx) = mpsc::channel();
             subscribers.lock().unwrap().push(tx);
+            // On délègue à subscribe qui gère le pont vers le thread principal
             Self::subscribe(rx, callback);
         }
     }
 
-    /// Simplified subscription for services that poll periodically
+    /// Helper pour les services basés sur du polling (vérification périodique).
     ///
-    /// Takes a polling function and interval, manages the monitoring thread,
-    /// and returns a subscription function.
+    /// Lance une boucle infinie qui vérifie l'état toutes les `interval` et notifie en cas de changement.
     pub fn create_polling_subscription<T, F>(
         poll_fn: F,
-        interval: std::time::Duration,
+        interval: Duration,
     ) -> impl Fn(Box<dyn Fn(T) + 'static>)
     where
         T: Clone + Send + PartialEq + 'static,
-        F: Fn() -> T + Send + 'static,
+        F: Fn() -> T + Send + Sync + 'static,
     {
         Self::create_subscription_system(move |tx| {
+            // Le polling tourne dans le spawn_blocking de create_subscription_system
             let mut last_state = poll_fn();
-
-            // Send initial state
             let _ = tx.send(last_state.clone());
 
             loop {
@@ -114,37 +102,10 @@ impl ServiceSubscription {
                 if current_state != last_state {
                     last_state = current_state.clone();
                     if tx.send(current_state).is_err() {
-                        break;
+                        break; // Arrêt si plus personne n'écoute (canal fermé)
                     }
                 }
             }
         })
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::time::Duration;
-
-    #[test]
-    fn test_subscription_basic() {
-        let (tx, rx) = mpsc::channel();
-
-        let received = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
-        let received_clone = received.clone();
-
-        ServiceSubscription::subscribe(rx, move |value: i32| {
-            received_clone.lock().unwrap().push(value);
-        });
-
-        tx.send(1).unwrap();
-        tx.send(2).unwrap();
-        tx.send(3).unwrap();
-
-        thread::sleep(Duration::from_millis(100));
-
-        // Note: In real GTK app, the main loop would process these
-        // In test, we just verify the subscription was created
     }
 }

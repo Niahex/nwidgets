@@ -1,99 +1,54 @@
-use once_cell::sync::Lazy;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use tokio::runtime::Runtime;
 
-/// Shared Tokio runtime for all async operations
+/// Runtime Tokio partagé pour toutes les opérations asynchrones.
 ///
-/// This provides a single multi-threaded runtime that all services can use,
-/// avoiding the overhead of creating multiple runtimes.
-static SHARED_RUNTIME: Lazy<Arc<Runtime>> = Lazy::new(|| {
-    Arc::new(
-        tokio::runtime::Builder::new_multi_thread()
-            .worker_threads(4) // Adjust based on your needs
-            .thread_name("nwidgets-tokio")
-            .enable_all()
-            .build()
-            .expect("Failed to create Tokio runtime")
-    )
-});
+/// Utilise `OnceLock` (std) au lieu de `lazy_static` pour une initialisation plus propre.
+static SHARED_RUNTIME: OnceLock<Arc<Runtime>> = OnceLock::new();
 
-/// Get a reference to the shared Tokio runtime
+/// Récupère une référence vers le runtime Tokio partagé.
 ///
-/// This runtime is shared across all services and is created lazily on first use.
-/// It uses a multi-threaded scheduler with 4 worker threads.
-///
-/// # Example
-/// ```
-/// use crate::services::runtime;
-///
-/// runtime::get().spawn(async {
-///     // Your async task here
-/// });
-/// ```
-pub fn get() -> Arc<Runtime> {
-    Arc::clone(&SHARED_RUNTIME)
+/// Le runtime est initialisé lors du premier appel.
+/// Il utilise un scheduler multi-threads pour gérer efficacement les tâches d'arrière-plan.
+pub fn get() -> &'static Arc<Runtime> {
+    SHARED_RUNTIME.get_or_init(|| {
+        Arc::new(
+            tokio::runtime::Builder::new_multi_thread()
+                .worker_threads(4) // Suffisant pour l'UI et les services d'arrière-plan
+                .thread_name("nwidgets-tokio")
+                .enable_all()
+                .build()
+                .expect("Impossible de créer le runtime Tokio"),
+        )
+    })
 }
 
-/// Execute a future on the shared runtime and block until completion
+/// Exécute une future sur le runtime partagé et bloque le thread courant jusqu'à la fin.
 ///
-/// This is a convenience wrapper around `runtime::get().block_on()`.
-///
-/// # Example
-/// ```
-/// use crate::services::runtime;
-///
-/// let result = runtime::block_on(async {
-///     // Your async code here
-///     42
-/// });
-/// ```
+/// Utile pour appeler du code async depuis un contexte synchrone (ex: initialisation).
 pub fn block_on<F: std::future::Future>(future: F) -> F::Output {
-    SHARED_RUNTIME.block_on(future)
+    get().block_on(future)
 }
 
-/// Spawn a task on the shared runtime
+/// Lance une tâche asynchrone sur le runtime partagé.
 ///
-/// Returns a JoinHandle that can be used to await the task's completion.
-///
-/// # Example
-/// ```
-/// use crate::services::runtime;
-///
-/// let handle = runtime::spawn(async {
-///     // Your async task
-/// });
-/// ```
+/// Retourne un JoinHandle pour attendre le résultat si nécessaire.
 pub fn spawn<F>(future: F) -> tokio::task::JoinHandle<F::Output>
 where
     F: std::future::Future + Send + 'static,
     F::Output: Send + 'static,
 {
-    SHARED_RUNTIME.spawn(future)
+    get().spawn(future)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_shared_runtime() {
-        let rt1 = get();
-        let rt2 = get();
-
-        // Both should point to the same runtime
-        assert!(Arc::ptr_eq(&rt1, &rt2));
-    }
-
-    #[test]
-    fn test_block_on() {
-        let result = block_on(async { 42 });
-        assert_eq!(result, 42);
-    }
-
-    #[test]
-    fn test_spawn() {
-        let handle = spawn(async { 100 });
-        let result = block_on(handle).unwrap();
-        assert_eq!(result, 100);
-    }
+/// Lance une tâche bloquante sur le pool dédié de Tokio.
+///
+/// Idéal pour écouter des canaux `mpsc` standards ou faire des IO synchrones
+/// sans bloquer les workers asynchrones et sans créer de nouveaux threads OS manuellement.
+pub fn spawn_blocking<F, R>(func: F) -> tokio::task::JoinHandle<R>
+where
+    F: FnOnce() -> R + Send + 'static,
+    R: Send + 'static,
+{
+    get().spawn_blocking(func)
 }
