@@ -41,7 +41,6 @@ uuid = { version = "1.18.1", features = ["v4"] }
 futures-util = "0.3.31"
 transcribe-rs = "0.1.4"
 reqwest = { version = "0.12.5", features = ["json", "stream"] }
-arboard = "3.4.0"
 
 [build-dependencies]
 grass = "0.13"

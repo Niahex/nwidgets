@@ -28,6 +28,26 @@ impl ClipboardService {
             })
     }
 
+    pub fn set_clipboard_content(text: &str) -> bool {
+        use std::io::Write;
+
+        match Command::new("wl-copy")
+            .stdin(std::process::Stdio::piped())
+            .spawn()
+        {
+            Ok(mut child) => {
+                if let Some(mut stdin) = child.stdin.take() {
+                    if stdin.write_all(text.as_bytes()).is_ok() {
+                        drop(stdin);
+                        return child.wait().map(|s| s.success()).unwrap_or(false);
+                    }
+                }
+                false
+            }
+            Err(_) => false,
+        }
+    }
+
     pub fn subscribe_clipboard<F>(callback: F)
     where
         F: Fn() + 'static,

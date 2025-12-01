@@ -8,6 +8,7 @@ use std::time::{Duration, Instant};
 use transcribe_rs::engines::whisper::{WhisperEngine, WhisperInferenceParams};
 use transcribe_rs::TranscriptionEngine;
 use crate::services::osd::{OsdEvent, OsdEventService};
+use crate::services::clipboard::ClipboardService;
 
 const WHISPER_SAMPLE_RATE: u32 = 16000;
 const SILENCE_THRESHOLD: f32 = 0.01;
@@ -430,11 +431,12 @@ impl SttService {
                                     let trimmed = text.trim();
                                     if !trimmed.is_empty() {
                                         // Copy to clipboard
-                                        if let Ok(mut ctx) = arboard::Clipboard::new() {
-                                            let _ = ctx.set_text(trimmed);
+                                        if ClipboardService::set_clipboard_content(trimmed) {
+                                            println!("Transcription copied to clipboard: {}", trimmed);
+                                        } else {
+                                            eprintln!("Failed to copy to clipboard");
                                         }
                                         OsdEventService::send_event(OsdEvent::SttComplete(trimmed.to_string()));
-                                        println!("Transcription: {}", trimmed);
                                     } else {
                                         OsdEventService::send_event(OsdEvent::SttError("No speech detected".to_string()));
                                     }
