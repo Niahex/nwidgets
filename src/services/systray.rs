@@ -2,7 +2,7 @@ use zbus::{Connection, proxy, interface, SignalContext, MessageHeader};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, mpsc};
-use glib::MainContext;
+use futures_util::StreamExt;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrayItem {
@@ -13,7 +13,7 @@ pub struct TrayItem {
     pub object_path: String,
 }
 
-// StatusNotifierItem interface proxy
+// Interface Proxy pour l'item
 #[proxy(
     interface = "org.kde.StatusNotifierItem",
     default_service = "org.kde.StatusNotifierItem",
@@ -22,46 +22,17 @@ pub struct TrayItem {
 trait StatusNotifierItem {
     #[zbus(property)]
     fn id(&self) -> zbus::Result<String>;
-
     #[zbus(property)]
     fn title(&self) -> zbus::Result<String>;
-
     #[zbus(property)]
     fn icon_name(&self) -> zbus::Result<String>;
-
-    #[zbus(property)]
-    fn icon_theme_path(&self) -> zbus::Result<String>;
-
-    #[zbus(property)]
-    fn status(&self) -> zbus::Result<String>;
-
-    fn activate(&self, x: i32, y: i32) -> zbus::Result<()>;
-    fn context_menu(&self, x: i32, y: i32) -> zbus::Result<()>;
-    fn scroll(&self, delta: i32, orientation: &str) -> zbus::Result<()>;
 }
 
-// StatusNotifierWatcher interface proxy
-#[proxy(
-    interface = "org.kde.StatusNotifierWatcher",
-    default_service = "org.kde.StatusNotifierWatcher",
-    default_path = "/StatusNotifierWatcher"
-)]
-trait StatusNotifierWatcher {
-    #[zbus(property)]
-    fn registered_status_notifier_items(&self) -> zbus::Result<Vec<String>>;
-
-    #[zbus(signal)]
-    fn status_notifier_item_registered(&self, service: &str) -> zbus::Result<()>;
-
-    #[zbus(signal)]
-    fn status_notifier_item_unregistered(&self, service: &str) -> zbus::Result<()>;
-
-    fn register_status_notifier_item(&self, service: &str) -> zbus::Result<()>;
-}
-
-// Our own StatusNotifierWatcher implementation
+// Implémentation du Watcher (Serveur D-Bus)
 struct StatusNotifierWatcherImpl {
     registered_items: Arc<Mutex<Vec<String>>>,
+    // On garde une référence vers le sender pour notifier le thread UI directement lors de l'enregistrement
+    update_sender: mpsc::Sender<()>,
 }
 
 #[interface(name = "org.kde.StatusNotifierWatcher")]
@@ -69,14 +40,24 @@ impl StatusNotifierWatcherImpl {
     fn register_status_notifier_item(&mut self, #[zbus(header)] hdr: MessageHeader<'_>, service: &str) -> zbus::fdo::Result<()> {
         let sender = hdr.sender()
             .ok_or_else(|| zbus::fdo::Error::Failed("No sender".into()))?;
-        let service_str = format!("{}/{}", sender.as_str(), service.trim_start_matches('/'));
-        println!("[SYSTRAY_WATCHER] Registering item from {}: {}", sender, service);
-        println!("[SYSTRAY_WATCHER] Full service string: {}", service_str);
+
+        let service_str = if service.starts_with('/') {
+            format!("{}{}", sender, service)
+        } else {
+            service.to_string()
+        };
+
+        println!("[SYSTRAY] Registering item: {}", service_str);
 
         let mut items = self.registered_items.lock().unwrap();
         if !items.contains(&service_str) {
-            items.push(service_str);
+            items.push(service_str.clone());
+            // Signaler qu'un nouvel item est arrivé pour déclencher une mise à jour
+            let _ = self.update_sender.send(());
         }
+
+        // Emettre le signal DBus standard
+        // Note: Dans une implémentation complète, on devrait émettre le signal ici via le contexte
         Ok(())
     }
 
@@ -105,146 +86,103 @@ impl StatusNotifierWatcherImpl {
     async fn status_notifier_host_registered(signal_ctxt: &SignalContext<'_>) -> zbus::Result<()>;
 }
 
-pub struct SystemTrayService {
-    items: HashMap<String, TrayItem>,
-    registered_items: Arc<Mutex<Vec<String>>>,
-}
+pub struct SystemTrayService;
 
 impl SystemTrayService {
-    pub fn new() -> Self {
-        Self {
-            items: HashMap::new(),
-            registered_items: Arc::new(Mutex::new(Vec::new())),
-        }
-    }
-
-    /// Start monitoring system tray items
-    pub async fn start_monitoring(&mut self) -> zbus::Result<Vec<TrayItem>> {
-        let connection = Connection::session().await?;
-
-        // Create our own StatusNotifierWatcher
-        let watcher = StatusNotifierWatcherImpl {
-            registered_items: self.registered_items.clone(),
-        };
-
-        // Register the watcher on D-Bus
-        connection
-            .object_server()
-            .at("/StatusNotifierWatcher", watcher)
-            .await?;
-
-        // Request the well-known name
-        connection
-            .request_name("org.kde.StatusNotifierWatcher")
-            .await?;
-
-        println!("[SYSTRAY] StatusNotifierWatcher registered successfully");
-
-        // Emit StatusNotifierHostRegistered signal to notify existing applications
-        let iface_ref = connection
-            .object_server()
-            .interface::<_, StatusNotifierWatcherImpl>("/StatusNotifierWatcher")
-            .await?;
-
-        StatusNotifierWatcherImpl::status_notifier_host_registered(
-            iface_ref.signal_context()
-        ).await?;
-        println!("[SYSTRAY] Emitted StatusNotifierHostRegistered signal");
-
-        // Give applications a moment to respond to the signal
-        std::thread::sleep(std::time::Duration::from_millis(100));
-
-        // Get registered items
-        let items = self.registered_items.lock().unwrap().clone();
-        println!("[SYSTRAY] Found {} tray items after signal", items.len());
-
-        let mut tray_items = Vec::new();
-
-        for item_service in items {
-            if let Some(tray_item) = Self::get_item_info(&connection, &item_service).await {
-                println!("[SYSTRAY] Item: {} - {}", tray_item.id, tray_item.title);
-                self.items.insert(tray_item.id.clone(), tray_item.clone());
-                tray_items.push(tray_item);
-            }
-        }
-
-        Ok(tray_items)
-    }
-
-    async fn get_item_info(connection: &Connection, service: &str) -> Option<TrayItem> {
-        // Parse service name - format is "sender_bus_name/object/path"
-        // Example: ":1.234/org/ayatana/NotificationItem/steam"
-        let (service_name, object_path) = if let Some(slash_pos) = service.find('/') {
-            let sender = &service[..slash_pos];
-            let path = &service[slash_pos..];
-            (sender.to_string(), path.to_string())
-        } else {
-            // Fallback si pas de slash (ne devrait pas arriver)
-            (service.to_string(), "/StatusNotifierItem".to_string())
-        };
-
-        println!("[SYSTRAY] Querying item: service={}, path={}", service_name, object_path);
-
-        // Try to connect to the item
-        let item_proxy = StatusNotifierItemProxy::builder(connection)
-            .destination(service_name.clone())
-            .ok()?
-            .path(object_path.clone())
-            .ok()?
-            .build()
-            .await
-            .ok()?;
-
-        // Get item properties
-        let id = item_proxy.id().await.ok()?;
-        let title = item_proxy.title().await.unwrap_or_else(|_| id.clone());
-        let icon_name = item_proxy.icon_name().await.unwrap_or_default();
-
-        Some(TrayItem {
-            id: id.clone(),
-            title,
-            icon_name,
-            service: service_name,
-            object_path,
-        })
-    }
-
-    #[allow(dead_code)]
-    pub fn get_items(&self) -> Vec<TrayItem> {
-        self.items.values().cloned().collect()
-    }
-
-    /// Abonne un callback aux changements du systray
-    /// Le callback sera appelé sur le thread principal GTK
     pub fn subscribe_systray<F>(callback: F)
     where
         F: Fn(Vec<TrayItem>) + 'static,
     {
         let (tx, rx) = mpsc::channel();
+        // Canal interne pour déclencher le rafraîchissement
+        let (update_tx, update_rx) = mpsc::channel();
 
-        // Thread qui monitore le systray
         std::thread::spawn(move || {
             crate::utils::runtime::block_on(async {
-                let mut service = SystemTrayService::new();
-
-                // Démarrer le monitoring et obtenir les items initiaux
-                match service.start_monitoring().await {
-                    Ok(items) => {
-                        let _ = tx.send(items);
-                    }
+                let connection = match Connection::session().await {
+                    Ok(c) => c,
                     Err(e) => {
-                        eprintln!("[SYSTRAY] Failed to start monitoring: {:?}", e);
+                        eprintln!("[SYSTRAY] Failed to connect to session bus: {}", e);
                         return;
                     }
+                };
+
+                let registered_items = Arc::new(Mutex::new(Vec::new()));
+
+                // Créer et enregistrer le watcher
+                let watcher = StatusNotifierWatcherImpl {
+                    registered_items: registered_items.clone(),
+                    update_sender: update_tx.clone(),
+                };
+
+                if let Err(e) = connection.object_server().at("/StatusNotifierWatcher", watcher).await {
+                    eprintln!("[SYSTRAY] Failed to serve object: {}", e);
+                    return;
                 }
 
-                // Pour l'instant, on envoie les items une seule fois
-                // TODO: Implémenter un vrai monitoring continu qui écoute les signaux DBus
-                // pour détecter quand de nouveaux items s'enregistrent ou se désenregistrent
+                if let Err(e) = connection.request_name("org.kde.StatusNotifierWatcher").await {
+                    eprintln!("[SYSTRAY] Failed to request name: {}", e);
+                    return;
+                }
+
+                // Emettre le signal HostRegistered pour dire aux applis qu'on est là
+                if let Ok(iface_ref) = connection.object_server().interface::<_, StatusNotifierWatcherImpl>("/StatusNotifierWatcher").await {
+                    let _ = StatusNotifierWatcherImpl::status_notifier_host_registered(iface_ref.signal_context()).await;
+                }
+
+                // Boucle de gestion des mises à jour
+                // On utilise un select! pour gérer à la fois les enregistrements internes et le monitoring DBus
+                // TODO: Ajouter un monitoring NameOwnerChanged pour nettoyer les items disparus (crash)
+
+                loop {
+                    // Attendre un signal de mise à jour (nouvel item enregistré)
+                    if update_rx.recv().is_ok() {
+                        // Petit délai pour laisser le temps à l'application de s'initialiser sur DBus
+                        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+
+                        let current_items = registered_items.lock().unwrap().clone();
+                        let mut tray_items = Vec::new();
+
+                        for service_str in current_items {
+                            if let Some(item) = Self::query_item(&connection, &service_str).await {
+                                tray_items.push(item);
+                            }
+                        }
+
+                        if tx.send(tray_items).is_err() {
+                            break;
+                        }
+                    }
+                }
             });
         });
 
-        // Utiliser l'abstraction de subscription
         crate::utils::subscription::ServiceSubscription::subscribe(rx, callback);
+    }
+
+    async fn query_item(connection: &Connection, service_str: &str) -> Option<TrayItem> {
+        // Format attendu: ":1.XX/Object/Path" ou "org.package/Object/Path"
+        let (dest, path) = if let Some(idx) = service_str.find('/') {
+            (&service_str[..idx], &service_str[idx..])
+        } else {
+            return None;
+        };
+
+        let proxy = StatusNotifierItemProxy::builder(connection)
+            .destination(dest).ok()?
+            .path(path).ok()?
+            .build().await.ok()?;
+
+        let id = proxy.id().await.ok().unwrap_or_default();
+        let title = proxy.title().await.unwrap_or_else(|_| id.clone());
+        let icon_name = proxy.icon_name().await.unwrap_or_default();
+
+        Some(TrayItem {
+            id,
+            title,
+            icon_name,
+            service: dest.to_string(),
+            object_path: path.to_string(),
+        })
     }
 }
