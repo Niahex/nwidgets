@@ -205,7 +205,7 @@ fn create_numlock_osd(enabled: bool) -> gtk::Widget {
 fn create_clipboard_osd() -> gtk::Widget {
     let container = gtk::Box::new(gtk::Orientation::Horizontal, 12);
 
-    let icon = icons::create_icon("edit-copy");
+    let icon = icons::create_icon("copy");
     icon.add_css_class("osd-icon");
     container.append(&icon);
 
@@ -219,7 +219,7 @@ fn create_clipboard_osd() -> gtk::Widget {
 fn create_stt_recording_osd() -> gtk::Widget {
     let container = gtk::Box::new(gtk::Orientation::Horizontal, 12);
 
-    let icon = icons::create_icon("audio-input-microphone");
+    let icon = icons::create_icon("source-recorder");
     icon.add_css_class("osd-icon");
     icon.add_css_class("recording-pulse");
     container.append(&icon);
@@ -234,10 +234,9 @@ fn create_stt_recording_osd() -> gtk::Widget {
 fn create_stt_processing_osd() -> gtk::Widget {
     let container = gtk::Box::new(gtk::Orientation::Horizontal, 12);
 
-    let spinner = gtk::Spinner::new();
-    spinner.start();
-    spinner.add_css_class("osd-icon");
-    container.append(&spinner);
+    let icon = icons::create_icon("source-processing");
+    icon.add_css_class("osd-icon");
+    container.append(&icon);
 
     let text_label = gtk::Label::new(Some("Processing..."));
     text_label.add_css_class("osd-text");
@@ -249,7 +248,7 @@ fn create_stt_processing_osd() -> gtk::Widget {
 fn create_stt_complete_osd(text: &str) -> gtk::Widget {
     let container = gtk::Box::new(gtk::Orientation::Horizontal, 12);
 
-    let icon = icons::create_icon("emblem-ok-symbolic");
+    let icon = icons::create_icon("clipboard");
     icon.add_css_class("osd-icon");
     container.append(&icon);
 
