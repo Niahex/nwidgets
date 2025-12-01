@@ -1,13 +1,14 @@
 use glib::MainContext;
-use std::collections::HashMap;
+use parking_lot::Mutex; // Mutex plus rapide et ergonomique
+use std::collections::{HashMap, VecDeque};
 use std::sync::mpsc;
-use std::sync::Mutex;
+use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use zbus::Connection;
+use once_cell::sync::Lazy;
 
 #[derive(Debug, Clone)]
 pub struct Notification {
-    #[allow(dead_code)]
     pub id: u32,
     pub app_name: String,
     pub summary: String,
@@ -16,13 +17,32 @@ pub struct Notification {
     pub timestamp: u64,
 }
 
-pub struct NotificationService;
+// État interne partagé protégé par un Mutex
+struct NotificationState {
+    sender: Option<mpsc::Sender<Notification>>,
+    history: VecDeque<Notification>, // VecDeque est optimisé pour push_front/pop_back
+}
 
-static NOTIFICATION_SENDER: Mutex<Option<mpsc::Sender<Notification>>> = Mutex::new(None);
-static NOTIFICATION_HISTORY: Mutex<Vec<Notification>> = Mutex::new(Vec::new());
+impl NotificationState {
+    fn new() -> Self {
+        Self {
+            sender: None,
+            history: VecDeque::with_capacity(50),
+        }
+    }
+}
+
+// Instance globale unique lazy
+static STATE: Lazy<Arc<Mutex<NotificationState>>> = Lazy::new(|| {
+    Arc::new(Mutex::new(NotificationState::new()))
+});
+
+pub struct NotificationService;
 
 struct NotificationServer {
     next_id: u32,
+    // Le serveur garde une référence vers l'état global
+    state: Arc<Mutex<NotificationState>>,
 }
 
 #[zbus::interface(name = "org.freedesktop.Notifications")]
@@ -39,69 +59,55 @@ impl NotificationServer {
         _expire_timeout: i32,
     ) -> u32 {
         println!(
-            "[NOTIF] 📨 Received notification - app: '{}', summary: '{}', body: '{}'",
-            app_name, summary, body
+            "[NOTIF] 📨 Received - app: '{}', summary: '{}'",
+            app_name, summary
         );
 
         let id = if replaces_id > 0 {
-            println!("[NOTIF] Replacing notification ID: {}", replaces_id);
             replaces_id
         } else {
             self.next_id += 1;
-            println!("[NOTIF] New notification ID: {}", self.next_id);
             self.next_id
         };
 
-        let urgency = if let Some(value) = hints.get("urgency") {
-            if let Ok(u) = value.downcast_ref::<u8>() {
-                println!("[NOTIF] Urgency from hints: {}", u);
-                u.clone()
-            } else {
-                println!("[NOTIF] Failed to parse urgency, using default: 1");
-                1
-            }
-        } else {
-            println!("[NOTIF] No urgency hint, using default: 1");
-            1
-        };
+        // Extraction optimisée de l'urgence (default: 1/Normal)
+        // 0: Low, 1: Normal, 2: Critical
+        let urgency = hints.get("urgency")
+            .and_then(|v| v.downcast_ref::<u8>().ok())
+            .unwrap_or(1);
 
         let notification = Notification {
             id,
-            app_name: app_name.clone(),
-            summary: summary.clone(),
-            body: body.clone(),
+            app_name,
+            summary,
+            body,
             urgency,
             timestamp: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_secs(),
         };
 
-        // Ajouter à l'historique (garder les 50 dernières)
-        {
-            let mut history = NOTIFICATION_HISTORY.lock().unwrap();
-            history.insert(0, notification.clone());
-            if history.len() > 50 {
-                history.truncate(50);
-            }
+        // Verrouillage unique pour la mise à jour de l'historique ET l'envoi
+        let mut state = self.state.lock();
+
+        // 1. Mise à jour de l'historique (O(1) avec VecDeque)
+        state.history.push_front(notification.clone());
+        if state.history.len() > 50 {
+            state.history.pop_back();
         }
 
-        // Envoyer via le sender global
-        if let Ok(sender_guard) = NOTIFICATION_SENDER.lock() {
-            if let Some(sender) = sender_guard.as_ref() {
-                match sender.send(notification.clone()) {
-                    Ok(_) => println!("[NOTIF] ✅ Notification sent to channel successfully"),
-                    Err(e) => println!("[NOTIF] ❌ Failed to send notification to channel: {}", e),
-                }
+        // 2. Envoi via le channel
+        if let Some(sender) = &state.sender {
+            if let Err(e) = sender.send(notification) {
+                eprintln!("[NOTIF] ❌ Failed to send to UI: {}", e);
             }
         }
 
         id
     }
 
-    fn close_notification(&mut self, _id: u32) {
-        // Optionnel : on pourrait gérer la fermeture explicite ici
-    }
+    fn close_notification(&mut self, _id: u32) {}
 
     fn get_capabilities(&self) -> Vec<String> {
         vec![
@@ -129,101 +135,64 @@ impl NotificationService {
         INIT.call_once(|| {
             println!("[NOTIF] 🚀 Starting D-Bus server thread");
 
+            // Clonage de l'Arc pour le thread
+            let state_ref = Arc::clone(&STATE);
+
             std::thread::spawn(move || {
-                println!("[NOTIF] 🔧 D-Bus thread started, using shared runtime");
                 crate::utils::runtime::block_on(async {
-                    println!("[NOTIF] 🔧 Running D-Bus server");
-                    if let Err(e) = Self::run_dbus_server().await {
-                        eprintln!("[NOTIF] ❌ Erreur D-Bus: {}", e);
-                    } else {
-                        println!("[NOTIF] ✅ D-Bus server running");
+                    if let Err(e) = Self::run_dbus_server(state_ref).await {
+                        eprintln!("[NOTIF] ❌ D-Bus Error: {}", e);
                     }
                 });
             });
         });
     }
 
-    async fn run_dbus_server() -> Result<(), Box<dyn std::error::Error>> {
-        println!("[NOTIF] 🔌 Connecting to D-Bus session bus");
+    async fn run_dbus_server(state: Arc<Mutex<NotificationState>>) -> Result<(), Box<dyn std::error::Error>> {
         let connection = Connection::session().await?;
-        println!("[NOTIF] ✅ Connected to D-Bus session bus");
 
-        let server = NotificationServer { next_id: 0 };
+        let server = NotificationServer {
+            next_id: 0,
+            state, // Injection de l'état partagé
+        };
 
-        println!("[NOTIF] 📍 Registering object at /org/freedesktop/Notifications");
         connection
             .object_server()
             .at("/org/freedesktop/Notifications", server)
             .await?;
-        println!("[NOTIF] ✅ Object registered");
 
-        println!("[NOTIF] 🏷️  Requesting name org.freedesktop.Notifications");
         connection
             .request_name("org.freedesktop.Notifications")
             .await?;
-        println!("[NOTIF] ✅ Name acquired: org.freedesktop.Notifications");
-        println!("[NOTIF] 🎉 D-Bus server is now ready to receive notifications!");
 
-        loop {
-            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-        }
+        println!("[NOTIF] ✅ Service ready on org.freedesktop.Notifications");
+
+        // Maintient la connexion active
+        std::future::pending::<()>().await;
+        Ok(())
     }
 
     /// Récupérer l'historique des notifications
+    /// Retourne un Vec standard pour la compatibilité avec l'interface UI existante
     pub fn get_history() -> Vec<Notification> {
-        NOTIFICATION_HISTORY.lock().unwrap().clone()
-    }
-
-    /// Ajouter une notification de test à l'historique
-    #[allow(dead_code)]
-    pub fn add_test_notification() {
-        let notification = Notification {
-            id: 999,
-            app_name: "Test".to_string(),
-            summary: "Test Notification".to_string(),
-            body: "This is a test notification added manually".to_string(),
-            urgency: 1,
-            timestamp: std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_secs(),
-        };
-
-        // Ajouter à l'historique
-        {
-            let mut history = NOTIFICATION_HISTORY.lock().unwrap();
-            history.insert(0, notification.clone());
-            if history.len() > 50 {
-                history.truncate(50);
-            }
-        }
-
-        // Envoyer via le sender si disponible
-        if let Ok(sender_guard) = NOTIFICATION_SENDER.lock() {
-            if let Some(sender) = sender_guard.as_ref() {
-                let _ = sender.send(notification);
-            }
-        }
+        STATE.lock().history.iter().cloned().collect()
     }
 
     /// S'abonner aux notifications
-    /// Le callback sera appelé pour chaque nouvelle notification reçue
     pub fn subscribe_notifications<F>(callback: F)
     where
         F: Fn(Notification) + 'static,
     {
         let (tx, rx) = mpsc::channel();
 
-        // Initialiser le sender global
+        // Initialisation du sender
         {
-            let mut sender_guard = NOTIFICATION_SENDER.lock().unwrap();
-            *sender_guard = Some(tx);
+            let mut state = STATE.lock();
+            state.sender = Some(tx);
         }
 
-        // Démarrer le serveur D-Bus (une seule fois)
         Self::start_dbus_server_once();
 
-        // Utiliser l'abstraction de subscription
         crate::utils::subscription::ServiceSubscription::subscribe(rx, callback);
     }
 }
