@@ -9,7 +9,6 @@ pub struct AudioState {
 #[derive(Debug, Clone)]
 pub struct AudioDevice {
     pub id: u32,
-    pub name: String,
     pub description: String,
     pub is_default: bool,
 }
@@ -17,7 +16,6 @@ pub struct AudioDevice {
 #[derive(Debug, Clone)]
 pub struct AudioStream {
     pub id: u32,
-    pub name: String,
     pub app_name: String,
     pub volume: u8,
     pub muted: bool,

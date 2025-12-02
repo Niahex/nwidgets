@@ -30,17 +30,6 @@ pub fn block_on<F: std::future::Future>(future: F) -> F::Output {
     get().block_on(future)
 }
 
-/// Lance une tâche asynchrone sur le runtime partagé.
-///
-/// Retourne un JoinHandle pour attendre le résultat si nécessaire.
-pub fn spawn<F>(future: F) -> tokio::task::JoinHandle<F::Output>
-where
-    F: std::future::Future + Send + 'static,
-    F::Output: Send + 'static,
-{
-    get().spawn(future)
-}
-
 /// Lance une tâche bloquante sur le pool dédié de Tokio.
 ///
 /// Idéal pour écouter des canaux `mpsc` standards ou faire des IO synchrones

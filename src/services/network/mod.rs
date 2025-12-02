@@ -1,4 +1,3 @@
-mod ethernet_manager;
 mod network_state;
 mod vpn_manager;
 mod wifi_manager;
@@ -85,10 +84,6 @@ trait SettingsConnection {
 pub struct NetworkService;
 
 impl NetworkService {
-    pub fn new() -> Self {
-        Self
-    }
-
     /// Subscribe a callback to network state changes
     /// The callback will be called on the GTK main thread
     pub fn subscribe_network<F>(callback: F)

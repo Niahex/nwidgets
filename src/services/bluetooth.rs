@@ -266,19 +266,6 @@ impl BluetoothService {
         count
     }
 
-    /// Toggle Bluetooth power state
-    pub async fn toggle_power() -> zbus::Result<bool> {
-        let connection = Connection::system().await?;
-        let adapter_proxy = AdapterProxy::new(&connection).await?;
-
-        let current = adapter_proxy.powered().await.unwrap_or(false);
-        let new_state = !current;
-
-        adapter_proxy.set_powered(new_state).await?;
-
-        Ok(new_state)
-    }
-
     /// List all Bluetooth devices (paired and available)
     pub fn list_devices() -> Vec<BluetoothDevice> {
         crate::utils::runtime::block_on(async {

@@ -80,21 +80,6 @@ impl VolumeControl {
         ));
     }
 
-    fn toggle_device_mute(device: AudioDevice) {
-        let _ = Command::new("wpctl")
-            .args(["set-mute", device.wpctl_target(), "toggle"])
-            .output();
-
-        let state = Self::get_audio_state();
-        let icon_name = device.get_icon_name(&state);
-        let is_muted = device.is_device_muted(&state);
-        let volume = match device {
-            AudioDevice::Sink => state.volume,
-            AudioDevice::Source => state.mic_volume,
-        };
-        OsdEventService::send_event(OsdEvent::Volume(icon_name.to_string(), volume, is_muted));
-    }
-
     // Public API for backward compatibility
     pub fn get_volume() -> u8 {
         Self::get_device_volume(AudioDevice::Sink)
@@ -118,14 +103,6 @@ impl VolumeControl {
 
     pub fn set_mic_volume(volume: u8) {
         Self::set_device_volume(AudioDevice::Source, volume);
-    }
-
-    pub fn toggle_mute() {
-        Self::toggle_device_mute(AudioDevice::Sink);
-    }
-
-    pub fn toggle_mic_mute() {
-        Self::toggle_device_mute(AudioDevice::Source);
     }
 
     pub fn get_audio_state() -> AudioState {

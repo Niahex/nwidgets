@@ -4,6 +4,7 @@ mod network_details;
 mod notifications_details;
 mod section_helpers;
 
+use crate::services::notifications::NotificationService;
 use crate::services::pipewire::{AudioState, PipeWireService};
 use crate::utils::icons;
 use gtk::prelude::*;
@@ -15,7 +16,7 @@ use audio_details::{
 };
 use bluetooth_details::populate_bluetooth_details;
 use network_details::populate_network_details;
-use notifications_details::create_notifications_section;
+use notifications_details::{add_notification_to_list, create_notifications_section};
 
 pub fn create_control_center_window(application: &gtk::Application) -> gtk::ApplicationWindow {
     let window = gtk::ApplicationWindow::builder()
@@ -215,6 +216,11 @@ pub fn create_control_center_window(application: &gtk::Application) -> gtk::Appl
     });
 
     application.add_action(&toggle_action);
+
+    // Subscribe to new notifications
+    NotificationService::subscribe_notifications(move |notification| {
+        add_notification_to_list(&notifications_list, notification);
+    });
 
     window
 }

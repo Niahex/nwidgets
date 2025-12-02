@@ -19,13 +19,6 @@ impl LockType {
             LockType::NumLock => "/sys/class/leds/input0::numlock/brightness",
         }
     }
-
-    fn name(&self) -> &str {
-        match self {
-            LockType::CapsLock => "CapsLock",
-            LockType::NumLock => "NumLock",
-        }
-    }
 }
 
 struct LockStateMonitor {

@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex};
 #[derive(Debug, Clone)]
 pub enum OsdEvent {
     Volume(String, u8, bool), // icon_name, volume %, muted
+    #[allow(dead_code)]
     Microphone(bool),         // muted
     CapsLock(bool),           // enabled
     NumLock(bool),            // enabled

@@ -1,8 +1,6 @@
 use async_channel;
 use glib::MainContext;
-use std::sync::{mpsc, Arc, Mutex};
-use std::thread;
-use std::time::Duration;
+use std::sync::mpsc;
 
 /// Helper générique pour connecter des threads de monitoring synchrones à l'interface GTK.
 pub struct ServiceSubscription;
@@ -42,70 +40,5 @@ impl ServiceSubscription {
                 callback(msg);
             }
         });
-    }
-
-    /// Crée un système de souscription avec un moniteur centralisé.
-    ///
-    /// Utile pour les services qui ont plusieurs abonnés (ex: HyprlandService).
-    /// Le `monitor_fn` est exécuté une seule fois.
-    pub fn create_subscription_system<T, M>(monitor_fn: M) -> impl Fn(Box<dyn Fn(T) + 'static>)
-    where
-        T: Clone + Send + 'static,
-        M: FnOnce(mpsc::Sender<T>) + Send + 'static,
-    {
-        let subscribers: Arc<Mutex<Vec<mpsc::Sender<T>>>> = Arc::new(Mutex::new(Vec::new()));
-        let subscribers_clone = Arc::clone(&subscribers);
-
-        // Lancer le monitoring dans le pool de threads partagé
-        crate::utils::runtime::spawn_blocking(move || {
-            let (tx, rx) = mpsc::channel();
-
-            // Exécuter la fonction de monitoring (qui peut être bloquante ou lancer son propre processus)
-            monitor_fn(tx);
-
-            // Dispatcher les événements à tous les abonnés
-            while let Ok(state) = rx.recv() {
-                let mut subs = subscribers_clone.lock().unwrap();
-                subs.retain(|subscriber| subscriber.send(state.clone()).is_ok());
-            }
-        });
-
-        // Retourne la closure d'abonnement que les widgets utiliseront
-        move |callback: Box<dyn Fn(T) + 'static>| {
-            let (tx, rx) = mpsc::channel();
-            subscribers.lock().unwrap().push(tx);
-            // On délègue à subscribe qui gère le pont vers le thread principal
-            Self::subscribe(rx, callback);
-        }
-    }
-
-    /// Helper pour les services basés sur du polling (vérification périodique).
-    ///
-    /// Lance une boucle infinie qui vérifie l'état toutes les `interval` et notifie en cas de changement.
-    pub fn create_polling_subscription<T, F>(
-        poll_fn: F,
-        interval: Duration,
-    ) -> impl Fn(Box<dyn Fn(T) + 'static>)
-    where
-        T: Clone + Send + PartialEq + 'static,
-        F: Fn() -> T + Send + Sync + 'static,
-    {
-        Self::create_subscription_system(move |tx| {
-            // Le polling tourne dans le spawn_blocking de create_subscription_system
-            let mut last_state = poll_fn();
-            let _ = tx.send(last_state.clone());
-
-            loop {
-                thread::sleep(interval);
-                let current_state = poll_fn();
-
-                if current_state != last_state {
-                    last_state = current_state.clone();
-                    if tx.send(current_state).is_err() {
-                        break; // Arrêt si plus personne n'écoute (canal fermé)
-                    }
-                }
-            }
-        })
     }
 }

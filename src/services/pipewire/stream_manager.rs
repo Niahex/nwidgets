@@ -142,7 +142,6 @@ impl StreamManager {
 
         Some(AudioStream {
             id,
-            name: final_app_name.clone(),
             app_name: final_app_name,
             volume,
             muted,

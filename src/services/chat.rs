@@ -72,11 +72,6 @@ impl ChatStateService {
         crate::utils::subscription::ServiceSubscription::subscribe(rx, callback);
     }
 
-    /// Update the chat state (to be called from the chat widget)
-    pub fn update_state(state: ChatState) {
-        MONITOR.update_state(state);
-    }
-
     /// Update visibility only
     pub fn set_visibility(is_visible: bool) {
         let mut state = MONITOR.get_current_state();
@@ -90,10 +85,5 @@ impl ChatStateService {
         state.selected_site_name = name;
         state.selected_site_url = url;
         MONITOR.update_state(state);
-    }
-
-    /// Get current state
-    pub fn get_state() -> ChatState {
-        MONITOR.get_current_state()
     }
 }

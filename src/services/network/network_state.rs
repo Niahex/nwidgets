@@ -16,7 +16,6 @@ pub struct NetworkState {
 
 #[derive(Debug, Clone)]
 pub struct VpnConnection {
-    pub id: String,
     pub name: String,
     pub vpn_type: String, // "openvpn", "wireguard", etc.
     pub active: bool,

@@ -8,7 +8,6 @@ use zbus::Connection;
 
 #[derive(Debug, Clone)]
 pub struct Notification {
-    pub id: u32,
     pub app_name: String,
     pub summary: String,
     pub body: String,
@@ -85,7 +84,6 @@ impl NotificationServer {
             .unwrap_or(1);
 
         let notification = Notification {
-            id,
             app_name,
             summary,
             body,

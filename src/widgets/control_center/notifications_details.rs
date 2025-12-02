@@ -45,26 +45,6 @@ pub fn add_notification_to_list(notifications_list: &gtk::Box, notification: Not
     notifications_list.prepend(&notif_box);
 }
 
-fn add_notification_to_list_from_history(
-    notifications_list: &gtk::Box,
-    notification: Notification,
-) {
-    // Supprimer le message "No notifications" s'il existe
-    if let Some(first_child) = notifications_list.first_child() {
-        if first_child
-            .css_classes()
-            .contains(&"notification-empty".into())
-        {
-            notifications_list.remove(&first_child);
-        }
-    }
-
-    let notif_box = create_notification_widget(&notification);
-
-    // Add to bottom of list (pour l'historique qui est déjà dans l'ordre)
-    notifications_list.append(&notif_box);
-}
-
 pub fn reload_notification_history(notifications_list: &gtk::Box) {
     // Supprimer tous les widgets existants
     while let Some(child) = notifications_list.first_child() {

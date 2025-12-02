@@ -100,7 +100,6 @@ impl DeviceManager {
 
                             devices.push(AudioDevice {
                                 id,
-                                name: name.to_string(),
                                 description: name.to_string(),
                                 is_default,
                             });
@@ -170,7 +169,6 @@ impl DeviceManager {
                 let name = parts[1].trim();
                 return Some(AudioDevice {
                     id,
-                    name: name.to_string(),
                     description: name.to_string(),
                     is_default,
                 });

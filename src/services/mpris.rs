@@ -7,7 +7,6 @@ use zbus::{proxy, Connection};
 pub struct MprisMetadata {
     pub title: String,
     pub artist: String,
-    pub album: String,
     pub art_url: String,
 }
 
@@ -33,7 +32,6 @@ impl From<String> for PlaybackStatus {
 pub struct MprisState {
     pub metadata: MprisMetadata,
     pub status: PlaybackStatus,
-    pub player_name: String,
 }
 
 // MPRIS Interface
@@ -203,7 +201,6 @@ impl MprisService {
         Ok(MprisState {
             metadata,
             status,
-            player_name: "spotify".to_string(),
         })
     }
 

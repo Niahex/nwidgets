@@ -101,24 +101,10 @@ impl VpnManager {
                                         "Unknown VPN".to_string()
                                     };
 
-                                    let uuid =
-                                        if let Some(uuid_value) = connection_settings.get("uuid") {
-                                            if let Ok(uuid) =
-                                                uuid_value.downcast_ref::<zbus::zvariant::Str>()
-                                            {
-                                                uuid.to_string()
-                                            } else {
-                                                String::new()
-                                            }
-                                        } else {
-                                            String::new()
-                                        };
-
                                     // Check if this connection is currently active
                                     let active = active_vpn_paths.contains(&conn_path.to_string());
 
                                     vpn_connections.push(VpnConnection {
-                                        id: uuid,
                                         name,
                                         vpn_type: conn_type_str.to_string(),
                                         active,

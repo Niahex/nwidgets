@@ -15,40 +15,12 @@ use std::sync::mpsc;
 pub struct PipeWireService;
 
 impl PipeWireService {
-    pub fn new() -> Self {
-        Self
-    }
-
-    pub fn get_volume(&self) -> u8 {
-        VolumeControl::get_volume()
-    }
-
-    pub fn is_muted(&self) -> bool {
-        VolumeControl::is_muted()
-    }
-
-    pub fn get_mic_volume(&self) -> u8 {
-        VolumeControl::get_mic_volume()
-    }
-
-    pub fn is_mic_muted(&self) -> bool {
-        VolumeControl::is_mic_muted()
-    }
-
     pub fn set_volume(volume: u8) {
         VolumeControl::set_volume(volume);
     }
 
     pub fn set_mic_volume(volume: u8) {
         VolumeControl::set_mic_volume(volume);
-    }
-
-    pub fn toggle_mute() {
-        VolumeControl::toggle_mute();
-    }
-
-    pub fn toggle_mic_mute() {
-        VolumeControl::toggle_mic_mute();
     }
 
     pub fn get_audio_state() -> AudioState {
