@@ -195,7 +195,6 @@ pub fn create_jisig_overlay(application: &gtk::Application) -> JisigOverlay {
     let key_controller = gtk::EventControllerKey::new();
     let window_clone = window.clone();
     let is_exclusive_clone = Rc::clone(&is_exclusive);
-    let toggle_button_clone2 = toggle_button.clone();
 
     let pin_icon_clone2 = pin_icon.clone();
     key_controller.connect_key_pressed(move |_, keyval, _, modifiers| {

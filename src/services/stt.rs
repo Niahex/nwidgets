@@ -22,6 +22,7 @@ pub enum SttState {
     Error(String),
 }
 
+#[allow(dead_code)]
 pub enum SttEvent {
     StateChanged(SttState),
     TranscriptionComplete(String),
@@ -31,6 +32,7 @@ pub enum SttEvent {
 enum SttCommand {
     Start,
     Stop,
+    #[allow(dead_code)]
     Shutdown,
 }
 
@@ -376,11 +378,12 @@ impl SttService {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn subscribe<F>(callback: F)
     where
         F: Fn(SttEvent) + Send + 'static,
     {
-        let (tx, rx) = mpsc::channel();
+        let (_tx, rx) = mpsc::channel();
 
         thread::spawn(move || {
             crate::utils::subscription::ServiceSubscription::subscribe(rx, callback);
@@ -498,6 +501,7 @@ impl SttService {
         }
     }
 
+    #[allow(dead_code)]
     pub fn get_state(&self) -> SttState {
         self.state.lock().unwrap().clone()
     }
