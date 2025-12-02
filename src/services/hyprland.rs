@@ -62,21 +62,19 @@ impl HyprlandMonitor {
                     // Envoyer l'état initial
                     Self::broadcast_updates(&workspace_subscribers, &active_window_subscribers);
 
-                    for line in reader.lines() {
-                        if let Ok(line) = line {
-                            // Monitor workspace et active window changes
-                            if line.starts_with("workspace>>")
-                                || line.starts_with("createworkspace>>")
-                                || line.starts_with("destroyworkspace>>")
-                                || line.starts_with("activewindow>>")
-                                || line.starts_with("closewindow>>")
-                                || line.starts_with("openwindow>>")
-                            {
-                                Self::broadcast_updates(
-                                    &workspace_subscribers,
-                                    &active_window_subscribers,
-                                );
-                            }
+                    for line in reader.lines().map_while(Result::ok) {
+                        // Monitor workspace et active window changes
+                        if line.starts_with("workspace>>")
+                            || line.starts_with("createworkspace>>")
+                            || line.starts_with("destroyworkspace>>")
+                            || line.starts_with("activewindow>>")
+                            || line.starts_with("closewindow>>")
+                            || line.starts_with("openwindow>>")
+                        {
+                            Self::broadcast_updates(
+                                &workspace_subscribers,
+                                &active_window_subscribers,
+                            );
                         }
                     }
                 }

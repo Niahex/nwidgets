@@ -44,6 +44,7 @@ struct NotificationServer {
 
 #[zbus::interface(name = "org.freedesktop.Notifications")]
 impl NotificationServer {
+    #[allow(clippy::too_many_arguments)]
     fn notify(
         &mut self,
         app_name: String,

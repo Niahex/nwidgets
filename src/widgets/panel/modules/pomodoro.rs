@@ -108,17 +108,14 @@ impl PomodoroModule {
         };
 
         // Show icon only when idle or paused
-        if state == PomodoroState::Idle {
-            if let Some(paintable) = icons::get_paintable(icon_name) {
-                self.icon.set_paintable(Some(&paintable));
-            }
-            self.container.set_center_widget(Some(&self.icon));
-        } else if matches!(
-            state,
-            PomodoroState::WorkPaused
-                | PomodoroState::ShortBreakPaused
-                | PomodoroState::LongBreakPaused
-        ) {
+        if state == PomodoroState::Idle
+            || matches!(
+                state,
+                PomodoroState::WorkPaused
+                    | PomodoroState::ShortBreakPaused
+                    | PomodoroState::LongBreakPaused
+            )
+        {
             if let Some(paintable) = icons::get_paintable(icon_name) {
                 self.icon.set_paintable(Some(&paintable));
             }
