@@ -74,18 +74,3 @@ impl AudioModule {
         update_icon(&self.icon, icon_name, Some(20));
     }
 }
-
-// Type aliases for backward compatibility
-pub type SinkModule = AudioModule;
-pub type SourceModule = AudioModule;
-
-// Helper constructors for backward compatibility
-impl AudioModule {
-    pub fn new_sink() -> Self {
-        Self::new(AudioDeviceType::Sink)
-    }
-
-    pub fn new_source() -> Self {
-        Self::new(AudioDeviceType::Source)
-    }
-}

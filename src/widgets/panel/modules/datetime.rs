@@ -7,7 +7,6 @@ use gtk4 as gtk;
 #[derive(Clone)]
 pub struct DateTimeModule {
     pub container: gtk::CenterBox,
-    datetime_box: gtk::Box,
     time_label: gtk::Label,
     date_label: gtk::Label,
 }
@@ -43,7 +42,6 @@ impl DateTimeModule {
 
         let module = Self {
             container,
-            datetime_box,
             time_label,
             date_label,
         };

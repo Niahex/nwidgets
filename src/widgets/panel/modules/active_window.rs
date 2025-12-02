@@ -9,8 +9,6 @@ use std::rc::Rc;
 #[derive(Clone)]
 pub struct ActiveWindowModule {
     pub container: gtk::CenterBox,
-    icon_container: gtk::CenterBox,
-    text_container: gtk::CenterBox,
     icon: gtk::Image,
     class_label: gtk::Label,
     title_label: gtk::Label,
@@ -59,8 +57,6 @@ impl ActiveWindowModule {
 
         Self {
             container,
-            icon_container,
-            text_container,
             icon,
             class_label,
             title_label,
@@ -163,10 +159,5 @@ impl ActiveWindowModule {
         }
         self.class_label.set_text(&class);
         self.title_label.set_text(&title);
-    }
-
-    /// Méthode de compatibilité - redirige vers update_hyprland_window
-    pub fn update(&self, active_window: Option<ActiveWindow>) {
-        self.update_hyprland_window(active_window);
     }
 }

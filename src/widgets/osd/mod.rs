@@ -83,8 +83,6 @@ pub fn create_osd_window(application: &gtk::Application) -> gtk::ApplicationWind
                 OsdEvent::CapsLock(enabled) => create_capslock_osd(enabled),
                 OsdEvent::NumLock(enabled) => create_numlock_osd(enabled),
                 OsdEvent::Clipboard => create_clipboard_osd(),
-                OsdEvent::DictationStarted => create_dictation_osd(true),
-                OsdEvent::DictationStopped => create_dictation_osd(false),
                 OsdEvent::SttRecording => create_stt_recording_osd(),
                 OsdEvent::SttProcessing => create_stt_processing_osd(),
                 OsdEvent::SttComplete(text) => create_stt_complete_osd(&text),
@@ -133,25 +131,6 @@ fn create_mic_osd(muted: bool) -> gtk::Widget {
     container.append(&icon);
 
     let text = if muted { "MIC OFF" } else { "MIC ON" };
-    let text_label = gtk::Label::new(Some(text));
-    text_label.add_css_class("osd-text");
-    container.append(&text_label);
-
-    container.upcast()
-}
-
-fn create_dictation_osd(started: bool) -> gtk::Widget {
-    let container = gtk::Box::new(gtk::Orientation::Horizontal, 12);
-
-    let icon = icons::create_icon("audio-input-microphone");
-    icon.add_css_class("osd-icon");
-    container.append(&icon);
-
-    let text = if started {
-        "Transcription Started"
-    } else {
-        "Transcription Stopped"
-    };
     let text_label = gtk::Label::new(Some(text));
     text_label.add_css_class("osd-text");
     container.append(&text_label);

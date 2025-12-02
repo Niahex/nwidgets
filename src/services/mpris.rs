@@ -198,10 +198,7 @@ impl MprisService {
             }
         }
 
-        Ok(MprisState {
-            metadata,
-            status,
-        })
+        Ok(MprisState { metadata, status })
     }
 
     // Commandes pour Spotify uniquement
