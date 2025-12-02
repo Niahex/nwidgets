@@ -36,27 +36,23 @@ pub struct VolumeControl;
 impl VolumeControl {
     // Generic methods
     fn get_device_volume(device: AudioDevice) -> u8 {
-        match Command::new("wpctl")
-            .args(&["get-volume", device.wpctl_target()])
-            .output()
-        {
-            Ok(output) => {
-                if let Ok(output_str) = String::from_utf8(output.stdout) {
-                    if let Some(volume_str) = output_str.split_whitespace().nth(1) {
-                        if let Ok(volume) = volume_str.parse::<f32>() {
-                            return (volume * 100.0) as u8;
-                        }
+        if let Ok(output) = Command::new("wpctl")
+            .args(["get-volume", device.wpctl_target()])
+            .output() {
+            if let Ok(output_str) = String::from_utf8(output.stdout) {
+                if let Some(volume_str) = output_str.split_whitespace().nth(1) {
+                    if let Ok(volume) = volume_str.parse::<f32>() {
+                        return (volume * 100.0) as u8;
                     }
                 }
             }
-            Err(_) => {}
         }
         0
     }
 
     fn is_device_muted(device: AudioDevice) -> bool {
         if let Ok(output) = Command::new("wpctl")
-            .args(&["get-volume", device.wpctl_target()])
+            .args(["get-volume", device.wpctl_target()])
             .output()
         {
             if let Ok(output_str) = String::from_utf8(output.stdout) {
@@ -68,9 +64,9 @@ impl VolumeControl {
 
     fn set_device_volume(device: AudioDevice, volume: u8) {
         let volume_val = volume.min(100);
-        let volume_str = format!("{}%", volume_val);
+        let volume_str = format!("{volume_val}%");
         let _ = Command::new("wpctl")
-            .args(&["set-volume", device.wpctl_target(), &volume_str])
+            .args(["set-volume", device.wpctl_target(), &volume_str])
             .output();
 
         let state = Self::get_audio_state();
@@ -85,7 +81,7 @@ impl VolumeControl {
 
     fn toggle_device_mute(device: AudioDevice) {
         let _ = Command::new("wpctl")
-            .args(&["set-mute", device.wpctl_target(), "toggle"])
+            .args(["set-mute", device.wpctl_target(), "toggle"])
             .output();
 
         let state = Self::get_audio_state();

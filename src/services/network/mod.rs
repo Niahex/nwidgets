@@ -3,7 +3,6 @@ mod network_state;
 mod vpn_manager;
 mod wifi_manager;
 
-pub use ethernet_manager::EthernetManager;
 pub use network_state::{ConnectionType, NetworkState, VpnConnection};
 pub use vpn_manager::VpnManager;
 pub use wifi_manager::WifiManager;
@@ -105,7 +104,7 @@ impl NetworkService {
                 let connection = match Connection::system().await {
                     Ok(conn) => conn,
                     Err(e) => {
-                        eprintln!("Error connecting to system bus: {}", e);
+                        eprintln!("Error connecting to system bus: {e}");
                         return;
                     }
                 };
@@ -114,7 +113,7 @@ impl NetworkService {
                 let mut last_state =
                     Self::get_network_state()
                         .await
-                        .unwrap_or_else(|_| NetworkState {
+                        .unwrap_or(NetworkState {
                             connected: false,
                             connection_type: ConnectionType::None,
                             signal_strength: 0,
@@ -130,7 +129,7 @@ impl NetworkService {
                 let nm_proxy = match NetworkManagerProxy::new(&connection).await {
                     Ok(proxy) => proxy,
                     Err(e) => {
-                        eprintln!("Error creating NetworkManager proxy: {}", e);
+                        eprintln!("Error creating NetworkManager proxy: {e}");
                         return;
                     }
                 };
@@ -303,13 +302,13 @@ impl NetworkService {
     pub fn connect_vpn(connection_path: &str) {
         // Implementation for connecting to VPN
         // This would typically use NetworkManager's ActivateConnection method
-        println!("Connecting to VPN: {}", connection_path);
+        println!("Connecting to VPN: {connection_path}");
     }
 
     /// Disconnect from a VPN
     pub fn disconnect_vpn(connection_path: &str) {
         // Implementation for disconnecting from VPN
         // This would typically use NetworkManager's DeactivateConnection method
-        println!("Disconnecting from VPN: {}", connection_path);
+        println!("Disconnecting from VPN: {connection_path}");
     }
 }

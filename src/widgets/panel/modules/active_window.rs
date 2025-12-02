@@ -124,7 +124,7 @@ impl ActiveWindowModule {
 
             let truncated_title = if title_before_dash.chars().count() > 30 {
                 let truncated: String = title_before_dash.chars().take(27).collect();
-                format!("{}...", truncated)
+                format!("{truncated}...")
             } else {
                 title_before_dash
             };

@@ -1,4 +1,4 @@
-use super::network_state::{ConnectionType, NetworkState};
+use super::network_state::ConnectionType;
 use super::{ActiveConnectionProxy, DeviceProxy};
 use zbus::Connection;
 

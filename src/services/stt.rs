@@ -50,7 +50,7 @@ impl AudioRecorder {
 
         thread::spawn(move || {
             if let Err(e) = Self::run_audio_thread(device, sample_tx, sample_rx, cmd_rx, event_tx) {
-                eprintln!("Audio thread error: {}", e);
+                eprintln!("Audio thread error: {e}");
             }
         });
 
@@ -60,13 +60,13 @@ impl AudioRecorder {
     fn start(&self) -> Result<()> {
         self.cmd_tx
             .send(SttCommand::Start)
-            .map_err(|e| anyhow!("Failed to send Start: {}", e))
+            .map_err(|e| anyhow!("Failed to send Start: {e}"))
     }
 
     fn stop(&self) -> Result<()> {
         self.cmd_tx
             .send(SttCommand::Stop)
-            .map_err(|e| anyhow!("Failed to send Stop: {}", e))
+            .map_err(|e| anyhow!("Failed to send Stop: {e}"))
     }
 
     fn run_audio_thread(
@@ -196,7 +196,7 @@ impl AudioRecorder {
                 }
                 let _ = tx.send(output);
             },
-            |err| eprintln!("Stream error: {}", err),
+            |err| eprintln!("Stream error: {err}"),
             None,
         )?;
         Ok(stream)
@@ -313,7 +313,7 @@ impl TranscriptionManager {
         let mut engine = WhisperEngine::new();
         engine
             .load_model(&self.model_path)
-            .map_err(|e| anyhow!("Failed to load model: {}", e))?;
+            .map_err(|e| anyhow!("Failed to load model: {e}"))?;
 
         let mut guard = self.engine.lock().unwrap();
         *guard = Some(engine);
@@ -339,7 +339,7 @@ impl TranscriptionManager {
 
         let transcript =
             TranscriptionEngine::transcribe_samples(engine, audio_data.to_vec(), Some(params))
-                .map_err(|e| anyhow!("Transcription failed: {}", e))?;
+                .map_err(|e| anyhow!("Transcription failed: {e}"))?;
 
         Ok(transcript.text)
     }
@@ -366,7 +366,7 @@ impl SttService {
         thread::spawn(move || {
             let manager = TranscriptionManager::new();
             if let Err(e) = manager.load_model() {
-                eprintln!("Failed to load Whisper model: {}", e);
+                eprintln!("Failed to load Whisper model: {e}");
                 return;
             }
             *transcriber.lock().unwrap() = Some(manager);
@@ -413,14 +413,14 @@ impl SttService {
         let recorder = match AudioRecorder::new(event_tx) {
             Ok(r) => r,
             Err(e) => {
-                let error_msg = format!("Audio error: {}", e);
+                let error_msg = format!("Audio error: {e}");
                 OsdEventService::send_event(OsdEvent::SttError(error_msg.clone()));
                 return Err(anyhow!(error_msg));
             }
         };
 
         if let Err(e) = recorder.start() {
-            let error_msg = format!("Start error: {}", e);
+            let error_msg = format!("Start error: {e}");
             OsdEventService::send_event(OsdEvent::SttError(error_msg.clone()));
             return Err(anyhow!(error_msg));
         }
@@ -453,8 +453,7 @@ impl SttService {
                                         // Copy to clipboard silently (sans déclencher l'OSD clipboard)
                                         if ClipboardService::set_clipboard_content_silent(trimmed) {
                                             println!(
-                                                "Transcription copied to clipboard: {}",
-                                                trimmed
+                                                "Transcription copied to clipboard: {trimmed}"
                                             );
                                             OsdEventService::send_event(OsdEvent::SttComplete(
                                                 "Speech Copied".to_string(),
@@ -473,7 +472,7 @@ impl SttService {
                                     *state.lock().unwrap() = SttState::Idle;
                                 }
                                 Err(e) => {
-                                    let error_msg = format!("Transcription error: {}", e);
+                                    let error_msg = format!("Transcription error: {e}");
                                     OsdEventService::send_event(OsdEvent::SttError(
                                         error_msg.clone(),
                                     ));
@@ -490,11 +489,11 @@ impl SttService {
     }
 
     fn stop_recording(&self) -> Result<()> {
-        let mut recorder_guard = self.recorder.lock().unwrap();
+        let recorder_guard = self.recorder.lock().unwrap();
         if let Some(recorder) = recorder_guard.as_ref() {
-            let result = recorder.stop();
+            
             // Ne pas clear le recorder ici, le thread audio le fera après avoir envoyé les samples
-            result
+            recorder.stop()
         } else {
             Ok(())
         }

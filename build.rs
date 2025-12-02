@@ -8,7 +8,7 @@ fn main() {
         for entry in entries.flatten() {
             if let Some(path) = entry.path().to_str() {
                 if path.ends_with(".scss") {
-                    println!("cargo:rerun-if-changed={}", path);
+                    println!("cargo:rerun-if-changed={path}");
                 }
             }
         }
@@ -25,7 +25,7 @@ fn main() {
 
     let content = format!(
         "use gtk4::{{self as gtk, gdk}};
-\nconst CSS: &str = r#\"{}\"#;
+\nconst CSS: &str = r#\"{css}\"#;
 \npub fn load_css() {{
     let provider = gtk::CssProvider::new();
     provider.load_from_data(CSS);
@@ -36,8 +36,7 @@ fn main() {
         gtk::STYLE_PROVIDER_PRIORITY_USER,
     );
 }}
-",
-        css
+"
     );
 
     fs::write(&dest_path, content).expect("Failed to write generated_style.rs");
@@ -72,13 +71,11 @@ fn generate_icon_loader() {
 
     for (icon_name, file_path) in &icon_entries {
         code.push_str(&format!(
-            "    (\"{}\", &include_bytes!(concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/assets/{}\"))[..]),\n",
-            icon_name,
-            file_path
+            "    (\"{icon_name}\", &include_bytes!(concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/assets/{file_path}\"))[..]),\n"
         ));
     }
 
-    code.push_str("]");
+    code.push(']');
 
     let out_dir = env::var("OUT_DIR").unwrap();
     let dest_path = Path::new(&out_dir).join("generated_icons.rs");

@@ -1,4 +1,3 @@
-use glib::MainContext;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex; // Mutex plus rapide et ergonomique
 use std::collections::{HashMap, VecDeque};
@@ -58,8 +57,7 @@ impl NotificationServer {
         _expire_timeout: i32,
     ) -> u32 {
         println!(
-            "[NOTIF] 📨 Received - app: '{}', summary: '{}'",
-            app_name, summary
+            "[NOTIF] 📨 Received - app: '{app_name}', summary: '{summary}'"
         );
 
         // Ignorer les notifications de Spotify
@@ -112,7 +110,7 @@ impl NotificationServer {
         // 2. Envoi via le channel
         if let Some(sender) = &state.sender {
             if let Err(e) = sender.send(notification) {
-                eprintln!("[NOTIF] ❌ Failed to send to UI: {}", e);
+                eprintln!("[NOTIF] ❌ Failed to send to UI: {e}");
             }
         }
 
@@ -153,7 +151,7 @@ impl NotificationService {
             std::thread::spawn(move || {
                 crate::utils::runtime::block_on(async {
                     if let Err(e) = Self::run_dbus_server(state_ref).await {
-                        eprintln!("[NOTIF] ❌ D-Bus Error: {}", e);
+                        eprintln!("[NOTIF] ❌ D-Bus Error: {e}");
                     }
                 });
             });

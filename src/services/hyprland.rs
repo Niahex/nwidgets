@@ -54,7 +54,7 @@ impl HyprlandMonitor {
 
         std::thread::spawn(move || {
             if let Ok(hypr_sig) = std::env::var("HYPRLAND_INSTANCE_SIGNATURE") {
-                let socket_path = format!("/run/user/1000/hypr/{}/.socket2.sock", hypr_sig);
+                let socket_path = format!("/run/user/1000/hypr/{hypr_sig}/.socket2.sock");
 
                 if let Ok(stream) = UnixStream::connect(&socket_path) {
                     let reader = BufReader::new(stream);
@@ -116,7 +116,7 @@ impl HyprlandMonitor {
 }
 
 /// Instance statique globale du moniteur
-static MONITOR: Lazy<HyprlandMonitor> = Lazy::new(|| HyprlandMonitor::new());
+static MONITOR: Lazy<HyprlandMonitor> = Lazy::new(HyprlandMonitor::new);
 
 pub struct HyprlandService;
 
@@ -170,7 +170,7 @@ impl HyprlandService {
     pub fn get_socket_path() -> Option<String> {
         std::env::var("HYPRLAND_INSTANCE_SIGNATURE")
             .ok()
-            .map(|sig| format!("/run/user/1000/hypr/{}/.socket.sock", sig))
+            .map(|sig| format!("/run/user/1000/hypr/{sig}/.socket.sock"))
     }
 
     pub fn send_command(command: &str) -> Result<String, Box<dyn std::error::Error>> {

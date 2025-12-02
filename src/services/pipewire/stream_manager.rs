@@ -6,7 +6,7 @@ pub struct StreamManager;
 impl StreamManager {
     /// List all audio playback streams (sink-inputs)
     pub fn list_sink_inputs() -> Vec<AudioStream> {
-        let output = match Command::new("wpctl").args(&["status"]).output() {
+        let output = match Command::new("wpctl").args(["status"]).output() {
             Ok(out) => out,
             Err(_) => return Vec::new(),
         };
@@ -21,7 +21,7 @@ impl StreamManager {
 
     /// List all audio recording streams (source-outputs)
     pub fn list_source_outputs() -> Vec<AudioStream> {
-        let output = match Command::new("wpctl").args(&["status"]).output() {
+        let output = match Command::new("wpctl").args(["status"]).output() {
             Ok(out) => out,
             Err(_) => return Vec::new(),
         };
@@ -37,16 +37,16 @@ impl StreamManager {
     /// Set volume for a specific stream (application)
     pub fn set_stream_volume(stream_id: u32, volume: u8) {
         let volume_val = volume.min(100);
-        let volume_str = format!("{}%", volume_val);
+        let volume_str = format!("{volume_val}%");
         let _ = Command::new("wpctl")
-            .args(&["set-volume", &stream_id.to_string(), &volume_str])
+            .args(["set-volume", &stream_id.to_string(), &volume_str])
             .output();
     }
 
     /// Toggle mute for a specific stream
     pub fn toggle_stream_mute(stream_id: u32) {
         let _ = Command::new("wpctl")
-            .args(&["set-mute", &stream_id.to_string(), "toggle"])
+            .args(["set-mute", &stream_id.to_string(), "toggle"])
             .output();
     }
 
@@ -106,7 +106,7 @@ impl StreamManager {
 
         // Get volume info for this stream
         let (volume, muted) = match Command::new("wpctl")
-            .args(&["get-volume", &id.to_string()])
+            .args(["get-volume", &id.to_string()])
             .output()
         {
             Ok(output) => {
@@ -156,7 +156,7 @@ impl StreamManager {
         stream_id: u32,
     ) -> (Option<String>, Option<String>, Option<String>, bool) {
         let output = Command::new("pw-cli")
-            .args(&["info", &stream_id.to_string()])
+            .args(["info", &stream_id.to_string()])
             .output();
 
         if let Ok(output) = output {
@@ -238,7 +238,7 @@ impl StreamManager {
                 if process_binary.as_deref() == Some("electron") {
                     if let Some(pid) = process_id {
                         if let Ok(cmdline) =
-                            std::fs::read_to_string(format!("/proc/{}/cmdline", pid))
+                            std::fs::read_to_string(format!("/proc/{pid}/cmdline"))
                         {
                             if cmdline.contains("vesktop") || cmdline.contains("discord") {
                                 app_name = Some("Discord".to_string());

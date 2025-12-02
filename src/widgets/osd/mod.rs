@@ -112,7 +112,7 @@ fn create_volume_osd(icon_name: &str, level: u8) -> gtk::Widget {
     container.append(&progress);
 
     // Percentage
-    let percent_label = gtk::Label::new(Some(&format!("{}%", level)));
+    let percent_label = gtk::Label::new(Some(&format!("{level}%")));
     percent_label.add_css_class("osd-text");
     container.append(&percent_label);
 
@@ -266,7 +266,7 @@ fn create_stt_error_osd(error: &str) -> gtk::Widget {
     icon.add_css_class("osd-icon");
     container.append(&icon);
 
-    let text_label = gtk::Label::new(Some(&format!("Error: {}", error)));
+    let text_label = gtk::Label::new(Some(&format!("Error: {error}")));
     text_label.add_css_class("osd-text");
     container.append(&text_label);
 

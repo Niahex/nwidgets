@@ -60,7 +60,7 @@ pub fn get_paintable_with_size(icon_name: &str, size: Option<u32>) -> Option<gdk
     match svg_to_pixbuf(svg_data, size) {
         Some(pixbuf) => Some(gdk::Texture::for_pixbuf(&pixbuf)),
         None => {
-            println!("DEBUG: Failed to create pixbuf for icon '{}'", icon_name);
+            println!("DEBUG: Failed to create pixbuf for icon '{icon_name}'");
             None
         }
     }

@@ -1,6 +1,4 @@
-use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::sync::{mpsc, Arc, Mutex};
 use zbus::{interface, proxy, Connection, MessageHeader, SignalContext};
 
@@ -47,12 +45,12 @@ impl StatusNotifierWatcherImpl {
             .ok_or_else(|| zbus::fdo::Error::Failed("No sender".into()))?;
 
         let service_str = if service.starts_with('/') {
-            format!("{}{}", sender, service)
+            format!("{sender}{service}")
         } else {
             service.to_string()
         };
 
-        println!("[SYSTRAY] Registering item: {}", service_str);
+        println!("[SYSTRAY] Registering item: {service_str}");
 
         let mut items = self.registered_items.lock().unwrap();
         if !items.contains(&service_str) {
@@ -113,7 +111,7 @@ impl SystemTrayService {
                 let connection = match Connection::session().await {
                     Ok(c) => c,
                     Err(e) => {
-                        eprintln!("[SYSTRAY] Failed to connect to session bus: {}", e);
+                        eprintln!("[SYSTRAY] Failed to connect to session bus: {e}");
                         return;
                     }
                 };
@@ -131,7 +129,7 @@ impl SystemTrayService {
                     .at("/StatusNotifierWatcher", watcher)
                     .await
                 {
-                    eprintln!("[SYSTRAY] Failed to serve object: {}", e);
+                    eprintln!("[SYSTRAY] Failed to serve object: {e}");
                     return;
                 }
 
@@ -139,7 +137,7 @@ impl SystemTrayService {
                     .request_name("org.kde.StatusNotifierWatcher")
                     .await
                 {
-                    eprintln!("[SYSTRAY] Failed to request name: {}", e);
+                    eprintln!("[SYSTRAY] Failed to request name: {e}");
                     return;
                 }
 

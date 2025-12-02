@@ -2,21 +2,13 @@ use once_cell::sync::Lazy;
 use std::sync::{mpsc, Arc, Mutex};
 
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct ChatState {
     pub is_visible: bool,
     pub selected_site_name: String,
     pub selected_site_url: String,
 }
 
-impl Default for ChatState {
-    fn default() -> Self {
-        Self {
-            is_visible: false,
-            selected_site_name: String::new(),
-            selected_site_url: String::new(),
-        }
-    }
-}
 
 type ChatStateSender = mpsc::Sender<ChatState>;
 
@@ -65,7 +57,7 @@ impl ChatStateMonitor {
     }
 }
 
-static MONITOR: Lazy<ChatStateMonitor> = Lazy::new(|| ChatStateMonitor::new());
+static MONITOR: Lazy<ChatStateMonitor> = Lazy::new(ChatStateMonitor::new);
 
 pub struct ChatStateService;
 

@@ -90,7 +90,7 @@ fn main() {
         let stt_service_clone = stt_service.clone();
         stt_action.connect_activate(move |_, _| {
             if let Err(e) = stt_service_clone.toggle() {
-                eprintln!("[STT] Toggle error: {}", e);
+                eprintln!("[STT] Toggle error: {e}");
             }
         });
         app.add_action(&stt_action);

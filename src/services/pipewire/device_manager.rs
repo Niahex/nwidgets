@@ -6,7 +6,7 @@ pub struct DeviceManager;
 impl DeviceManager {
     /// List all audio output devices (sinks)
     pub fn list_sinks() -> Vec<AudioDevice> {
-        let output = match Command::new("wpctl").args(&["status"]).output() {
+        let output = match Command::new("wpctl").args(["status"]).output() {
             Ok(out) => out,
             Err(_) => return Vec::new(),
         };
@@ -24,7 +24,7 @@ impl DeviceManager {
 
     /// List all audio input devices (sources)
     pub fn list_sources() -> Vec<AudioDevice> {
-        let output = match Command::new("wpctl").args(&["status"]).output() {
+        let output = match Command::new("wpctl").args(["status"]).output() {
             Ok(out) => out,
             Err(_) => return Vec::new(),
         };
@@ -43,14 +43,14 @@ impl DeviceManager {
     /// Set default sink (output device)
     pub fn set_default_sink(sink_id: u32) {
         let _ = Command::new("wpctl")
-            .args(&["set-default", &sink_id.to_string()])
+            .args(["set-default", &sink_id.to_string()])
             .output();
     }
 
     /// Set default source (input device)
     pub fn set_default_source(source_id: u32) {
         let _ = Command::new("wpctl")
-            .args(&["set-default", &source_id.to_string()])
+            .args(["set-default", &source_id.to_string()])
             .output();
     }
 

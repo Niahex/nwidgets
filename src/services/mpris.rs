@@ -88,74 +88,71 @@ impl MprisService {
                         .and_then(|b| b.path(MPRIS_PATH))
                         .map(|b| b.build());
 
-                    match proxy_result {
-                        Ok(builder_future) => {
-                            match builder_future.await {
-                                Ok(proxy) => {
-                                    // 1. Récupérer l'état initial actuel
-                                    if let Ok(state) = Self::get_spotify_state(&proxy).await {
-                                        if tx.send(state.clone()).is_err() {
-                                            break;
-                                        }
-                                        last_state = state;
+                    if let Ok(builder_future) = proxy_result {
+                        match builder_future.await {
+                            Ok(proxy) => {
+                                // 1. Récupérer l'état initial actuel
+                                if let Ok(state) = Self::get_spotify_state(&proxy).await {
+                                    if tx.send(state.clone()).is_err() {
+                                        break;
                                     }
-
-                                    // 2. Écouter les changements (Signal PropertiesChanged)
-                                    // On écoute les changements de playback_status pour détecter play/pause
-                                    let mut status_stream =
-                                        proxy.receive_playback_status_changed().await;
-
-                                    // On écoute aussi les changements de metadata pour les changements de piste
-                                    let mut metadata_stream =
-                                        proxy.receive_metadata_changed().await;
-
-                                    // On écoute les changements de volume
-                                    let mut volume_stream = proxy.receive_volume_changed().await;
-
-                                    loop {
-                                        tokio::select! {
-                                            status_change = status_stream.next() => {
-                                                if status_change.is_none() { break; }
-                                                if let Ok(state) = Self::get_spotify_state(&proxy).await {
-                                                    if tx.send(state.clone()).is_err() {
-                                                        return;
-                                                    }
-                                                    last_state = state;
-                                                }
-                                            }
-                                            metadata_change = metadata_stream.next() => {
-                                                if metadata_change.is_none() { break; }
-                                                if let Ok(state) = Self::get_spotify_state(&proxy).await {
-                                                    if tx.send(state.clone()).is_err() {
-                                                        return;
-                                                    }
-                                                    last_state = state;
-                                                }
-                                            }
-                                            volume_change = volume_stream.next() => {
-                                                if volume_change.is_none() { break; }
-                                                if let Ok(state) = Self::get_spotify_state(&proxy).await {
-                                                    if tx.send(state.clone()).is_err() {
-                                                        return;
-                                                    }
-                                                    last_state = state;
-                                                }
-                                            }
-                                        }
-                                    }
-                                    // Si on sort de la boucle while, c'est que Spotify a probablement fermé ou le stream a coupé
+                                    last_state = state;
                                 }
-                                Err(_) => {
-                                    // Spotify n'est pas ouvert ou erreur de connexion au proxy
-                                    // On envoie un état "Stopped" si on n'y est pas déjà
-                                    if last_state.status != PlaybackStatus::Stopped {
-                                        last_state = MprisState::default();
-                                        let _ = tx.send(last_state.clone());
+
+                                // 2. Écouter les changements (Signal PropertiesChanged)
+                                // On écoute les changements de playback_status pour détecter play/pause
+                                let mut status_stream =
+                                    proxy.receive_playback_status_changed().await;
+
+                                // On écoute aussi les changements de metadata pour les changements de piste
+                                let mut metadata_stream =
+                                    proxy.receive_metadata_changed().await;
+
+                                // On écoute les changements de volume
+                                let mut volume_stream = proxy.receive_volume_changed().await;
+
+                                loop {
+                                    tokio::select! {
+                                        status_change = status_stream.next() => {
+                                            if status_change.is_none() { break; }
+                                            if let Ok(state) = Self::get_spotify_state(&proxy).await {
+                                                if tx.send(state.clone()).is_err() {
+                                                    return;
+                                                }
+                                                last_state = state;
+                                            }
+                                        }
+                                        metadata_change = metadata_stream.next() => {
+                                            if metadata_change.is_none() { break; }
+                                            if let Ok(state) = Self::get_spotify_state(&proxy).await {
+                                                if tx.send(state.clone()).is_err() {
+                                                    return;
+                                                }
+                                                last_state = state;
+                                            }
+                                        }
+                                        volume_change = volume_stream.next() => {
+                                            if volume_change.is_none() { break; }
+                                            if let Ok(state) = Self::get_spotify_state(&proxy).await {
+                                                if tx.send(state.clone()).is_err() {
+                                                    return;
+                                                }
+                                                last_state = state;
+                                            }
+                                        }
                                     }
+                                }
+                                // Si on sort de la boucle while, c'est que Spotify a probablement fermé ou le stream a coupé
+                            }
+                            Err(_) => {
+                                // Spotify n'est pas ouvert ou erreur de connexion au proxy
+                                // On envoie un état "Stopped" si on n'y est pas déjà
+                                if last_state.status != PlaybackStatus::Stopped {
+                                    last_state = MprisState::default();
+                                    let _ = tx.send(last_state.clone());
                                 }
                             }
                         }
-                        Err(_) => {}
                     }
 
                     // Si on est ici, c'est que la connexion a échoué ou a été perdue.

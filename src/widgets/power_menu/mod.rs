@@ -36,7 +36,7 @@ impl PowerAction {
     }
 
     fn execute(&self) {
-        println!("[POWER_MENU] Executing action: {:?}", self);
+        println!("[POWER_MENU] Executing action: {self:?}");
 
         let result = match self {
             PowerAction::Lock => {
@@ -45,24 +45,24 @@ impl PowerAction {
             }
             PowerAction::Logout => {
                 // Hyprland exit
-                Command::new("hyprctl").args(&["dispatch", "exit"]).spawn()
+                Command::new("hyprctl").args(["dispatch", "exit"]).spawn()
             }
             PowerAction::Suspend => {
                 // Systemd suspend
-                Command::new("systemctl").args(&["suspend"]).spawn()
+                Command::new("systemctl").args(["suspend"]).spawn()
             }
             PowerAction::Reboot => {
                 // Systemd reboot
-                Command::new("systemctl").args(&["reboot"]).spawn()
+                Command::new("systemctl").args(["reboot"]).spawn()
             }
             PowerAction::Shutdown => {
                 // Systemd shutdown
-                Command::new("systemctl").args(&["poweroff"]).spawn()
+                Command::new("systemctl").args(["poweroff"]).spawn()
             }
         };
 
         if let Err(e) = result {
-            eprintln!("[POWER_MENU] Failed to execute action {:?}: {}", self, e);
+            eprintln!("[POWER_MENU] Failed to execute action {self:?}: {e}");
         }
     }
 

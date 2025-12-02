@@ -1,5 +1,4 @@
 use crate::services::mpris::{MprisService, MprisState, PlaybackStatus};
-use crate::utils::icons;
 use gtk::prelude::*;
 use gtk4 as gtk;
 use std::cell::Cell;

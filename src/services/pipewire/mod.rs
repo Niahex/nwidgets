@@ -103,7 +103,7 @@ impl PipeWireService {
             let mut child = match Command::new("pw-mon").stdout(Stdio::piped()).spawn() {
                 Ok(child) => child,
                 Err(e) => {
-                    eprintln!("Failed to start pw-mon: {}. Falling back to polling.", e);
+                    eprintln!("Failed to start pw-mon: {e}. Falling back to polling.");
                     // Fallback polling loop
                     loop {
                         std::thread::sleep(std::time::Duration::from_millis(1000));
@@ -133,11 +133,10 @@ impl PipeWireService {
                 for line in reader.lines() {
                     if let Ok(l) = line {
                         // "changed:" indicates a state change in the PipeWire graph
-                        if l.trim().starts_with("changed:") {
-                            if event_tx.send(()).is_err() {
+                        if l.trim().starts_with("changed:")
+                            && event_tx.send(()).is_err() {
                                 break;
                             }
-                        }
                     } else {
                         break;
                     }

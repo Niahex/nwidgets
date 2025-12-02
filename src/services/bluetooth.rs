@@ -84,7 +84,7 @@ impl BluetoothService {
                 let connection = match Connection::system().await {
                     Ok(conn) => conn,
                     Err(e) => {
-                        eprintln!("Error connecting to system bus: {}", e);
+                        eprintln!("Error connecting to system bus: {e}");
                         return;
                     }
                 };
@@ -253,7 +253,7 @@ impl BluetoothService {
         for (path, interfaces) in objects {
             if interfaces.contains_key("org.bluez.Device1") {
                 // Try to check if device is connected
-                if let Some(builder) = DeviceProxy::builder(connection).path(path).ok() {
+                if let Ok(builder) = DeviceProxy::builder(connection).path(path) {
                     if let Ok(device_proxy) = builder.build().await {
                         if device_proxy.connected().await.unwrap_or(false) {
                             count += 1;
@@ -336,7 +336,7 @@ impl BluetoothService {
         std::thread::spawn(move || {
             crate::utils::runtime::block_on(async {
                 if let Err(e) = Self::connect_device_async(&path).await {
-                    eprintln!("Failed to connect device: {}", e);
+                    eprintln!("Failed to connect device: {e}");
                 }
             });
         });
@@ -359,7 +359,7 @@ impl BluetoothService {
         std::thread::spawn(move || {
             crate::utils::runtime::block_on(async {
                 if let Err(e) = Self::disconnect_device_async(&path).await {
-                    eprintln!("Failed to disconnect device: {}", e);
+                    eprintln!("Failed to disconnect device: {e}");
                 }
             });
         });

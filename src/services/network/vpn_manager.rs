@@ -17,9 +17,8 @@ impl VpnManager {
 
         // Check if any connection is a VPN type
         for conn_path in active_connections {
-            if let Some(builder) = ActiveConnectionProxy::builder(connection)
+            if let Ok(builder) = ActiveConnectionProxy::builder(connection)
                 .path(conn_path)
-                .ok()
             {
                 if let Ok(proxy) = builder.build().await {
                     if let Ok(conn_type) = proxy.connection_type().await {

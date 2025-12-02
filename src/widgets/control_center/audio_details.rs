@@ -389,7 +389,7 @@ fn create_stream_row(stream: AudioStream) -> gtk::Box {
     let volume_label_clone = volume_label.clone();
     volume_scale.connect_value_changed(move |scale| {
         let volume = scale.value() as u8;
-        volume_label_clone.set_text(&format!("{}%", volume));
+        volume_label_clone.set_text(&format!("{volume}%"));
         PipeWireService::set_stream_volume(stream_id, volume);
     });
 

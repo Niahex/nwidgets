@@ -10,4 +10,3 @@ pub mod systray;
 pub mod workspaces;
 
 // Re-export audio module types for backward compatibility
-pub use audio::{AudioDeviceType, AudioModule, SinkModule, SourceModule};

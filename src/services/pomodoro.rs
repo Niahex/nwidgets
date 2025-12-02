@@ -228,6 +228,6 @@ impl PomodoroService {
         let seconds = self.get_remaining_seconds();
         let minutes = seconds / 60;
         let secs = seconds % 60;
-        format!("{:02}:{:02}", minutes, secs)
+        format!("{minutes:02}:{secs:02}")
     }
 }

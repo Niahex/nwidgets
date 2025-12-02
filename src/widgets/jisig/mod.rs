@@ -1,7 +1,7 @@
 use crate::utils::icons;
 use crate::utils::PinController;
 use gtk4 as gtk;
-use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
+use gtk4_layer_shell::{Edge, Layer, LayerShell};
 use std::cell::Cell;
 use std::env;
 use std::fs;
