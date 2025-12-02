@@ -1,3 +1,5 @@
+use crate::services::clipboard::ClipboardService;
+use crate::services::osd::{OsdEvent, OsdEventService};
 use anyhow::{anyhow, Result};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{Device, Sample, SizedSample};
@@ -7,8 +9,6 @@ use std::thread;
 use std::time::{Duration, Instant};
 use transcribe_rs::engines::whisper::{WhisperEngine, WhisperInferenceParams};
 use transcribe_rs::TranscriptionEngine;
-use crate::services::osd::{OsdEvent, OsdEventService};
-use crate::services::clipboard::ClipboardService;
 
 const WHISPER_SAMPLE_RATE: u32 = 16000;
 const SILENCE_THRESHOLD: f32 = 0.01;
@@ -81,17 +81,42 @@ impl AudioRecorder {
         let channels = config.channels() as usize;
 
         let stream = match config.sample_format() {
-            cpal::SampleFormat::F32 => Self::build_stream::<f32>(&device, &config.into(), sample_tx.clone(), channels),
-            cpal::SampleFormat::I16 => Self::build_stream::<i16>(&device, &config.into(), sample_tx.clone(), channels),
-            cpal::SampleFormat::U16 => Self::build_stream::<u16>(&device, &config.into(), sample_tx.clone(), channels),
-            cpal::SampleFormat::I8 => Self::build_stream::<i8>(&device, &config.into(), sample_tx.clone(), channels),
-            cpal::SampleFormat::U8 => Self::build_stream::<u8>(&device, &config.into(), sample_tx.clone(), channels),
-            cpal::SampleFormat::I32 => Self::build_stream::<i32>(&device, &config.into(), sample_tx.clone(), channels),
-            cpal::SampleFormat::U32 => Self::build_stream::<u32>(&device, &config.into(), sample_tx.clone(), channels),
-            cpal::SampleFormat::F64 => Self::build_stream::<f64>(&device, &config.into(), sample_tx.clone(), channels),
-            cpal::SampleFormat::I64 => Self::build_stream::<i64>(&device, &config.into(), sample_tx.clone(), channels),
-            cpal::SampleFormat::U64 => Self::build_stream::<u64>(&device, &config.into(), sample_tx.clone(), channels),
-            _ => return Err(anyhow!("Unsupported sample format: {:?}", config.sample_format())),
+            cpal::SampleFormat::F32 => {
+                Self::build_stream::<f32>(&device, &config.into(), sample_tx.clone(), channels)
+            }
+            cpal::SampleFormat::I16 => {
+                Self::build_stream::<i16>(&device, &config.into(), sample_tx.clone(), channels)
+            }
+            cpal::SampleFormat::U16 => {
+                Self::build_stream::<u16>(&device, &config.into(), sample_tx.clone(), channels)
+            }
+            cpal::SampleFormat::I8 => {
+                Self::build_stream::<i8>(&device, &config.into(), sample_tx.clone(), channels)
+            }
+            cpal::SampleFormat::U8 => {
+                Self::build_stream::<u8>(&device, &config.into(), sample_tx.clone(), channels)
+            }
+            cpal::SampleFormat::I32 => {
+                Self::build_stream::<i32>(&device, &config.into(), sample_tx.clone(), channels)
+            }
+            cpal::SampleFormat::U32 => {
+                Self::build_stream::<u32>(&device, &config.into(), sample_tx.clone(), channels)
+            }
+            cpal::SampleFormat::F64 => {
+                Self::build_stream::<f64>(&device, &config.into(), sample_tx.clone(), channels)
+            }
+            cpal::SampleFormat::I64 => {
+                Self::build_stream::<i64>(&device, &config.into(), sample_tx.clone(), channels)
+            }
+            cpal::SampleFormat::U64 => {
+                Self::build_stream::<u64>(&device, &config.into(), sample_tx.clone(), channels)
+            }
+            _ => {
+                return Err(anyhow!(
+                    "Unsupported sample format: {:?}",
+                    config.sample_format()
+                ))
+            }
         }?;
 
         stream.play()?;
@@ -124,8 +149,7 @@ impl AudioRecorder {
             match sample_rx.recv_timeout(Duration::from_millis(50)) {
                 Ok(chunk) => {
                     if recording {
-                        let max_amplitude =
-                            chunk.iter().fold(0.0f32, |max, &x| max.max(x.abs()));
+                        let max_amplitude = chunk.iter().fold(0.0f32, |max, &x| max.max(x.abs()));
 
                         if max_amplitude > SILENCE_THRESHOLD {
                             last_speech_time = Instant::now();
@@ -308,18 +332,14 @@ impl TranscriptionManager {
             print_realtime: false,
             print_timestamps: false,
             initial_prompt: Some(
-                "Voici une transcription claire, concise et bien ponctuée en français."
-                    .to_string(),
+                "Voici une transcription claire, concise et bien ponctuée en français.".to_string(),
             ),
             ..Default::default()
         };
 
-        let transcript = TranscriptionEngine::transcribe_samples(
-            engine,
-            audio_data.to_vec(),
-            Some(params),
-        )
-        .map_err(|e| anyhow!("Transcription failed: {}", e))?;
+        let transcript =
+            TranscriptionEngine::transcribe_samples(engine, audio_data.to_vec(), Some(params))
+                .map_err(|e| anyhow!("Transcription failed: {}", e))?;
 
         Ok(transcript.text)
     }
@@ -432,20 +452,31 @@ impl SttService {
                                     if !trimmed.is_empty() {
                                         // Copy to clipboard silently (sans déclencher l'OSD clipboard)
                                         if ClipboardService::set_clipboard_content_silent(trimmed) {
-                                            println!("Transcription copied to clipboard: {}", trimmed);
-                                            OsdEventService::send_event(OsdEvent::SttComplete("Speech Copied".to_string()));
+                                            println!(
+                                                "Transcription copied to clipboard: {}",
+                                                trimmed
+                                            );
+                                            OsdEventService::send_event(OsdEvent::SttComplete(
+                                                "Speech Copied".to_string(),
+                                            ));
                                         } else {
                                             eprintln!("Failed to copy to clipboard");
-                                            OsdEventService::send_event(OsdEvent::SttError("Copy failed".to_string()));
+                                            OsdEventService::send_event(OsdEvent::SttError(
+                                                "Copy failed".to_string(),
+                                            ));
                                         }
                                     } else {
-                                        OsdEventService::send_event(OsdEvent::SttError("No speech detected".to_string()));
+                                        OsdEventService::send_event(OsdEvent::SttError(
+                                            "No speech detected".to_string(),
+                                        ));
                                     }
                                     *state.lock().unwrap() = SttState::Idle;
                                 }
                                 Err(e) => {
                                     let error_msg = format!("Transcription error: {}", e);
-                                    OsdEventService::send_event(OsdEvent::SttError(error_msg.clone()));
+                                    OsdEventService::send_event(OsdEvent::SttError(
+                                        error_msg.clone(),
+                                    ));
                                     *state.lock().unwrap() = SttState::Error(error_msg);
                                 }
                             }

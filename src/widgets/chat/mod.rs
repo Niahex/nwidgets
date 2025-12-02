@@ -1,3 +1,7 @@
+use crate::services::chat::ChatState;
+use crate::services::ChatStateService;
+use crate::utils::icons;
+use crate::utils::PinController;
 use gtk4 as gtk;
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use std::cell::Cell;
@@ -9,10 +13,6 @@ use webkit6::{
     CookiePersistentStorage, HardwareAccelerationPolicy, Settings, UserMediaPermissionRequest,
     WebContext, WebView,
 };
-use crate::utils::PinController;
-use crate::utils::icons;
-use crate::services::ChatStateService;
-use crate::services::chat::ChatState;
 
 pub struct ChatOverlay {
     pub window: gtk::ApplicationWindow,
@@ -32,7 +32,6 @@ const SITES: &[(&str, &str)] = &[
         "https://duckduckgo.com/?q=DuckDuckGo+AI+Chat&ia=chat&duckai=1&atb=v495-1",
     ),
 ];
-
 
 pub fn create_chat_overlay(application: &gtk::Application) -> ChatOverlay {
     let settings = Settings::new();
@@ -58,7 +57,6 @@ pub fn create_chat_overlay(application: &gtk::Application) -> ChatOverlay {
     let webview = WebView::builder().web_context(&context).build();
     webview.set_settings(&settings);
     webview.add_css_class("chat-webview");
-
 
     webview.connect_permission_request(|_webview, request| {
         if let Some(media_request) = request.downcast_ref::<UserMediaPermissionRequest>() {
@@ -132,10 +130,7 @@ pub fn create_chat_overlay(application: &gtk::Application) -> ChatOverlay {
         site_label_clone.set_text(SITES[next].0);
 
         // Notifier le changement de site sélectionné
-        ChatStateService::set_selected_site(
-            SITES[next].0.to_string(),
-            SITES[next].1.to_string(),
-        );
+        ChatStateService::set_selected_site(SITES[next].0.to_string(), SITES[next].1.to_string());
     });
 
     let pin_icon = icons::create_icon("pin");
@@ -181,10 +176,7 @@ pub fn create_chat_overlay(application: &gtk::Application) -> ChatOverlay {
     webview.load_uri(SITES[0].1);
 
     // Initialiser l'état avec le premier site
-    ChatStateService::set_selected_site(
-        SITES[0].0.to_string(),
-        SITES[0].1.to_string(),
-    );
+    ChatStateService::set_selected_site(SITES[0].0.to_string(), SITES[0].1.to_string());
 
     window.set_visible(false);
 
@@ -256,11 +248,8 @@ pub fn create_chat_overlay(application: &gtk::Application) -> ChatOverlay {
     window.add_controller(key_controller);
 
     // Créer le PinController pour permettre le contrôle externe
-    let pin_controller = PinController::new(
-        window.clone(),
-        Rc::clone(&is_exclusive),
-        pin_icon.clone(),
-    );
+    let pin_controller =
+        PinController::new(window.clone(), Rc::clone(&is_exclusive), pin_icon.clone());
 
     ChatOverlay {
         window,

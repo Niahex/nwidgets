@@ -1,6 +1,6 @@
+use super::audio_state::AudioState;
 use crate::services::osd::{OsdEvent, OsdEventService};
 use std::process::Command;
-use super::audio_state::AudioState;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AudioDevice {
@@ -76,7 +76,11 @@ impl VolumeControl {
         let state = Self::get_audio_state();
         let icon_name = device.get_icon_name(&state);
         let is_muted = device.is_device_muted(&state);
-        OsdEventService::send_event(OsdEvent::Volume(icon_name.to_string(), volume_val, is_muted));
+        OsdEventService::send_event(OsdEvent::Volume(
+            icon_name.to_string(),
+            volume_val,
+            is_muted,
+        ));
     }
 
     fn toggle_device_mute(device: AudioDevice) {

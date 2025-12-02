@@ -3,14 +3,14 @@ mod device_manager;
 mod stream_manager;
 mod volume_control;
 
-pub use audio_state::{AudioState, AudioDevice, AudioStream};
+pub use audio_state::{AudioDevice, AudioState, AudioStream};
 pub use device_manager::DeviceManager;
 pub use stream_manager::StreamManager;
 pub use volume_control::VolumeControl;
 
-use std::sync::mpsc;
-use std::process::{Command, Stdio};
 use std::io::{BufRead, BufReader};
+use std::process::{Command, Stdio};
+use std::sync::mpsc;
 
 pub struct PipeWireService;
 
@@ -100,10 +100,7 @@ impl PipeWireService {
             }
 
             // Start pw-mon process to monitor changes
-            let mut child = match Command::new("pw-mon")
-                .stdout(Stdio::piped())
-                .spawn() 
-            {
+            let mut child = match Command::new("pw-mon").stdout(Stdio::piped()).spawn() {
                 Ok(child) => child,
                 Err(e) => {
                     eprintln!("Failed to start pw-mon: {}. Falling back to polling.", e);
@@ -122,35 +119,40 @@ impl PipeWireService {
                 }
             };
 
-            let stdout = child.stdout.take().expect("Failed to capture pw-mon stdout");
+            let stdout = child
+                .stdout
+                .take()
+                .expect("Failed to capture pw-mon stdout");
             let reader = BufReader::new(stdout);
-            
+
             // Channel to signal that an event occurred
             let (event_tx, event_rx) = mpsc::channel();
-            
+
             // Spawn a thread to read pw-mon output
             std::thread::spawn(move || {
                 for line in reader.lines() {
-                     if let Ok(l) = line {
-                         // "changed:" indicates a state change in the PipeWire graph
-                         if l.trim().starts_with("changed:") {
-                             if event_tx.send(()).is_err() { break; }
-                         }
-                     } else {
-                         break;
-                     }
+                    if let Ok(l) = line {
+                        // "changed:" indicates a state change in the PipeWire graph
+                        if l.trim().starts_with("changed:") {
+                            if event_tx.send(()).is_err() {
+                                break;
+                            }
+                        }
+                    } else {
+                        break;
+                    }
                 }
             });
 
             loop {
                 // Wait for an event (blocking)
                 if event_rx.recv().is_err() {
-                    break; 
+                    break;
                 }
 
                 // Debounce: Wait 50ms to coalesce rapid events (like volume sliding)
                 std::thread::sleep(std::time::Duration::from_millis(50));
-                
+
                 // Drain any other events that came in during the sleep
                 while event_rx.try_recv().is_ok() {}
 
@@ -162,7 +164,7 @@ impl PipeWireService {
                     last_state = new_state;
                 }
             }
-            
+
             // Cleanup
             let _ = child.kill();
         });

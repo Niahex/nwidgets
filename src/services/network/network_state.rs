@@ -9,9 +9,9 @@ pub enum ConnectionType {
 pub struct NetworkState {
     pub connected: bool,
     pub connection_type: ConnectionType,
-    pub signal_strength: u8, // 0-100, only relevant for WiFi
+    pub signal_strength: u8,  // 0-100, only relevant for WiFi
     pub ssid: Option<String>, // WiFi SSID if connected
-    pub vpn_active: bool, // true if VPN connection is active
+    pub vpn_active: bool,     // true if VPN connection is active
 }
 
 #[derive(Debug, Clone)]

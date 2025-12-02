@@ -40,7 +40,13 @@ pub fn setup_bluetooth_section_callbacks(
     bt_expand_btn: &gtk::Button,
     panels: &PanelManager,
 ) {
-    setup_expand_callback(bt_expanded, bt_expand_btn, panels, "bluetooth", populate_bluetooth_details);
+    setup_expand_callback(
+        bt_expanded,
+        bt_expand_btn,
+        panels,
+        "bluetooth",
+        populate_bluetooth_details,
+    );
 }
 
 pub fn setup_bluetooth_updates(bt_expanded: &gtk::Box) {

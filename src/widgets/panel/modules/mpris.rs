@@ -52,9 +52,8 @@ impl MprisModule {
         container.add_controller(gesture_click);
 
         // Ajouter le contrôleur de scroll pour volume/pistes
-        let scroll_controller = gtk::EventControllerScroll::new(
-            gtk::EventControllerScrollFlags::BOTH_AXES,
-        );
+        let scroll_controller =
+            gtk::EventControllerScroll::new(gtk::EventControllerScrollFlags::BOTH_AXES);
 
         // Debounce pour éviter les changements de piste trop rapides
         let last_track_change = Rc::new(Cell::new(Instant::now() - Duration::from_secs(1)));
@@ -82,8 +81,7 @@ impl MprisModule {
                 } else {
                     println!("[MPRIS] Track change ignored (cooldown)");
                 }
-            }
-            else if dy.abs() > 0.0 {
+            } else if dy.abs() > 0.0 {
                 if dy < 0.0 {
                     println!("[MPRIS] Scroll UP -> Volume up");
                     MprisService::volume_up();

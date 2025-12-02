@@ -1,8 +1,8 @@
-use zbus::{Connection, proxy, interface, SignalContext, MessageHeader};
+use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, mpsc};
-use futures_util::StreamExt;
+use std::sync::{mpsc, Arc, Mutex};
+use zbus::{interface, proxy, Connection, MessageHeader, SignalContext};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrayItem {
@@ -37,8 +37,13 @@ struct StatusNotifierWatcherImpl {
 
 #[interface(name = "org.kde.StatusNotifierWatcher")]
 impl StatusNotifierWatcherImpl {
-    fn register_status_notifier_item(&mut self, #[zbus(header)] hdr: MessageHeader<'_>, service: &str) -> zbus::fdo::Result<()> {
-        let sender = hdr.sender()
+    fn register_status_notifier_item(
+        &mut self,
+        #[zbus(header)] hdr: MessageHeader<'_>,
+        service: &str,
+    ) -> zbus::fdo::Result<()> {
+        let sender = hdr
+            .sender()
             .ok_or_else(|| zbus::fdo::Error::Failed("No sender".into()))?;
 
         let service_str = if service.starts_with('/') {
@@ -77,10 +82,16 @@ impl StatusNotifierWatcherImpl {
     }
 
     #[zbus(signal)]
-    async fn status_notifier_item_registered(signal_ctxt: &SignalContext<'_>, service: &str) -> zbus::Result<()>;
+    async fn status_notifier_item_registered(
+        signal_ctxt: &SignalContext<'_>,
+        service: &str,
+    ) -> zbus::Result<()>;
 
     #[zbus(signal)]
-    async fn status_notifier_item_unregistered(signal_ctxt: &SignalContext<'_>, service: &str) -> zbus::Result<()>;
+    async fn status_notifier_item_unregistered(
+        signal_ctxt: &SignalContext<'_>,
+        service: &str,
+    ) -> zbus::Result<()>;
 
     #[zbus(signal)]
     async fn status_notifier_host_registered(signal_ctxt: &SignalContext<'_>) -> zbus::Result<()>;
@@ -115,19 +126,33 @@ impl SystemTrayService {
                     update_sender: update_tx.clone(),
                 };
 
-                if let Err(e) = connection.object_server().at("/StatusNotifierWatcher", watcher).await {
+                if let Err(e) = connection
+                    .object_server()
+                    .at("/StatusNotifierWatcher", watcher)
+                    .await
+                {
                     eprintln!("[SYSTRAY] Failed to serve object: {}", e);
                     return;
                 }
 
-                if let Err(e) = connection.request_name("org.kde.StatusNotifierWatcher").await {
+                if let Err(e) = connection
+                    .request_name("org.kde.StatusNotifierWatcher")
+                    .await
+                {
                     eprintln!("[SYSTRAY] Failed to request name: {}", e);
                     return;
                 }
 
                 // Emettre le signal HostRegistered pour dire aux applis qu'on est là
-                if let Ok(iface_ref) = connection.object_server().interface::<_, StatusNotifierWatcherImpl>("/StatusNotifierWatcher").await {
-                    let _ = StatusNotifierWatcherImpl::status_notifier_host_registered(iface_ref.signal_context()).await;
+                if let Ok(iface_ref) = connection
+                    .object_server()
+                    .interface::<_, StatusNotifierWatcherImpl>("/StatusNotifierWatcher")
+                    .await
+                {
+                    let _ = StatusNotifierWatcherImpl::status_notifier_host_registered(
+                        iface_ref.signal_context(),
+                    )
+                    .await;
                 }
 
                 // Boucle de gestion des mises à jour
@@ -169,9 +194,13 @@ impl SystemTrayService {
         };
 
         let proxy = StatusNotifierItemProxy::builder(connection)
-            .destination(dest).ok()?
-            .path(path).ok()?
-            .build().await.ok()?;
+            .destination(dest)
+            .ok()?
+            .path(path)
+            .ok()?
+            .build()
+            .await
+            .ok()?;
 
         let id = proxy.id().await.ok().unwrap_or_default();
         let title = proxy.title().await.unwrap_or_else(|_| id.clone());

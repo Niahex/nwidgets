@@ -1,8 +1,8 @@
+use crate::utils::icons;
 use gtk4::{self as gtk};
 use gtk4_layer_shell::LayerShell;
 use std::cell::Cell;
 use std::rc::Rc;
-use crate::utils::icons;
 
 /// Contrôleur pour gérer le pin/unpin d'une fenêtre depuis l'extérieur
 #[derive(Clone)]

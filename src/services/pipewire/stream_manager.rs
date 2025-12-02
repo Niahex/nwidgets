@@ -1,5 +1,5 @@
-use std::process::Command;
 use super::audio_state::AudioStream;
+use std::process::Command;
 
 pub struct StreamManager;
 
@@ -152,7 +152,9 @@ impl StreamManager {
     }
 
     /// Get additional stream metadata using pw-cli
-    fn get_stream_metadata(stream_id: u32) -> (Option<String>, Option<String>, Option<String>, bool) {
+    fn get_stream_metadata(
+        stream_id: u32,
+    ) -> (Option<String>, Option<String>, Option<String>, bool) {
         let output = Command::new("pw-cli")
             .args(&["info", &stream_id.to_string()])
             .output();
@@ -235,7 +237,9 @@ impl StreamManager {
                 // 1. Vesktop (Electron-based)
                 if process_binary.as_deref() == Some("electron") {
                     if let Some(pid) = process_id {
-                        if let Ok(cmdline) = std::fs::read_to_string(format!("/proc/{}/cmdline", pid)) {
+                        if let Ok(cmdline) =
+                            std::fs::read_to_string(format!("/proc/{}/cmdline", pid))
+                        {
                             if cmdline.contains("vesktop") || cmdline.contains("discord") {
                                 app_name = Some("Discord".to_string());
                                 app_icon = Some("discord".to_string());

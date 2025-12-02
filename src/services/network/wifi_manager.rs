@@ -1,4 +1,4 @@
-use zbus::{Connection, proxy};
+use zbus::{proxy, Connection};
 
 // NetworkManager Wireless Device interface
 #[proxy(
@@ -26,7 +26,9 @@ trait AccessPoint {
 pub struct WifiManager;
 
 impl WifiManager {
-    pub async fn get_wifi_info(device_path: &zbus::zvariant::OwnedObjectPath) -> Result<(u8, Option<String>), Box<dyn std::error::Error>> {
+    pub async fn get_wifi_info(
+        device_path: &zbus::zvariant::OwnedObjectPath,
+    ) -> Result<(u8, Option<String>), Box<dyn std::error::Error>> {
         let connection = Connection::system().await?;
         let wireless_device = WirelessDeviceProxy::builder(&connection)
             .path(device_path)?
@@ -34,7 +36,7 @@ impl WifiManager {
             .await?;
 
         let ap_path = wireless_device.active_access_point().await?;
-        
+
         // Check if there's an active access point
         if ap_path.as_str() == "/" {
             return Ok((0, None));

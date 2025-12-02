@@ -1,11 +1,14 @@
-use zbus::Connection;
 use super::network_state::VpnConnection;
-use super::{NetworkManagerProxy, ActiveConnectionProxy, SettingsProxy, SettingsConnectionProxy};
+use super::{ActiveConnectionProxy, NetworkManagerProxy, SettingsConnectionProxy, SettingsProxy};
+use zbus::Connection;
 
 pub struct VpnManager;
 
 impl VpnManager {
-    pub async fn check_vpn_active(connection: &Connection, nm_proxy: &NetworkManagerProxy<'_>) -> bool {
+    pub async fn check_vpn_active(
+        connection: &Connection,
+        nm_proxy: &NetworkManagerProxy<'_>,
+    ) -> bool {
         // Get all active connections
         let active_connections = match nm_proxy.active_connections().await {
             Ok(conns) => conns,
@@ -26,7 +29,8 @@ impl VpnManager {
                             || conn_type == "openvpn"
                             || conn_type == "vpnc"
                             || conn_type == "pptp"
-                            || conn_type == "l2tp" {
+                            || conn_type == "l2tp"
+                        {
                             return true;
                         }
                     }
@@ -81,13 +85,17 @@ impl VpnManager {
                     // Check if this is a VPN connection
                     if let Some(connection_settings) = settings.get("connection") {
                         if let Some(type_value) = connection_settings.get("type") {
-                            if let Ok(conn_type) = type_value.downcast_ref::<zbus::zvariant::Str>() {
+                            if let Ok(conn_type) = type_value.downcast_ref::<zbus::zvariant::Str>()
+                            {
                                 let conn_type_str = conn_type.as_str();
 
                                 // Check if it's a VPN type
                                 if conn_type_str.contains("vpn") || conn_type_str == "wireguard" {
-                                    let name = if let Some(id_value) = connection_settings.get("id") {
-                                        if let Ok(id) = id_value.downcast_ref::<zbus::zvariant::Str>() {
+                                    let name = if let Some(id_value) = connection_settings.get("id")
+                                    {
+                                        if let Ok(id) =
+                                            id_value.downcast_ref::<zbus::zvariant::Str>()
+                                        {
                                             id.to_string()
                                         } else {
                                             "Unknown VPN".to_string()
@@ -96,15 +104,18 @@ impl VpnManager {
                                         "Unknown VPN".to_string()
                                     };
 
-                                    let uuid = if let Some(uuid_value) = connection_settings.get("uuid") {
-                                        if let Ok(uuid) = uuid_value.downcast_ref::<zbus::zvariant::Str>() {
-                                            uuid.to_string()
+                                    let uuid =
+                                        if let Some(uuid_value) = connection_settings.get("uuid") {
+                                            if let Ok(uuid) =
+                                                uuid_value.downcast_ref::<zbus::zvariant::Str>()
+                                            {
+                                                uuid.to_string()
+                                            } else {
+                                                String::new()
+                                            }
                                         } else {
                                             String::new()
-                                        }
-                                    } else {
-                                        String::new()
-                                    };
+                                        };
 
                                     // Check if this connection is currently active
                                     let active = active_vpn_paths.contains(&conn_path.to_string());

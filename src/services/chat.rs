@@ -1,5 +1,5 @@
-use std::sync::{Arc, Mutex, mpsc};
 use once_cell::sync::Lazy;
+use std::sync::{mpsc, Arc, Mutex};
 
 #[derive(Debug, Clone)]
 pub struct ChatState {
@@ -58,7 +58,8 @@ impl ChatStateMonitor {
     }
 
     fn get_current_state(&self) -> ChatState {
-        self.current_state.lock()
+        self.current_state
+            .lock()
             .map(|state| state.clone())
             .unwrap_or_default()
     }

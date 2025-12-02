@@ -1,5 +1,5 @@
-use crate::utils::icons;
 use crate::services::notifications::{Notification, NotificationService};
+use crate::utils::icons;
 use gtk::prelude::*;
 use gtk4 as gtk;
 

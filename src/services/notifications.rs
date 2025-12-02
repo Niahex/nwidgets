@@ -1,11 +1,11 @@
 use glib::MainContext;
+use once_cell::sync::Lazy;
 use parking_lot::Mutex; // Mutex plus rapide et ergonomique
 use std::collections::{HashMap, VecDeque};
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use zbus::Connection;
-use once_cell::sync::Lazy;
 
 #[derive(Debug, Clone)]
 pub struct Notification {
@@ -33,9 +33,8 @@ impl NotificationState {
 }
 
 // Instance globale unique lazy
-static STATE: Lazy<Arc<Mutex<NotificationState>>> = Lazy::new(|| {
-    Arc::new(Mutex::new(NotificationState::new()))
-});
+static STATE: Lazy<Arc<Mutex<NotificationState>>> =
+    Lazy::new(|| Arc::new(Mutex::new(NotificationState::new())));
 
 pub struct NotificationService;
 
@@ -63,6 +62,18 @@ impl NotificationServer {
             app_name, summary
         );
 
+        // Ignorer les notifications de Spotify
+        if app_name.to_lowercase() == "spotify" {
+            println!("[NOTIF] 🚫 Ignoring Spotify notification");
+            let id = if replaces_id > 0 {
+                replaces_id
+            } else {
+                self.next_id += 1;
+                self.next_id
+            };
+            return id;
+        }
+
         let id = if replaces_id > 0 {
             replaces_id
         } else {
@@ -72,7 +83,8 @@ impl NotificationServer {
 
         // Extraction optimisée de l'urgence (default: 1/Normal)
         // 0: Low, 1: Normal, 2: Critical
-        let urgency = hints.get("urgency")
+        let urgency = hints
+            .get("urgency")
             .and_then(|v| v.downcast_ref::<u8>().ok())
             .unwrap_or(1);
 
@@ -148,7 +160,9 @@ impl NotificationService {
         });
     }
 
-    async fn run_dbus_server(state: Arc<Mutex<NotificationState>>) -> Result<(), Box<dyn std::error::Error>> {
+    async fn run_dbus_server(
+        state: Arc<Mutex<NotificationState>>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let connection = Connection::session().await?;
 
         let server = NotificationServer {

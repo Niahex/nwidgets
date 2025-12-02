@@ -18,38 +18,33 @@
   }:
     flake-utils.lib.eachDefaultSystem (
       system: let
-        # Overlays and package set
         overlays = [(import rust-overlay)];
         pkgs = import nixpkgs {inherit system overlays;};
 
-        # Rust toolchain configuration
         rustToolchain = pkgs.rust-bin.stable."1.88.0".default.override {
           extensions = ["rust-src"];
         };
 
         craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
-        
-        # When filtering sources, we want to allow assets other than .rs files
-        unfilteredRoot = ./.; # The original, unfiltered source
+
+        unfilteredRoot = ./.;
         src = pkgs.lib.fileset.toSource {
           root = unfilteredRoot;
           fileset = pkgs.lib.fileset.unions [
             # Default files from crane (Rust and cargo files)
             (craneLib.fileset.commonCargoSources unfilteredRoot)
             (pkgs.lib.fileset.fileFilter (
-              file:
-              pkgs.lib.any file.hasExt [
-                "scss"
-                "svg"
-                "xml"
-              ]
-            ) unfilteredRoot)
-            # Assets folder for icons
+                file:
+                  pkgs.lib.any file.hasExt [
+                    "scss"
+                    "svg"
+                  ]
+              )
+              unfilteredRoot)
             (pkgs.lib.fileset.maybeMissing ./assets)
           ];
         };
 
-        # Dependencies for building the application
         buildInputs = with pkgs; [
           fontconfig
           dbus
@@ -78,6 +73,7 @@
           llvmPackages.libclang.lib
           vulkan-headers
           vulkan-loader
+          onnxruntime # For transcribe-rs
         ];
 
         # Dependencies needed only at runtime
@@ -108,6 +104,9 @@
           # For bindgen (used by whisper-rs-sys)
           LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
           BINDGEN_EXTRA_CLANG_ARGS = "-isystem ${pkgs.llvmPackages.libclang.lib}/lib/clang/${pkgs.lib.getVersion pkgs.clang}/include";
+          # For ort-sys (ONNX Runtime) - skip download and use system library
+          ORT_SKIP_DOWNLOAD = "1";
+          ORT_LIB_LOCATION = "${pkgs.onnxruntime}";
         };
 
         # Build artifacts
@@ -123,7 +122,6 @@
           pname = "nwidgets";
           version = "0.1.0";
 
-          # CORRECTION : Utilisation de GIO_EXTRA_MODULES au lieu de GIO_MODULE_DIR
           postFixup = ''
             wrapProgram $out/bin/nwidgets \
               --prefix GIO_EXTRA_MODULES : "${pkgs.glib-networking}/lib/gio/modules" \
@@ -137,6 +135,7 @@
           rustToolchain
           cargo-watch
           cargo-edit
+          cargo-audit
           bacon
         ];
       in {
@@ -165,7 +164,6 @@
           LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (buildInputs ++ runtimeDependencies);
           FONTCONFIG_FILE = pkgs.makeFontsConf {fontDirectories = buildInputs;};
 
-          # CORRECTION : Même chose pour le shell de dev
           shellHook = ''
             export GIO_EXTRA_MODULES="${pkgs.glib-networking}/lib/gio/modules:$GIO_EXTRA_MODULES"
             echo "[🦀 Rust $(rustc --version)] - Ready to develop nwidgets!"

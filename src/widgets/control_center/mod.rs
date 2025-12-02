@@ -4,17 +4,19 @@ mod network_details;
 mod notifications_details;
 mod section_helpers;
 
-use crate::utils::icons;
 use crate::services::notifications::{Notification, NotificationService};
 use crate::services::pipewire::{AudioState, PipeWireService};
+use crate::utils::icons;
 use gtk::prelude::*;
 use gtk4 as gtk;
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 
-use audio_details::{create_audio_section, setup_audio_section_callbacks, setup_audio_updates, PanelManager};
-use bluetooth_details::{populate_bluetooth_details};
-use network_details::{populate_network_details};
-use notifications_details::{create_notifications_section, add_notification_to_list};
+use audio_details::{
+    create_audio_section, setup_audio_section_callbacks, setup_audio_updates, PanelManager,
+};
+use bluetooth_details::populate_bluetooth_details;
+use network_details::populate_network_details;
+use notifications_details::{add_notification_to_list, create_notifications_section};
 
 pub fn create_control_center_window(application: &gtk::Application) -> gtk::ApplicationWindow {
     let window = gtk::ApplicationWindow::builder()
@@ -38,7 +40,17 @@ pub fn create_control_center_window(application: &gtk::Application) -> gtk::Appl
     container.add_css_class("control-center-container");
 
     // Create sections
-    let (audio_section, volume_scale, mic_scale, volume_icon, mic_icon, volume_expanded, volume_expand_btn, mic_expanded, mic_expand_btn) = create_audio_section();
+    let (
+        audio_section,
+        volume_scale,
+        mic_scale,
+        volume_icon,
+        mic_icon,
+        volume_expanded,
+        volume_expand_btn,
+        mic_expanded,
+        mic_expand_btn,
+    ) = create_audio_section();
     container.append(&audio_section);
 
     // Combined Bluetooth/Network section
@@ -57,7 +69,7 @@ pub fn create_control_center_window(application: &gtk::Application) -> gtk::Appl
     bt_button.add_css_class("section-button");
     bt_button.set_hexpand(true);
 
-    // Network button  
+    // Network button
     let network_icon = icons::create_icon("network");
     network_icon.set_size_request(24, 24);
     let network_button = gtk::Button::new();
@@ -94,14 +106,20 @@ pub fn create_control_center_window(application: &gtk::Application) -> gtk::Appl
     );
 
     // Setup callbacks
-    setup_audio_section_callbacks(&volume_expanded, &volume_expand_btn, &mic_expanded, &mic_expand_btn, &panels);
+    setup_audio_section_callbacks(
+        &volume_expanded,
+        &volume_expand_btn,
+        &mic_expanded,
+        &mic_expand_btn,
+        &panels,
+    );
 
     // Bluetooth button callback
     let shared_expanded_bt = shared_expanded.clone();
     let panels_bt = panels.clone();
     bt_button.connect_clicked(move |_| {
         panels_bt.collapse_all_except("bluetooth");
-        
+
         // Clear and populate with bluetooth content
         while let Some(child) = shared_expanded_bt.first_child() {
             shared_expanded_bt.remove(&child);
@@ -115,7 +133,7 @@ pub fn create_control_center_window(application: &gtk::Application) -> gtk::Appl
     let panels_net = panels.clone();
     network_button.connect_clicked(move |_| {
         panels_net.collapse_all_except("network");
-        
+
         // Clear and populate with network content
         while let Some(child) = shared_expanded_net.first_child() {
             shared_expanded_net.remove(&child);

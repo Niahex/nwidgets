@@ -1,11 +1,21 @@
-use crate::utils::icons;
 use crate::services::pipewire::{AudioDevice, AudioStream, PipeWireService};
+use crate::utils::icons;
 use gtk::prelude::*;
 use gtk4 as gtk;
 
 use super::section_helpers::{setup_expand_callback, setup_periodic_updates};
 
-pub fn create_audio_section() -> (gtk::Box, gtk::Scale, gtk::Scale, gtk::Image, gtk::Image, gtk::Box, gtk::Button, gtk::Box, gtk::Button) {
+pub fn create_audio_section() -> (
+    gtk::Box,
+    gtk::Scale,
+    gtk::Scale,
+    gtk::Image,
+    gtk::Image,
+    gtk::Box,
+    gtk::Button,
+    gtk::Box,
+    gtk::Button,
+) {
     let section = gtk::Box::new(gtk::Orientation::Vertical, 0);
     section.add_css_class("control-section");
 
@@ -80,7 +90,17 @@ pub fn create_audio_section() -> (gtk::Box, gtk::Scale, gtk::Scale, gtk::Image, 
     let mic_expanded = create_mic_details();
     section.append(&mic_expanded);
 
-    (section, volume_scale, mic_scale, volume_icon, mic_icon, volume_expanded, volume_expand_btn, mic_expanded, mic_expand_btn)
+    (
+        section,
+        volume_scale,
+        mic_scale,
+        volume_icon,
+        mic_icon,
+        volume_expanded,
+        volume_expand_btn,
+        mic_expanded,
+        mic_expand_btn,
+    )
 }
 
 pub fn setup_audio_section_callbacks(
@@ -90,14 +110,23 @@ pub fn setup_audio_section_callbacks(
     mic_expand_btn: &gtk::Button,
     panels: &PanelManager,
 ) {
-    setup_expand_callback(volume_expanded, volume_expand_btn, panels, "volume", populate_volume_details);
-    setup_expand_callback(mic_expanded, mic_expand_btn, panels, "mic", populate_mic_details);
+    setup_expand_callback(
+        volume_expanded,
+        volume_expand_btn,
+        panels,
+        "volume",
+        populate_volume_details,
+    );
+    setup_expand_callback(
+        mic_expanded,
+        mic_expand_btn,
+        panels,
+        "mic",
+        populate_mic_details,
+    );
 }
 
-pub fn setup_audio_updates(
-    volume_expanded: &gtk::Box,
-    mic_expanded: &gtk::Box,
-) {
+pub fn setup_audio_updates(volume_expanded: &gtk::Box, mic_expanded: &gtk::Box) {
     setup_periodic_updates(volume_expanded, 2, populate_volume_details);
     setup_periodic_updates(mic_expanded, 2, populate_mic_details);
 }

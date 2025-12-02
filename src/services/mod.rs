@@ -1,4 +1,3 @@
-pub mod applications;
 pub mod bluetooth;
 pub mod chat;
 pub mod clipboard;
@@ -14,10 +13,8 @@ pub mod stt;
 pub mod systray;
 
 // Re-export lock state services for backward compatibility
-pub use lock_state::{CapsLockService, NumLockService};
-
-pub use applications::ApplicationsService;
 pub use chat::ChatStateService;
+pub use lock_state::{CapsLockService, NumLockService};
 pub use mpris::MprisService;
 pub use notifications::NotificationService;
 pub use stt::SttService;

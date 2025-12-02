@@ -5,18 +5,18 @@ use std::sync::{Arc, Mutex};
 #[derive(Debug, Clone)]
 pub enum OsdEvent {
     Volume(String, u8, bool), // icon_name, volume %, muted
-    Microphone(bool), // muted
-    CapsLock(bool),   // enabled
-    NumLock(bool),    // enabled
-    Clipboard,        // copied
+    Microphone(bool),         // muted
+    CapsLock(bool),           // enabled
+    NumLock(bool),            // enabled
+    Clipboard,                // copied
     #[allow(dead_code)]
     DictationStarted,
     #[allow(dead_code)]
     DictationStopped,
-    SttRecording,     // STT recording started
-    SttProcessing,    // STT processing
+    SttRecording,        // STT recording started
+    SttProcessing,       // STT processing
     SttComplete(String), // STT complete with transcription text
-    SttError(String), // STT error
+    SttError(String),    // STT error
 }
 
 static OSD_SENDER: OnceCell<Arc<Mutex<Sender<OsdEvent>>>> = OnceCell::new();

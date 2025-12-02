@@ -16,10 +16,10 @@ pub struct PomodoroService {
     start_time: Option<Instant>,
     paused_time: Option<Instant>,
     elapsed_before_pause: Duration,
-    work_duration: Duration,      // 25 minutes
-    short_break: Duration,         // 5 minutes
-    long_break: Duration,          // 15 minutes
-    sessions_completed: u8,        // Pour compter les sessions avant la longue pause
+    work_duration: Duration, // 25 minutes
+    short_break: Duration,   // 5 minutes
+    long_break: Duration,    // 15 minutes
+    sessions_completed: u8,  // Pour compter les sessions avant la longue pause
 }
 
 impl PomodoroService {
@@ -93,7 +93,9 @@ impl PomodoroService {
     pub fn is_paused(&self) -> bool {
         matches!(
             self.state,
-            PomodoroState::WorkPaused | PomodoroState::ShortBreakPaused | PomodoroState::LongBreakPaused
+            PomodoroState::WorkPaused
+                | PomodoroState::ShortBreakPaused
+                | PomodoroState::LongBreakPaused
         )
     }
 
@@ -194,7 +196,10 @@ impl PomodoroService {
             match self.state {
                 PomodoroState::Work => {
                     self.sessions_completed += 1;
-                    println!("[POMODORO] ✅ Work session completed ({}/4)", self.sessions_completed);
+                    println!(
+                        "[POMODORO] ✅ Work session completed ({}/4)",
+                        self.sessions_completed
+                    );
 
                     if self.sessions_completed >= 4 {
                         self.sessions_completed = 0;
@@ -211,7 +216,10 @@ impl PomodoroService {
                     println!("[POMODORO] ✅ Long break completed");
                     self.stop();
                 }
-                PomodoroState::Idle | PomodoroState::WorkPaused | PomodoroState::ShortBreakPaused | PomodoroState::LongBreakPaused => {}
+                PomodoroState::Idle
+                | PomodoroState::WorkPaused
+                | PomodoroState::ShortBreakPaused
+                | PomodoroState::LongBreakPaused => {}
             }
         }
     }

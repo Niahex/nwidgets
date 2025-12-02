@@ -1,6 +1,6 @@
-use crate::utils::icons;
-use crate::services::hyprland::ActiveWindow;
 use crate::services::chat::ChatState;
+use crate::services::hyprland::ActiveWindow;
+use crate::utils::icons;
 use gtk::prelude::*;
 use gtk4 as gtk;
 use std::cell::RefCell;

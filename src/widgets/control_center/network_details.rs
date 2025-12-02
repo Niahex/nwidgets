@@ -42,7 +42,13 @@ pub fn setup_network_section_callbacks(
     network_expand_btn: &gtk::Button,
     panels: &PanelManager,
 ) {
-    setup_expand_callback(network_expanded, network_expand_btn, panels, "network", populate_network_details);
+    setup_expand_callback(
+        network_expanded,
+        network_expand_btn,
+        panels,
+        "network",
+        populate_network_details,
+    );
 }
 
 pub fn setup_network_updates(network_expanded: &gtk::Box) {

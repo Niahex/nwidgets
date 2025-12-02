@@ -1,11 +1,13 @@
-use zbus::Connection;
-use super::network_state::{NetworkState, ConnectionType};
+use super::network_state::{ConnectionType, NetworkState};
 use super::{ActiveConnectionProxy, DeviceProxy};
+use zbus::Connection;
 
 pub struct EthernetManager;
 
 impl EthernetManager {
-    pub async fn get_connection_type(connection_path: &zbus::zvariant::OwnedObjectPath) -> Result<ConnectionType, Box<dyn std::error::Error>> {
+    pub async fn get_connection_type(
+        connection_path: &zbus::zvariant::OwnedObjectPath,
+    ) -> Result<ConnectionType, Box<dyn std::error::Error>> {
         let connection = Connection::system().await?;
         let active_conn = ActiveConnectionProxy::builder(&connection)
             .path(connection_path)?
@@ -27,7 +29,7 @@ impl EthernetManager {
                 .await?;
 
             let device_type = device.device_type().await?;
-            
+
             // Device type 1 = Ethernet, 2 = WiFi
             match device_type {
                 1 => return Ok(ConnectionType::Ethernet),

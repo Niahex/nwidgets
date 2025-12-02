@@ -1,6 +1,6 @@
+use super::audio_details::PanelManager;
 use gtk::prelude::*;
 use gtk4 as gtk;
-use super::audio_details::PanelManager;
 
 /// Setup expand/collapse callback for a control center section
 ///
@@ -36,11 +36,8 @@ pub fn setup_expand_callback<F>(
 ///
 /// This helper creates a timer that calls the populate function every
 /// `interval` seconds, but only when the section is visible.
-pub fn setup_periodic_updates<F>(
-    expanded: &gtk::Box,
-    interval_secs: u64,
-    populate_fn: F,
-) where
+pub fn setup_periodic_updates<F>(expanded: &gtk::Box, interval_secs: u64, populate_fn: F)
+where
     F: Fn(&gtk::Box) + 'static,
 {
     let expanded_clone = expanded.clone();

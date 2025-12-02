@@ -1,9 +1,9 @@
-use gtk4 as gtk;
 use gtk::prelude::*;
+use gtk4 as gtk;
 use gtk4_layer_shell::{KeyboardMode, Layer, LayerShell};
 use std::cell::Cell;
-use std::rc::Rc;
 use std::process::Command;
+use std::rc::Rc;
 
 #[derive(Clone, Copy, Debug)]
 enum PowerAction {
@@ -17,10 +17,10 @@ enum PowerAction {
 impl PowerAction {
     fn icon(&self) -> &'static str {
         match self {
-            PowerAction::Lock => "󰌾",      // Lock icon
-            PowerAction::Logout => "󰍃",    // Logout icon
-            PowerAction::Suspend => "󰒲",   // Sleep icon
-            PowerAction::Reboot => "󰜉",    // Reboot icon
+            PowerAction::Lock => "󰌾",     // Lock icon
+            PowerAction::Logout => "󰍃",   // Logout icon
+            PowerAction::Suspend => "󰒲",  // Sleep icon
+            PowerAction::Reboot => "󰜉",   // Reboot icon
             PowerAction::Shutdown => "󰐥", // Shutdown icon
         }
     }
@@ -136,7 +136,9 @@ pub fn create_power_menu_window(application: &gtk::Application) -> gtk::Applicat
     center_box.append(&buttons_box);
 
     // Hint pour la navigation
-    let hint_label = gtk::Label::new(Some("← → to navigate  •  Enter to execute  •  Escape to cancel"));
+    let hint_label = gtk::Label::new(Some(
+        "← → to navigate  •  Enter to execute  •  Escape to cancel",
+    ));
     hint_label.set_margin_top(32);
     hint_label.add_css_class("power-menu-hint");
     center_box.append(&hint_label);

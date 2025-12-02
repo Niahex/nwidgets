@@ -1,6 +1,6 @@
-use zbus::{Connection, proxy};
-use std::sync::mpsc;
 use futures_util::StreamExt;
+use std::sync::mpsc;
+use zbus::{proxy, Connection};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BluetoothState {
@@ -38,10 +38,7 @@ trait Adapter {
 }
 
 // BlueZ Device interface
-#[proxy(
-    interface = "org.bluez.Device1",
-    default_service = "org.bluez"
-)]
+#[proxy(interface = "org.bluez.Device1", default_service = "org.bluez")]
 trait Device {
     #[zbus(property)]
     fn connected(&self) -> zbus::Result<bool>;
@@ -95,7 +92,10 @@ impl BluetoothService {
                 // Initial state
                 let mut last_state = match Self::get_bluetooth_state().await {
                     Ok(state) => state,
-                    Err(_) => BluetoothState { powered: false, connected_devices: 0 },
+                    Err(_) => BluetoothState {
+                        powered: false,
+                        connected_devices: 0,
+                    },
                 };
                 if tx.send(last_state.clone()).is_err() {
                     return;
@@ -113,7 +113,7 @@ impl BluetoothService {
 
                 // Monitor PropertiesChanged on Adapter1
                 let adapter_proxy = AdapterProxy::new(&connection).await.ok();
-                
+
                 let mut interfaces_added_stream = if let Some(ref om) = obj_manager {
                     om.receive_interfaces_added().await.ok()
                 } else {
@@ -253,10 +253,7 @@ impl BluetoothService {
         for (path, interfaces) in objects {
             if interfaces.contains_key("org.bluez.Device1") {
                 // Try to check if device is connected
-                if let Some(builder) = DeviceProxy::builder(connection)
-                    .path(path)
-                    .ok()
-                {
+                if let Some(builder) = DeviceProxy::builder(connection).path(path).ok() {
                     if let Ok(device_proxy) = builder.build().await {
                         if device_proxy.connected().await.unwrap_or(false) {
                             count += 1;
@@ -309,7 +306,10 @@ impl BluetoothService {
                 {
                     let name = match device_proxy.alias().await {
                         Ok(alias) => alias,
-                        Err(_) => device_proxy.name().await.unwrap_or_else(|_| "Unknown Device".to_string()),
+                        Err(_) => device_proxy
+                            .name()
+                            .await
+                            .unwrap_or_else(|_| "Unknown Device".to_string()),
                     };
 
                     let address = device_proxy.address().await.unwrap_or_default();

@@ -1,4 +1,4 @@
-use super::base::{PanelModuleConfig, update_icon};
+use super::base::{update_icon, PanelModuleConfig};
 use crate::services::network::NetworkState;
 use gtk4 as gtk;
 

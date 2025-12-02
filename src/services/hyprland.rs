@@ -1,8 +1,8 @@
-use std::os::unix::net::UnixStream;
-use std::io::{Read, Write, BufReader, BufRead};
-use std::sync::{Arc, Mutex, mpsc};
-use serde::{Deserialize, Serialize};
 use once_cell::sync::Lazy;
+use serde::{Deserialize, Serialize};
+use std::io::{BufRead, BufReader, Read, Write};
+use std::os::unix::net::UnixStream;
+use std::sync::{mpsc, Arc, Mutex};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Workspace {
@@ -65,13 +65,17 @@ impl HyprlandMonitor {
                     for line in reader.lines() {
                         if let Ok(line) = line {
                             // Monitor workspace et active window changes
-                            if line.starts_with("workspace>>") ||
-                               line.starts_with("createworkspace>>") ||
-                               line.starts_with("destroyworkspace>>") ||
-                               line.starts_with("activewindow>>") ||
-                               line.starts_with("closewindow>>") ||
-                               line.starts_with("openwindow>>") {
-                                Self::broadcast_updates(&workspace_subscribers, &active_window_subscribers);
+                            if line.starts_with("workspace>>")
+                                || line.starts_with("createworkspace>>")
+                                || line.starts_with("destroyworkspace>>")
+                                || line.starts_with("activewindow>>")
+                                || line.starts_with("closewindow>>")
+                                || line.starts_with("openwindow>>")
+                            {
+                                Self::broadcast_updates(
+                                    &workspace_subscribers,
+                                    &active_window_subscribers,
+                                );
                             }
                         }
                     }
@@ -134,9 +138,12 @@ impl HyprlandService {
         MONITOR.add_workspace_subscriber(tx);
 
         // Utiliser l'abstraction de subscription
-        crate::utils::subscription::ServiceSubscription::subscribe(rx, move |(workspaces, active_workspace)| {
-            callback(workspaces, active_workspace);
-        });
+        crate::utils::subscription::ServiceSubscription::subscribe(
+            rx,
+            move |(workspaces, active_workspace)| {
+                callback(workspaces, active_workspace);
+            },
+        );
 
         // Démarrer le monitoring si ce n'est pas déjà fait
         MONITOR.ensure_started();
@@ -167,8 +174,7 @@ impl HyprlandService {
     }
 
     pub fn send_command(command: &str) -> Result<String, Box<dyn std::error::Error>> {
-        let socket_path = Self::get_socket_path()
-            .ok_or("HYPRLAND_INSTANCE_SIGNATURE not found")?;
+        let socket_path = Self::get_socket_path().ok_or("HYPRLAND_INSTANCE_SIGNATURE not found")?;
 
         let mut stream = UnixStream::connect(socket_path)?;
         stream.write_all(command.as_bytes())?;
@@ -182,28 +188,21 @@ impl HyprlandService {
     pub fn get_active_window() -> Option<ActiveWindow> {
         Self::send_command("j/activewindow")
             .ok()
-            .and_then(|response| {
-                serde_json::from_str::<ActiveWindow>(&response).ok()
-            })
+            .and_then(|response| serde_json::from_str::<ActiveWindow>(&response).ok())
     }
 
     pub fn get_hyprland_data() -> (Vec<Workspace>, i32) {
         let workspaces = Self::send_command("j/workspaces")
             .ok()
-            .and_then(|response| {
-                serde_json::from_str::<Vec<Workspace>>(&response).ok()
-            })
+            .and_then(|response| serde_json::from_str::<Vec<Workspace>>(&response).ok())
             .unwrap_or_default();
 
         let active_workspace = Self::send_command("j/activeworkspace")
             .ok()
-            .and_then(|response| {
-                serde_json::from_str::<Workspace>(&response).ok()
-            })
+            .and_then(|response| serde_json::from_str::<Workspace>(&response).ok())
             .map(|ws| ws.id)
             .unwrap_or(1);
 
         (workspaces, active_workspace)
     }
-
 }

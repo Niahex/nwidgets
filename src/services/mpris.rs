@@ -1,7 +1,7 @@
+use futures_util::StreamExt;
 use std::collections::HashMap;
 use std::sync::mpsc;
 use zbus::{proxy, Connection};
-use futures_util::StreamExt;
 
 #[derive(Debug, Clone, Default)]
 pub struct MprisMetadata {
@@ -94,16 +94,20 @@ impl MprisService {
                                 Ok(proxy) => {
                                     // 1. Récupérer l'état initial actuel
                                     if let Ok(state) = Self::get_spotify_state(&proxy).await {
-                                        if tx.send(state.clone()).is_err() { break; }
+                                        if tx.send(state.clone()).is_err() {
+                                            break;
+                                        }
                                         last_state = state;
                                     }
 
                                     // 2. Écouter les changements (Signal PropertiesChanged)
                                     // On écoute les changements de playback_status pour détecter play/pause
-                                    let mut status_stream = proxy.receive_playback_status_changed().await;
+                                    let mut status_stream =
+                                        proxy.receive_playback_status_changed().await;
 
                                     // On écoute aussi les changements de metadata pour les changements de piste
-                                    let mut metadata_stream = proxy.receive_metadata_changed().await;
+                                    let mut metadata_stream =
+                                        proxy.receive_metadata_changed().await;
 
                                     // On écoute les changements de volume
                                     let mut volume_stream = proxy.receive_volume_changed().await;
@@ -150,7 +154,7 @@ impl MprisService {
                                     }
                                 }
                             }
-                        },
+                        }
                         Err(_) => {}
                     }
 
@@ -165,26 +169,38 @@ impl MprisService {
     }
 
     async fn get_spotify_state(proxy: &MediaPlayer2PlayerProxy<'_>) -> zbus::Result<MprisState> {
-        let status_str = proxy.playback_status().await.unwrap_or_else(|_| "Stopped".to_string());
+        let status_str = proxy
+            .playback_status()
+            .await
+            .unwrap_or_else(|_| "Stopped".to_string());
         let status = PlaybackStatus::from(status_str);
 
         let mut metadata = MprisMetadata::default();
 
         if let Ok(metadata_map) = proxy.metadata().await {
             if let Some(v) = metadata_map.get("xesam:title") {
-                metadata.title = v.downcast_ref::<zbus::zvariant::Str>().map(|s| s.to_string()).unwrap_or_default();
+                metadata.title = v
+                    .downcast_ref::<zbus::zvariant::Str>()
+                    .map(|s| s.to_string())
+                    .unwrap_or_default();
             }
             if let Some(v) = metadata_map.get("xesam:artist") {
                 if let Ok(arr) = v.downcast_ref::<zbus::zvariant::Array>() {
                     if let Ok(Some(first)) = arr.get::<zbus::zvariant::Value>(0) {
-                        metadata.artist = first.downcast_ref::<zbus::zvariant::Str>().map(|s| s.to_string()).unwrap_or_default();
+                        metadata.artist = first
+                            .downcast_ref::<zbus::zvariant::Str>()
+                            .map(|s| s.to_string())
+                            .unwrap_or_default();
                     }
                 } else if let Ok(s) = v.downcast_ref::<zbus::zvariant::Str>() {
-                     metadata.artist = s.to_string();
+                    metadata.artist = s.to_string();
                 }
             }
             if let Some(v) = metadata_map.get("mpris:artUrl") {
-                metadata.art_url = v.downcast_ref::<zbus::zvariant::Str>().map(|s| s.to_string()).unwrap_or_default();
+                metadata.art_url = v
+                    .downcast_ref::<zbus::zvariant::Str>()
+                    .map(|s| s.to_string())
+                    .unwrap_or_default();
             }
         }
 

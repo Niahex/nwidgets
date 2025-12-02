@@ -1,5 +1,5 @@
-use std::process::Command;
 use super::audio_state::AudioDevice;
+use std::process::Command;
 
 pub struct DeviceManager;
 
@@ -69,7 +69,9 @@ impl DeviceManager {
             }
 
             // Exit Filters section
-            if in_filters && (trimmed.starts_with("└─") || trimmed == "Video" || trimmed == "Settings") {
+            if in_filters
+                && (trimmed.starts_with("└─") || trimmed == "Video" || trimmed == "Settings")
+            {
                 break;
             }
 
@@ -156,7 +158,7 @@ impl DeviceManager {
 
     fn parse_device_line(line: &str) -> Option<AudioDevice> {
         let content = line.trim_start_matches("│").trim();
-        
+
         // Check if it's marked as default with *
         let is_default = content.starts_with('*');
         let content = content.trim_start_matches('*').trim();

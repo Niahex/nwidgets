@@ -1,5 +1,5 @@
-use crate::utils::icons;
 use crate::services::osd::{OsdEvent, OsdEventService};
+use crate::utils::icons;
 use gtk::prelude::*;
 use gtk4 as gtk;
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};

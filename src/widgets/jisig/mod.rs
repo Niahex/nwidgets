@@ -1,3 +1,5 @@
+use crate::utils::icons;
+use crate::utils::PinController;
 use gtk4 as gtk;
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use std::cell::Cell;
@@ -9,8 +11,6 @@ use webkit6::{
     CookiePersistentStorage, HardwareAccelerationPolicy, Settings, UserMediaPermissionRequest,
     WebContext, WebView,
 };
-use crate::utils::PinController;
-use crate::utils::icons;
 
 #[derive(Clone)]
 pub struct JisigOverlay {
@@ -31,7 +31,6 @@ const SITES: &[(&str, &str)] = &[
         "https://duckduckgo.com/?q=DuckDuckGo+AI+Chat&ia=chat&duckai=1&atb=v495-1",
     ),
 ];
-
 
 pub fn create_jisig_overlay(application: &gtk::Application) -> JisigOverlay {
     // --- WebView Settings ---
@@ -59,7 +58,6 @@ pub fn create_jisig_overlay(application: &gtk::Application) -> JisigOverlay {
     let webview = WebView::builder().web_context(&context).build();
     webview.set_settings(&settings);
     webview.add_css_class("jisig-webview");
-
 
     // --- Handle Permission Requests ---
     webview.connect_permission_request(|_webview, request| {
@@ -233,11 +231,8 @@ pub fn create_jisig_overlay(application: &gtk::Application) -> JisigOverlay {
     window.add_controller(key_controller);
 
     // Créer le PinController pour permettre le contrôle externe
-    let pin_controller = PinController::new(
-        window.clone(),
-        Rc::clone(&is_exclusive),
-        pin_icon.clone(),
-    );
+    let pin_controller =
+        PinController::new(window.clone(), Rc::clone(&is_exclusive), pin_icon.clone());
 
     JisigOverlay {
         window,

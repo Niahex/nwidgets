@@ -1,16 +1,16 @@
-mod network_state;
-mod wifi_manager;
 mod ethernet_manager;
+mod network_state;
 mod vpn_manager;
+mod wifi_manager;
 
-pub use network_state::{NetworkState, ConnectionType, VpnConnection};
-pub use wifi_manager::WifiManager;
 pub use ethernet_manager::EthernetManager;
+pub use network_state::{ConnectionType, NetworkState, VpnConnection};
 pub use vpn_manager::VpnManager;
+pub use wifi_manager::WifiManager;
 
-use zbus::{Connection, proxy};
-use std::sync::mpsc;
 use futures_util::StreamExt;
+use std::sync::mpsc;
+use zbus::{proxy, Connection};
 
 // NetworkManager main interface
 #[proxy(
@@ -73,7 +73,14 @@ trait Settings {
 )]
 trait SettingsConnection {
     #[zbus(name = "GetSettings")]
-    fn get_settings(&self) -> zbus::Result<std::collections::HashMap<String, std::collections::HashMap<String, zbus::zvariant::OwnedValue>>>;
+    fn get_settings(
+        &self,
+    ) -> zbus::Result<
+        std::collections::HashMap<
+            String,
+            std::collections::HashMap<String, zbus::zvariant::OwnedValue>,
+        >,
+    >;
 }
 
 pub struct NetworkService;
@@ -104,13 +111,16 @@ impl NetworkService {
                 };
 
                 // Initial state fetch
-                let mut last_state = Self::get_network_state().await.unwrap_or_else(|_| NetworkState {
-                    connected: false,
-                    connection_type: ConnectionType::None,
-                    signal_strength: 0,
-                    ssid: None,
-                    vpn_active: false,
-                });
+                let mut last_state =
+                    Self::get_network_state()
+                        .await
+                        .unwrap_or_else(|_| NetworkState {
+                            connected: false,
+                            connection_type: ConnectionType::None,
+                            signal_strength: 0,
+                            ssid: None,
+                            vpn_active: false,
+                        });
 
                 if tx.send(last_state.clone()).is_err() {
                     return;
@@ -127,9 +137,10 @@ impl NetworkService {
 
                 // Listen for StateChanged signal (connectivity changes)
                 let mut state_changed_stream = Some(nm_proxy.receive_state_changed().await);
-                
+
                 // Listen for ActiveConnections property changes (VPN, etc.)
-                let mut active_connections_stream = Some(nm_proxy.receive_active_connections_changed().await);
+                let mut active_connections_stream =
+                    Some(nm_proxy.receive_active_connections_changed().await);
 
                 // Fallback timer (every 5s to catch missed events or ensure consistency)
                 let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(5));
@@ -249,7 +260,10 @@ impl NetworkService {
             }
         };
 
-        let conn_type_str = active_conn_proxy.connection_type().await.unwrap_or_default();
+        let conn_type_str = active_conn_proxy
+            .connection_type()
+            .await
+            .unwrap_or_default();
 
         let connection_type = match conn_type_str.as_str() {
             "802-3-ethernet" => ConnectionType::Ethernet,
@@ -261,7 +275,9 @@ impl NetworkService {
         let (signal_strength, ssid) = if connection_type == ConnectionType::Wifi {
             let devices = active_conn_proxy.devices().await.unwrap_or_default();
             if !devices.is_empty() {
-                WifiManager::get_wifi_info(&devices[0]).await.unwrap_or((0, None))
+                WifiManager::get_wifi_info(&devices[0])
+                    .await
+                    .unwrap_or((0, None))
             } else {
                 (0, None)
             }

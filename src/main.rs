@@ -19,11 +19,11 @@ use crate::services::stt::SttService;
 use crate::services::systray::SystemTrayService;
 use crate::widgets::chat::create_chat_overlay;
 use crate::widgets::control_center::create_control_center_window;
+use crate::widgets::jisig::create_jisig_overlay;
 use crate::widgets::notifications::create_notifications_window;
 use crate::widgets::osd::create_osd_window;
 use crate::widgets::panel::create_panel_window;
 use crate::widgets::power_menu::create_power_menu_window;
-use crate::widgets::jisig::create_jisig_overlay;
 use gtk4::{self as gtk, prelude::*, Application};
 
 const APP_ID: &str = "github.niahex.nwidgets";
@@ -43,7 +43,6 @@ fn main() {
         let jisig_pin_controller = jisig_overlay.pin_controller.clone();
 
         let _power_menu_window = create_power_menu_window(app);
-
 
         let _control_center_window = create_control_center_window(app);
 
@@ -70,7 +69,9 @@ fn main() {
             if chat_window_clone.is_visible() && chat_window_clone.is_active() {
                 println!("[PIN] Chat window is focused, toggling pin");
                 chat_pin_clone.toggle();
-            } else if jisig_window_clone.window.is_visible() && jisig_window_clone.window.is_active() {
+            } else if jisig_window_clone.window.is_visible()
+                && jisig_window_clone.window.is_active()
+            {
                 println!("[PIN] jisig window is focused, toggling pin");
                 jisig_pin_clone.toggle();
             } else {
@@ -169,7 +170,8 @@ fn main() {
                 last_muted.set(state.muted);
             }
 
-            if state.mic_volume != last_mic_volume.get() || state.mic_muted != last_mic_muted.get() {
+            if state.mic_volume != last_mic_volume.get() || state.mic_muted != last_mic_muted.get()
+            {
                 OsdEventService::send_event(crate::services::osd::OsdEvent::Volume(
                     state.get_source_icon_name().to_string(),
                     state.mic_volume,

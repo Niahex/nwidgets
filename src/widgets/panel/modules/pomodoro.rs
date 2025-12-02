@@ -1,5 +1,5 @@
-use crate::utils::icons;
 use crate::services::pomodoro::{PomodoroService, PomodoroState};
+use crate::utils::icons;
 use gtk::prelude::*;
 use gtk4 as gtk;
 use std::sync::{Arc, Mutex};
@@ -102,7 +102,9 @@ impl PomodoroModule {
             PomodoroState::ShortBreak => ("", formatted_time.as_str(), "pomodoro-break"),
             PomodoroState::ShortBreakPaused => ("pause", formatted_time.as_str(), "pomodoro-break"),
             PomodoroState::LongBreak => ("", formatted_time.as_str(), "pomodoro-longbreak"),
-            PomodoroState::LongBreakPaused => ("pause", formatted_time.as_str(), "pomodoro-longbreak"),
+            PomodoroState::LongBreakPaused => {
+                ("pause", formatted_time.as_str(), "pomodoro-longbreak")
+            }
         };
 
         // Show icon only when idle or paused

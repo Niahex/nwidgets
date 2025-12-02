@@ -1,8 +1,8 @@
 use gdk_pixbuf::{Colorspace, Pixbuf};
 use gtk4::{gdk, glib, Image};
+use once_cell::sync::Lazy;
 use resvg::usvg;
 use std::collections::HashMap;
-use once_cell::sync::Lazy;
 
 static ICON_DATA: Lazy<HashMap<&'static str, &'static [u8]>> = Lazy::new(|| {
     let icons: &[(&str, &[u8])] = &include!(concat!(env!("OUT_DIR"), "/generated_icons.rs"));
