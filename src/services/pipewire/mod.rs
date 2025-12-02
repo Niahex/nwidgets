@@ -133,10 +133,9 @@ impl PipeWireService {
                 for line in reader.lines() {
                     if let Ok(l) = line {
                         // "changed:" indicates a state change in the PipeWire graph
-                        if l.trim().starts_with("changed:")
-                            && event_tx.send(()).is_err() {
-                                break;
-                            }
+                        if l.trim().starts_with("changed:") && event_tx.send(()).is_err() {
+                            break;
+                        }
                     } else {
                         break;
                     }

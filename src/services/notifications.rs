@@ -56,9 +56,7 @@ impl NotificationServer {
         hints: HashMap<String, zbus::zvariant::Value>,
         _expire_timeout: i32,
     ) -> u32 {
-        println!(
-            "[NOTIF] 📨 Received - app: '{app_name}', summary: '{summary}'"
-        );
+        println!("[NOTIF] 📨 Received - app: '{app_name}', summary: '{summary}'");
 
         // Ignorer les notifications de Spotify
         if app_name.to_lowercase() == "spotify" {

@@ -1,14 +1,12 @@
 use once_cell::sync::Lazy;
 use std::sync::{mpsc, Arc, Mutex};
 
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct ChatState {
     pub is_visible: bool,
     pub selected_site_name: String,
     pub selected_site_url: String,
 }
-
 
 type ChatStateSender = mpsc::Sender<ChatState>;
 

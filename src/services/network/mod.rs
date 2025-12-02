@@ -110,16 +110,13 @@ impl NetworkService {
                 };
 
                 // Initial state fetch
-                let mut last_state =
-                    Self::get_network_state()
-                        .await
-                        .unwrap_or(NetworkState {
-                            connected: false,
-                            connection_type: ConnectionType::None,
-                            signal_strength: 0,
-                            ssid: None,
-                            vpn_active: false,
-                        });
+                let mut last_state = Self::get_network_state().await.unwrap_or(NetworkState {
+                    connected: false,
+                    connection_type: ConnectionType::None,
+                    signal_strength: 0,
+                    ssid: None,
+                    vpn_active: false,
+                });
 
                 if tx.send(last_state.clone()).is_err() {
                     return;

@@ -237,8 +237,7 @@ impl StreamManager {
                 // 1. Vesktop (Electron-based)
                 if process_binary.as_deref() == Some("electron") {
                     if let Some(pid) = process_id {
-                        if let Ok(cmdline) =
-                            std::fs::read_to_string(format!("/proc/{pid}/cmdline"))
+                        if let Ok(cmdline) = std::fs::read_to_string(format!("/proc/{pid}/cmdline"))
                         {
                             if cmdline.contains("vesktop") || cmdline.contains("discord") {
                                 app_name = Some("Discord".to_string());

@@ -105,8 +105,7 @@ impl MprisService {
                                     proxy.receive_playback_status_changed().await;
 
                                 // On écoute aussi les changements de metadata pour les changements de piste
-                                let mut metadata_stream =
-                                    proxy.receive_metadata_changed().await;
+                                let mut metadata_stream = proxy.receive_metadata_changed().await;
 
                                 // On écoute les changements de volume
                                 let mut volume_stream = proxy.receive_volume_changed().await;

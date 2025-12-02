@@ -491,7 +491,6 @@ impl SttService {
     fn stop_recording(&self) -> Result<()> {
         let recorder_guard = self.recorder.lock().unwrap();
         if let Some(recorder) = recorder_guard.as_ref() {
-            
             // Ne pas clear le recorder ici, le thread audio le fera après avoir envoyé les samples
             recorder.stop()
         } else {
