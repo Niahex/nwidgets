@@ -22,15 +22,7 @@ pub struct JisigOverlay {
     is_pinned: Rc<Cell<bool>>,
 }
 
-const SITES: &[(&str, &str)] = &[
-    ("Gemini", "https://gemini.google.com/"),
-    ("DeepSeek", "https://chat.deepseek.com/"),
-    ("AI Studio", "https://aistudio.google.com/apps"),
-    (
-        "DuckDuckGo AI",
-        "https://duckduckgo.com/?q=DuckDuckGo+AI+Chat&ia=chat&duckai=1&atb=v495-1",
-    ),
-];
+const DEFAULT_URL: &str = "http://127.0.0.1:3000/private";
 
 pub fn create_jisig_overlay(application: &gtk::Application) -> JisigOverlay {
     // --- WebView Settings ---
@@ -105,21 +97,10 @@ pub fn create_jisig_overlay(application: &gtk::Application) -> JisigOverlay {
     window.set_anchor(Edge::Top, true);
     window.set_anchor(Edge::Bottom, true);
     window.set_anchor(Edge::Right, true);
-    // window.set_keyboard_mode(KeyboardMode::OnDemand);
+    window.set_keyboard_mode(gtk4_layer_shell::KeyboardMode::OnDemand);
 
-    // --- Site Selector Dropdown (Simplifié) ---
-    let site_names: Vec<&str> = SITES.iter().map(|(name, _)| *name).collect();
-    let string_list = gtk::StringList::new(&site_names);
-    let dropdown = gtk::DropDown::new(Some(string_list), None::<&gtk::Expression>);
-    dropdown.add_css_class("jisig-site-dropdown");
-
-    let webview_clone = webview.clone();
-    dropdown.connect_selected_notify(move |dropdown| {
-        let selected = dropdown.selected() as usize;
-        if selected < SITES.len() {
-            webview_clone.load_uri(SITES[selected].1);
-        }
-    });
+    // --- Setup WebBridge ---
+    crate::utils::webbridge::setup_webbridge(&webview, &window);
 
     // --- Toggle Button ---
     let pin_icon = icons::create_icon("pin");
@@ -149,7 +130,6 @@ pub fn create_jisig_overlay(application: &gtk::Application) -> JisigOverlay {
     // --- Layout ---
     let top_bar = gtk::Box::new(gtk::Orientation::Horizontal, 5);
     top_bar.add_css_class("jisig-top-bar");
-    top_bar.append(&dropdown);
     let spacer = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     spacer.set_hexpand(true); // Make the spacer expand horizontally
     top_bar.append(&spacer);
@@ -165,7 +145,7 @@ pub fn create_jisig_overlay(application: &gtk::Application) -> JisigOverlay {
     window.set_child(Some(&layout));
 
     // Load the initial URL
-    webview.load_uri(SITES[0].1);
+    webview.load_uri(DEFAULT_URL);
 
     // Cacher la fenêtre par défaut au démarrage
     window.set_visible(false);
