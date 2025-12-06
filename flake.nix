@@ -69,11 +69,15 @@
           atk # Accessibility toolkit
           at-spi2-atk # AT-SPI bridge
           gtk4-layer-shell # For GTK4 layer shell
-          openblas # For whisper/transcribe-rs
           llvmPackages.libclang.lib
           vulkan-headers
           vulkan-loader
           onnxruntime # For transcribe-rs
+          # ROCm pour GPU AMD (whisper.cpp hipBLAS)
+          rocmPackages.clr
+          rocmPackages.hipblas
+          rocmPackages.rocblas
+          rocmPackages.rocm-runtime
         ];
 
         # Dependencies needed only at runtime
@@ -107,6 +111,11 @@
           # For ort-sys (ONNX Runtime) - skip download and use system library
           ORT_SKIP_DOWNLOAD = "1";
           ORT_LIB_LOCATION = "${pkgs.onnxruntime}";
+          # Whisper.cpp CPU optimizations
+          WHISPER_NO_CUDA = "1";
+          WHISPER_NO_METAL = "1";
+          WHISPER_OPENBLAS = "1";
+          CMAKE_ARGS = "-DWHISPER_CUDA=OFF -DWHISPER_OPENBLAS=ON -DWHISPER_AVX2=ON -DWHISPER_FMA=ON";
         };
 
         # Build artifacts

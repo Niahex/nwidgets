@@ -269,6 +269,7 @@ enum AudioEvent {
 struct TranscriptionManager {
     ctx: Arc<Mutex<Option<WhisperContext>>>,
     model_path: PathBuf,
+    num_threads: i32,
 }
 
 impl TranscriptionManager {
@@ -278,9 +279,15 @@ impl TranscriptionManager {
             .join("nwidgets")
             .join("ggml-base-q5_1.bin");
 
+        // Pré-calculer le nombre de threads
+        let num_threads = std::thread::available_parallelism()
+            .map(|n| n.get() as i32)
+            .unwrap_or(4);
+
         Self {
             ctx: Arc::new(Mutex::new(None)),
             model_path,
+            num_threads,
         }
     }
 
@@ -338,7 +345,7 @@ impl TranscriptionManager {
             .create_state()
             .map_err(|e| anyhow!("Failed to create state: {e}"))?;
 
-        // Configure transcription parameters
+        // Configure transcription parameters - optimized for speed
         let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
         params.set_language(Some("fr"));
         params.set_print_progress(false);
@@ -347,6 +354,15 @@ impl TranscriptionManager {
         params.set_initial_prompt(
             "Voici une transcription claire, concise et bien ponctuée en français.",
         );
+
+        // CPU optimizations
+        params.set_n_threads(self.num_threads);
+
+        // Speed optimizations
+        params.set_single_segment(true); // Plus rapide pour la dictée courte
+        params.set_token_timestamps(false); // Pas besoin de timestamps détaillés
+        params.set_max_len(1); // Segments courts pour réduire la latence
+        params.set_audio_ctx(0); // Pas de contexte audio supplémentaire
 
         // Run transcription
         state

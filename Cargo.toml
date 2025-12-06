@@ -37,7 +37,7 @@ resvg = "0.45.0"
 usvg = "0.45.0"
 uuid = { version = "1.18.1", features = ["v4"] }
 futures-util = "0.3.31"
-whisper-rs = { version = "0.13", default-features = false }
+whisper-rs = { version = "0.13", default-features = false, features = ["hipblas"] }
 reqwest = { version = "0.12.5", features = ["json", "stream"] }
 
 [build-dependencies]
@@ -50,4 +50,7 @@ lto = true
 codegen-units = 1
 panic = "abort"
 strip = true
+opt-level = 3
+
+[profile.release.package.whisper-rs-sys]
 opt-level = 3
