@@ -331,6 +331,12 @@ impl TranscriptionManager {
     fn load_model(&self) -> Result<()> {
         self.ensure_model_exists()?;
 
+        // Configure ONNX Runtime for i9-9900K optimization
+        std::env::set_var("ORT_NUM_THREADS", "16"); // Use all 16 threads
+        std::env::set_var("ORT_INTRA_OP_NUM_THREADS", "16");
+        std::env::set_var("ORT_INTER_OP_NUM_THREADS", "1");
+        std::env::set_var("ORT_OPTIMIZATION_LEVEL", "3"); // Max optimization
+
         // Create Parakeet engine
         let mut engine = ParakeetEngine::new();
 
@@ -342,7 +348,7 @@ impl TranscriptionManager {
         let mut guard = self.engine.lock().unwrap();
         *guard = Some(engine);
 
-        println!("Parakeet V3 int8 model loaded (CPU mode, optimized for speed).");
+        println!("Parakeet V3 int8 loaded (i9-9900K: 16 threads, AVX2/FMA enabled).");
         Ok(())
     }
 

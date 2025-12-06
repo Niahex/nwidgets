@@ -110,11 +110,11 @@
           # For ort-sys (ONNX Runtime) - skip download and use system library
           ORT_SKIP_DOWNLOAD = "1";
           ORT_LIB_LOCATION = "${pkgs.onnxruntime}";
-          # Whisper.cpp - Use system Wayland (not Nix's) for Vulkan compatibility
-          WHISPER_NO_CUDA = "1";
-          WHISPER_NO_METAL = "1";
-          WHISPER_OPENBLAS = "1";
-          CMAKE_ARGS = "-DWHISPER_CUDA=OFF -DWHISPER_OPENBLAS=ON -DWHISPER_AVX2=ON -DWHISPER_FMA=ON";
+          # ONNX Runtime optimizations for i9-9900K (AVX2, FMA support)
+          ORT_NUM_THREADS = "16"; # i9-9900K has 16 threads
+          ORT_OPTIMIZATION_LEVEL = "3"; # Maximum optimization
+          # CPU-specific optimizations
+          RUSTFLAGS = "-C target-cpu=native -C opt-level=3";
         };
 
         # Build artifacts
@@ -175,13 +175,17 @@
           shellHook = ''
             export GIO_EXTRA_MODULES="${pkgs.glib-networking}/lib/gio/modules:$GIO_EXTRA_MODULES"
 
-            # Use system Vulkan drivers instead of Nix's to avoid Wayland symbol issues
-            unset VK_ICD_FILENAMES
-            unset VK_LAYER_PATH
-            export VK_DRIVER_FILES=/usr/share/vulkan/icd.d/radeon_icd.x86_64.json
+            # ONNX Runtime optimizations for i9-9900K
+            export ORT_NUM_THREADS=16
+            export ORT_INTRA_OP_NUM_THREADS=16
+            export ORT_INTER_OP_NUM_THREADS=1
+            export ORT_OPTIMIZATION_LEVEL=3
+
+            # CPU optimizations (AVX2, FMA for i9-9900K)
+            export RUSTFLAGS="-C target-cpu=native -C opt-level=3"
 
             echo "[🦀 Rust $(rustc --version)] - Ready to develop nwidgets!"
-            echo "🎮 Using system Vulkan drivers for AMD GPU"
+            echo "⚡ CPU: i9-9900K optimizations enabled (16 threads, AVX2/FMA)"
           '';
         };
 

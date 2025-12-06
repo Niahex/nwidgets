@@ -48,11 +48,15 @@ grass = "0.13"
 [workspace]
 
 [profile.release]
-lto = true
-codegen-units = 1
+lto = "fat"           # Full LTO for maximum optimization
+codegen-units = 1     # Single codegen unit for best optimization
 panic = "abort"
 strip = true
 opt-level = 3
 
-[profile.release.package.whisper-rs-sys]
+# Optimize ONNX Runtime for i9-9900K
+[profile.release.package.ort-sys]
+opt-level = 3
+
+[profile.release.package.ndarray]
 opt-level = 3
