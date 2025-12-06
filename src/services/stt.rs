@@ -7,7 +7,10 @@ use std::path::PathBuf;
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
-use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
+use transcribe_rs::{
+    engines::parakeet::{ParakeetEngine, ParakeetInferenceParams, ParakeetModelParams, TimestampGranularity},
+    TranscriptionEngine,
+};
 
 const WHISPER_SAMPLE_RATE: u32 = 16000;
 const SILENCE_THRESHOLD: f32 = 0.01;
@@ -267,9 +270,8 @@ enum AudioEvent {
 }
 
 struct TranscriptionManager {
-    ctx: Arc<Mutex<Option<WhisperContext>>>,
+    engine: Arc<Mutex<Option<ParakeetEngine>>>,
     model_path: PathBuf,
-    num_threads: i32,
 }
 
 impl TranscriptionManager {
@@ -277,17 +279,11 @@ impl TranscriptionManager {
         let model_path = dirs::data_local_dir()
             .unwrap_or_else(|| PathBuf::from("."))
             .join("nwidgets")
-            .join("ggml-base-q5_1.bin");
-
-        // Pré-calculer le nombre de threads
-        let num_threads = std::thread::available_parallelism()
-            .map(|n| n.get() as i32)
-            .unwrap_or(4);
+            .join("parakeet-tdt-0.6b-v3-int8");
 
         Self {
-            ctx: Arc::new(Mutex::new(None)),
+            engine: Arc::new(Mutex::new(None)),
             model_path,
-            num_threads,
         }
     }
 
@@ -301,88 +297,70 @@ impl TranscriptionManager {
             std::fs::create_dir_all(parent)?;
         }
 
-        println!("Downloading Whisper model to {:?}", self.model_path);
-        let url = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base-q5_1.bin";
+        println!("Downloading Parakeet V3 int8 model to {:?}", self.model_path);
+        println!("This is a quantized model (~473MB), please wait...");
+        let url = "https://blob.handy.computer/parakeet-v3-int8.tar.gz";
 
         let runtime = tokio::runtime::Runtime::new()?;
         runtime.block_on(async {
             let resp = reqwest::get(url).await?.bytes().await?;
-            std::fs::write(&self.model_path, resp)?;
+
+            // Save tar.gz file
+            let tar_gz_path = self.model_path.with_extension("tar.gz");
+            std::fs::write(&tar_gz_path, resp)?;
+
+            // Extract tar.gz
+            let tar_gz = std::fs::File::open(&tar_gz_path)?;
+            let tar = flate2::read::GzDecoder::new(tar_gz);
+            let mut archive = tar::Archive::new(tar);
+
+            if let Some(parent) = self.model_path.parent() {
+                archive.unpack(parent)?;
+            }
+
+            // Remove tar.gz
+            std::fs::remove_file(&tar_gz_path)?;
+
             Ok::<(), anyhow::Error>(())
         })?;
 
-        println!("Model downloaded.");
+        println!("Model downloaded and extracted.");
         Ok(())
     }
 
     fn load_model(&self) -> Result<()> {
         self.ensure_model_exists()?;
 
-        // Create context parameters with GPU disabled
-        let mut params = WhisperContextParameters::default();
-        params.use_gpu(false);
+        // Create Parakeet engine
+        let mut engine = ParakeetEngine::new();
 
-        // Load model with CPU-only configuration
-        let ctx = WhisperContext::new_with_params(
-            self.model_path.to_str().ok_or(anyhow!("Invalid path"))?,
-            params,
-        )
-        .map_err(|e| anyhow!("Failed to load model: {e}"))?;
+        // Load with int8 quantization for speed
+        engine
+            .load_model_with_params(&self.model_path, ParakeetModelParams::int8())
+            .map_err(|e| anyhow!("Failed to load Parakeet model: {e}"))?;
 
-        let mut guard = self.ctx.lock().unwrap();
-        *guard = Some(ctx);
+        let mut guard = self.engine.lock().unwrap();
+        *guard = Some(engine);
 
-        println!("Whisper model loaded (CPU mode).");
+        println!("Parakeet V3 int8 model loaded (CPU mode, optimized for speed).");
         Ok(())
     }
 
     fn transcribe(&self, audio_data: &[f32]) -> Result<String> {
-        let mut guard = self.ctx.lock().unwrap();
-        let ctx = guard.as_mut().ok_or(anyhow!("Context not loaded"))?;
+        let mut guard = self.engine.lock().unwrap();
+        let engine = guard.as_mut().ok_or(anyhow!("Engine not loaded"))?;
 
-        // Create state for transcription
-        let mut state = ctx
-            .create_state()
-            .map_err(|e| anyhow!("Failed to create state: {e}"))?;
-
-        // Configure transcription parameters - optimized for speed
-        let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
-        params.set_language(Some("fr"));
-        params.set_print_progress(false);
-        params.set_print_realtime(false);
-        params.set_print_timestamps(false);
-        params.set_initial_prompt(
-            "Voici une transcription claire, concise et bien ponctuée en français.",
-        );
-
-        // CPU optimizations
-        params.set_n_threads(self.num_threads);
-
-        // Speed optimizations
-        params.set_single_segment(true); // Plus rapide pour la dictée courte
-        params.set_token_timestamps(false); // Pas besoin de timestamps détaillés
-        params.set_max_len(1); // Segments courts pour réduire la latence
-        params.set_audio_ctx(0); // Pas de contexte audio supplémentaire
+        // Configure params for segment-level timestamps
+        let params = ParakeetInferenceParams {
+            timestamp_granularity: TimestampGranularity::Segment,
+        };
 
         // Run transcription
-        state
-            .full(params, audio_data)
-            .map_err(|e| anyhow!("Transcription failed: {e}"))?;
+        let result = engine
+            .transcribe_samples(audio_data.to_vec(), Some(params))
+            .map_err(|e| anyhow!("Parakeet transcription failed: {e}"))?;
 
-        // Extract text from all segments
-        let num_segments = state
-            .full_n_segments()
-            .map_err(|e| anyhow!("Failed to get segments: {e}"))?;
-
-        let mut transcript = String::new();
-        for i in 0..num_segments {
-            let segment = state
-                .full_get_segment_text(i)
-                .map_err(|e| anyhow!("Failed to get segment text: {e}"))?;
-            transcript.push_str(&segment);
-        }
-
-        Ok(transcript)
+        Ok(result.text)
     }
 }
 

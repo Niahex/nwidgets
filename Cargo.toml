@@ -37,8 +37,10 @@ resvg = "0.45.0"
 usvg = "0.45.0"
 uuid = { version = "1.18.1", features = ["v4"] }
 futures-util = "0.3.31"
-whisper-rs = { version = "0.13", default-features = false, features = ["hipblas"] }
+transcribe-rs = "0.1.4"
 reqwest = { version = "0.12.5", features = ["json", "stream"] }
+flate2 = "1.0"
+tar = "0.4"
 
 [build-dependencies]
 grass = "0.13"

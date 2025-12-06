@@ -100,7 +100,6 @@
 
         envVars = {
           RUST_BACKTRACE = "full";
-          # GIO_USE_TLS = "gnutls"; # Souvent inutile si glib-networking est bien chargé, mais on peut le laisser si nécessaire
           SSL_CERT_FILE = "/nix/var/nix/profiles/system/etc/ssl/certs/ca-bundle.crt";
           NIX_SSL_CERT_FILE = "/nix/var/nix/profiles/system/etc/ssl/certs/ca-bundle.crt";
           # Ensure pkg-config finds openblas
@@ -111,7 +110,7 @@
           # For ort-sys (ONNX Runtime) - skip download and use system library
           ORT_SKIP_DOWNLOAD = "1";
           ORT_LIB_LOCATION = "${pkgs.onnxruntime}";
-          # Whisper.cpp CPU optimizations
+          # Whisper.cpp - Use system Wayland (not Nix's) for Vulkan compatibility
           WHISPER_NO_CUDA = "1";
           WHISPER_NO_METAL = "1";
           WHISPER_OPENBLAS = "1";
@@ -175,7 +174,14 @@
 
           shellHook = ''
             export GIO_EXTRA_MODULES="${pkgs.glib-networking}/lib/gio/modules:$GIO_EXTRA_MODULES"
+
+            # Use system Vulkan drivers instead of Nix's to avoid Wayland symbol issues
+            unset VK_ICD_FILENAMES
+            unset VK_LAYER_PATH
+            export VK_DRIVER_FILES=/usr/share/vulkan/icd.d/radeon_icd.x86_64.json
+
             echo "[🦀 Rust $(rustc --version)] - Ready to develop nwidgets!"
+            echo "🎮 Using system Vulkan drivers for AMD GPU"
           '';
         };
 
