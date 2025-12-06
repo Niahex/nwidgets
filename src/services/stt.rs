@@ -7,8 +7,7 @@ use std::path::PathBuf;
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
-use transcribe_rs::engines::whisper::{WhisperEngine, WhisperInferenceParams};
-use transcribe_rs::TranscriptionEngine;
+use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
 
 const WHISPER_SAMPLE_RATE: u32 = 16000;
 const SILENCE_THRESHOLD: f32 = 0.01;
@@ -268,7 +267,7 @@ enum AudioEvent {
 }
 
 struct TranscriptionManager {
-    engine: Arc<Mutex<Option<WhisperEngine>>>,
+    ctx: Arc<Mutex<Option<WhisperContext>>>,
     model_path: PathBuf,
 }
 
@@ -280,7 +279,7 @@ impl TranscriptionManager {
             .join("ggml-base-q5_1.bin");
 
         Self {
-            engine: Arc::new(Mutex::new(None)),
+            ctx: Arc::new(Mutex::new(None)),
             model_path,
         }
     }
@@ -312,38 +311,62 @@ impl TranscriptionManager {
     fn load_model(&self) -> Result<()> {
         self.ensure_model_exists()?;
 
-        let mut engine = WhisperEngine::new();
-        engine
-            .load_model(&self.model_path)
-            .map_err(|e| anyhow!("Failed to load model: {e}"))?;
+        // Create context parameters with GPU disabled
+        let mut params = WhisperContextParameters::default();
+        params.use_gpu(false);
 
-        let mut guard = self.engine.lock().unwrap();
-        *guard = Some(engine);
+        // Load model with CPU-only configuration
+        let ctx = WhisperContext::new_with_params(
+            self.model_path.to_str().ok_or(anyhow!("Invalid path"))?,
+            params,
+        )
+        .map_err(|e| anyhow!("Failed to load model: {e}"))?;
 
-        println!("Whisper model loaded.");
+        let mut guard = self.ctx.lock().unwrap();
+        *guard = Some(ctx);
+
+        println!("Whisper model loaded (CPU mode).");
         Ok(())
     }
 
     fn transcribe(&self, audio_data: &[f32]) -> Result<String> {
-        let mut guard = self.engine.lock().unwrap();
-        let engine = guard.as_mut().ok_or(anyhow!("Engine not loaded"))?;
+        let mut guard = self.ctx.lock().unwrap();
+        let ctx = guard.as_mut().ok_or(anyhow!("Context not loaded"))?;
 
-        let params = WhisperInferenceParams {
-            language: Some("fr".to_string()),
-            print_progress: false,
-            print_realtime: false,
-            print_timestamps: false,
-            initial_prompt: Some(
-                "Voici une transcription claire, concise et bien ponctuée en français.".to_string(),
-            ),
-            ..Default::default()
-        };
+        // Create state for transcription
+        let mut state = ctx
+            .create_state()
+            .map_err(|e| anyhow!("Failed to create state: {e}"))?;
 
-        let transcript =
-            TranscriptionEngine::transcribe_samples(engine, audio_data.to_vec(), Some(params))
-                .map_err(|e| anyhow!("Transcription failed: {e}"))?;
+        // Configure transcription parameters
+        let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
+        params.set_language(Some("fr"));
+        params.set_print_progress(false);
+        params.set_print_realtime(false);
+        params.set_print_timestamps(false);
+        params.set_initial_prompt(
+            "Voici une transcription claire, concise et bien ponctuée en français.",
+        );
 
-        Ok(transcript.text)
+        // Run transcription
+        state
+            .full(params, audio_data)
+            .map_err(|e| anyhow!("Transcription failed: {e}"))?;
+
+        // Extract text from all segments
+        let num_segments = state
+            .full_n_segments()
+            .map_err(|e| anyhow!("Failed to get segments: {e}"))?;
+
+        let mut transcript = String::new();
+        for i in 0..num_segments {
+            let segment = state
+                .full_get_segment_text(i)
+                .map_err(|e| anyhow!("Failed to get segment text: {e}"))?;
+            transcript.push_str(&segment);
+        }
+
+        Ok(transcript)
     }
 }
 
