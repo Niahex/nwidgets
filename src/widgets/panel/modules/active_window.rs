@@ -130,6 +130,7 @@ impl ActiveWindowModule {
                 "discord" | "vesktop" => "discord",
                 "steam" => "steam",
                 "vlc" => "vlc",
+                "net.lutris.lutris" => "lutris",
                 "org.keepassxc.keepassxc" => "keepassxc",
                 "spotify" => "spotify",
                 "org.gnome.nautilus" => "file-manager",
