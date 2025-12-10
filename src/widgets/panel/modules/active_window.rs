@@ -8,7 +8,7 @@ use std::rc::Rc;
 
 #[derive(Clone)]
 pub struct ActiveWindowModule {
-    pub container: gtk::CenterBox,
+    pub container: gtk::Box,
     icon: gtk::Image,
     class_label: gtk::Label,
     title_label: gtk::Label,
@@ -19,41 +19,38 @@ pub struct ActiveWindowModule {
 
 impl ActiveWindowModule {
     pub fn new() -> Self {
-        // Container principal
-        let container = gtk::CenterBox::new();
+        // Container principal - utiliser Box au lieu de CenterBox pour mieux contrôler l'espacement
+        let container = gtk::Box::new(gtk::Orientation::Horizontal, 8);
         container.add_css_class("active-window-widget");
-        container.set_width_request(250);
-
-        // CenterBox pour l'icône
-        let icon_container = gtk::CenterBox::new();
-        icon_container.set_width_request(64);
+        // Fixer la largeur pour éviter que les modules centraux ne bougent
+        container.set_width_request(350);
+        container.set_hexpand(false);
 
         let icon = icons::create_icon_with_size("test", Some(48));
         icon.add_css_class("active-window-icon");
-        icon_container.set_center_widget(Some(&icon));
-
-        // CenterBox pour le texte (class + title)
-        let text_container = gtk::CenterBox::new();
-        text_container.set_hexpand(true);
 
         let text_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        text_box.set_halign(gtk::Align::Center);
+        text_box.set_halign(gtk::Align::Start);
         text_box.set_valign(gtk::Align::Center);
+        text_box.set_hexpand(true);
 
         let class_label = gtk::Label::new(None);
         class_label.add_css_class("active-window-class");
-        class_label.set_halign(gtk::Align::Center);
+        class_label.set_halign(gtk::Align::Start);
+        class_label.set_ellipsize(gtk::pango::EllipsizeMode::End);
+        class_label.set_max_width_chars(25);
 
         let title_label = gtk::Label::new(None);
         title_label.add_css_class("active-window-title");
-        title_label.set_halign(gtk::Align::Center);
+        title_label.set_halign(gtk::Align::Start);
+        title_label.set_ellipsize(gtk::pango::EllipsizeMode::End);
+        title_label.set_max_width_chars(35);
 
         text_box.append(&class_label);
         text_box.append(&title_label);
-        text_container.set_center_widget(Some(&text_box));
 
-        container.set_start_widget(Some(&icon_container));
-        container.set_center_widget(Some(&text_container));
+        container.append(&icon);
+        container.append(&text_box);
 
         Self {
             container,

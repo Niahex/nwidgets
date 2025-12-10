@@ -16,10 +16,13 @@ impl MprisModule {
     pub fn new() -> Self {
         let container = gtk::Box::new(gtk::Orientation::Horizontal, 8);
         container.add_css_class("mpris-widget");
+        // Fixer la largeur pour éviter les changements de taille
+        container.set_width_request(250);
 
         // Container pour le texte
         let text_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
         text_box.set_valign(gtk::Align::Center);
+        text_box.set_hexpand(true);
 
         let title_label = gtk::Label::new(None);
         title_label.add_css_class("mpris-title");

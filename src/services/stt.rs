@@ -276,9 +276,7 @@ struct TranscriptionManager {
 
 impl TranscriptionManager {
     fn new() -> Self {
-        let model_path = dirs::data_local_dir()
-            .unwrap_or_else(|| PathBuf::from("."))
-            .join("nwidgets")
+        let model_path = PathBuf::from("/home/nia/.local/share/ai")
             .join("parakeet-tdt-0.6b-v3-int8");
 
         Self {

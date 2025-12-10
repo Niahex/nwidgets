@@ -73,11 +73,11 @@
           vulkan-headers
           vulkan-loader
           onnxruntime # For transcribe-rs
-          # ROCm pour GPU AMD (whisper.cpp hipBLAS)
-          rocmPackages.clr
-          rocmPackages.hipblas
-          rocmPackages.rocblas
-          rocmPackages.rocm-runtime
+          # # ROCm pour GPU AMD (whisper.cpp hipBLAS)
+          # rocmPackages.clr
+          # rocmPackages.hipblas
+          # rocmPackages.rocblas
+          # rocmPackages.rocm-runtime
         ];
 
         # Dependencies needed only at runtime

@@ -39,7 +39,8 @@ pub fn create_chat_overlay(application: &gtk::Application) -> ChatOverlay {
     settings.set_user_agent(Some(
         "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/119.0",
     ));
-    settings.set_hardware_acceleration_policy(HardwareAccelerationPolicy::Always);
+    settings.set_hardware_acceleration_policy(HardwareAccelerationPolicy::Never);
+    settings.set_enable_2d_canvas_acceleration(false);
     settings.set_enable_media_stream(true);
     settings.set_enable_webaudio(true);
     settings.set_enable_webrtc(true);
