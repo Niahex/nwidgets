@@ -26,6 +26,11 @@ impl Render for WorkspacesModule {
         let active_id = self.hyprland.read(cx).active_workspace_id();
         let hyprland = self.hyprland.clone();
 
+        // Nord colors
+        let frost1 = rgb(0x88c0d0);
+        let polar1 = rgb(0x3b4252);
+        let snow2 = rgb(0xeceff4);
+
         div()
             .flex()
             .gap_1()
@@ -39,14 +44,18 @@ impl Render for WorkspacesModule {
                     .px_3()
                     .py_1()
                     .rounded_md()
+                    .text_sm()
+                    .font_weight(if is_active { FontWeight::BOLD } else { FontWeight::MEDIUM })
                     .when(is_active, |this| {
-                        this.bg(rgb(0x89b4fa))
-                            .text_color(rgb(0x1e1e2e))
+                        this.bg(rgba(0x88c0d033)) // frost1 with opacity
+                            .text_color(frost1)
                     })
                     .when(!is_active, |this| {
-                        this.bg(rgb(0x313244))
-                            .text_color(rgb(0xcdd6f4))
-                            .hover(|style| style.bg(rgb(0x45475a)))
+                        this.text_color(rgba(0xd8dee980)) // snow0 with opacity
+                            .hover(|style| {
+                                style.bg(rgba(0x88c0d01a)) // frost1 hover
+                                    .text_color(rgba(0xd8dee9cc))
+                            })
                     })
                     .cursor_pointer()
                     .on_click(move |_event, _window, cx| {

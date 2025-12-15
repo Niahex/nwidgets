@@ -111,7 +111,6 @@ impl HyprlandService {
         let hypr_sig = match std::env::var("HYPRLAND_INSTANCE_SIGNATURE") {
             Ok(sig) => sig,
             Err(_) => {
-                eprintln!("HYPRLAND_INSTANCE_SIGNATURE not set");
                 return;
             }
         };

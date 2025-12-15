@@ -7,67 +7,77 @@ pub use modules::{
 
 use gpui::*;
 
-pub struct Panel;
+pub struct Panel {
+    workspaces: Entity<WorkspacesModule>,
+    pomodoro: Entity<PomodoroModule>,
+    mpris: Entity<MprisModule>,
+    systray: Entity<SystrayModule>,
+    network: Entity<NetworkModule>,
+    audio: Entity<AudioModule>,
+    datetime: Entity<DateTimeModule>,
+}
 
 impl Panel {
-    pub fn new() -> Self {
-        Self
+    pub fn new(cx: &mut Context<Self>) -> Self {
+        Self {
+            workspaces: cx.new(|cx| WorkspacesModule::new(cx)),
+            pomodoro: cx.new(|cx| PomodoroModule::new(cx)),
+            mpris: cx.new(|cx| MprisModule::new(cx)),
+            systray: cx.new(|cx| SystrayModule::new(cx)),
+            network: cx.new(|cx| NetworkModule::new(cx)),
+            audio: cx.new(|cx| AudioModule::new(cx)),
+            datetime: cx.new(|cx| DateTimeModule::new(cx)),
+        }
     }
 }
 
 impl Render for Panel {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        // Create all modules
-        let workspaces = cx.new(|cx| WorkspacesModule::new(cx));
-        let pomodoro = cx.new(|cx| PomodoroModule::new(cx));
-        let mpris = cx.new(|cx| MprisModule::new(cx));
-        let systray = cx.new(|cx| SystrayModule::new(cx));
-        let network = cx.new(|cx| NetworkModule::new(cx));
-        let audio = cx.new(|cx| AudioModule::new(cx));
-        let datetime = cx.new(|cx| DateTimeModule::new(cx));
+    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+        // Nord colors
+        let bg_color = rgb(0x2e3440); // $polar0
+        let text_color = rgb(0xeceff4); // $snow2
 
         div()
             .flex()
             .items_center()
             .justify_between()
-            .h(px(40.))
+            .h(px(50.))
             .w_full()
-            .px_4()
-            .bg(rgb(0x1e1e2e))
-            .text_color(rgb(0xcdd6f4))
+            .px_3()
+            .bg(bg_color)
+            .text_color(text_color)
             // Left section
             .child(
                 div()
                     .flex()
-                    .gap_3()
+                    .gap_2()
                     .items_center()
-                    .child(
-                        div()
-                            .font_weight(FontWeight::BOLD)
-                            .text_color(rgb(0x89b4fa))
-                            .child("NWidgets")
-                    )
+                    .h_full()
             )
-            // Center section
+            // Center section - takes remaining space
             .child(
                 div()
                     .flex()
-                    .gap_4()
+                    .flex_1()
+                    .gap_2()
                     .items_center()
-                    .child(pomodoro)
-                    .child(workspaces)
-                    .child(mpris)
+                    .justify_center()
+                    .h_full()
+                    .child(self.pomodoro.clone())
+                    .child(self.workspaces.clone())
+                    .child(self.mpris.clone())
             )
             // Right section
             .child(
                 div()
                     .flex()
-                    .gap_3()
+                    .gap_1()
                     .items_center()
-                    .child(systray)
-                    .child(network)
-                    .child(audio)
-                    .child(datetime)
+                    .h_full()
+                    .child(self.systray.clone())
+                    .child(self.network.clone())
+                    .child(self.audio.clone())
+                    .child(self.datetime.clone())
             )
     }
 }

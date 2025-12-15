@@ -131,8 +131,7 @@ impl AudioService {
             .spawn(async move {
                 let mut child = match Command::new("pw-mon").stdout(Stdio::piped()).spawn() {
                     Ok(child) => child,
-                    Err(e) => {
-                        eprintln!("Failed to start pw-mon: {e}. Falling back to polling.");
+                    Err(_) => {
                         // Fallback: poll every second
                         loop {
                             std::thread::sleep(std::time::Duration::from_secs(1));

@@ -39,11 +39,13 @@ impl Render for PomodoroModule {
                     .child(
                         div()
                             .id("pomodoro-start")
-                            .px_2()
+                            .px_3()
                             .py_1()
                             .rounded_md()
-                            .bg(rgb(0x313244))
-                            .hover(|style| style.bg(rgb(0x45475a)))
+                            .text_sm()
+                            .text_color(rgb(0xeceff4)) // $snow2
+                            .bg(rgba(0x3b425266)) // $polar1 with opacity
+                            .hover(|style| style.bg(rgba(0x4c566a99))) // $polar3
                             .cursor_pointer()
                             .on_click(move |_event, _window, cx| {
                                 pomodoro.update(cx, |service, cx| {
@@ -68,6 +70,9 @@ impl Render for PomodoroModule {
                     .flex()
                     .gap_2()
                     .items_center()
+                    .text_sm()
+                    .text_color(rgb(0xeceff4)) // $snow2
+                    .font_weight(FontWeight::SEMIBOLD)
                     .child(format!("{} {}", icon, Self::format_time(remaining_secs)))
                     .child(
                         div()
@@ -75,7 +80,8 @@ impl Render for PomodoroModule {
                             .px_2()
                             .py_1()
                             .rounded_sm()
-                            .hover(|style| style.bg(rgb(0x313244)))
+                            .text_color(rgb(0xeceff4)) // $snow2
+                            .hover(|style| style.bg(rgba(0x4c566a80))) // $polar3 with opacity
                             .cursor_pointer()
                             .on_click(move |_event, _window, cx| {
                                 pomodoro_pause.update(cx, |service, cx| {
@@ -94,7 +100,8 @@ impl Render for PomodoroModule {
                             .px_2()
                             .py_1()
                             .rounded_sm()
-                            .hover(|style| style.bg(rgb(0x313244)))
+                            .text_color(rgb(0xeceff4)) // $snow2
+                            .hover(|style| style.bg(rgba(0x4c566a80))) // $polar3 with opacity
                             .cursor_pointer()
                             .on_click(move |_event, _window, cx| {
                                 pomodoro_stop.update(cx, |service, cx| {

@@ -43,6 +43,7 @@ impl Render for MprisModule {
                 .gap_2()
                 .items_center()
                 .max_w(px(250.))
+                .px_2()
                 .child(
                     div()
                         .flex()
@@ -52,6 +53,7 @@ impl Render for MprisModule {
                             div()
                                 .text_xs()
                                 .font_weight(FontWeight::SEMIBOLD)
+                                .text_color(rgb(0xeceff4)) // $snow2
                                 .overflow_hidden()
                                 .text_ellipsis()
                                 .child(title)
@@ -60,7 +62,7 @@ impl Render for MprisModule {
                             this.child(
                                 div()
                                     .text_xs()
-                                    .text_color(rgb(0x9399b2))
+                                    .text_color(rgba(0xd8dee980)) // $snow0 with opacity
                                     .overflow_hidden()
                                     .text_ellipsis()
                                     .child(artist_name)
@@ -76,7 +78,8 @@ impl Render for MprisModule {
                                 .id("mpris-prev")
                                 .px_1()
                                 .rounded_sm()
-                                .hover(|style| style.bg(rgb(0x313244)))
+                                .text_color(rgb(0xeceff4)) // $snow2
+                                .hover(|style| style.bg(rgba(0x4c566a80))) // $polar3 with opacity
                                 .cursor_pointer()
                                 .on_click(move |_event, _window, cx| {
                                     mpris_prev.read(cx).previous();
@@ -86,9 +89,11 @@ impl Render for MprisModule {
                         .child(
                             div()
                                 .id("mpris-play-pause")
-                                .px_1()
+                                .px_2()
+                                .py_1()
                                 .rounded_sm()
-                                .hover(|style| style.bg(rgb(0x313244)))
+                                .text_color(rgb(0xeceff4)) // $snow2
+                                .hover(|style| style.bg(rgba(0x4c566a80))) // $polar3 with opacity
                                 .cursor_pointer()
                                 .on_click(move |_event, _window, cx| {
                                     mpris_play.read(cx).play_pause();
@@ -100,7 +105,8 @@ impl Render for MprisModule {
                                 .id("mpris-next")
                                 .px_1()
                                 .rounded_sm()
-                                .hover(|style| style.bg(rgb(0x313244)))
+                                .text_color(rgb(0xeceff4)) // $snow2
+                                .hover(|style| style.bg(rgba(0x4c566a80))) // $polar3 with opacity
                                 .cursor_pointer()
                                 .on_click(move |_event, _window, cx| {
                                     mpris_next.read(cx).next();

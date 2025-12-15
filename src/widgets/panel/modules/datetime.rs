@@ -13,7 +13,7 @@ impl DateTimeModule {
         let time = now.format("%H:%M").to_string().into();
         let date = now.format("%a %d %b").to_string().into();
 
-        // Update every minute
+        // Update every 60 seconds
         cx.spawn(async move |this, cx| {
             loop {
                 cx.background_executor()
@@ -40,16 +40,17 @@ impl Render for DateTimeModule {
             .flex()
             .flex_col()
             .items_end()
+            .px_2()
             .child(
                 div()
                     .text_sm()
-                    .font_weight(FontWeight::BOLD)
+                    .font_weight(FontWeight::SEMIBOLD)
                     .child(self.time.clone())
             )
             .child(
                 div()
                     .text_xs()
-                    .text_color(rgb(0x9399b2))
+                    .text_color(rgb(0xd8dee9)) // $snow0
                     .child(self.date.clone())
             )
     }

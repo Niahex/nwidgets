@@ -40,15 +40,20 @@ impl Render for AudioModule {
             .flex()
             .gap_2()
             .items_center()
-            .px_2()
-            .py_1()
+            .px_3()
+            .py_2()
             .rounded_md()
-            .hover(|style| style.bg(rgb(0x313244)))
+            .text_sm()
+            .hover(|style| style.bg(rgba(0x4c566a80))) // $polar3 with opacity
             .cursor_pointer()
             .on_click(move |_event, _window, cx| {
                 audio.read(cx).toggle_sink_mute();
             })
-            .child(icon)
+            .child(
+                div()
+                    .text_base()
+                    .child(icon)
+            )
             .child(format!("{}%", state.sink_volume))
     }
 }

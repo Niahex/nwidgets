@@ -37,14 +37,14 @@ fn main() {
                 kind: WindowKind::LayerShell(LayerShellOptions {
                     namespace: "nwidgets-panel".to_string(),
                     anchor: Anchor::TOP | Anchor::LEFT | Anchor::RIGHT,
-                    exclusive_zone: Some(px(40.)),
+                    exclusive_zone: Some(px(50.)),
                     margin: None,
-                    keyboard_interactivity: KeyboardInteractivity::OnDemand,
+                    keyboard_interactivity: KeyboardInteractivity::None,
                     ..Default::default()
                 }),
                 ..Default::default()
             },
-            |_window, cx| cx.new(|_cx| Panel::new()),
+            |_window, cx| cx.new(|cx| Panel::new(cx)),
         )
         .unwrap();
 
