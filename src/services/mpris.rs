@@ -58,7 +58,7 @@ impl MprisService {
     pub fn play_pause(&self) {
         std::thread::spawn(|| {
             let _ = std::process::Command::new("playerctl")
-                .args(["play-pause"])
+                .args(["-p", "spotify", "play-pause"])
                 .status();
         });
     }
@@ -66,7 +66,7 @@ impl MprisService {
     pub fn next(&self) {
         std::thread::spawn(|| {
             let _ = std::process::Command::new("playerctl")
-                .args(["next"])
+                .args(["-p", "spotify", "next"])
                 .status();
         });
     }
@@ -74,7 +74,23 @@ impl MprisService {
     pub fn previous(&self) {
         std::thread::spawn(|| {
             let _ = std::process::Command::new("playerctl")
-                .args(["previous"])
+                .args(["-p", "spotify", "previous"])
+                .status();
+        });
+    }
+
+    pub fn volume_up(&self) {
+        std::thread::spawn(|| {
+            let _ = std::process::Command::new("playerctl")
+                .args(["-p", "spotify", "volume", "0.05+"])
+                .status();
+        });
+    }
+
+    pub fn volume_down(&self) {
+        std::thread::spawn(|| {
+            let _ = std::process::Command::new("playerctl")
+                .args(["-p", "spotify", "volume", "0.05-"])
                 .status();
         });
     }
@@ -110,9 +126,9 @@ impl MprisService {
     }
 
     fn fetch_mpris_state() -> Option<MprisPlayer> {
-        // Check if playerctl is available and has a player
+        // Only check for Spotify player
         let status_output = std::process::Command::new("playerctl")
-            .args(["status"])
+            .args(["-p", "spotify", "status"])
             .output()
             .ok()?;
 
@@ -127,32 +143,25 @@ impl MprisService {
             _ => PlaybackStatus::Stopped,
         };
 
-        // Get player name
-        let player_name = std::process::Command::new("playerctl")
-            .args(["-l"])
-            .output()
-            .ok()
-            .and_then(|o| String::from_utf8(o.stdout).ok())
-            .and_then(|s| s.lines().next().map(|l| l.to_string()))
-            .unwrap_or_else(|| "Unknown".to_string());
+        let player_name = "spotify".to_string();
 
-        // Get metadata
+        // Get metadata from Spotify
         let title = std::process::Command::new("playerctl")
-            .args(["metadata", "title"])
+            .args(["-p", "spotify", "metadata", "title"])
             .output()
             .ok()
             .and_then(|o| String::from_utf8(o.stdout).ok())
             .map(|s| s.trim().to_string());
 
         let artist = std::process::Command::new("playerctl")
-            .args(["metadata", "artist"])
+            .args(["-p", "spotify", "metadata", "artist"])
             .output()
             .ok()
             .and_then(|o| String::from_utf8(o.stdout).ok())
             .map(|s| s.trim().to_string());
 
         let album = std::process::Command::new("playerctl")
-            .args(["metadata", "album"])
+            .args(["-p", "spotify", "metadata", "album"])
             .output()
             .ok()
             .and_then(|o| String::from_utf8(o.stdout).ok())

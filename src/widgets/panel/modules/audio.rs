@@ -1,6 +1,7 @@
 use gpui::prelude::*;
 use gpui::*;
 use crate::services::audio::{AudioService, AudioStateChanged};
+use crate::utils::{Icon, IconName};
 
 pub struct AudioModule {
     audio: Entity<AudioService>,
@@ -25,14 +26,16 @@ impl Render for AudioModule {
         let state = self.audio.read(cx).state();
         let audio = self.audio.clone();
 
-        let icon = if state.sink_muted {
-            "🔇"
+        let icon_name = if state.sink_muted {
+            IconName::SinkMuted
         } else if state.sink_volume > 66 {
-            "🔊"
+            IconName::SinkHigh
         } else if state.sink_volume > 33 {
-            "🔉"
+            IconName::SinkMedium
+        } else if state.sink_volume > 0 {
+            IconName::SinkLow
         } else {
-            "🔈"
+            IconName::SinkZero
         };
 
         div()
@@ -50,10 +53,14 @@ impl Render for AudioModule {
                 audio.read(cx).toggle_sink_mute();
             })
             .child(
-                div()
-                    .text_base()
-                    .child(icon)
+                Icon::new(icon_name)
+                    .size(px(18.))
+                    .color(rgb(0xeceff4)) // $snow2
             )
-            .child(format!("{}%", state.sink_volume))
+            .child(
+                div()
+                    .text_color(rgb(0xeceff4)) // $snow2
+                    .child(format!("{}%", state.sink_volume))
+            )
     }
 }

@@ -1,6 +1,7 @@
 use gpui::prelude::*;
 use gpui::*;
 use crate::services::pomodoro::{PomodoroPhase, PomodoroService, PomodoroStateChanged, PomodoroStatus};
+use crate::utils::{Icon, IconName};
 
 pub struct PomodoroModule {
     pomodoro: Entity<PomodoroService>,
@@ -39,6 +40,9 @@ impl Render for PomodoroModule {
                     .child(
                         div()
                             .id("pomodoro-start")
+                            .flex()
+                            .gap_1()
+                            .items_center()
                             .px_3()
                             .py_1()
                             .rounded_md()
@@ -52,16 +56,21 @@ impl Render for PomodoroModule {
                                     service.start_work(cx);
                                 });
                             })
-                            .child("🍅 Start")
+                            .child(
+                                Icon::new(IconName::Coffee)
+                                    .size(px(16.))
+                                    .color(rgb(0x88c0d0)) // $frost1
+                            )
+                            .child("Start")
                     )
             }
             PomodoroStatus::Running { ref phase, remaining_secs } |
             PomodoroStatus::Paused { ref phase, remaining_secs } => {
                 let is_running = matches!(status, PomodoroStatus::Running { .. });
-                let icon = match phase {
-                    PomodoroPhase::Work => "🍅",
-                    PomodoroPhase::ShortBreak => "☕",
-                    PomodoroPhase::LongBreak => "🎉",
+                let phase_text = match phase {
+                    PomodoroPhase::Work => "Work",
+                    PomodoroPhase::ShortBreak => "Break",
+                    PomodoroPhase::LongBreak => "Long Break",
                 };
                 let pomodoro_pause = pomodoro.clone();
                 let pomodoro_stop = pomodoro.clone();
@@ -72,15 +81,28 @@ impl Render for PomodoroModule {
                     .items_center()
                     .text_sm()
                     .text_color(rgb(0xeceff4)) // $snow2
-                    .font_weight(FontWeight::SEMIBOLD)
-                    .child(format!("{} {}", icon, Self::format_time(remaining_secs)))
+                    .child(
+                        div()
+                            .flex()
+                            .gap_1()
+                            .items_center()
+                            .child(
+                                Icon::new(IconName::Coffee)
+                                    .size(px(16.))
+                                    .color(rgb(0x88c0d0)) // $frost1
+                            )
+                            .child(
+                                div()
+                                    .font_weight(FontWeight::SEMIBOLD)
+                                    .child(format!("{} {}", phase_text, Self::format_time(remaining_secs)))
+                            )
+                    )
                     .child(
                         div()
                             .id("pomodoro-pause-resume")
                             .px_2()
                             .py_1()
                             .rounded_sm()
-                            .text_color(rgb(0xeceff4)) // $snow2
                             .hover(|style| style.bg(rgba(0x4c566a80))) // $polar3 with opacity
                             .cursor_pointer()
                             .on_click(move |_event, _window, cx| {
@@ -92,7 +114,11 @@ impl Render for PomodoroModule {
                                     }
                                 });
                             })
-                            .child(if is_running { "⏸" } else { "▶" })
+                            .child(
+                                Icon::new(if is_running { IconName::Pause } else { IconName::Play })
+                                    .size(px(14.))
+                                    .color(rgb(0xeceff4))
+                            )
                     )
                     .child(
                         div()
@@ -100,7 +126,6 @@ impl Render for PomodoroModule {
                             .px_2()
                             .py_1()
                             .rounded_sm()
-                            .text_color(rgb(0xeceff4)) // $snow2
                             .hover(|style| style.bg(rgba(0x4c566a80))) // $polar3 with opacity
                             .cursor_pointer()
                             .on_click(move |_event, _window, cx| {
@@ -108,7 +133,11 @@ impl Render for PomodoroModule {
                                     service.stop(cx);
                                 });
                             })
-                            .child("⏹")
+                            .child(
+                                Icon::new(IconName::RecordingStopped)
+                                    .size(px(14.))
+                                    .color(rgb(0xeceff4))
+                            )
                     )
             }
         }

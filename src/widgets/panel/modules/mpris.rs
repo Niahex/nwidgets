@@ -1,9 +1,12 @@
 use gpui::prelude::*;
 use gpui::*;
 use crate::services::mpris::{MprisService, MprisStateChanged, PlaybackStatus};
+use std::time::{Duration, Instant};
+use std::cell::Cell;
 
 pub struct MprisModule {
     mpris: Entity<MprisService>,
+    last_track_change: Cell<Instant>,
 }
 
 impl MprisModule {
@@ -15,110 +18,97 @@ impl MprisModule {
         })
         .detach();
 
-        Self { mpris }
+        Self {
+            mpris,
+            last_track_change: Cell::new(Instant::now() - Duration::from_secs(1)),
+        }
     }
 }
 
 impl Render for MprisModule {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let player = self.mpris.read(cx).current_player();
-        let mpris = self.mpris.clone();
 
         if let Some(player) = player {
-            let icon = match player.status {
-                PlaybackStatus::Playing => "▶",
-                PlaybackStatus::Paused => "⏸",
-                PlaybackStatus::Stopped => "⏹",
-            };
-
+            let mpris = self.mpris.clone();
             let title = player.metadata.title.unwrap_or_else(|| "No title".to_string());
             let artist = player.metadata.artist;
+            let is_paused = player.status == PlaybackStatus::Paused;
 
-            let mpris_prev = mpris.clone();
-            let mpris_play = mpris.clone();
-            let mpris_next = mpris.clone();
+            let last_track_change = self.last_track_change.clone();
+            let mpris_for_click = mpris.clone();
+            let mpris_for_scroll = mpris.clone();
 
             div()
+                .id("mpris-module")
                 .flex()
-                .gap_2()
-                .items_center()
-                .max_w(px(250.))
+                .flex_col()
+                .w(px(250.))
                 .px_2()
+                .py_1()
+                .rounded_sm()
+                .cursor_pointer()
+                .when(is_paused, |this| {
+                    this.text_color(rgba(0xd8dee980)) // Dimmed when paused
+                })
+                .when(!is_paused, |this| {
+                    this.text_color(rgb(0xeceff4))
+                })
+                .hover(|style| style.bg(rgba(0x4c566a40)))
+                // Click to play/pause
+                .on_click(move |_event, _window, cx| {
+                    mpris_for_click.read(cx).play_pause();
+                })
+                // Scroll handlers
+                .on_scroll_wheel(move |event, window, cx| {
+                    let mpris = mpris_for_scroll.read(cx);
+                    let delta_pixels = event.delta.pixel_delta(window.line_height());
+
+                    // Horizontal scroll for track navigation (with debounce)
+                    if !delta_pixels.x.is_zero() {
+                        let now = Instant::now();
+                        let cooldown = Duration::from_millis(300);
+
+                        if now.duration_since(last_track_change.get()) >= cooldown {
+                            if delta_pixels.x < px(0.0) {
+                                mpris.previous();
+                            } else {
+                                mpris.next();
+                            }
+                            last_track_change.set(now);
+                        }
+                    }
+
+                    // Vertical scroll for volume (inverted: scroll up = volume up)
+                    if !delta_pixels.y.is_zero() {
+                        if delta_pixels.y < px(0.0) {
+                            mpris.volume_down();
+                        } else {
+                            mpris.volume_up();
+                        }
+                    }
+                })
                 .child(
                     div()
-                        .flex()
-                        .flex_col()
+                        .text_xs()
+                        .font_weight(FontWeight::SEMIBOLD)
                         .overflow_hidden()
-                        .child(
-                            div()
-                                .text_xs()
-                                .font_weight(FontWeight::SEMIBOLD)
-                                .text_color(rgb(0xeceff4)) // $snow2
-                                .overflow_hidden()
-                                .text_ellipsis()
-                                .child(title)
-                        )
-                        .when_some(artist, |this, artist_name| {
-                            this.child(
-                                div()
-                                    .text_xs()
-                                    .text_color(rgba(0xd8dee980)) // $snow0 with opacity
-                                    .overflow_hidden()
-                                    .text_ellipsis()
-                                    .child(artist_name)
-                            )
-                        })
+                        .text_ellipsis()
+                        .child(title)
                 )
-                .child(
-                    div()
-                        .flex()
-                        .gap_1()
-                        .child(
-                            div()
-                                .id("mpris-prev")
-                                .px_1()
-                                .rounded_sm()
-                                .text_color(rgb(0xeceff4)) // $snow2
-                                .hover(|style| style.bg(rgba(0x4c566a80))) // $polar3 with opacity
-                                .cursor_pointer()
-                                .on_click(move |_event, _window, cx| {
-                                    mpris_prev.read(cx).previous();
-                                })
-                                .child("⏮")
-                        )
-                        .child(
-                            div()
-                                .id("mpris-play-pause")
-                                .px_2()
-                                .py_1()
-                                .rounded_sm()
-                                .text_color(rgb(0xeceff4)) // $snow2
-                                .hover(|style| style.bg(rgba(0x4c566a80))) // $polar3 with opacity
-                                .cursor_pointer()
-                                .on_click(move |_event, _window, cx| {
-                                    mpris_play.read(cx).play_pause();
-                                })
-                                .child(icon)
-                        )
-                        .child(
-                            div()
-                                .id("mpris-next")
-                                .px_1()
-                                .rounded_sm()
-                                .text_color(rgb(0xeceff4)) // $snow2
-                                .hover(|style| style.bg(rgba(0x4c566a80))) // $polar3 with opacity
-                                .cursor_pointer()
-                                .on_click(move |_event, _window, cx| {
-                                    mpris_next.read(cx).next();
-                                })
-                                .child("⏭")
-                        )
-                )
+                .when_some(artist, |this, artist_name| {
+                    this.child(
+                        div()
+                            .text_xs()
+                            .text_color(rgba(0xd8dee980)) // $snow0 with opacity
+                            .overflow_hidden()
+                            .text_ellipsis()
+                            .child(artist_name)
+                    )
+                })
+                .into_any_element()
         } else {
-            div()
-                .text_xs()
-                .text_color(rgb(0x6c7086))
-                .child("No media playing")
+            div().into_any_element()
         }
     }
 }

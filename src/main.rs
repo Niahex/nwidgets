@@ -16,9 +16,51 @@ use services::{
     systray::SystrayService,
 };
 use widgets::panel::Panel;
+use std::path::PathBuf;
+use anyhow::Result;
+
+struct Assets {
+    base: PathBuf,
+}
+
+impl AssetSource for Assets {
+    fn load(&self, path: &str) -> Result<Option<std::borrow::Cow<'static, [u8]>>> {
+        std::fs::read(self.base.join(path))
+            .map(|data| Some(std::borrow::Cow::Owned(data)))
+            .map_err(|err| err.into())
+    }
+
+    fn list(&self, path: &str) -> Result<Vec<SharedString>> {
+        std::fs::read_dir(self.base.join(path))
+            .map(|entries| {
+                entries
+                    .filter_map(|entry| {
+                        entry
+                            .ok()
+                            .and_then(|entry| entry.file_name().into_string().ok())
+                            .map(SharedString::from)
+                    })
+                    .collect()
+            })
+            .map_err(|err| err.into())
+    }
+}
 
 fn main() {
-    Application::new().run(|cx: &mut App| {
+    // Determine assets path - in development it's relative to the project root
+    let assets_path = if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
+        PathBuf::from(manifest_dir)
+    } else {
+        // In production, assets should be alongside the binary
+        std::env::current_exe()
+            .ok()
+            .and_then(|path| path.parent().map(|p| p.to_path_buf()))
+            .unwrap_or_else(|| PathBuf::from("."))
+    };
+
+    Application::new()
+        .with_assets(Assets { base: assets_path })
+        .run(|cx: &mut App| {
         // Initialize global services
         HyprlandService::init(cx);
         AudioService::init(cx);
