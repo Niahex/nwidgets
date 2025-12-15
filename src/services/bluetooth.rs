@@ -1,142 +1,174 @@
-use zbus::{Connection, proxy};
-use std::sync::mpsc;
+use gpui::prelude::*;
+use gpui::{App, AsyncApp, Context, Entity, EventEmitter, Global, WeakEntity};
+use parking_lot::RwLock;
+use std::sync::Arc;
+use std::time::Duration;
 
-#[derive(Debug, Clone)]
-pub struct BluetoothState {
-    pub powered: bool,
-    pub connected_devices: usize,
+#[derive(Clone, Debug, PartialEq)]
+pub struct BluetoothDevice {
+    pub name: String,
+    pub address: String,
+    pub connected: bool,
+    pub paired: bool,
+    pub icon: String,
 }
 
-// BlueZ Adapter interface
-#[proxy(
-    interface = "org.bluez.Adapter1",
-    default_service = "org.bluez",
-    default_path = "/org/bluez/hci0"
-)]
-trait Adapter {
-    #[zbus(property)]
-    fn powered(&self) -> zbus::Result<bool>;
-
-    #[zbus(property)]
-    fn set_powered(&self, powered: bool) -> zbus::Result<()>;
-
-    #[zbus(property)]
-    fn discovering(&self) -> zbus::Result<bool>;
-
-    #[zbus(property)]
-    fn discoverable(&self) -> zbus::Result<bool>;
+#[derive(Clone)]
+pub struct BluetoothStateChanged {
+    pub enabled: bool,
+    pub devices: Vec<BluetoothDevice>,
 }
 
-// BlueZ Device interface
-#[proxy(
-    interface = "org.bluez.Device1",
-    default_service = "org.bluez"
-)]
-trait Device {
-    #[zbus(property)]
-    fn connected(&self) -> zbus::Result<bool>;
-
-    #[zbus(property)]
-    fn name(&self) -> zbus::Result<String>;
-
-    #[zbus(property)]
-    fn alias(&self) -> zbus::Result<String>;
+pub struct BluetoothService {
+    enabled: Arc<RwLock<bool>>,
+    devices: Arc<RwLock<Vec<BluetoothDevice>>>,
 }
 
-pub struct BluetoothService;
+impl EventEmitter<BluetoothStateChanged> for BluetoothService {}
 
 impl BluetoothService {
-    pub fn new() -> Self {
-        Self
-    }
+    pub fn new(cx: &mut Context<Self>) -> Self {
+        let enabled = Arc::new(RwLock::new(Self::fetch_bluetooth_state()));
+        let devices = Arc::new(RwLock::new(Self::fetch_devices()));
 
-    /// Start monitoring Bluetooth state changes
-    pub fn start_monitoring() -> mpsc::Receiver<BluetoothState> {
-        let (tx, rx) = mpsc::channel();
+        let enabled_clone = Arc::clone(&enabled);
+        let devices_clone = Arc::clone(&devices);
 
-        std::thread::spawn(move || {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(async {
-                loop {
-                    if let Ok(state) = Self::get_bluetooth_state().await {
-                        let _ = tx.send(state);
-                    }
-
-                    // Poll every 5 seconds
-                    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-                }
-            });
-        });
-
-        rx
-    }
-
-    /// Get current Bluetooth state
-    pub async fn get_bluetooth_state() -> zbus::Result<BluetoothState> {
-        let connection = Connection::system().await?;
-
-        // Get adapter state
-        let adapter_proxy = AdapterProxy::new(&connection).await?;
-        let powered = adapter_proxy.powered().await.unwrap_or(false);
-
-        // Count connected devices
-        let connected_devices = Self::count_connected_devices(&connection).await;
-
-        Ok(BluetoothState {
-            powered,
-            connected_devices,
+        // Poll bluetooth state periodically (bluetoothctl doesn't have a great event API)
+        cx.spawn(async move |this, mut cx| {
+            Self::monitor_bluetooth(this, enabled_clone, devices_clone, &mut cx).await
         })
+        .detach();
+
+        Self { enabled, devices }
     }
 
-    async fn count_connected_devices(connection: &Connection) -> usize {
-        // Get all objects from BlueZ
-        let obj_manager = match zbus::fdo::ObjectManagerProxy::builder(connection)
-            .destination("org.bluez")
-            .ok()
-            .and_then(|b| b.path("/").ok())
-        {
-            Some(builder) => match builder.build().await {
-                Ok(om) => om,
-                Err(_) => return 0,
-            },
-            None => return 0,
-        };
+    pub fn is_enabled(&self) -> bool {
+        *self.enabled.read()
+    }
 
-        let objects = match obj_manager.get_managed_objects().await {
-            Ok(objs) => objs,
-            Err(_) => return 0,
-        };
+    pub fn devices(&self) -> Vec<BluetoothDevice> {
+        self.devices.read().clone()
+    }
 
-        let mut count = 0;
-        for (path, interfaces) in objects {
-            if interfaces.contains_key("org.bluez.Device1") {
-                // Try to check if device is connected
-                if let Some(builder) = DeviceProxy::builder(connection)
-                    .path(path)
-                    .ok()
-                {
-                    if let Ok(device_proxy) = builder.build().await {
-                        if device_proxy.connected().await.unwrap_or(false) {
-                            count += 1;
-                        }
-                    }
+    pub fn toggle(&self) {
+        let current = *self.enabled.read();
+        std::thread::spawn(move || {
+            let cmd = if current { "power off" } else { "power on" };
+            let _ = std::process::Command::new("bluetoothctl")
+                .args([cmd])
+                .status();
+        });
+    }
+
+    pub fn connect_device(&self, address: String) {
+        std::thread::spawn(move || {
+            let _ = std::process::Command::new("bluetoothctl")
+                .args(["connect", &address])
+                .status();
+        });
+    }
+
+    pub fn disconnect_device(&self, address: String) {
+        std::thread::spawn(move || {
+            let _ = std::process::Command::new("bluetoothctl")
+                .args(["disconnect", &address])
+                .status();
+        });
+    }
+
+    async fn monitor_bluetooth(
+        this: WeakEntity<Self>,
+        enabled: Arc<RwLock<bool>>,
+        devices: Arc<RwLock<Vec<BluetoothDevice>>>,
+        cx: &mut AsyncApp,
+    ) {
+        loop {
+            // Poll every 2 seconds
+            cx.background_executor()
+                .timer(Duration::from_secs(2))
+                .await;
+
+            let new_enabled = Self::fetch_bluetooth_state();
+            let new_devices = Self::fetch_devices();
+
+            let state_changed = {
+                let mut current_enabled = enabled.write();
+                let mut current_devices = devices.write();
+                let changed = *current_enabled != new_enabled || *current_devices != new_devices;
+                if changed {
+                    *current_enabled = new_enabled;
+                    *current_devices = new_devices.clone();
                 }
+                changed
+            };
+
+            if state_changed {
+                if let Ok(()) = this.update(cx, |_, cx| {
+                    cx.emit(BluetoothStateChanged {
+                        enabled: new_enabled,
+                        devices: new_devices,
+                    });
+                    cx.notify();
+                }) {}
             }
         }
-
-        count
     }
 
-    /// Toggle Bluetooth power state
-    pub async fn toggle_power() -> zbus::Result<bool> {
-        let connection = Connection::system().await?;
-        let adapter_proxy = AdapterProxy::new(&connection).await?;
+    fn fetch_bluetooth_state() -> bool {
+        let output = std::process::Command::new("bluetoothctl")
+            .args(["show"])
+            .output()
+            .ok()
+            .and_then(|o| String::from_utf8(o.stdout).ok())
+            .unwrap_or_default();
 
-        let current = adapter_proxy.powered().await.unwrap_or(false);
-        let new_state = !current;
+        output.lines().any(|line| line.contains("Powered: yes"))
+    }
 
-        adapter_proxy.set_powered(new_state).await?;
+    fn fetch_devices() -> Vec<BluetoothDevice> {
+        let output = std::process::Command::new("bluetoothctl")
+            .args(["devices"])
+            .output()
+            .ok()
+            .and_then(|o| String::from_utf8(o.stdout).ok())
+            .unwrap_or_default();
 
-        Ok(new_state)
+        // Simple parsing - you might want to improve this
+        output
+            .lines()
+            .filter_map(|line| {
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                if parts.len() >= 3 && parts[0] == "Device" {
+                    let address = parts[1].to_string();
+                    let name = parts[2..].join(" ");
+                    Some(BluetoothDevice {
+                        name,
+                        address,
+                        connected: false, // TODO: Check connected status
+                        paired: true,
+                        icon: "bluetooth".to_string(),
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+}
+
+// Global accessor
+struct GlobalBluetoothService(Entity<BluetoothService>);
+impl Global for GlobalBluetoothService {}
+
+impl BluetoothService {
+    pub fn global(cx: &App) -> Entity<Self> {
+        cx.global::<GlobalBluetoothService>().0.clone()
+    }
+
+    pub fn init(cx: &mut App) -> Entity<Self> {
+        let service = cx.new(|cx| Self::new(cx));
+        cx.set_global(GlobalBluetoothService(service.clone()));
+        service
     }
 }

@@ -32,6 +32,10 @@
 
         # Dependencies for building the application
         buildInputs = with pkgs; [
+          wayland
+          vulkan-loader
+          vulkan-validation-layers
+          mesa
           xorg.libxcb
           xorg.libX11
           libxkbcommon
@@ -40,31 +44,14 @@
           openssl
           freetype
           expat
-          nerd-fonts.ubuntu-mono
-          nerd-fonts.ubuntu-sans
-          nerd-fonts.ubuntu
-          noto-fonts-emoji
           libnotify
-          alsa-lib # For audio capture (cpal/vosk)
-          udev # For libinput (hotkey detection)
-          gtk4 # For GTK4 webview
-          webkitgtk_6_0 # For webkit6 - GTK4 version
-          gtk4-layer-shell # GTK4 Layer Shell for Wayland
-          libsoup_3 # For webkit6 networking
-          gdk-pixbuf # Required by GTK
-          glib-networking # For TLS support
-          gsettings-desktop-schemas # For WebKit settings
-          cacert # SSL certificates
-          gnutls # TLS library
-          atk # Accessibility toolkit
-          at-spi2-atk # AT-SPI bridge
+          alsa-lib
+          udev
         ];
 
         # Dependencies needed only at runtime
         runtimeDependencies = with pkgs; [
-          wayland
           vulkan-loader
-          wtype # For text injection in dictation
         ];
 
         nativeBuildInputs = with pkgs; [
@@ -75,10 +62,6 @@
 
         envVars = {
           RUST_BACKTRACE = "full";
-          GIO_USE_TLS = "gnutls";
-          SSL_CERT_FILE = "/nix/var/nix/profiles/system/etc/ssl/certs/ca-bundle.crt";
-          NIX_SSL_CERT_FILE = "/nix/var/nix/profiles/system/etc/ssl/certs/ca-bundle.crt";
-          GIO_MODULE_DIR = "/run/current-system/sw/lib/gio/modules";
         };
 
         # Build artifacts
