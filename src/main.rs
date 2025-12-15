@@ -1,5 +1,6 @@
 mod services;
 mod widgets;
+mod utils;
 
 use gpui::prelude::*;
 use gpui::*;

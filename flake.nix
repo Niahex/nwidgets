@@ -28,7 +28,22 @@
         };
 
         craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
-        src = craneLib.cleanCargoSource ./.;
+
+        unfilteredRoot = ./.;
+        src = pkgs.lib.fileset.toSource {
+          root = unfilteredRoot;
+          fileset = pkgs.lib.fileset.unions [
+            (craneLib.fileset.commonCargoSources unfilteredRoot)
+            (pkgs.lib.fileset.fileFilter (
+                file:
+                  pkgs.lib.any file.hasExt [
+                    "svg"
+                  ]
+              )
+              unfilteredRoot)
+            (pkgs.lib.fileset.maybeMissing ./assets)
+          ];
+        };
 
         # Dependencies for building the application
         buildInputs = with pkgs; [
