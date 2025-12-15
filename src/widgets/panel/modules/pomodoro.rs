@@ -1,7 +1,7 @@
 use gpui::prelude::*;
 use gpui::*;
 use crate::services::pomodoro::{PomodoroPhase, PomodoroService, PomodoroStateChanged, PomodoroStatus};
-use crate::utils::{Icon, IconName};
+use crate::utils::Icon;
 
 pub struct PomodoroModule {
     pomodoro: Entity<PomodoroService>,
@@ -57,7 +57,7 @@ impl Render for PomodoroModule {
                                 });
                             })
                             .child(
-                                Icon::new(IconName::Coffee)
+                                Icon::new("coffee")
                                     .size(px(16.))
                                     .color(rgb(0x88c0d0)) // $frost1
                             )
@@ -87,7 +87,7 @@ impl Render for PomodoroModule {
                             .gap_1()
                             .items_center()
                             .child(
-                                Icon::new(IconName::Coffee)
+                                Icon::new("coffee")
                                     .size(px(16.))
                                     .color(rgb(0x88c0d0)) // $frost1
                             )
@@ -115,7 +115,7 @@ impl Render for PomodoroModule {
                                 });
                             })
                             .child(
-                                Icon::new(if is_running { IconName::Pause } else { IconName::Play })
+                                Icon::new(if is_running { "pause" } else { "play" })
                                     .size(px(14.))
                                     .color(rgb(0xeceff4))
                             )
@@ -134,7 +134,7 @@ impl Render for PomodoroModule {
                                 });
                             })
                             .child(
-                                Icon::new(IconName::RecordingStopped)
+                                Icon::new("recording-stopped")
                                     .size(px(14.))
                                     .color(rgb(0xeceff4))
                             )
