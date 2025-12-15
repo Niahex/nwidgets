@@ -1,7 +1,106 @@
 use gpui::*;
+use once_cell::sync::Lazy;
+use parking_lot::RwLock;
+use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 
+/// Cache global des icônes SVG chargées
+static ICON_CACHE: Lazy<RwLock<HashMap<String, Arc<str>>>> =
+    Lazy::new(|| RwLock::new(HashMap::new()));
+
+/// Répertoire des assets (peut être overridé via variable d'environnement)
+fn assets_dir() -> PathBuf {
+    std::env::var("NWIDGETS_ASSETS_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("assets"))
+}
+
+/// Composant Icon qui charge dynamiquement les SVG depuis le dossier assets/
+///
+/// Utilisation:
+/// ```rust
+/// Icon::new("spotify")          // Charge assets/spotify.svg
+/// Icon::new("sink-high")        // Charge assets/sink-high.svg
+///     .size(px(24.))
+///     .color(rgb(0xeceff4))
+/// ```
+#[derive(IntoElement)]
+pub struct Icon {
+    name: String,
+    size: Pixels,
+    color: Option<Hsla>,
+}
+
+impl Icon {
+    /// Crée une nouvelle icône depuis un nom de fichier (sans l'extension .svg)
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            size: px(16.),
+            color: None,
+        }
+    }
+
+    /// Définit la taille de l'icône
+    pub fn size(mut self, size: Pixels) -> Self {
+        self.size = size;
+        self
+    }
+
+    /// Définit la couleur de l'icône
+    pub fn color(mut self, color: impl Into<Hsla>) -> Self {
+        self.color = Some(color.into());
+        self
+    }
+
+    /// Récupère le chemin de l'icône (avec cache)
+    fn get_path(&self) -> Arc<str> {
+        // Check cache first
+        {
+            let cache = ICON_CACHE.read();
+            if let Some(path) = cache.get(&self.name) {
+                return path.clone();
+            }
+        }
+
+        // Not in cache, build path and cache it
+        let path = format!("{}/{}.svg", assets_dir().display(), self.name);
+        let path_arc: Arc<str> = path.into();
+
+        // Store in cache
+        {
+            let mut cache = ICON_CACHE.write();
+            cache.insert(self.name.clone(), path_arc.clone());
+        }
+
+        path_arc
+    }
+}
+
+impl RenderOnce for Icon {
+    fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
+        let path = self.get_path();
+        let mut svg_element = svg().path(path).size(self.size);
+
+        if let Some(color) = self.color {
+            svg_element = svg_element.text_color(color);
+        }
+
+        svg_element
+    }
+}
+
+// ========================================
+// API Legacy pour rétro-compatibilité
+// ========================================
+
+/// Enum legacy pour les icônes existantes (rétro-compatibilité)
+/// Préférez utiliser Icon::new("nom-fichier") directement
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
+#[deprecated(
+    note = "Utilisez Icon::new(\"nom-fichier\") directement au lieu de IconName::Variant"
+)]
 pub enum IconName {
     // Audio
     SinkHigh,
@@ -102,8 +201,9 @@ pub enum IconName {
 }
 
 impl IconName {
-    pub fn path(&self) -> Arc<str> {
-        let file_stem = match self {
+    /// Convertit l'enum en nom de fichier
+    pub fn as_str(&self) -> &'static str {
+        match self {
             IconName::SinkHigh => "sink-high",
             IconName::SinkMedium => "sink-medium",
             IconName::SinkLow => "sink-low",
@@ -183,48 +283,19 @@ impl IconName {
             IconName::ArrowDownDouble => "arrow-down-double",
             IconName::ArrowLeftDouble => "arrow-left-double",
             IconName::ArrowRightDouble => "arrow-right-double",
-        };
-        format!("assets/{file_stem}.svg").into()
-    }
-}
-
-#[derive(IntoElement)]
-pub struct Icon {
-    name: IconName,
-    size: Pixels,
-    color: Option<Hsla>,
-}
-
-impl Icon {
-    pub fn new(name: IconName) -> Self {
-        Self {
-            name,
-            size: px(16.),
-            color: None,
         }
     }
 
-    pub fn size(mut self, size: Pixels) -> Self {
-        self.size = size;
-        self
-    }
-
-    pub fn color(mut self, color: impl Into<Hsla>) -> Self {
-        self.color = Some(color.into());
-        self
+    /// Méthode legacy pour compatibilité
+    #[deprecated(note = "Utilisez Icon::new(icon_name.as_str()) à la place")]
+    pub fn path(&self) -> Arc<str> {
+        format!("{}/{}.svg", assets_dir().display(), self.as_str()).into()
     }
 }
 
-impl RenderOnce for Icon {
-    fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
-        let mut svg_element = svg()
-            .path(self.name.path())
-            .size(self.size);
-
-        if let Some(color) = self.color {
-            svg_element = svg_element.text_color(color);
-        }
-
-        svg_element
+// Permet de convertir IconName en Icon facilement
+impl From<IconName> for Icon {
+    fn from(name: IconName) -> Self {
+        Icon::new(name.as_str())
     }
 }

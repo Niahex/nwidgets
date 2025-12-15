@@ -57,7 +57,7 @@ impl AudioService {
         let sinks_clone = Arc::clone(&sinks);
         let sources_clone = Arc::clone(&sources);
 
-        // Spawn background task to monitor PipeWire events
+        // Spawn background task to monitor PipeWire events with pw-mon
         cx.spawn(async move |this, mut cx| {
             Self::monitor_audio_events(this, state_clone, sinks_clone, sources_clone, &mut cx)
                 .await
@@ -96,7 +96,11 @@ impl AudioService {
         let volume = volume.min(100);
         std::thread::spawn(move || {
             let _ = Command::new("wpctl")
-                .args(["set-volume", "@DEFAULT_AUDIO_SOURCE@", &format!("{}%", volume)])
+                .args([
+                    "set-volume",
+                    "@DEFAULT_AUDIO_SOURCE@",
+                    &format!("{}%", volume),
+                ])
                 .status();
         });
     }
@@ -124,70 +128,112 @@ impl AudioService {
         sources: Arc<RwLock<Vec<AudioDevice>>>,
         cx: &mut AsyncApp,
     ) {
-        let (tx, mut rx) = futures::channel::mpsc::unbounded();
+        loop {
+            let (tx, mut rx) = futures::channel::mpsc::unbounded();
 
-        // Monitor pw-mon on background executor
-        cx.background_executor()
-            .spawn(async move {
+            // Spawn pw-mon in background thread via shared runtime
+            let tx_clone = tx.clone();
+            crate::utils::runtime::spawn_blocking(move || {
                 let mut child = match Command::new("pw-mon").stdout(Stdio::piped()).spawn() {
                     Ok(child) => child,
-                    Err(_) => {
+                    Err(e) => {
+                        eprintln!("Failed to start pw-mon: {e}. Falling back to polling.");
                         // Fallback: poll every second
                         loop {
                             std::thread::sleep(std::time::Duration::from_secs(1));
-                            let _ = tx.unbounded_send(());
+                            if tx_clone.unbounded_send(()).is_err() {
+                                break;
+                            }
                         }
+                        return;
                     }
                 };
 
                 if let Some(stdout) = child.stdout.take() {
                     let reader = BufReader::new(stdout);
                     for line in reader.lines().map_while(Result::ok) {
-                        // Any line from pw-mon means something changed
-                        if !line.is_empty() {
-                            let _ = tx.unbounded_send(());
-                            // Debounce: wait a bit before sending next update
-                            std::thread::sleep(std::time::Duration::from_millis(100));
+                        // Look for "changed:" events which indicate state changes
+                        if line.trim().starts_with("changed:") {
+                            if tx_clone.unbounded_send(()).is_err() {
+                                break;
+                            }
                         }
                     }
                 }
-            })
-            .detach();
 
-        // Process events on foreground
-        while rx.next().await.is_some() {
-            let new_state = Self::fetch_audio_state();
-            let new_sinks = Self::fetch_sinks();
-            let new_sources = Self::fetch_sources();
+                // Cleanup
+                let _ = child.kill();
+            });
 
-            let state_changed = {
-                let mut current_state = state.write();
-                let changed = *current_state != new_state;
-                if changed {
-                    *current_state = new_state.clone();
+            // Initial state fetch
+            let initial_state = Self::fetch_audio_state();
+            *state.write() = initial_state.clone();
+            let _ = this.update(cx, |_, cx| {
+                cx.emit(AudioStateChanged {
+                    state: initial_state,
+                });
+                cx.notify();
+            });
+
+            // Process events with debouncing
+            let mut last_update = std::time::Instant::now();
+            let debounce_duration = std::time::Duration::from_millis(50);
+
+            while let Some(()) = rx.next().await {
+                // Debounce: only update if enough time has passed
+                let now = std::time::Instant::now();
+                if now.duration_since(last_update) < debounce_duration {
+                    // Drain any other events that came in during debounce
+                    while let Ok(Some(())) = rx.try_next() {}
+                    // Wait for remaining debounce time
+                    cx.background_executor()
+                        .timer(debounce_duration - now.duration_since(last_update))
+                        .await;
                 }
-                changed
-            };
 
-            let devices_changed = {
-                let mut current_sinks = sinks.write();
-                let mut current_sources = sources.write();
-                let changed = *current_sinks != new_sinks || *current_sources != new_sources;
-                if changed {
-                    *current_sinks = new_sinks;
-                    *current_sources = new_sources;
-                }
-                changed
-            };
+                last_update = std::time::Instant::now();
 
-            if state_changed || devices_changed {
-                if let Ok(()) = this.update(cx, |_this, cx| {
-                    if state_changed {
-                        cx.emit(AudioStateChanged { state: new_state });
+                // Fetch new state
+                let new_state = Self::fetch_audio_state();
+                let new_sinks = Self::fetch_sinks();
+                let new_sources = Self::fetch_sources();
+
+                let state_changed = {
+                    let mut current_state = state.write();
+                    let changed = *current_state != new_state;
+                    if changed {
+                        *current_state = new_state.clone();
                     }
-                    cx.notify();
-                }) {}
+                    changed
+                };
+
+                let devices_changed = {
+                    let mut current_sinks = sinks.write();
+                    let mut current_sources = sources.write();
+                    let changed =
+                        *current_sinks != new_sinks || *current_sources != new_sources;
+                    if changed {
+                        *current_sinks = new_sinks;
+                        *current_sources = new_sources;
+                    }
+                    changed
+                };
+
+                if state_changed || devices_changed {
+                    let _ = this.update(cx, |_, cx| {
+                        if state_changed {
+                            cx.emit(AudioStateChanged { state: new_state });
+                        }
+                        cx.notify();
+                    });
+                }
             }
+
+            // pw-mon died, restart after delay
+            eprintln!("pw-mon process ended, restarting in 2 seconds...");
+            cx.background_executor()
+                .timer(std::time::Duration::from_secs(2))
+                .await;
         }
     }
 
@@ -230,11 +276,15 @@ impl AudioService {
 
     fn fetch_sinks() -> Vec<AudioDevice> {
         // TODO: Implement proper device enumeration with wpctl status
+        // Parse output from: wpctl status
+        // Look for "Sinks:" section and parse device list
         Vec::new()
     }
 
     fn fetch_sources() -> Vec<AudioDevice> {
         // TODO: Implement proper device enumeration with wpctl status
+        // Parse output from: wpctl status
+        // Look for "Sources:" section and parse device list
         Vec::new()
     }
 }
