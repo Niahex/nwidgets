@@ -35,7 +35,9 @@
           wayland
           vulkan-loader
           vulkan-validation-layers
+          vulkan-tools
           mesa
+          mesa.drivers
           xorg.libxcb
           xorg.libX11
           libxkbcommon
@@ -52,6 +54,8 @@
         # Dependencies needed only at runtime
         runtimeDependencies = with pkgs; [
           vulkan-loader
+          mesa
+          mesa.drivers
         ];
 
         nativeBuildInputs = with pkgs; [
@@ -111,9 +115,14 @@
 
           LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (buildInputs ++ runtimeDependencies);
           FONTCONFIG_FILE = pkgs.makeFontsConf {fontDirectories = buildInputs;};
+          VK_DRIVER_FILES = "${pkgs.mesa.drivers}/share/vulkan/icd.d/radeon_icd.x86_64.json";
+          VK_ICD_FILENAMES = "${pkgs.mesa.drivers}/share/vulkan/icd.d/radeon_icd.x86_64.json";
 
           shellHook = ''
             echo "[🦀 Rust $(rustc --version)] - Ready to develop nwidgets!"
+            echo "Vulkan ICD: $VK_ICD_FILENAMES"
+            echo "Available Vulkan devices:"
+            vulkaninfo --summary 2>/dev/null | grep -A 2 "GPU" || echo "  Run 'vulkaninfo' for details"
           '';
         };
 

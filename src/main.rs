@@ -4,7 +4,16 @@ mod widgets;
 use gpui::prelude::*;
 use gpui::*;
 use gpui::layer_shell::{Anchor, KeyboardInteractivity, LayerShellOptions};
-use services::{audio::AudioService, bluetooth::BluetoothService, hyprland::HyprlandService, notifications::NotificationService};
+use services::{
+    audio::AudioService,
+    bluetooth::BluetoothService,
+    hyprland::HyprlandService,
+    mpris::MprisService,
+    network::NetworkService,
+    notifications::NotificationService,
+    pomodoro::PomodoroService,
+    systray::SystrayService,
+};
 use widgets::panel::Panel;
 
 fn main() {
@@ -13,6 +22,10 @@ fn main() {
         HyprlandService::init(cx);
         AudioService::init(cx);
         BluetoothService::init(cx);
+        NetworkService::init(cx);
+        MprisService::init(cx);
+        PomodoroService::init(cx);
+        SystrayService::init(cx);
         NotificationService::init(cx);
 
         // Create panel window with LayerShell
