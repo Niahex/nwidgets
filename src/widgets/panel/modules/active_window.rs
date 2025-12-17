@@ -53,14 +53,9 @@ impl ActiveWindowModule {
         }
     }
 
-    /// Formatte le nom de classe pour l'affichage
+    /// Retourne la classe complète (pas de formatage)
     fn format_class_name(class: &str) -> String {
-        // Prendre le premier segment avant un tiret ou point
-        class
-            .split(&['.', '-'][..])
-            .next()
-            .unwrap_or(class)
-            .to_string()
+        class.to_string()
     }
 }
 
@@ -95,6 +90,7 @@ impl Render for ActiveWindowModule {
                     .child(
                         Icon::new(icon_name)
                             .size(px(32.))
+                            .preserve_colors(true) // Préserver les couleurs des logos d'applications
                     )
             )
             .child(
@@ -106,17 +102,17 @@ impl Render for ActiveWindowModule {
                     .min_w_0() // Pour permettre l'ellipsis
                     .child(
                         div()
-                            .text_sm()
+                            .text_xs()
                             .font_weight(FontWeight::SEMIBOLD)
-                            .text_color(rgb(0xd8dee9)) // $snow1
+                            .text_color(rgba(0xd8dee966)) // $snow1 à 40%
                             .overflow_hidden()
                             .whitespace_nowrap()
                             .child(class_text),
                     )
                     .child(
                         div()
-                            .text_xs()
-                            .text_color(rgb(0xa3acba)) // Entre $polar4 et $snow2
+                            .text_sm()
+                            .text_color(rgb(0xeceff4)) // $snow3 à 100%
                             .overflow_hidden()
                             .whitespace_nowrap()
                             .child(title_text),

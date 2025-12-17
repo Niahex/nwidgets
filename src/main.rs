@@ -13,10 +13,11 @@ use services::{
     mpris::MprisService,
     network::NetworkService,
     notifications::NotificationService,
+    osd::OsdService,
     pomodoro::PomodoroService,
     systray::SystrayService,
 };
-use widgets::panel::Panel;
+use widgets::{panel::Panel, osd::OsdWidget};
 use std::path::PathBuf;
 use anyhow::Result;
 
@@ -71,6 +72,7 @@ fn main() {
         PomodoroService::init(cx);
         SystrayService::init(cx);
         NotificationService::init(cx);
+        OsdService::init(cx);
 
         // Create panel window with LayerShell - full width (3440px), 50px height
         cx.open_window(
@@ -99,6 +101,36 @@ fn main() {
                 ..Default::default()
             },
             |_window, cx| cx.new(|cx| Panel::new(cx)),
+        )
+        .unwrap();
+
+        // Create OSD window with LayerShell - centered at bottom
+        cx.open_window(
+            WindowOptions {
+                window_bounds: Some(WindowBounds::Windowed(Bounds {
+                    origin: Point {
+                        x: px((3440.0 - 400.0) / 2.0), // Centré horizontalement
+                        y: px(1440.0 - 64.0 - 80.0),    // 80px du bas
+                    },
+                    size: Size {
+                        width: px(400.0),
+                        height: px(64.0),
+                    },
+                })),
+                titlebar: None,
+                window_background: WindowBackgroundAppearance::Transparent,
+                kind: WindowKind::LayerShell(LayerShellOptions {
+                    namespace: "nwidgets-osd".to_string(),
+                    layer: Layer::Overlay,
+                    anchor: Anchor::BOTTOM,
+                    exclusive_zone: None,
+                    margin: Some((px(0.0), px(0.0), px(80.0), px(0.0))), // 80px bottom margin
+                    keyboard_interactivity: KeyboardInteractivity::None,
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            |_window, cx| cx.new(|cx| OsdWidget::new(cx)),
         )
         .unwrap();
 
