@@ -18,12 +18,25 @@ fn assets_dir() -> PathBuf {
 
 /// Composant Icon qui charge dynamiquement les SVG depuis le dossier assets/
 ///
-/// Utilisation:
+/// # Utilisation
+///
 /// ```rust
 /// Icon::new("spotify")          // Charge assets/spotify.svg
 /// Icon::new("sink-high")        // Charge assets/sink-high.svg
 ///     .size(px(24.))
 ///     .color(rgb(0xeceff4))
+/// ```
+///
+/// # Ajout d'icônes
+///
+/// Déposez simplement un fichier SVG dans `assets/` et utilisez-le :
+///
+/// ```bash
+/// cp mon-icone.svg assets/discord-nitro.svg
+/// ```
+///
+/// ```rust
+/// Icon::new("discord-nitro")  // Fonctionne immédiatement !
 /// ```
 #[derive(IntoElement)]
 pub struct Icon {
@@ -34,6 +47,14 @@ pub struct Icon {
 
 impl Icon {
     /// Crée une nouvelle icône depuis un nom de fichier (sans l'extension .svg)
+    ///
+    /// # Exemples
+    ///
+    /// ```rust
+    /// Icon::new("firefox")
+    /// Icon::new("sink-muted")
+    /// Icon::new("bluetooth-active")
+    /// ```
     pub fn new(name: impl Into<String>) -> Self {
         Self {
             name: name.into(),
@@ -42,7 +63,7 @@ impl Icon {
         }
     }
 
-    /// Définit la taille de l'icône
+    /// Définit la taille de l'icône en pixels
     pub fn size(mut self, size: Pixels) -> Self {
         self.size = size;
         self
@@ -66,6 +87,13 @@ impl Icon {
 
         // Not in cache, build path and cache it
         let path = format!("{}/{}.svg", assets_dir().display(), self.name);
+        eprintln!("[Icon] Loading icon: '{}' from path: '{}'", self.name, path);
+
+        // Check if file exists
+        if !std::path::Path::new(&path).exists() {
+            eprintln!("[Icon] WARNING: Icon file not found: '{}'", path);
+        }
+
         let path_arc: Arc<str> = path.into();
 
         // Store in cache
@@ -88,214 +116,5 @@ impl RenderOnce for Icon {
         }
 
         svg_element
-    }
-}
-
-// ========================================
-// API Legacy pour rétro-compatibilité
-// ========================================
-
-/// Enum legacy pour les icônes existantes (rétro-compatibilité)
-/// Préférez utiliser Icon::new("nom-fichier") directement
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
-#[deprecated(
-    note = "Utilisez Icon::new(\"nom-fichier\") directement au lieu de IconName::Variant"
-)]
-pub enum IconName {
-    // Audio
-    SinkHigh,
-    SinkMedium,
-    SinkLow,
-    SinkMuted,
-    SinkNone,
-    SinkZero,
-    SourceHigh,
-    SourceMedium,
-    SourceLow,
-    SourceMuted,
-    SourcePaused,
-    SourceProcessing,
-    SourceRecorder,
-    SourceZero,
-
-    // Bluetooth
-    Bluetooth,
-    BluetoothActive,
-    BluetoothDisabled,
-    BluetoothPaired,
-
-    // Network
-    Network,
-    NetworkVpn,
-    NetworkEternetConnected,
-    NetworkEternetDisconnected,
-    NetworkEternetSecure,
-    NetworkEternetUnsecure,
-    NetworkWifiHigh,
-    NetworkWifiHighSecure,
-    NetworkWifiHighUnsecure,
-    NetworkWifiGood,
-    NetworkWifiGoodSecure,
-    NetworkWifiGoodUnsecure,
-    NetworkWifiMedium,
-    NetworkWifiMediumSecure,
-    NetworkWifiMediumUnsecure,
-    NetworkWifiLow,
-    NetworkWifiLowSecure,
-    NetworkWifiLowUnsecure,
-
-    // Media controls
-    Play,
-    Pause,
-
-    // Notifications
-    Notification,
-    Error,
-    Warning,
-    Info,
-    Question,
-    Help,
-
-    // Recording
-    RecordingCountdown,
-    RecordingPaused,
-    RecordingRecording,
-    RecordingStopped,
-
-    // Misc
-    Calendar,
-    Capslock,
-    CapslockOff,
-    CapslockOn,
-    Clipboard,
-    Clip,
-    Coffee,
-    Copy,
-    Pin,
-    Unpin,
-    Search,
-    Send,
-    Terminal,
-
-    // Apps
-    Spotify,
-    SpotifyIndicator,
-    Discord,
-    Firefox,
-    FirefoxWhite,
-    Brave,
-    Steam,
-    SteamTray,
-    Thunderbird,
-    Vlc,
-
-    // Arrows
-    ArrowUp,
-    ArrowDown,
-    ArrowLeft,
-    ArrowRight,
-    ArrowUpDouble,
-    ArrowDownDouble,
-    ArrowLeftDouble,
-    ArrowRightDouble,
-}
-
-impl IconName {
-    /// Convertit l'enum en nom de fichier
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            IconName::SinkHigh => "sink-high",
-            IconName::SinkMedium => "sink-medium",
-            IconName::SinkLow => "sink-low",
-            IconName::SinkMuted => "sink-muted",
-            IconName::SinkNone => "sink-none",
-            IconName::SinkZero => "sink-zero",
-            IconName::SourceHigh => "source-high",
-            IconName::SourceMedium => "source-medium",
-            IconName::SourceLow => "source-low",
-            IconName::SourceMuted => "source-muted",
-            IconName::SourcePaused => "source-paused",
-            IconName::SourceProcessing => "source-processing",
-            IconName::SourceRecorder => "source-recorder",
-            IconName::SourceZero => "source-zero",
-            IconName::Bluetooth => "bluetooth",
-            IconName::BluetoothActive => "bluetooth-active",
-            IconName::BluetoothDisabled => "bluetooth-disabled",
-            IconName::BluetoothPaired => "bluetooth-paired",
-            IconName::Network => "network",
-            IconName::NetworkVpn => "network-vpn",
-            IconName::NetworkEternetConnected => "network-eternet-connected",
-            IconName::NetworkEternetDisconnected => "network-eternet-disconnected",
-            IconName::NetworkEternetSecure => "network-eternet-secure",
-            IconName::NetworkEternetUnsecure => "network-eternet-unsecure",
-            IconName::NetworkWifiHigh => "network-wifi-high",
-            IconName::NetworkWifiHighSecure => "network-wifi-high-secure",
-            IconName::NetworkWifiHighUnsecure => "network-wifi-high-unsecure",
-            IconName::NetworkWifiGood => "network-wifi-good",
-            IconName::NetworkWifiGoodSecure => "network-wifi-good-secure",
-            IconName::NetworkWifiGoodUnsecure => "network-wifi-good-unsecure",
-            IconName::NetworkWifiMedium => "network-wifi-medium",
-            IconName::NetworkWifiMediumSecure => "network-wifi-medium-secure",
-            IconName::NetworkWifiMediumUnsecure => "network-wifi-medium-unsecure",
-            IconName::NetworkWifiLow => "network-wifi-low",
-            IconName::NetworkWifiLowSecure => "network-wifi-low-secure",
-            IconName::NetworkWifiLowUnsecure => "network-wifi-low-unsecure",
-            IconName::Play => "play",
-            IconName::Pause => "pause",
-            IconName::Notification => "notification",
-            IconName::Error => "error",
-            IconName::Warning => "warning",
-            IconName::Info => "info",
-            IconName::Question => "question",
-            IconName::Help => "help",
-            IconName::RecordingCountdown => "recording-countdown",
-            IconName::RecordingPaused => "recording-paused",
-            IconName::RecordingRecording => "recording-recording",
-            IconName::RecordingStopped => "recording-stopped",
-            IconName::Calendar => "calendar",
-            IconName::Capslock => "capslock",
-            IconName::CapslockOff => "capslock-off",
-            IconName::CapslockOn => "capslock-on",
-            IconName::Clipboard => "clipboard",
-            IconName::Clip => "clip",
-            IconName::Coffee => "coffee",
-            IconName::Copy => "copy",
-            IconName::Pin => "pin",
-            IconName::Unpin => "unpin",
-            IconName::Search => "search",
-            IconName::Send => "send",
-            IconName::Terminal => "terminal",
-            IconName::Spotify => "spotify",
-            IconName::SpotifyIndicator => "spotify-indicator",
-            IconName::Discord => "discord",
-            IconName::Firefox => "firefox",
-            IconName::FirefoxWhite => "firefox-white",
-            IconName::Brave => "brave",
-            IconName::Steam => "steam",
-            IconName::SteamTray => "steam_tray",
-            IconName::Thunderbird => "thunderbird",
-            IconName::Vlc => "vlc",
-            IconName::ArrowUp => "arrow-up",
-            IconName::ArrowDown => "arrow-down",
-            IconName::ArrowLeft => "arrow-left",
-            IconName::ArrowRight => "arrow-right",
-            IconName::ArrowUpDouble => "arrow-up-double",
-            IconName::ArrowDownDouble => "arrow-down-double",
-            IconName::ArrowLeftDouble => "arrow-left-double",
-            IconName::ArrowRightDouble => "arrow-right-double",
-        }
-    }
-
-    /// Méthode legacy pour compatibilité
-    #[deprecated(note = "Utilisez Icon::new(icon_name.as_str()) à la place")]
-    pub fn path(&self) -> Arc<str> {
-        format!("{}/{}.svg", assets_dir().display(), self.as_str()).into()
-    }
-}
-
-// Permet de convertir IconName en Icon facilement
-impl From<IconName> for Icon {
-    fn from(name: IconName) -> Self {
-        Icon::new(name.as_str())
     }
 }

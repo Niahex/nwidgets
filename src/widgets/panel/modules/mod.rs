@@ -1,3 +1,4 @@
+mod active_window;
 mod audio;
 mod datetime;
 mod mpris;
@@ -6,6 +7,7 @@ mod pomodoro;
 mod systray;
 mod workspaces;
 
+pub use active_window::ActiveWindowModule;
 pub use audio::AudioModule;
 pub use datetime::DateTimeModule;
 pub use mpris::MprisModule;

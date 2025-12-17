@@ -1,13 +1,14 @@
 mod modules;
 
 pub use modules::{
-    AudioModule, DateTimeModule, MprisModule, NetworkModule,
+    ActiveWindowModule, AudioModule, DateTimeModule, MprisModule, NetworkModule,
     PomodoroModule, SystrayModule, WorkspacesModule
 };
 
 use gpui::*;
 
 pub struct Panel {
+    active_window: Entity<ActiveWindowModule>,
     workspaces: Entity<WorkspacesModule>,
     pomodoro: Entity<PomodoroModule>,
     mpris: Entity<MprisModule>,
@@ -20,6 +21,7 @@ pub struct Panel {
 impl Panel {
     pub fn new(cx: &mut Context<Self>) -> Self {
         Self {
+            active_window: cx.new(|cx| ActiveWindowModule::new(cx)),
             workspaces: cx.new(|cx| WorkspacesModule::new(cx)),
             pomodoro: cx.new(|cx| PomodoroModule::new(cx)),
             mpris: cx.new(|cx| MprisModule::new(cx)),
@@ -46,13 +48,14 @@ impl Render for Panel {
             .px_3()
             .bg(bg_color)
             .text_color(text_color)
-            // Left section
+            // Left section - Active window info
             .child(
                 div()
                     .flex()
                     .gap_2()
                     .items_center()
                     .h_full()
+                    .child(self.active_window.clone())
             )
             // Center section - takes remaining space
             .child(

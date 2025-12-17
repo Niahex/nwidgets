@@ -4,7 +4,8 @@ mod utils;
 
 use gpui::prelude::*;
 use gpui::*;
-use gpui::layer_shell::{Anchor, KeyboardInteractivity, LayerShellOptions};
+use gpui::layer_shell::{Anchor, KeyboardInteractivity, LayerShellOptions, Layer};
+use gpui::{Bounds, Point, Size, WindowBounds};
 use services::{
     audio::AudioService,
     bluetooth::BluetoothService,
@@ -71,14 +72,24 @@ fn main() {
         SystrayService::init(cx);
         NotificationService::init(cx);
 
-        // Create panel window with LayerShell
+        // Create panel window with LayerShell - full width (3440px), 50px height
         cx.open_window(
             WindowOptions {
-                window_bounds: None,
+                window_bounds: Some(WindowBounds::Windowed(Bounds {
+                    origin: Point {
+                        x: px(0.0),
+                        y: px(0.0),
+                    },
+                    size: Size {
+                        width: px(3440.0),
+                        height: px(50.0),
+                    },
+                })),
                 titlebar: None,
                 window_background: WindowBackgroundAppearance::Transparent,
                 kind: WindowKind::LayerShell(LayerShellOptions {
                     namespace: "nwidgets-panel".to_string(),
+                    layer : Layer::Top,
                     anchor: Anchor::TOP | Anchor::LEFT | Anchor::RIGHT,
                     exclusive_zone: Some(px(50.)),
                     margin: None,

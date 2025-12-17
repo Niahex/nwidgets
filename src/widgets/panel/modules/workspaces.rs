@@ -22,9 +22,12 @@ impl WorkspacesModule {
 
 impl Render for WorkspacesModule {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let workspaces = self.hyprland.read(cx).workspaces();
+        let mut workspaces = self.hyprland.read(cx).workspaces();
         let active_id = self.hyprland.read(cx).active_workspace_id();
         let hyprland = self.hyprland.clone();
+
+        // Sort workspaces in ascending order by ID
+        workspaces.sort_by_key(|ws| ws.id);
 
         // Nord colors
         let frost1 = rgb(0x88c0d0);
@@ -38,6 +41,13 @@ impl Render for WorkspacesModule {
                 let is_active = ws.id == active_id;
                 let ws_id = ws.id;
                 let hyprland = hyprland.clone();
+
+                // Format workspace name: if it's not a number, use first letter capitalized
+                let display_name = if ws.name.parse::<i32>().is_ok() {
+                    ws.name.clone()
+                } else {
+                    ws.name.chars().next().unwrap_or('?').to_uppercase().to_string()
+                };
 
                 div()
                     .id(("workspace", ws.id as u32))
@@ -61,7 +71,7 @@ impl Render for WorkspacesModule {
                     .on_click(move |_event, _window, cx| {
                         hyprland.read(cx).switch_to_workspace(ws_id);
                     })
-                    .child(ws.name.clone())
+                    .child(display_name)
             }))
     }
 }
