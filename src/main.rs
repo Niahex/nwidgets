@@ -20,7 +20,7 @@ use services::{
 use widgets::{
     panel::Panel,
     osd::OsdWindowManager,
-    notifications::NotificationsWindowManager,
+    notifications::create_notification_window,
 };
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -118,7 +118,7 @@ fn main() {
         cx.subscribe(&osd_service, move |_osd, event: &OsdStateChanged, cx| {
             let mut manager = osd_manager_clone.lock();
             
-            if event.visible {
+            if event.visible && event.event.is_some() {
                 println!("[MAIN] 🪟 Opening OSD window");
                 manager.open_window(cx);
             } else {
@@ -128,34 +128,10 @@ fn main() {
         })
         .detach();
 
-        // Gestionnaire de fenêtre Notifications
-        let notif_manager = Arc::new(Mutex::new(NotificationsWindowManager::new()));
-        let notif_manager_clone = Arc::clone(&notif_manager);
-
-        // S'abonner aux nouvelles notifications pour ouvrir la fenêtre
+        // Créer une fenêtre pour chaque nouvelle notification
         cx.subscribe(&notif_service, move |_service, event: &NotificationAdded, cx| {
-            let mut manager = notif_manager_clone.lock();
-            println!("[MAIN] 🪟 Opening Notifications window");
-            manager.open_window(cx);
-        })
-        .detach();
-
-        // Timer pour fermer la fenêtre si plus de notifications (check toutes les 2 secondes)
-        let notif_manager_clone2 = Arc::clone(&notif_manager);
-        cx.spawn(async move |mut cx| {
-            loop {
-                cx.background_executor()
-                    .timer(std::time::Duration::from_secs(2))
-                    .await;
-
-                let _ = cx.update(|cx| {
-                    let mut manager = notif_manager_clone2.lock();
-                    if manager.should_close() {
-                        println!("[MAIN] 🚪 Closing Notifications window (no more notifications)");
-                        manager.close_window(cx);
-                    }
-                });
-            }
+            println!("[MAIN] 🪟 Creating notification window");
+            create_notification_window(event.notification.clone(), 0, cx);
         })
         .detach();
         

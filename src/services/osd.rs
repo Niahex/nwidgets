@@ -18,6 +18,7 @@ pub struct OsdStateChanged {
 pub struct OsdService {
     current_event: Arc<RwLock<Option<OsdEvent>>>,
     visible: Arc<RwLock<bool>>,
+    first_event: Arc<RwLock<bool>>,
 }
 
 impl EventEmitter<OsdStateChanged> for OsdService {}
@@ -25,9 +26,17 @@ impl EventEmitter<OsdStateChanged> for OsdService {}
 impl OsdService {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let audio = AudioService::global(cx);
+        let first_event = Arc::new(RwLock::new(true));
+        let first_event_clone = Arc::clone(&first_event);
 
         // S'abonner aux changements audio pour afficher l'OSD automatiquement
-        cx.subscribe(&audio, |this, _audio, event: &AudioStateChanged, cx| {
+        cx.subscribe(&audio, move |this, _audio, event: &AudioStateChanged, cx| {
+            // Ignorer le premier événement (état initial)
+            if *first_event_clone.read() {
+                *first_event_clone.write() = false;
+                return;
+            }
+
             let state = &event.state;
 
             // Déterminer l'icône en fonction du volume et du mute
@@ -54,6 +63,7 @@ impl OsdService {
         Self {
             current_event: Arc::new(RwLock::new(None)),
             visible: Arc::new(RwLock::new(false)),
+            first_event,
         }
     }
 

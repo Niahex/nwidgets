@@ -22,6 +22,9 @@ pub struct NotificationAdded {
     pub notification: Notification,
 }
 
+#[derive(Clone)]
+pub struct NotificationsEmpty;
+
 // État interne partagé protégé par un Mutex
 struct NotificationState {
     sender: Option<std::sync::mpsc::Sender<Notification>>,
@@ -42,10 +45,11 @@ static STATE: once_cell::sync::Lazy<Arc<Mutex<NotificationState>>> =
     once_cell::sync::Lazy::new(|| Arc::new(Mutex::new(NotificationState::new())));
 
 pub struct NotificationService {
-    notifications: Arc<parking_lot::RwLock<Vec<Notification>>>,
+    pub notifications: Arc<parking_lot::RwLock<Vec<Notification>>>,
 }
 
 impl EventEmitter<NotificationAdded> for NotificationService {}
+impl EventEmitter<NotificationsEmpty> for NotificationService {}
 
 struct NotificationServer {
     next_id: u32,
