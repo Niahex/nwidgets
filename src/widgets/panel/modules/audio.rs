@@ -24,7 +24,6 @@ impl AudioModule {
 impl Render for AudioModule {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let state = self.audio.read(cx).state();
-        let audio = self.audio.clone();
 
         let icon_name = if state.sink_muted {
             "sink-muted"
@@ -38,29 +37,8 @@ impl Render for AudioModule {
             "sink-zero"
         };
 
-        div()
-            .id("audio-module")
-            .flex()
-            .gap_2()
-            .items_center()
-            .px_3()
-            .py_2()
-            .rounded_md()
-            .text_sm()
-            .hover(|style| style.bg(rgba(0x4c566a80))) // $polar3 with opacity
-            .cursor_pointer()
-            .on_click(move |_event, _window, cx| {
-                audio.read(cx).toggle_sink_mute();
-            })
-            .child(
-                Icon::new(icon_name)
-                    .size(px(18.))
-                    .color(rgb(0xeceff4)) // $snow2
-            )
-            .child(
-                div()
-                    .text_color(rgb(0xeceff4)) // $snow2
-                    .child(format!("{}%", state.sink_volume))
-            )
+        Icon::new(icon_name)
+            .size(px(16.))
+            .color(rgb(0xeceff4))
     }
 }

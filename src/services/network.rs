@@ -6,23 +6,70 @@ use std::time::Duration;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ConnectionType {
+    Wifi,
     Ethernet,
-    Wifi { ssid: String, strength: u8 },
-    Vpn { name: String },
-    Disconnected,
+    None,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct NetworkState {
-    pub connection_type: ConnectionType,
     pub connected: bool,
+    pub connection_type: ConnectionType,
+    pub signal_strength: u8,
+    pub ssid: Option<String>,
+    pub vpn_active: bool,
 }
 
 impl Default for NetworkState {
     fn default() -> Self {
         Self {
-            connection_type: ConnectionType::Disconnected,
             connected: false,
+            connection_type: ConnectionType::None,
+            signal_strength: 0,
+            ssid: None,
+            vpn_active: false,
+        }
+    }
+}
+
+impl NetworkState {
+    pub fn get_icon_name(&self) -> &'static str {
+        if !self.connected {
+            "network-eternet-disconnected"
+        } else {
+            match self.connection_type {
+                ConnectionType::Ethernet => {
+                    if self.vpn_active {
+                        "network-eternet-secure"
+                    } else {
+                        "network-eternet-unsecure"
+                    }
+                }
+                ConnectionType::Wifi => {
+                    let signal_level = if self.signal_strength > 75 {
+                        "high"
+                    } else if self.signal_strength > 50 {
+                        "good"
+                    } else if self.signal_strength > 25 {
+                        "medium"
+                    } else {
+                        "low"
+                    };
+
+                    match (signal_level, self.vpn_active) {
+                        ("high", true) => "network-wifi-high-secure",
+                        ("high", false) => "network-wifi-high-unsecure",
+                        ("good", true) => "network-wifi-good-secure",
+                        ("good", false) => "network-wifi-good-unsecure",
+                        ("medium", true) => "network-wifi-medium-secure",
+                        ("medium", false) => "network-wifi-medium-unsecure",
+                        ("low", true) => "network-wifi-low-secure",
+                        ("low", false) => "network-wifi-low-unsecure",
+                        _ => "network-wifi-low-unsecure",
+                    }
+                }
+                ConnectionType::None => "network-eternet-disconnected",
+            }
         }
     }
 }
@@ -41,10 +88,8 @@ impl EventEmitter<NetworkStateChanged> for NetworkService {}
 impl NetworkService {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let state = Arc::new(RwLock::new(Self::fetch_network_state()));
-
         let state_clone = Arc::clone(&state);
 
-        // Poll network state periodically
         cx.spawn(async move |this, mut cx| {
             Self::monitor_network(this, state_clone, &mut cx).await
         })
@@ -79,16 +124,15 @@ impl NetworkService {
             };
 
             if state_changed {
-                if let Ok(()) = this.update(cx, |_, cx| {
+                let _ = this.update(cx, |_, cx| {
                     cx.emit(NetworkStateChanged { state: new_state });
                     cx.notify();
-                }) {}
+                });
             }
         }
     }
 
     fn fetch_network_state() -> NetworkState {
-        // Check if we have internet connectivity
         let has_connection = std::process::Command::new("ping")
             .args(["-c", "1", "-W", "1", "8.8.8.8"])
             .output()
@@ -96,14 +140,11 @@ impl NetworkService {
             .unwrap_or(false);
 
         if !has_connection {
-            return NetworkState {
-                connection_type: ConnectionType::Disconnected,
-                connected: false,
-            };
+            return NetworkState::default();
         }
 
-        // Try to detect connection type
-        // Check for WiFi
+        let vpn_active = Self::check_vpn_active();
+
         if let Ok(output) = std::process::Command::new("nmcli")
             .args(["-t", "-f", "ACTIVE,SSID,SIGNAL", "device", "wifi"])
             .output()
@@ -115,23 +156,37 @@ impl NetworkService {
                         let ssid = parts[1].to_string();
                         let strength = parts[2].parse::<u8>().unwrap_or(0);
                         return NetworkState {
-                            connection_type: ConnectionType::Wifi { ssid, strength },
                             connected: true,
+                            connection_type: ConnectionType::Wifi,
+                            signal_strength: strength,
+                            ssid: Some(ssid),
+                            vpn_active,
                         };
                     }
                 }
             }
         }
 
-        // Default to Ethernet if connected but not WiFi
         NetworkState {
-            connection_type: ConnectionType::Ethernet,
             connected: true,
+            connection_type: ConnectionType::Ethernet,
+            signal_strength: 100,
+            ssid: None,
+            vpn_active,
         }
+    }
+
+    fn check_vpn_active() -> bool {
+        std::process::Command::new("nmcli")
+            .args(["-t", "-f", "TYPE", "connection", "show", "--active"])
+            .output()
+            .ok()
+            .and_then(|output| String::from_utf8(output.stdout).ok())
+            .map(|output| output.contains("vpn") || output.contains("wireguard"))
+            .unwrap_or(false)
     }
 }
 
-// Global accessor
 struct GlobalNetworkService(Entity<NetworkService>);
 impl Global for GlobalNetworkService {}
 

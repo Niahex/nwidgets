@@ -27,11 +27,13 @@ impl ActiveWindowModule {
     /// La classe est utilisée directement en minuscules comme nom d'icône
     /// Exemples: "Firefox" -> "firefox.svg", "discord" -> "discord.svg", "dev.zed.Zed" -> "dev.zed.zed.svg"
     fn get_icon_name(class: &str) -> String {
-        // Normaliser la classe en minuscules - c'est tout !
         let icon_name = class.to_lowercase();
-
-        // Debug: afficher la classe et l'icône
-        eprintln!("[ActiveWindow] class: '{}' -> icon: '{}.svg'", class, icon_name);
+        
+        // Log seulement si l'icône n'existe pas
+        let icon_path = format!("assets/{}.svg", icon_name);
+        if !std::path::Path::new(&icon_path).exists() {
+            eprintln!("[ActiveWindow] Icon not found for class '{}' -> '{}'", class, icon_path);
+        }
 
         icon_name
     }

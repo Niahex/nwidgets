@@ -98,7 +98,6 @@ impl Icon {
 
         // Not in cache, build path and cache it
         let path = format!("{}/{}.svg", assets_dir().display(), self.name);
-        eprintln!("[Icon] Loading icon: '{}' from path: '{}'", self.name, path);
 
         // Check if file exists
         if !std::path::Path::new(&path).exists() {
