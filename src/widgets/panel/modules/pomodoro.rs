@@ -29,15 +29,16 @@ impl PomodoroModule {
 impl Render for PomodoroModule {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let status = self.pomodoro.read(cx).status();
-        let pomodoro = self.pomodoro.clone();
+        let pomodoro_left = self.pomodoro.clone();
+        let pomodoro_middle = self.pomodoro.clone();
 
-        match status {
+        let element = match status {
             PomodoroStatus::Idle => {
                 div()
                     .id("pomodoro-idle")
                     .cursor_pointer()
                     .on_click(move |_event, _window, cx| {
-                        pomodoro.update(cx, |service, cx| {
+                        pomodoro_left.update(cx, |service, cx| {
                             service.start_work(cx);
                         });
                     })
@@ -52,7 +53,7 @@ impl Render for PomodoroModule {
                     .id("pomodoro-paused")
                     .cursor_pointer()
                     .on_click(move |_event, _window, cx| {
-                        pomodoro.update(cx, |service, cx| {
+                        pomodoro_left.update(cx, |service, cx| {
                             service.resume(cx);
                         });
                     })
@@ -75,12 +76,18 @@ impl Render for PomodoroModule {
                     .text_color(color)
                     .cursor_pointer()
                     .on_click(move |_event, _window, cx| {
-                        pomodoro.update(cx, |service, cx| {
+                        pomodoro_left.update(cx, |service, cx| {
                             service.pause(cx);
                         });
                     })
                     .child(Self::format_time(remaining_secs))
             }
-        }
+        };
+
+        element.on_mouse_down(MouseButton::Middle, move |_event, _window, cx| {
+            pomodoro_middle.update(cx, |service, cx| {
+                service.stop(cx);
+            });
+        })
     }
 }
