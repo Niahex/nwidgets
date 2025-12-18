@@ -35,7 +35,6 @@ impl Panel {
 
 impl Render for Panel {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-        // Nord colors
         let bg_color = rgb(0x2e3440); // $polar0
         let text_color = rgb(0xeceff4); // $snow2
 
