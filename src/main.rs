@@ -12,7 +12,7 @@ use services::{
     hyprland::HyprlandService,
     mpris::MprisService,
     network::NetworkService,
-    notifications::NotificationService,
+    notifications::{NotificationService, NotificationAdded},
     osd::{OsdService, OsdStateChanged},
     pomodoro::PomodoroService,
     systray::SystrayService,
@@ -77,7 +77,7 @@ fn main() {
         MprisService::init(cx);
         PomodoroService::init(cx);
         SystrayService::init(cx);
-        NotificationService::init(cx);
+        let notif_service = NotificationService::init(cx);
         let osd_service = OsdService::init(cx);
 
         // Create panel window with LayerShell - full width (3440px), 50px height
@@ -128,9 +128,36 @@ fn main() {
         })
         .detach();
 
-        // TODO: Gestionnaire de fenêtre Notifications
-        // Pour l'instant, on garde l'ancienne méthode pour les notifications
-        // Tu pourras l'adapter de la même manière que l'OSD
+        // Gestionnaire de fenêtre Notifications
+        let notif_manager = Arc::new(Mutex::new(NotificationsWindowManager::new()));
+        let notif_manager_clone = Arc::clone(&notif_manager);
+
+        // S'abonner aux nouvelles notifications pour ouvrir la fenêtre
+        cx.subscribe(&notif_service, move |_service, event: &NotificationAdded, cx| {
+            let mut manager = notif_manager_clone.lock();
+            println!("[MAIN] 🪟 Opening Notifications window");
+            manager.open_window(cx);
+        })
+        .detach();
+
+        // Timer pour fermer la fenêtre si plus de notifications (check toutes les 2 secondes)
+        let notif_manager_clone2 = Arc::clone(&notif_manager);
+        cx.spawn(async move |mut cx| {
+            loop {
+                cx.background_executor()
+                    .timer(std::time::Duration::from_secs(2))
+                    .await;
+
+                let _ = cx.update(|cx| {
+                    let mut manager = notif_manager_clone2.lock();
+                    if manager.should_close() {
+                        println!("[MAIN] 🚪 Closing Notifications window (no more notifications)");
+                        manager.close_window(cx);
+                    }
+                });
+            }
+        })
+        .detach();
         
         cx.activate(true);
     });

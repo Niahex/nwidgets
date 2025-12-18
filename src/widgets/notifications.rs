@@ -226,16 +226,20 @@ impl Render for NotificationsWidget {
 // Gestionnaire global pour ouvrir/fermer la fenêtre de notifications
 pub struct NotificationsWindowManager {
     window_handle: Option<AnyWindowHandle>,
+    last_notification_time: std::time::Instant,
 }
 
 impl NotificationsWindowManager {
     pub fn new() -> Self {
         Self {
             window_handle: None,
+            last_notification_time: std::time::Instant::now(),
         }
     }
 
     pub fn open_window(&mut self, cx: &mut App) {
+        self.last_notification_time = std::time::Instant::now();
+        
         if self.window_handle.is_some() {
             return; // Déjà ouverte
         }
@@ -279,5 +283,10 @@ impl NotificationsWindowManager {
                 window.remove_window();
             });
         }
+    }
+
+    pub fn should_close(&self) -> bool {
+        // Fermer si la fenêtre est ouverte et que 6 secondes se sont écoulées depuis la dernière notification
+        self.window_handle.is_some() && self.last_notification_time.elapsed().as_secs() > 6
     }
 }
