@@ -2,6 +2,7 @@ use crate::services::osd::{OsdEvent, OsdService, OsdStateChanged};
 use crate::utils::Icon;
 use gpui::prelude::*;
 use gpui::*;
+use gpui::layer_shell::{Anchor, KeyboardInteractivity, LayerShellOptions, Layer};
 use std::sync::Arc;
 use std::time::Duration;
 use parking_lot::RwLock;
@@ -61,10 +62,10 @@ impl OsdWidget {
 impl Render for OsdWidget {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let osd = self.osd.read(cx);
-        let visible = osd.is_visible();
         let event = osd.current_event();
 
-        if !visible || event.is_none() {
+        // Si pas d'événement, rendre un div vide
+        if event.is_none() {
             return div().into_any_element();
         }
 
@@ -186,5 +187,64 @@ impl Render for OsdWidget {
             .py_3()
             .child(content)
             .into_any_element()
+    }
+}
+
+// Gestionnaire global pour ouvrir/fermer la fenêtre OSD
+pub struct OsdWindowManager {
+    window_handle: Option<AnyWindowHandle>,
+}
+
+impl OsdWindowManager {
+    pub fn new() -> Self {
+        Self {
+            window_handle: None,
+        }
+    }
+
+    pub fn open_window(&mut self, cx: &mut App) {
+        if self.window_handle.is_some() {
+            return; // Déjà ouverte
+        }
+
+        let handle = cx.open_window(
+            WindowOptions {
+                window_bounds: Some(WindowBounds::Windowed(Bounds {
+                    origin: Point {
+                        x: px((3440.0 - 400.0) / 2.0),
+                        y: px(1440.0 - 64.0 - 80.0),
+                    },
+                    size: Size {
+                        width: px(400.0),
+                        height: px(64.0),
+                    },
+                })),
+                titlebar: None,
+                window_background: WindowBackgroundAppearance::Transparent,
+                kind: WindowKind::LayerShell(LayerShellOptions {
+                    namespace: "nwidgets-osd".to_string(),
+                    layer: Layer::Overlay,
+                    anchor: Anchor::BOTTOM,
+                    exclusive_zone: None,
+                    margin: Some((px(0.0), px(0.0), px(80.0), px(0.0))),
+                    keyboard_interactivity: KeyboardInteractivity::None,
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            |_window, cx| cx.new(|cx| OsdWidget::new(cx)),
+        );
+
+        if let Ok(handle) = handle {
+            self.window_handle = Some(handle.into());
+        }
+    }
+
+    pub fn close_window(&mut self, cx: &mut App) {
+        if let Some(handle) = self.window_handle.take() {
+            let _ = handle.update(cx, |_, window, _| {
+                window.remove_window();
+            });
+        }
     }
 }

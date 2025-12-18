@@ -13,12 +13,18 @@ use services::{
     mpris::MprisService,
     network::NetworkService,
     notifications::NotificationService,
-    osd::OsdService,
+    osd::{OsdService, OsdStateChanged},
     pomodoro::PomodoroService,
     systray::SystrayService,
 };
-use widgets::{panel::Panel, osd::OsdWidget, notifications::NotificationsWidget};
+use widgets::{
+    panel::Panel,
+    osd::OsdWindowManager,
+    notifications::NotificationsWindowManager,
+};
 use std::path::PathBuf;
+use std::sync::Arc;
+use parking_lot::Mutex;
 use anyhow::Result;
 
 struct Assets {
@@ -72,7 +78,7 @@ fn main() {
         PomodoroService::init(cx);
         SystrayService::init(cx);
         NotificationService::init(cx);
-        OsdService::init(cx);
+        let osd_service = OsdService::init(cx);
 
         // Create panel window with LayerShell - full width (3440px), 50px height
         cx.open_window(
@@ -104,66 +110,28 @@ fn main() {
         )
         .unwrap();
 
-        // Create OSD window with LayerShell - centered at bottom
-        cx.open_window(
-            WindowOptions {
-                window_bounds: Some(WindowBounds::Windowed(Bounds {
-                    origin: Point {
-                        x: px((3440.0 - 400.0) / 2.0), // Centré horizontalement
-                        y: px(1440.0 - 64.0 - 80.0),    // 80px du bas
-                    },
-                    size: Size {
-                        width: px(400.0),
-                        height: px(64.0),
-                    },
-                })),
-                titlebar: None,
-                window_background: WindowBackgroundAppearance::Transparent,
-                kind: WindowKind::LayerShell(LayerShellOptions {
-                    namespace: "nwidgets-osd".to_string(),
-                    layer: Layer::Overlay,
-                    anchor: Anchor::BOTTOM,
-                    exclusive_zone: None,
-                    margin: Some((px(0.0), px(0.0), px(80.0), px(0.0))), // 80px bottom margin
-                    keyboard_interactivity: KeyboardInteractivity::None,
-                    ..Default::default()
-                }),
-                ..Default::default()
-            },
-            |_window, cx| cx.new(|cx| OsdWidget::new(cx)),
-        )
-        .unwrap();
+        // Gestionnaire de fenêtre OSD
+        let osd_manager = Arc::new(Mutex::new(OsdWindowManager::new()));
+        let osd_manager_clone = Arc::clone(&osd_manager);
 
-        // Create Notifications window with LayerShell - top right
-        cx.open_window(
-            WindowOptions {
-                window_bounds: Some(WindowBounds::Windowed(Bounds {
-                    origin: Point {
-                        x: px(3440.0 - 380.0 - 10.0), // 10px from right edge
-                        y: px(10.0),                   // 10px from top
-                    },
-                    size: Size {
-                        width: px(380.0),
-                        height: px(1000.0), // Max height, will auto-adjust based on content
-                    },
-                })),
-                titlebar: None,
-                window_background: WindowBackgroundAppearance::Transparent,
-                kind: WindowKind::LayerShell(LayerShellOptions {
-                    namespace: "nwidgets-notifications".to_string(),
-                    layer: Layer::Overlay,
-                    anchor: Anchor::TOP | Anchor::RIGHT,
-                    exclusive_zone: None,
-                    margin: Some((px(10.0), px(10.0), px(0.0), px(0.0))), // top, right margin
-                    keyboard_interactivity: KeyboardInteractivity::None,
-                    ..Default::default()
-                }),
-                ..Default::default()
-            },
-            |_window, cx| cx.new(|cx| NotificationsWidget::new(cx)),
-        )
-        .unwrap();
+        // S'abonner aux changements d'état OSD pour ouvrir/fermer la fenêtre
+        cx.subscribe(&osd_service, move |_osd, event: &OsdStateChanged, cx| {
+            let mut manager = osd_manager_clone.lock();
+            
+            if event.visible {
+                println!("[MAIN] 🪟 Opening OSD window");
+                manager.open_window(cx);
+            } else {
+                println!("[MAIN] 🚪 Closing OSD window");
+                manager.close_window(cx);
+            }
+        })
+        .detach();
 
+        // TODO: Gestionnaire de fenêtre Notifications
+        // Pour l'instant, on garde l'ancienne méthode pour les notifications
+        // Tu pourras l'adapter de la même manière que l'OSD
+        
         cx.activate(true);
     });
 }

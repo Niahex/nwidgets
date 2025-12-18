@@ -2,6 +2,7 @@ use crate::services::notifications::{Notification, NotificationService, Notifica
 use crate::utils::Icon;
 use gpui::prelude::*;
 use gpui::*;
+use gpui::layer_shell::{Anchor, KeyboardInteractivity, LayerShellOptions, Layer};
 use std::time::{SystemTime, UNIX_EPOCH, Duration};
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -91,13 +92,17 @@ impl NotificationsWidget {
             format!("{}h ago", elapsed / 3600)
         }
     }
+
+    pub fn has_notifications(&self) -> bool {
+        !self.notifications.read().is_empty()
+    }
 }
 
 impl Render for NotificationsWidget {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let notifs = self.notifications.read().clone();
 
-        // Si pas de notifications, ne rien afficher
+        // Si pas de notifications, rendre un div vide
         if notifs.is_empty() {
             return div().into_any_element();
         }
@@ -215,5 +220,64 @@ impl Render for NotificationsWidget {
                     })
             }))
             .into_any_element()
+    }
+}
+
+// Gestionnaire global pour ouvrir/fermer la fenêtre de notifications
+pub struct NotificationsWindowManager {
+    window_handle: Option<AnyWindowHandle>,
+}
+
+impl NotificationsWindowManager {
+    pub fn new() -> Self {
+        Self {
+            window_handle: None,
+        }
+    }
+
+    pub fn open_window(&mut self, cx: &mut App) {
+        if self.window_handle.is_some() {
+            return; // Déjà ouverte
+        }
+
+        let handle = cx.open_window(
+            WindowOptions {
+                window_bounds: Some(WindowBounds::Windowed(Bounds {
+                    origin: Point {
+                        x: px(3440.0 - 380.0 - 10.0),
+                        y: px(10.0),
+                    },
+                    size: Size {
+                        width: px(380.0),
+                        height: px(1000.0),
+                    },
+                })),
+                titlebar: None,
+                window_background: WindowBackgroundAppearance::Transparent,
+                kind: WindowKind::LayerShell(LayerShellOptions {
+                    namespace: "nwidgets-notifications".to_string(),
+                    layer: Layer::Overlay,
+                    anchor: Anchor::TOP | Anchor::RIGHT,
+                    exclusive_zone: None,
+                    margin: Some((px(10.0), px(10.0), px(0.0), px(0.0))),
+                    keyboard_interactivity: KeyboardInteractivity::None,
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            |_window, cx| cx.new(|cx| NotificationsWidget::new(cx)),
+        );
+
+        if let Ok(handle) = handle {
+            self.window_handle = Some(handle.into());
+        }
+    }
+
+    pub fn close_window(&mut self, cx: &mut App) {
+        if let Some(handle) = self.window_handle.take() {
+            let _ = handle.update(cx, |_, window, _| {
+                window.remove_window();
+            });
+        }
     }
 }
