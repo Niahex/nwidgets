@@ -39,7 +39,7 @@ impl Render for DateTimeModule {
         div()
             .flex()
             .flex_col()
-            .items_end()
+            .items_center()
             .px_2()
             .child(
                 div()
