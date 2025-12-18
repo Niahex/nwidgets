@@ -42,7 +42,7 @@ impl OsdWidget {
         let hide_generation = Arc::clone(&self.hide_generation);
         let current_gen = *hide_generation.read();
 
-        cx.spawn(async move |_this, mut cx| {
+        cx.spawn(async move |_this, cx| {
             cx.background_executor()
                 .timer(Duration::from_millis(2500))
                 .await;

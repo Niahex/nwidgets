@@ -17,7 +17,7 @@ use services::{
     pomodoro::PomodoroService,
     systray::SystrayService,
 };
-use widgets::{panel::Panel, osd::OsdWidget};
+use widgets::{panel::Panel, osd::OsdWidget, notifications::NotificationsWidget};
 use std::path::PathBuf;
 use anyhow::Result;
 
@@ -131,6 +131,36 @@ fn main() {
                 ..Default::default()
             },
             |_window, cx| cx.new(|cx| OsdWidget::new(cx)),
+        )
+        .unwrap();
+
+        // Create Notifications window with LayerShell - top right
+        cx.open_window(
+            WindowOptions {
+                window_bounds: Some(WindowBounds::Windowed(Bounds {
+                    origin: Point {
+                        x: px(3440.0 - 380.0 - 10.0), // 10px from right edge
+                        y: px(10.0),                   // 10px from top
+                    },
+                    size: Size {
+                        width: px(380.0),
+                        height: px(1000.0), // Max height, will auto-adjust based on content
+                    },
+                })),
+                titlebar: None,
+                window_background: WindowBackgroundAppearance::Transparent,
+                kind: WindowKind::LayerShell(LayerShellOptions {
+                    namespace: "nwidgets-notifications".to_string(),
+                    layer: Layer::Overlay,
+                    anchor: Anchor::TOP | Anchor::RIGHT,
+                    exclusive_zone: None,
+                    margin: Some((px(10.0), px(10.0), px(0.0), px(0.0))), // top, right margin
+                    keyboard_interactivity: KeyboardInteractivity::None,
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            |_window, cx| cx.new(|cx| NotificationsWidget::new(cx)),
         )
         .unwrap();
 
