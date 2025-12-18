@@ -1,8 +1,8 @@
 mod modules;
 
 pub use modules::{
-    ActiveWindowModule, AudioModule, DateTimeModule, MprisModule, NetworkModule,
-    PomodoroModule, SystrayModule, WorkspacesModule
+    ActiveWindowModule, BluetoothModule, DateTimeModule, MprisModule, NetworkModule,
+    PomodoroModule, SinkModule, SourceModule, SystrayModule, WorkspacesModule
 };
 
 use gpui::*;
@@ -13,8 +13,10 @@ pub struct Panel {
     pomodoro: Entity<PomodoroModule>,
     mpris: Entity<MprisModule>,
     systray: Entity<SystrayModule>,
+    bluetooth: Entity<BluetoothModule>,
     network: Entity<NetworkModule>,
-    audio: Entity<AudioModule>,
+    sink: Entity<SinkModule>,
+    source: Entity<SourceModule>,
     datetime: Entity<DateTimeModule>,
 }
 
@@ -26,8 +28,10 @@ impl Panel {
             pomodoro: cx.new(|cx| PomodoroModule::new(cx)),
             mpris: cx.new(|cx| MprisModule::new(cx)),
             systray: cx.new(|cx| SystrayModule::new(cx)),
+            bluetooth: cx.new(|cx| BluetoothModule::new(cx)),
             network: cx.new(|cx| NetworkModule::new(cx)),
-            audio: cx.new(|cx| AudioModule::new(cx)),
+            sink: cx.new(|cx| SinkModule::new(cx)),
+            source: cx.new(|cx| SourceModule::new(cx)),
             datetime: cx.new(|cx| DateTimeModule::new(cx)),
         }
     }
@@ -77,8 +81,10 @@ impl Render for Panel {
                     .items_center()
                     .h_full()
                     .child(self.systray.clone())
+                    .child(self.bluetooth.clone())
                     .child(self.network.clone())
-                    .child(self.audio.clone())
+                    .child(self.source.clone())
+                    .child(self.sink.clone())
                     .child(self.datetime.clone())
             )
     }

@@ -1,17 +1,21 @@
 mod active_window;
-mod audio;
+mod bluetooth;
 mod datetime;
 mod mpris;
 mod network;
 mod pomodoro;
+mod sink;
+mod source;
 mod systray;
 mod workspaces;
 
 pub use active_window::ActiveWindowModule;
-pub use audio::AudioModule;
+pub use bluetooth::BluetoothModule;
 pub use datetime::DateTimeModule;
 pub use mpris::MprisModule;
 pub use network::NetworkModule;
 pub use pomodoro::PomodoroModule;
+pub use sink::SinkModule;
+pub use source::SourceModule;
 pub use systray::SystrayModule;
 pub use workspaces::WorkspacesModule;

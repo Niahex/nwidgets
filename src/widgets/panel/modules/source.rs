@@ -3,15 +3,14 @@ use gpui::*;
 use crate::services::audio::{AudioService, AudioStateChanged};
 use crate::utils::Icon;
 
-pub struct AudioModule {
+pub struct SourceModule {
     audio: Entity<AudioService>,
 }
 
-impl AudioModule {
+impl SourceModule {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let audio = AudioService::global(cx);
 
-        // Subscribe to audio state changes
         cx.subscribe(&audio, |_this, _audio, _event: &AudioStateChanged, cx| {
             cx.notify();
         })
@@ -21,20 +20,20 @@ impl AudioModule {
     }
 }
 
-impl Render for AudioModule {
+impl Render for SourceModule {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let state = self.audio.read(cx).state();
 
-        let icon_name = if state.sink_muted {
-            "sink-muted"
-        } else if state.sink_volume > 66 {
-            "sink-high"
-        } else if state.sink_volume > 33 {
-            "sink-medium"
-        } else if state.sink_volume > 0 {
-            "sink-low"
+        let icon_name = if state.source_muted {
+            "source-muted"
+        } else if state.source_volume > 66 {
+            "source-high"
+        } else if state.source_volume > 33 {
+            "source-medium"
+        } else if state.source_volume > 0 {
+            "source-low"
         } else {
-            "sink-zero"
+            "source-zero"
         };
 
         Icon::new(icon_name)

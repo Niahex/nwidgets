@@ -1,163 +1,109 @@
 use gpui::prelude::*;
 use gpui::{App, AsyncApp, Context, Entity, EventEmitter, Global, WeakEntity};
 use parking_lot::RwLock;
+use std::process::Command;
 use std::sync::Arc;
 use std::time::Duration;
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct BluetoothDevice {
-    pub name: String,
-    pub address: String,
-    pub connected: bool,
-    pub paired: bool,
-    pub icon: String,
+pub struct BluetoothState {
+    pub powered: bool,
+    pub connected_devices: usize,
+}
+
+impl Default for BluetoothState {
+    fn default() -> Self {
+        Self {
+            powered: false,
+            connected_devices: 0,
+        }
+    }
 }
 
 #[derive(Clone)]
 pub struct BluetoothStateChanged {
-    pub enabled: bool,
-    pub devices: Vec<BluetoothDevice>,
+    pub state: BluetoothState,
 }
 
 pub struct BluetoothService {
-    enabled: Arc<RwLock<bool>>,
-    devices: Arc<RwLock<Vec<BluetoothDevice>>>,
+    state: Arc<RwLock<BluetoothState>>,
 }
 
 impl EventEmitter<BluetoothStateChanged> for BluetoothService {}
 
 impl BluetoothService {
     pub fn new(cx: &mut Context<Self>) -> Self {
-        let enabled = Arc::new(RwLock::new(Self::fetch_bluetooth_state()));
-        let devices = Arc::new(RwLock::new(Self::fetch_devices()));
+        let state = Arc::new(RwLock::new(Self::fetch_bluetooth_state()));
+        let state_clone = Arc::clone(&state);
 
-        let enabled_clone = Arc::clone(&enabled);
-        let devices_clone = Arc::clone(&devices);
-
-        // Poll bluetooth state periodically (bluetoothctl doesn't have a great event API)
         cx.spawn(async move |this, mut cx| {
-            Self::monitor_bluetooth(this, enabled_clone, devices_clone, &mut cx).await
+            Self::monitor_bluetooth(this, state_clone, &mut cx).await
         })
         .detach();
 
-        Self { enabled, devices }
+        Self { state }
     }
 
-    pub fn is_enabled(&self) -> bool {
-        *self.enabled.read()
-    }
-
-    pub fn devices(&self) -> Vec<BluetoothDevice> {
-        self.devices.read().clone()
-    }
-
-    pub fn toggle(&self) {
-        let current = *self.enabled.read();
-        std::thread::spawn(move || {
-            let cmd = if current { "power off" } else { "power on" };
-            let _ = std::process::Command::new("bluetoothctl")
-                .args([cmd])
-                .status();
-        });
-    }
-
-    pub fn connect_device(&self, address: String) {
-        std::thread::spawn(move || {
-            let _ = std::process::Command::new("bluetoothctl")
-                .args(["connect", &address])
-                .status();
-        });
-    }
-
-    pub fn disconnect_device(&self, address: String) {
-        std::thread::spawn(move || {
-            let _ = std::process::Command::new("bluetoothctl")
-                .args(["disconnect", &address])
-                .status();
-        });
+    pub fn state(&self) -> BluetoothState {
+        self.state.read().clone()
     }
 
     async fn monitor_bluetooth(
         this: WeakEntity<Self>,
-        enabled: Arc<RwLock<bool>>,
-        devices: Arc<RwLock<Vec<BluetoothDevice>>>,
+        state: Arc<RwLock<BluetoothState>>,
         cx: &mut AsyncApp,
     ) {
         loop {
-            // Poll every 2 seconds
             cx.background_executor()
                 .timer(Duration::from_secs(2))
                 .await;
 
-            let new_enabled = Self::fetch_bluetooth_state();
-            let new_devices = Self::fetch_devices();
+            let new_state = Self::fetch_bluetooth_state();
 
             let state_changed = {
-                let mut current_enabled = enabled.write();
-                let mut current_devices = devices.write();
-                let changed = *current_enabled != new_enabled || *current_devices != new_devices;
+                let mut current_state = state.write();
+                let changed = *current_state != new_state;
                 if changed {
-                    *current_enabled = new_enabled;
-                    *current_devices = new_devices.clone();
+                    *current_state = new_state.clone();
                 }
                 changed
             };
 
             if state_changed {
-                if let Ok(()) = this.update(cx, |_, cx| {
-                    cx.emit(BluetoothStateChanged {
-                        enabled: new_enabled,
-                        devices: new_devices,
-                    });
+                let _ = this.update(cx, |_, cx| {
+                    cx.emit(BluetoothStateChanged { state: new_state });
                     cx.notify();
-                }) {}
+                });
             }
         }
     }
 
-    fn fetch_bluetooth_state() -> bool {
-        let output = std::process::Command::new("bluetoothctl")
+    fn fetch_bluetooth_state() -> BluetoothState {
+        let output = Command::new("bluetoothctl")
             .args(["show"])
             .output()
             .ok()
             .and_then(|o| String::from_utf8(o.stdout).ok())
             .unwrap_or_default();
 
-        output.lines().any(|line| line.contains("Powered: yes"))
-    }
+        let powered = output.contains("Powered: yes");
 
-    fn fetch_devices() -> Vec<BluetoothDevice> {
-        let output = std::process::Command::new("bluetoothctl")
-            .args(["devices"])
+        let devices_output = Command::new("bluetoothctl")
+            .args(["devices", "Connected"])
             .output()
             .ok()
             .and_then(|o| String::from_utf8(o.stdout).ok())
             .unwrap_or_default();
 
-        // Simple parsing - you might want to improve this
-        output
-            .lines()
-            .filter_map(|line| {
-                let parts: Vec<&str> = line.split_whitespace().collect();
-                if parts.len() >= 3 && parts[0] == "Device" {
-                    let address = parts[1].to_string();
-                    let name = parts[2..].join(" ");
-                    Some(BluetoothDevice {
-                        name,
-                        address,
-                        connected: false, // TODO: Check connected status
-                        paired: true,
-                        icon: "bluetooth".to_string(),
-                    })
-                } else {
-                    None
-                }
-            })
-            .collect()
+        let connected_devices = devices_output.lines().count();
+
+        BluetoothState {
+            powered,
+            connected_devices,
+        }
     }
 }
 
-// Global accessor
 struct GlobalBluetoothService(Entity<BluetoothService>);
 impl Global for GlobalBluetoothService {}
 
