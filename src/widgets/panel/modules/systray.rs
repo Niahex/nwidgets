@@ -22,7 +22,10 @@ impl SystrayModule {
 impl Render for SystrayModule {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let items = self.systray.read(cx).items();
-        let is_empty = items.is_empty();
+
+        if items.is_empty() {
+            return div().into_any_element();
+        }
 
         div()
             .flex()
@@ -38,13 +41,6 @@ impl Render for SystrayModule {
                     .cursor_pointer()
                     .child(item.icon_name.unwrap_or_else(|| "📦".to_string()))
             }))
-            .when(is_empty, |this| {
-                this.child(
-                    div()
-                        .text_xs()
-                        .text_color(rgb(0x6c7086))
-                        .child("No tray items")
-                )
-            })
+            .into_any_element()
     }
 }

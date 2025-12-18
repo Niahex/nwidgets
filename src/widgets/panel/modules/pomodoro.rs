@@ -34,111 +34,52 @@ impl Render for PomodoroModule {
         match status {
             PomodoroStatus::Idle => {
                 div()
-                    .flex()
-                    .gap_2()
-                    .items_center()
+                    .id("pomodoro-idle")
+                    .cursor_pointer()
+                    .on_click(move |_event, _window, cx| {
+                        pomodoro.update(cx, |service, cx| {
+                            service.start_work(cx);
+                        });
+                    })
                     .child(
-                        div()
-                            .id("pomodoro-start")
-                            .flex()
-                            .gap_1()
-                            .items_center()
-                            .px_3()
-                            .py_1()
-                            .rounded_md()
-                            .text_sm()
-                            .text_color(rgb(0xeceff4)) // $snow2
-                            .bg(rgba(0x3b425266)) // $polar1 with opacity
-                            .hover(|style| style.bg(rgba(0x4c566a99))) // $polar3
-                            .cursor_pointer()
-                            .on_click(move |_event, _window, cx| {
-                                pomodoro.update(cx, |service, cx| {
-                                    service.start_work(cx);
-                                });
-                            })
-                            .child(
-                                Icon::new("coffee")
-                                    .size(px(16.))
-                                    .color(rgb(0x88c0d0)) // $frost1
-                            )
-                            .child("Start")
+                        Icon::new("play")
+                            .size(px(16.))
+                            .color(rgb(0xeceff4))
                     )
             }
-            PomodoroStatus::Running { ref phase, remaining_secs } |
-            PomodoroStatus::Paused { ref phase, remaining_secs } => {
-                let is_running = matches!(status, PomodoroStatus::Running { .. });
-                let phase_text = match phase {
-                    PomodoroPhase::Work => "Work",
-                    PomodoroPhase::ShortBreak => "Break",
-                    PomodoroPhase::LongBreak => "Long Break",
+            PomodoroStatus::Paused { .. } => {
+                div()
+                    .id("pomodoro-paused")
+                    .cursor_pointer()
+                    .on_click(move |_event, _window, cx| {
+                        pomodoro.update(cx, |service, cx| {
+                            service.resume(cx);
+                        });
+                    })
+                    .child(
+                        Icon::new("pause")
+                            .size(px(16.))
+                            .color(rgb(0xeceff4))
+                    )
+            }
+            PomodoroStatus::Running { phase, remaining_secs } => {
+                let color = match phase {
+                    PomodoroPhase::Work => rgb(0xbf616a),
+                    PomodoroPhase::ShortBreak => rgb(0xa3be8c),
+                    PomodoroPhase::LongBreak => rgb(0x88c0d0),
                 };
-                let pomodoro_pause = pomodoro.clone();
-                let pomodoro_stop = pomodoro.clone();
 
                 div()
-                    .flex()
-                    .gap_2()
-                    .items_center()
-                    .text_sm()
-                    .text_color(rgb(0xeceff4)) // $snow2
-                    .child(
-                        div()
-                            .flex()
-                            .gap_1()
-                            .items_center()
-                            .child(
-                                Icon::new("coffee")
-                                    .size(px(16.))
-                                    .color(rgb(0x88c0d0)) // $frost1
-                            )
-                            .child(
-                                div()
-                                    .font_weight(FontWeight::SEMIBOLD)
-                                    .child(format!("{} {}", phase_text, Self::format_time(remaining_secs)))
-                            )
-                    )
-                    .child(
-                        div()
-                            .id("pomodoro-pause-resume")
-                            .px_2()
-                            .py_1()
-                            .rounded_sm()
-                            .hover(|style| style.bg(rgba(0x4c566a80))) // $polar3 with opacity
-                            .cursor_pointer()
-                            .on_click(move |_event, _window, cx| {
-                                pomodoro_pause.update(cx, |service, cx| {
-                                    if is_running {
-                                        service.pause(cx);
-                                    } else {
-                                        service.resume(cx);
-                                    }
-                                });
-                            })
-                            .child(
-                                Icon::new(if is_running { "pause" } else { "play" })
-                                    .size(px(14.))
-                                    .color(rgb(0xeceff4))
-                            )
-                    )
-                    .child(
-                        div()
-                            .id("pomodoro-stop")
-                            .px_2()
-                            .py_1()
-                            .rounded_sm()
-                            .hover(|style| style.bg(rgba(0x4c566a80))) // $polar3 with opacity
-                            .cursor_pointer()
-                            .on_click(move |_event, _window, cx| {
-                                pomodoro_stop.update(cx, |service, cx| {
-                                    service.stop(cx);
-                                });
-                            })
-                            .child(
-                                Icon::new("recording-stopped")
-                                    .size(px(14.))
-                                    .color(rgb(0xeceff4))
-                            )
-                    )
+                    .id("pomodoro-running")
+                    .text_xs()
+                    .text_color(color)
+                    .cursor_pointer()
+                    .on_click(move |_event, _window, cx| {
+                        pomodoro.update(cx, |service, cx| {
+                            service.pause(cx);
+                        });
+                    })
+                    .child(Self::format_time(remaining_secs))
             }
         }
     }
