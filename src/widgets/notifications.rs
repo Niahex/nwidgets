@@ -1,193 +1,230 @@
-use crate::services::notifications::Notification;
+use crate::services::notifications::{Notification, NotificationService, NotificationAdded, NotificationsEmpty};
 use crate::utils::Icon;
 use gpui::prelude::*;
 use gpui::*;
-use gpui::layer_shell::{Anchor, KeyboardInteractivity, LayerShellOptions, Layer};
 use std::time::{SystemTime, UNIX_EPOCH, Duration};
+use parking_lot::RwLock;
+use std::sync::Arc;
 
-pub struct NotificationWidget {
-    notification: Notification,
-    window_handle: AnyWindowHandle,
+#[derive(Clone)]
+pub struct NotificationsStateChanged {
+    pub has_notifications: bool,
 }
 
-impl NotificationWidget {
-    pub fn new(notification: Notification, window_handle: AnyWindowHandle, cx: &mut Context<Self>) -> Self {
-        // Auto-fermer après 5 secondes
-        let handle = window_handle.clone();
-        cx.spawn(async move |_this, mut cx| {
-            cx.background_executor()
-                .timer(Duration::from_secs(5))
-                .await;
+pub struct NotificationsWidget {
+    service: Entity<NotificationService>,
+    notifications: Arc<RwLock<Vec<Notification>>>,
+}
 
-            let _ = cx.update(|cx| {
-                let _ = handle.update(cx, |_, window, _| {
-                    window.remove_window();
-                });
-            });
+impl EventEmitter<NotificationsStateChanged> for NotificationsWidget {}
+
+impl NotificationsWidget {
+    pub fn new(cx: &mut Context<Self>) -> Self {
+        let service = NotificationService::global(cx);
+        let notifications = Arc::new(RwLock::new(Vec::new()));
+
+        // S'abonner aux nouvelles notifications
+        let notifications_clone = Arc::clone(&notifications);
+        cx.subscribe(&service, move |this, _service, event: &NotificationAdded, cx| {
+            let mut notifs = notifications_clone.write();
+            
+            // Ajouter en début de liste (plus récent en haut)
+            notifs.insert(0, event.notification.clone());
+            notifs.truncate(10); // Max 10 notifications
+            
+            drop(notifs);
+            cx.emit(NotificationsStateChanged { has_notifications: true });
+            cx.notify();
         })
         .detach();
 
-        Self { notification, window_handle }
-    }
+        // Timer pour nettoyer les notifications expirées
+        let notifications_clone = Arc::clone(&notifications);
+        cx.spawn(async move |this, mut cx| {
+            loop {
+                cx.background_executor()
+                    .timer(Duration::from_secs(1))
+                    .await;
 
-    fn format_time_ago(timestamp: u64) -> String {
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
+                let now = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs();
 
-        let elapsed = now.saturating_sub(timestamp);
+                let mut notifs = notifications_clone.write();
+                let old_count = notifs.len();
+                notifs.retain(|n| now - n.timestamp < 5);
 
-        if elapsed < 60 {
-            "now".to_string()
-        } else if elapsed < 3600 {
-            format!("{}m ago", elapsed / 60)
-        } else {
-            format!("{}h ago", elapsed / 3600)
+                if notifs.len() != old_count {
+                    let is_empty = notifs.is_empty();
+                    drop(notifs);
+                    let _ = this.update(cx, |_, cx| {
+                        if is_empty {
+                            cx.emit(NotificationsStateChanged { has_notifications: false });
+                        }
+                        cx.notify();
+                    });
+                }
+            }
+        })
+        .detach();
+
+        Self {
+            service,
+            notifications,
         }
     }
 }
 
-impl Render for NotificationWidget {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let notif = &self.notification;
+impl Render for NotificationsWidget {
+    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+        let notifs = self.notifications.read().clone();
 
         // Nord colors
-        let bg_color = match notif.urgency {
-            2 => rgb(0xbf616a), // critical - red
-            1 => rgb(0x2e3440),  // normal - default
-            _ => rgb(0x4c566a),  // low - darker
-        };
-        let text_color = rgb(0xeceff4); // snow3
-        let time_color = rgb(0xd8dee9); // snow1
-        let body_color = rgb(0xe5e9f0); // snow2
+        let bg_color = rgb(0x2e3440);
+        let text_color = rgb(0xeceff4);
+        let time_color = rgb(0xd8dee9);
+        let body_color = rgb(0xe5e9f0);
 
         div()
-            .w(px(380.0))
             .flex()
             .flex_col()
             .gap_2()
-            .p_3()
-            .bg(bg_color)
-            .rounded(px(12.0))
-            .child(
-                // Header: icône app + nom app + heure
+            .w(px(380.0))
+            .children(notifs.iter().map(|notif| {
+                let urgency_class = match notif.urgency {
+                    2 => rgb(0xbf616a),
+                    1 => bg_color,
+                    _ => rgb(0x4c566a),
+                };
+
                 div()
                     .flex()
-                    .items_center()
-                    .justify_between()
+                    .flex_col()
+                    .gap_2()
+                    .p_3()
+                    .bg(urgency_class)
+                    .rounded(px(12.0))
                     .child(
                         div()
                             .flex()
-                            .gap_2()
                             .items_center()
+                            .justify_between()
                             .child(
-                                // Icône de l'application
-                                if !notif.app_icon.is_empty() {
-                                    Icon::new(&notif.app_icon)
-                                        .size(px(20.0))
-                                        .color(text_color)
-                                        .preserve_colors(true)
-                                        .into_any_element()
-                                } else {
-                                    div().size_4().into_any_element()
-                                }
+                                div()
+                                    .flex()
+                                    .gap_2()
+                                    .items_center()
+                                    .child(
+                                        if !notif.app_icon.is_empty() {
+                                            Icon::new(&notif.app_icon)
+                                                .size(px(20.0))
+                                                .color(text_color)
+                                                .preserve_colors(true)
+                                                .into_any_element()
+                                        } else {
+                                            div().size_4().into_any_element()
+                                        }
+                                    )
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .font_weight(FontWeight::SEMIBOLD)
+                                            .text_color(text_color)
+                                            .child(notif.app_name.clone())
+                                    )
                             )
                             .child(
-                                // Nom de l'application
                                 div()
-                                    .text_sm()
-                                    .font_weight(FontWeight::SEMIBOLD)
-                                    .text_color(text_color)
-                                    .child(notif.app_name.clone())
+                                    .text_xs()
+                                    .text_color(time_color)
+                                    .child(format_time_ago(notif.timestamp))
                             )
                     )
                     .child(
-                        // Heure
                         div()
-                            .text_xs()
-                            .text_color(time_color)
-                            .child(Self::format_time_ago(notif.timestamp))
+                            .text_base()
+                            .font_weight(FontWeight::BOLD)
+                            .text_color(text_color)
+                            .child(notif.summary.clone())
                     )
-            )
-            .child(
-                // Summary (titre)
-                div()
-                    .text_base()
-                    .font_weight(FontWeight::BOLD)
-                    .text_color(text_color)
-                    .child(notif.summary.clone())
-            )
-            .when(!notif.body.is_empty(), |this| {
-                this.child(
-                    // Body (contenu)
-                    div()
-                        .text_sm()
-                        .text_color(body_color)
-                        .child(notif.body.clone())
-                )
-            })
-            .when(!notif.actions.is_empty(), |this| {
-                // Actions (boutons)
-                this.child(
-                    div()
-                        .flex()
-                        .gap_2()
-                        .mt_2()
-                        .children(
-                            notif.actions.chunks(2).filter_map(|chunk| {
-                                if chunk.len() == 2 {
-                                    let label = &chunk[1];
-                                    Some(
-                                        div()
-                                            .px_3()
-                                            .py_1()
-                                            .bg(rgb(0x4c566a))
-                                            .rounded(px(6.0))
-                                            .text_sm()
-                                            .text_color(text_color)
-                                            .child(label.clone())
-                                    )
-                                } else {
-                                    None
-                                }
-                            })
+                    .when(!notif.body.is_empty(), |this| {
+                        this.child(
+                            div()
+                                .text_sm()
+                                .text_color(body_color)
+                                .child(notif.body.clone())
                         )
-                )
-            })
+                    })
+            }))
     }
 }
 
-// Gestionnaire pour créer une fenêtre par notification
-pub fn create_notification_window(notification: Notification, index: usize, cx: &mut App) {
-    let handle = cx.open_window(
-        WindowOptions {
-            window_bounds: Some(WindowBounds::Windowed(Bounds {
-                origin: Point {
-                    x: px(3440.0 - 380.0 - 10.0),
-                    y: px(10.0 + (index as f32 * 110.0)), // Espacer les notifications
-                },
-                size: Size {
-                    width: px(380.0),
-                    height: px(100.0),
-                },
-            })),
-            titlebar: None,
-            window_background: WindowBackgroundAppearance::Transparent,
-            kind: WindowKind::LayerShell(LayerShellOptions {
-                namespace: format!("nwidgets-notification-{}", notification.timestamp),
-                layer: Layer::Overlay,
-                anchor: Anchor::TOP | Anchor::RIGHT,
-                exclusive_zone: None,
-                margin: Some((px(10.0 + (index as f32 * 110.0)), px(10.0), px(0.0), px(0.0))),
-                keyboard_interactivity: KeyboardInteractivity::None,
+fn format_time_ago(timestamp: u64) -> String {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+
+    let elapsed = now.saturating_sub(timestamp);
+
+    if elapsed < 60 {
+        "now".to_string()
+    } else if elapsed < 3600 {
+        format!("{}m ago", elapsed / 60)
+    } else {
+        format!("{}h ago", elapsed / 3600)
+    }
+}
+
+pub struct NotificationsWindowManager {
+    window: Option<WindowHandle<NotificationsWidget>>,
+}
+
+impl NotificationsWindowManager {
+    pub fn new() -> Self {
+        Self { window: None }
+    }
+
+    pub fn open_window(&mut self, cx: &mut App) -> Option<Entity<NotificationsWidget>> {
+        if self.window.is_some() {
+            return self.window.as_ref().and_then(|w| {
+                cx.read_window(w, |entity, _| entity.clone()).ok()
+            });
+        }
+
+        use gpui::layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions};
+        
+        let window = cx.open_window(
+            WindowOptions {
+                window_bounds: Some(WindowBounds::Windowed(Bounds {
+                    origin: Point { x: px(3040.0), y: px(60.0) },
+                    size: Size { width: px(400.0), height: px(600.0) },
+                })),
+                titlebar: None,
+                window_background: WindowBackgroundAppearance::Transparent,
+                kind: WindowKind::LayerShell(LayerShellOptions {
+                    namespace: "nwidgets-notifications".to_string(),
+                    layer: Layer::Overlay,
+                    anchor: Anchor::TOP | Anchor::RIGHT,
+                    keyboard_interactivity: KeyboardInteractivity::None,
+                    ..Default::default()
+                }),
                 ..Default::default()
-            }),
-            ..Default::default()
-        },
-        |window, cx| {
-            let window_handle: AnyWindowHandle = window.window_handle().into();
-            cx.new(|cx| NotificationWidget::new(notification, window_handle, cx))
-        },
-    );
+            },
+            |_window, cx| cx.new(|cx| NotificationsWidget::new(cx)),
+        ).ok()?;
+        
+        let entity = cx.read_window(&window, |entity, _| entity.clone()).ok();
+        self.window = Some(window);
+        entity
+    }
+
+    pub fn close_window(&mut self, cx: &mut App) {
+        if let Some(window) = self.window.take() {
+            window.update(cx, |_, window, _| {
+                window.remove_window();
+            }).ok();
+        }
+    }
 }

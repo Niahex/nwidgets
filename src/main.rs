@@ -20,7 +20,7 @@ use services::{
 use widgets::{
     panel::Panel,
     osd::OsdWindowManager,
-    notifications::create_notification_window,
+    notifications::{NotificationsWindowManager, NotificationsStateChanged},
 };
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -128,10 +128,23 @@ fn main() {
         })
         .detach();
 
-        // Créer une fenêtre pour chaque nouvelle notification
+        // Gestionnaire de fenêtre notifications
+        let notif_manager = Arc::new(Mutex::new(NotificationsWindowManager::new()));
+        let notif_manager_clone = Arc::clone(&notif_manager);
+        
+        // Ouvrir la fenêtre à la première notification
         cx.subscribe(&notif_service, move |_service, event: &NotificationAdded, cx| {
-            println!("[MAIN] 🪟 Creating notification window");
-            create_notification_window(event.notification.clone(), 0, cx);
+            let mut manager = notif_manager_clone.lock();
+            
+            if let Some(widget) = manager.open_window(cx) {
+                let notif_manager_clone2 = Arc::clone(&notif_manager_clone);
+                cx.subscribe(&widget, move |_widget, event: &NotificationsStateChanged, cx| {
+                    if !event.has_notifications {
+                        let mut manager = notif_manager_clone2.lock();
+                        manager.close_window(cx);
+                    }
+                }).detach();
+            }
         })
         .detach();
         
