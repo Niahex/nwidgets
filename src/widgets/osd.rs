@@ -2,19 +2,28 @@ use crate::services::osd::{OsdEvent, OsdService, OsdStateChanged};
 use crate::utils::Icon;
 use gpui::prelude::*;
 use gpui::*;
+use std::sync::Arc;
 use std::time::Duration;
+use parking_lot::RwLock;
 
 pub struct OsdWidget {
     osd: Entity<OsdService>,
+    hide_generation: Arc<RwLock<u64>>,
 }
 
 impl OsdWidget {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let osd = OsdService::global(cx);
+        let hide_generation = Arc::new(RwLock::new(0u64));
+
+        let hide_generation_clone = Arc::clone(&hide_generation);
 
         // Subscribe to OSD state changes
-        cx.subscribe(&osd, |this, _osd, event: &OsdStateChanged, cx| {
+        cx.subscribe(&osd, move |this, _osd, event: &OsdStateChanged, cx| {
             if event.visible {
+                // Incrémenter la génération pour annuler les anciens timers
+                *hide_generation_clone.write() += 1;
+
                 // Auto-hide après 2.5 secondes
                 this.schedule_hide(cx);
             }
@@ -22,19 +31,28 @@ impl OsdWidget {
         })
         .detach();
 
-        Self { osd }
+        Self {
+            osd,
+            hide_generation,
+        }
     }
 
     fn schedule_hide(&self, cx: &mut Context<Self>) {
         let osd = self.osd.clone();
+        let hide_generation = Arc::clone(&self.hide_generation);
+        let current_gen = *hide_generation.read();
+
         cx.spawn(async move |_this, mut cx| {
             cx.background_executor()
                 .timer(Duration::from_millis(2500))
                 .await;
 
-            let _ = osd.update(cx, |service, cx| {
-                service.hide(cx);
-            });
+            // Ne cacher que si c'est toujours la même génération
+            if *hide_generation.read() == current_gen {
+                let _ = osd.update(cx, |service, cx| {
+                    service.hide(cx);
+                });
+            }
         })
         .detach();
     }
