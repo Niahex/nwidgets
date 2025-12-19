@@ -19,7 +19,7 @@ use services::{
 };
 use widgets::{
     panel::Panel,
-    osd::OsdWindowManager,
+    osd::OsdWidget,
     notifications::{NotificationsWindowManager, NotificationsStateChanged},
 };
 use std::path::PathBuf;
@@ -110,21 +110,38 @@ fn main() {
         )
         .unwrap();
 
-        // Gestionnaire de fenêtre OSD
-        let osd_manager = Arc::new(Mutex::new(OsdWindowManager::new()));
-        let osd_manager_clone = Arc::clone(&osd_manager);
+        // 1. Ouvrir la fenêtre OSD UNE SEULE FOIS au démarrage
+        let osd_window = cx.open_window(
+            WindowOptions {
+                window_bounds: Some(WindowBounds::Windowed(Bounds {
+                    origin: Point {
+                        x: px((3440.0 - 400.0) / 2.0),
+                        y: px(1440.0 - 64.0 - 80.0),
+                    },
+                    size: Size {
+                        width: px(400.0),
+                        height: px(64.0),
+                    },
+                })),
+                titlebar: None,
+                window_background: WindowBackgroundAppearance::Transparent,
+                kind: WindowKind::LayerShell(LayerShellOptions {
+                    namespace: "nwidgets-osd".to_string(),
+                    layer: Layer::Overlay,
+                    anchor: Anchor::BOTTOM,
+                    exclusive_zone: None, // Important pour ne pas décaler les fenêtres
+                    margin: Some((px(0.0), px(0.0), px(80.0), px(0.0))),
+                    keyboard_interactivity: KeyboardInteractivity::None,
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            |_window, cx| cx.new(|cx| OsdWidget::new(cx)),
+        ).unwrap();
 
-        // S'abonner aux changements d'état OSD pour ouvrir/fermer la fenêtre
-        cx.subscribe(&osd_service, move |_osd, event: &OsdStateChanged, cx| {
-            let mut manager = osd_manager_clone.lock();
-            
-            if event.visible && event.event.is_some() {
-                println!("[MAIN] 🪟 Opening OSD window");
-                manager.open_window(cx);
-            } else {
-                println!("[MAIN] 🚪 Closing OSD window");
-                manager.close_window(cx);
-            }
+        // 2. La visibilité est gérée par l'opacité dans le widget
+        cx.subscribe(&osd_service, move |_osd, _event: &OsdStateChanged, _cx| {
+            // Le widget se met à jour automatiquement via son abonnement
         })
         .detach();
 

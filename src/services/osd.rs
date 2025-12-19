@@ -1,6 +1,7 @@
 use gpui::*;
 use parking_lot::RwLock;
 use std::sync::Arc;
+use std::time::Duration;
 use crate::services::audio::{AudioService, AudioStateChanged};
 
 #[derive(Debug, Clone)]
@@ -19,6 +20,7 @@ pub struct OsdService {
     current_event: Arc<RwLock<Option<OsdEvent>>>,
     visible: Arc<RwLock<bool>>,
     first_event: Arc<RwLock<bool>>,
+    hide_task: Arc<RwLock<Option<Task<()>>>>,
 }
 
 impl EventEmitter<OsdStateChanged> for OsdService {}
@@ -64,22 +66,38 @@ impl OsdService {
             current_event: Arc::new(RwLock::new(None)),
             visible: Arc::new(RwLock::new(false)),
             first_event,
+            hide_task: Arc::new(RwLock::new(None)),
         }
     }
 
     pub fn show_event(&self, event: OsdEvent, cx: &mut Context<Self>) {
         *self.current_event.write() = Some(event.clone());
         *self.visible.write() = true;
+        
+        // Annuler le timer précédent s'il existe
+        *self.hide_task.write() = None;
 
         cx.emit(OsdStateChanged {
             event: Some(event),
             visible: true,
         });
+        
+        // Lancer un nouveau timer pour cacher dans 2.5s
+        let task = cx.spawn(async move |this, mut cx| {
+            cx.background_executor().timer(Duration::from_millis(2500)).await;
+            
+            this.update(cx, |service, cx| {
+                service.hide(cx);
+            }).ok();
+        });
+        
+        *self.hide_task.write() = Some(task);
         cx.notify();
     }
 
     pub fn hide(&self, cx: &mut Context<Self>) {
         *self.visible.write() = false;
+        *self.hide_task.write() = None;
 
         cx.emit(OsdStateChanged {
             event: None,

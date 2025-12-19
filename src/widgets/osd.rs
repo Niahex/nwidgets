@@ -2,73 +2,36 @@ use crate::services::osd::{OsdEvent, OsdService, OsdStateChanged};
 use crate::utils::Icon;
 use gpui::prelude::*;
 use gpui::*;
-use gpui::layer_shell::{Anchor, KeyboardInteractivity, LayerShellOptions, Layer};
-use std::sync::Arc;
-use std::time::Duration;
-use parking_lot::RwLock;
 
 pub struct OsdWidget {
     osd: Entity<OsdService>,
-    hide_generation: Arc<RwLock<u64>>,
 }
 
 impl OsdWidget {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let osd = OsdService::global(cx);
-        let hide_generation = Arc::new(RwLock::new(0u64));
-
-        let hide_generation_clone = Arc::clone(&hide_generation);
-
-        // Subscribe to OSD state changes
-        cx.subscribe(&osd, move |this, _osd, event: &OsdStateChanged, cx| {
-            if event.visible {
-                // Incrémenter la génération pour annuler les anciens timers
-                *hide_generation_clone.write() += 1;
-
-                // Auto-hide après 2.5 secondes
-                this.schedule_hide(cx);
-            }
+        
+        // On s'abonne juste pour rafraichir la vue, plus de timer ici
+        cx.subscribe(&osd, move |_this, _osd, _event: &OsdStateChanged, cx| {
             cx.notify();
         })
         .detach();
 
-        Self {
-            osd,
-            hide_generation,
-        }
-    }
-
-    fn schedule_hide(&self, cx: &mut Context<Self>) {
-        let osd = self.osd.clone();
-        let hide_generation = Arc::clone(&self.hide_generation);
-        let current_gen = *hide_generation.read();
-
-        cx.spawn(async move |_this, cx| {
-            cx.background_executor()
-                .timer(Duration::from_millis(2500))
-                .await;
-
-            // Ne cacher que si c'est toujours la même génération
-            if *hide_generation.read() == current_gen {
-                let _ = osd.update(cx, |service, cx| {
-                    service.hide(cx);
-                });
-            }
-        })
-        .detach();
+        Self { osd }
     }
 }
 
 impl Render for OsdWidget {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let osd = self.osd.read(cx);
+        let visible = osd.is_visible();
         let event = osd.current_event();
 
-        // Si pas d'événement, rendre un div vide
+        // Si on n'a jamais eu d'événement, on rend vide
         if event.is_none() {
             return div().into_any_element();
         }
-
+        
         let event = event.unwrap();
 
         // Nord colors
@@ -178,73 +141,23 @@ impl Render for OsdWidget {
             }
         };
 
-        div()
+        let base_div = div()
             .w(px(400.))
             .h(px(64.))
             .bg(bg_color)
             .rounded(px(12.))
             .px_4()
             .py_3()
-            .child(content)
-            .into_any_element()
-    }
-}
+            .child(content);
 
-// Gestionnaire global pour ouvrir/fermer la fenêtre OSD
-pub struct OsdWindowManager {
-    window_handle: Option<AnyWindowHandle>,
-}
-
-impl OsdWindowManager {
-    pub fn new() -> Self {
-        Self {
-            window_handle: None,
-        }
-    }
-
-    pub fn open_window(&mut self, cx: &mut App) {
-        if self.window_handle.is_some() {
-            return; // Déjà ouverte
-        }
-
-        let handle = cx.open_window(
-            WindowOptions {
-                window_bounds: Some(WindowBounds::Windowed(Bounds {
-                    origin: Point {
-                        x: px((3440.0 - 400.0) / 2.0),
-                        y: px(1440.0 - 64.0 - 80.0),
-                    },
-                    size: Size {
-                        width: px(400.0),
-                        height: px(64.0),
-                    },
-                })),
-                titlebar: None,
-                window_background: WindowBackgroundAppearance::Transparent,
-                kind: WindowKind::LayerShell(LayerShellOptions {
-                    namespace: "nwidgets-osd".to_string(),
-                    layer: Layer::Overlay,
-                    anchor: Anchor::BOTTOM,
-                    exclusive_zone: None,
-                    margin: Some((px(0.0), px(0.0), px(80.0), px(0.0))),
-                    keyboard_interactivity: KeyboardInteractivity::None,
-                    ..Default::default()
-                }),
-                ..Default::default()
-            },
-            |_window, cx| cx.new(|cx| OsdWidget::new(cx)),
-        );
-
-        if let Ok(handle) = handle {
-            self.window_handle = Some(handle.into());
-        }
-    }
-
-    pub fn close_window(&mut self, cx: &mut App) {
-        if let Some(handle) = self.window_handle.take() {
-            let _ = handle.update(cx, |_, window, _| {
-                window.remove_window();
-            });
+        if visible {
+            base_div.visible().into_any_element()
+        } else {
+            base_div.invisible().into_any_element()
         }
     }
 }
+
+// OsdWindowManager ne gère plus l'ouverture/fermeture, 
+// mais on garde la struct pour la gestion initiale si besoin
+pub struct OsdWindowManager;
