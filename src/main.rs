@@ -15,7 +15,7 @@ use services::{
     mpris::MprisService,
     network::NetworkService,
     notifications::{NotificationAdded, NotificationService},
-    osd::{OsdService, OsdStateChanged},
+    osd::OsdService,
     pomodoro::PomodoroService,
     systray::SystrayService,
 };
@@ -23,7 +23,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use widgets::{
     notifications::{NotificationsStateChanged, NotificationsWindowManager},
-    osd::OsdWidget,
     panel::Panel,
 };
 
@@ -110,42 +109,8 @@ fn main() {
             )
             .unwrap();
 
-            // 1. Ouvrir la fenêtre OSD UNE SEULE FOIS au démarrage
-            let osd_window = cx
-                .open_window(
-                    WindowOptions {
-                        window_bounds: Some(WindowBounds::Windowed(Bounds {
-                            origin: Point {
-                                x: px((3440.0 - 400.0) / 2.0),
-                                y: px(1440.0 - 64.0 - 80.0),
-                            },
-                            size: Size {
-                                width: px(400.0),
-                                height: px(64.0),
-                            },
-                        })),
-                        titlebar: None,
-                        window_background: WindowBackgroundAppearance::Transparent,
-                        kind: WindowKind::LayerShell(LayerShellOptions {
-                            namespace: "nwidgets-osd".to_string(),
-                            layer: Layer::Overlay,
-                            anchor: Anchor::BOTTOM,
-                            exclusive_zone: None, // Important pour ne pas décaler les fenêtres
-                            margin: Some((px(0.0), px(0.0), px(80.0), px(0.0))),
-                            keyboard_interactivity: KeyboardInteractivity::None,
-                            ..Default::default()
-                        }),
-                        ..Default::default()
-                    },
-                    |_window, cx| cx.new(|cx| OsdWidget::new(cx)),
-                )
-                .unwrap();
-
-            // 2. La visibilité est gérée par l'opacité dans le widget
-            cx.subscribe(&osd_service, move |_osd, _event: &OsdStateChanged, _cx| {
-                // Le widget se met à jour automatiquement via son abonnement
-            })
-            .detach();
+            // Le service OSD gère maintenant sa propre fenêtre
+            let _osd_service = osd_service;
 
             // Gestionnaire de fenêtre notifications
             let notif_manager = Arc::new(Mutex::new(NotificationsWindowManager::new()));

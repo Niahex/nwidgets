@@ -1,5 +1,6 @@
 use crate::services::audio::{AudioService, AudioStateChanged};
 use gpui::*;
+use gpui::layer_shell::{Anchor, KeyboardInteractivity, LayerShellOptions, Layer};
 use parking_lot::RwLock;
 use std::sync::Arc;
 use std::time::Duration;
@@ -21,6 +22,7 @@ pub struct OsdService {
     visible: Arc<RwLock<bool>>,
     first_event: Arc<RwLock<bool>>,
     hide_task: Arc<RwLock<Option<Task<()>>>>,
+    window_handle: Arc<RwLock<Option<AnyWindowHandle>>>,
 }
 
 impl EventEmitter<OsdStateChanged> for OsdService {}
@@ -70,6 +72,7 @@ impl OsdService {
             visible: Arc::new(RwLock::new(false)),
             first_event,
             hide_task: Arc::new(RwLock::new(None)),
+            window_handle: Arc::new(RwLock::new(None)),
         }
     }
 
@@ -79,6 +82,9 @@ impl OsdService {
 
         // Annuler le timer précédent s'il existe
         *self.hide_task.write() = None;
+
+        // Ouvrir la fenêtre si elle n'existe pas
+        self.open_window(cx);
 
         cx.emit(OsdStateChanged {
             event: Some(event),
@@ -105,11 +111,63 @@ impl OsdService {
         *self.visible.write() = false;
         *self.hide_task.write() = None;
 
+        // Fermer la fenêtre
+        self.close_window(cx);
+
         cx.emit(OsdStateChanged {
             event: None,
             visible: false,
         });
         cx.notify();
+    }
+
+    fn open_window(&self, cx: &mut Context<Self>) {
+        if self.window_handle.read().is_some() {
+            return; // Déjà ouverte
+        }
+
+        let handle = cx.open_window(
+            WindowOptions {
+                window_bounds: Some(WindowBounds::Windowed(Bounds {
+                    origin: Point {
+                        x: px((3440.0 - 400.0) / 2.0),
+                        y: px(1440.0 - 64.0 - 80.0),
+                    },
+                    size: Size {
+                        width: px(400.0),
+                        height: px(64.0),
+                    },
+                })),
+                titlebar: None,
+                window_background: WindowBackgroundAppearance::Transparent,
+                kind: WindowKind::LayerShell(LayerShellOptions {
+                    namespace: "nwidgets-osd".to_string(),
+                    layer: Layer::Overlay,
+                    anchor: Anchor::BOTTOM,
+                    exclusive_zone: None,
+                    margin: Some((px(0.0), px(0.0), px(80.0), px(0.0))),
+                    keyboard_interactivity: KeyboardInteractivity::None,
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            |_window, cx| {
+                use crate::widgets::osd::OsdWidget;
+                cx.new(|cx| OsdWidget::new(cx))
+            },
+        );
+
+        if let Ok(handle) = handle {
+            *self.window_handle.write() = Some(handle.into());
+        }
+    }
+
+    fn close_window(&self, cx: &mut Context<Self>) {
+        if let Some(handle) = self.window_handle.write().take() {
+            let _ = handle.update(cx, |_, window, _| {
+                window.remove_window();
+            });
+        }
     }
 
     pub fn current_event(&self) -> Option<OsdEvent> {
