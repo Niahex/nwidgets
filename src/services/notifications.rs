@@ -1,8 +1,8 @@
 use gpui::prelude::*;
 use gpui::{App, Context, Entity, EventEmitter, Global};
 use parking_lot::Mutex;
-use std::sync::Arc;
 use std::collections::{HashMap, VecDeque};
+use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use zbus::Connection;
 
@@ -195,7 +195,9 @@ impl NotificationService {
                     for notification in notifs.iter().skip(last_count) {
                         let notif = notification.clone();
                         let _ = this.update(cx, |this, cx| {
-                            cx.emit(NotificationAdded { notification: notif });
+                            cx.emit(NotificationAdded {
+                                notification: notif,
+                            });
                             cx.notify();
                         });
                     }
@@ -231,10 +233,7 @@ impl NotificationService {
     ) -> Result<(), Box<dyn std::error::Error>> {
         let connection = Connection::session().await?;
 
-        let server = NotificationServer {
-            next_id: 0,
-            state,
-        };
+        let server = NotificationServer { next_id: 0, state };
 
         connection
             .object_server()

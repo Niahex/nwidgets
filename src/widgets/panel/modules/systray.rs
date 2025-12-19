@@ -1,6 +1,6 @@
+use crate::services::systray::{SystrayChanged, SystrayService};
 use gpui::prelude::*;
 use gpui::*;
-use crate::services::systray::{SystrayChanged, SystrayService};
 
 pub struct SystrayModule {
     systray: Entity<SystrayService>,

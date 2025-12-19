@@ -1,7 +1,9 @@
+use crate::services::pomodoro::{
+    PomodoroPhase, PomodoroService, PomodoroStateChanged, PomodoroStatus,
+};
+use crate::utils::Icon;
 use gpui::prelude::*;
 use gpui::*;
-use crate::services::pomodoro::{PomodoroPhase, PomodoroService, PomodoroStateChanged, PomodoroStatus};
-use crate::utils::Icon;
 
 pub struct PomodoroModule {
     pomodoro: Entity<PomodoroService>,
@@ -11,9 +13,12 @@ impl PomodoroModule {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let pomodoro = PomodoroService::global(cx);
 
-        cx.subscribe(&pomodoro, |_this, _pomodoro, _event: &PomodoroStateChanged, cx| {
-            cx.notify();
-        })
+        cx.subscribe(
+            &pomodoro,
+            |_this, _pomodoro, _event: &PomodoroStateChanged, cx| {
+                cx.notify();
+            },
+        )
         .detach();
 
         Self { pomodoro }
@@ -33,37 +38,28 @@ impl Render for PomodoroModule {
         let pomodoro_middle = self.pomodoro.clone();
 
         let element = match status {
-            PomodoroStatus::Idle => {
-                div()
-                    .id("pomodoro-idle")
-                    .cursor_pointer()
-                    .on_click(move |_event, _window, cx| {
-                        pomodoro_left.update(cx, |service, cx| {
-                            service.start_work(cx);
-                        });
-                    })
-                    .child(
-                        Icon::new("play")
-                            .size(px(16.))
-                            .color(rgb(0xeceff4))
-                    )
-            }
-            PomodoroStatus::Paused { .. } => {
-                div()
-                    .id("pomodoro-paused")
-                    .cursor_pointer()
-                    .on_click(move |_event, _window, cx| {
-                        pomodoro_left.update(cx, |service, cx| {
-                            service.resume(cx);
-                        });
-                    })
-                    .child(
-                        Icon::new("pause")
-                            .size(px(16.))
-                            .color(rgb(0xeceff4))
-                    )
-            }
-            PomodoroStatus::Running { phase, remaining_secs } => {
+            PomodoroStatus::Idle => div()
+                .id("pomodoro-idle")
+                .cursor_pointer()
+                .on_click(move |_event, _window, cx| {
+                    pomodoro_left.update(cx, |service, cx| {
+                        service.start_work(cx);
+                    });
+                })
+                .child(Icon::new("play").size(px(16.)).color(rgb(0xeceff4))),
+            PomodoroStatus::Paused { .. } => div()
+                .id("pomodoro-paused")
+                .cursor_pointer()
+                .on_click(move |_event, _window, cx| {
+                    pomodoro_left.update(cx, |service, cx| {
+                        service.resume(cx);
+                    });
+                })
+                .child(Icon::new("pause").size(px(16.)).color(rgb(0xeceff4))),
+            PomodoroStatus::Running {
+                phase,
+                remaining_secs,
+            } => {
                 let color = match phase {
                     PomodoroPhase::Work => rgb(0xbf616a),
                     PomodoroPhase::ShortBreak => rgb(0xa3be8c),

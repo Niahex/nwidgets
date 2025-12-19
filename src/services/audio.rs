@@ -59,8 +59,7 @@ impl AudioService {
 
         // Spawn background task to monitor PipeWire events with pw-mon
         cx.spawn(async move |this, mut cx| {
-            Self::monitor_audio_events(this, state_clone, sinks_clone, sources_clone, &mut cx)
-                .await
+            Self::monitor_audio_events(this, state_clone, sinks_clone, sources_clone, &mut cx).await
         })
         .detach();
 
@@ -87,7 +86,11 @@ impl AudioService {
         let volume = volume.min(100);
         std::thread::spawn(move || {
             let _ = Command::new("wpctl")
-                .args(["set-volume", "@DEFAULT_AUDIO_SINK@", &format!("{}%", volume)])
+                .args([
+                    "set-volume",
+                    "@DEFAULT_AUDIO_SINK@",
+                    &format!("{}%", volume),
+                ])
                 .status();
         });
     }
@@ -210,8 +213,7 @@ impl AudioService {
                 let devices_changed = {
                     let mut current_sinks = sinks.write();
                     let mut current_sources = sources.write();
-                    let changed =
-                        *current_sinks != new_sinks || *current_sources != new_sources;
+                    let changed = *current_sinks != new_sinks || *current_sources != new_sources;
                     if changed {
                         *current_sinks = new_sinks;
                         *current_sources = new_sources;

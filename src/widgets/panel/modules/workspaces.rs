@@ -1,6 +1,6 @@
+use crate::services::hyprland::{HyprlandService, WorkspaceChanged};
 use gpui::prelude::*;
 use gpui::*;
-use crate::services::hyprland::{HyprlandService, WorkspaceChanged};
 
 pub struct WorkspacesModule {
     hyprland: Entity<HyprlandService>,
@@ -11,9 +11,12 @@ impl WorkspacesModule {
         let hyprland = HyprlandService::global(cx);
 
         // Subscribe to workspace changes
-        cx.subscribe(&hyprland, |_this, _hyprland, _event: &WorkspaceChanged, cx| {
-            cx.notify(); // Trigger re-render
-        })
+        cx.subscribe(
+            &hyprland,
+            |_this, _hyprland, _event: &WorkspaceChanged, cx| {
+                cx.notify(); // Trigger re-render
+            },
+        )
         .detach();
 
         Self { hyprland }
@@ -46,7 +49,12 @@ impl Render for WorkspacesModule {
                 let display_name = if ws.name.parse::<i32>().is_ok() {
                     ws.name.clone()
                 } else {
-                    ws.name.chars().next().unwrap_or('?').to_uppercase().to_string()
+                    ws.name
+                        .chars()
+                        .next()
+                        .unwrap_or('?')
+                        .to_uppercase()
+                        .to_string()
                 };
 
                 div()
@@ -55,7 +63,11 @@ impl Render for WorkspacesModule {
                     .py_1()
                     .rounded_md()
                     .text_sm()
-                    .font_weight(if is_active { FontWeight::BOLD } else { FontWeight::MEDIUM })
+                    .font_weight(if is_active {
+                        FontWeight::BOLD
+                    } else {
+                        FontWeight::MEDIUM
+                    })
                     .when(is_active, |this| {
                         this.bg(rgba(0x88c0d033)) // frost1 with opacity
                             .text_color(frost1)
@@ -63,7 +75,8 @@ impl Render for WorkspacesModule {
                     .when(!is_active, |this| {
                         this.text_color(rgba(0xd8dee980)) // snow0 with opacity
                             .hover(|style| {
-                                style.bg(rgba(0x88c0d01a)) // frost1 hover
+                                style
+                                    .bg(rgba(0x88c0d01a)) // frost1 hover
                                     .text_color(rgba(0xd8dee9cc))
                             })
                     })

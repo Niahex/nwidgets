@@ -126,10 +126,7 @@ impl RenderOnce for Icon {
         if self.preserve_colors {
             // Utiliser img() pour préserver les couleurs originales du SVG
             let path: Arc<Path> = Arc::from(PathBuf::from(path_str.as_ref()));
-            img(path)
-                .size(self.size)
-                .flex_none()
-                .into_any_element()
+            img(path).size(self.size).flex_none().into_any_element()
         } else {
             // Utiliser svg() pour les icônes monochromes avec recoloriage
             let mut svg_element = svg().path(path_str).size(self.size);

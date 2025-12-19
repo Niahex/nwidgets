@@ -14,8 +14,14 @@ pub enum PomodoroPhase {
 #[derive(Clone, Debug, PartialEq)]
 pub enum PomodoroStatus {
     Idle,
-    Running { phase: PomodoroPhase, remaining_secs: u32 },
-    Paused { phase: PomodoroPhase, remaining_secs: u32 },
+    Running {
+        phase: PomodoroPhase,
+        remaining_secs: u32,
+    },
+    Paused {
+        phase: PomodoroPhase,
+        remaining_secs: u32,
+    },
 }
 
 #[derive(Clone)]
@@ -25,7 +31,7 @@ pub struct PomodoroStateChanged {
 
 pub struct PomodoroService {
     status: Arc<RwLock<PomodoroStatus>>,
-    work_duration: u32,      // in seconds
+    work_duration: u32, // in seconds
     short_break_duration: u32,
     long_break_duration: u32,
     pomodoros_until_long_break: u32,
@@ -101,8 +107,15 @@ impl PomodoroService {
 
     pub fn pause(&self, cx: &mut Context<Self>) {
         let current_status = self.status.read().clone();
-        if let PomodoroStatus::Running { phase, remaining_secs } = current_status {
-            *self.status.write() = PomodoroStatus::Paused { phase, remaining_secs };
+        if let PomodoroStatus::Running {
+            phase,
+            remaining_secs,
+        } = current_status
+        {
+            *self.status.write() = PomodoroStatus::Paused {
+                phase,
+                remaining_secs,
+            };
             *self.start_time.write() = None;
             cx.emit(PomodoroStateChanged {
                 status: self.status(),
@@ -113,8 +126,15 @@ impl PomodoroService {
 
     pub fn resume(&self, cx: &mut Context<Self>) {
         let current_status = self.status.read().clone();
-        if let PomodoroStatus::Paused { phase, remaining_secs } = current_status {
-            *self.status.write() = PomodoroStatus::Running { phase, remaining_secs };
+        if let PomodoroStatus::Paused {
+            phase,
+            remaining_secs,
+        } = current_status
+        {
+            *self.status.write() = PomodoroStatus::Running {
+                phase,
+                remaining_secs,
+            };
             *self.start_time.write() = Some(Instant::now());
             cx.emit(PomodoroStateChanged {
                 status: self.status(),
@@ -139,9 +159,7 @@ impl PomodoroService {
         cx: &mut AsyncApp,
     ) {
         loop {
-            cx.background_executor()
-                .timer(Duration::from_secs(1))
-                .await;
+            cx.background_executor().timer(Duration::from_secs(1)).await;
 
             let should_update = {
                 let current_status = status.read().clone();
@@ -152,7 +170,11 @@ impl PomodoroService {
                 if let Ok(()) = this.update(cx, |service, cx| {
                     let mut current_status = service.status.write();
 
-                    if let PomodoroStatus::Running { phase, remaining_secs } = &*current_status {
+                    if let PomodoroStatus::Running {
+                        phase,
+                        remaining_secs,
+                    } = &*current_status
+                    {
                         if *remaining_secs > 0 {
                             *current_status = PomodoroStatus::Running {
                                 phase: phase.clone(),

@@ -1,10 +1,12 @@
-use crate::services::notifications::{Notification, NotificationService, NotificationAdded, NotificationsEmpty};
+use crate::services::notifications::{
+    Notification, NotificationAdded, NotificationService, NotificationsEmpty,
+};
 use crate::utils::Icon;
 use gpui::prelude::*;
 use gpui::*;
-use std::time::{SystemTime, UNIX_EPOCH, Duration};
 use parking_lot::RwLock;
 use std::sync::Arc;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 #[derive(Clone)]
 pub struct NotificationsStateChanged {
@@ -25,46 +27,49 @@ impl NotificationsWidget {
 
         // S'abonner aux nouvelles notifications
         let notifications_clone = Arc::clone(&notifications);
-        cx.subscribe(&service, move |this, _service, event: &NotificationAdded, cx| {
-            let mut notifs = notifications_clone.write();
-            
-            // Ajouter en début de liste (plus récent en haut)
-            notifs.insert(0, event.notification.clone());
-            notifs.truncate(10); // Max 10 notifications
-            
-            drop(notifs);
-            cx.emit(NotificationsStateChanged { has_notifications: true });
-            cx.notify();
-        })
+        cx.subscribe(
+            &service,
+            move |this, _service, event: &NotificationAdded, cx| {
+                let mut notifs = notifications_clone.write();
+
+                // Ajouter en début de liste (plus récent en haut)
+                notifs.insert(0, event.notification.clone());
+                notifs.truncate(10); // Max 10 notifications
+
+                drop(notifs);
+                cx.emit(NotificationsStateChanged {
+                    has_notifications: true,
+                });
+                cx.notify();
+            },
+        )
         .detach();
 
         // Timer pour nettoyer les notifications expirées
         let notifications_clone = Arc::clone(&notifications);
-        cx.spawn(async move |this, mut cx| {
-            loop {
-                cx.background_executor()
-                    .timer(Duration::from_secs(1))
-                    .await;
+        cx.spawn(async move |this, mut cx| loop {
+            cx.background_executor().timer(Duration::from_secs(1)).await;
 
-                let now = SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap()
-                    .as_secs();
+            let now = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs();
 
-                let mut notifs = notifications_clone.write();
-                let old_count = notifs.len();
-                notifs.retain(|n| now - n.timestamp < 5);
+            let mut notifs = notifications_clone.write();
+            let old_count = notifs.len();
+            notifs.retain(|n| now - n.timestamp < 5);
 
-                if notifs.len() != old_count {
-                    let is_empty = notifs.is_empty();
-                    drop(notifs);
-                    let _ = this.update(cx, |_, cx| {
-                        if is_empty {
-                            cx.emit(NotificationsStateChanged { has_notifications: false });
-                        }
-                        cx.notify();
-                    });
-                }
+            if notifs.len() != old_count {
+                let is_empty = notifs.is_empty();
+                drop(notifs);
+                let _ = this.update(cx, |_, cx| {
+                    if is_empty {
+                        cx.emit(NotificationsStateChanged {
+                            has_notifications: false,
+                        });
+                    }
+                    cx.notify();
+                });
             }
         })
         .detach();
@@ -115,45 +120,43 @@ impl Render for NotificationsWidget {
                                     .flex()
                                     .gap_2()
                                     .items_center()
-                                    .child(
-                                        if !notif.app_icon.is_empty() {
-                                            Icon::new(&notif.app_icon)
-                                                .size(px(20.0))
-                                                .color(text_color)
-                                                .preserve_colors(true)
-                                                .into_any_element()
-                                        } else {
-                                            div().size_4().into_any_element()
-                                        }
-                                    )
+                                    .child(if !notif.app_icon.is_empty() {
+                                        Icon::new(&notif.app_icon)
+                                            .size(px(20.0))
+                                            .color(text_color)
+                                            .preserve_colors(true)
+                                            .into_any_element()
+                                    } else {
+                                        div().size_4().into_any_element()
+                                    })
                                     .child(
                                         div()
                                             .text_sm()
                                             .font_weight(FontWeight::SEMIBOLD)
                                             .text_color(text_color)
-                                            .child(notif.app_name.clone())
-                                    )
+                                            .child(notif.app_name.clone()),
+                                    ),
                             )
                             .child(
                                 div()
                                     .text_xs()
                                     .text_color(time_color)
-                                    .child(format_time_ago(notif.timestamp))
-                            )
+                                    .child(format_time_ago(notif.timestamp)),
+                            ),
                     )
                     .child(
                         div()
                             .text_base()
                             .font_weight(FontWeight::BOLD)
                             .text_color(text_color)
-                            .child(notif.summary.clone())
+                            .child(notif.summary.clone()),
                     )
                     .when(!notif.body.is_empty(), |this| {
                         this.child(
                             div()
                                 .text_sm()
                                 .text_color(body_color)
-                                .child(notif.body.clone())
+                                .child(notif.body.clone()),
                         )
                     })
             }))
@@ -188,33 +191,42 @@ impl NotificationsWindowManager {
 
     pub fn open_window(&mut self, cx: &mut App) -> Option<Entity<NotificationsWidget>> {
         if self.window.is_some() {
-            return self.window.as_ref().and_then(|w| {
-                cx.read_window(w, |entity, _| entity.clone()).ok()
-            });
+            return self
+                .window
+                .as_ref()
+                .and_then(|w| cx.read_window(w, |entity, _| entity.clone()).ok());
         }
 
         use gpui::layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions};
-        
-        let window = cx.open_window(
-            WindowOptions {
-                window_bounds: Some(WindowBounds::Windowed(Bounds {
-                    origin: Point { x: px(3040.0), y: px(60.0) },
-                    size: Size { width: px(400.0), height: px(600.0) },
-                })),
-                titlebar: None,
-                window_background: WindowBackgroundAppearance::Transparent,
-                kind: WindowKind::LayerShell(LayerShellOptions {
-                    namespace: "nwidgets-notifications".to_string(),
-                    layer: Layer::Overlay,
-                    anchor: Anchor::TOP | Anchor::RIGHT,
-                    keyboard_interactivity: KeyboardInteractivity::None,
+
+        let window = cx
+            .open_window(
+                WindowOptions {
+                    window_bounds: Some(WindowBounds::Windowed(Bounds {
+                        origin: Point {
+                            x: px(3040.0),
+                            y: px(60.0),
+                        },
+                        size: Size {
+                            width: px(400.0),
+                            height: px(600.0),
+                        },
+                    })),
+                    titlebar: None,
+                    window_background: WindowBackgroundAppearance::Transparent,
+                    kind: WindowKind::LayerShell(LayerShellOptions {
+                        namespace: "nwidgets-notifications".to_string(),
+                        layer: Layer::Overlay,
+                        anchor: Anchor::TOP | Anchor::RIGHT,
+                        keyboard_interactivity: KeyboardInteractivity::None,
+                        ..Default::default()
+                    }),
                     ..Default::default()
-                }),
-                ..Default::default()
-            },
-            |_window, cx| cx.new(|cx| NotificationsWidget::new(cx)),
-        ).ok()?;
-        
+                },
+                |_window, cx| cx.new(|cx| NotificationsWidget::new(cx)),
+            )
+            .ok()?;
+
         let entity = cx.read_window(&window, |entity, _| entity.clone()).ok();
         self.window = Some(window);
         entity
@@ -222,9 +234,11 @@ impl NotificationsWindowManager {
 
     pub fn close_window(&mut self, cx: &mut App) {
         if let Some(window) = self.window.take() {
-            window.update(cx, |_, window, _| {
-                window.remove_window();
-            }).ok();
+            window
+                .update(cx, |_, window, _| {
+                    window.remove_window();
+                })
+                .ok();
         }
     }
 }

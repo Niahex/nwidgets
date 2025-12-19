@@ -54,9 +54,7 @@ impl BluetoothService {
         cx: &mut AsyncApp,
     ) {
         loop {
-            cx.background_executor()
-                .timer(Duration::from_secs(2))
-                .await;
+            cx.background_executor().timer(Duration::from_secs(2)).await;
 
             let new_state = Self::fetch_bluetooth_state();
 

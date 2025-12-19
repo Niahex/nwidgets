@@ -14,19 +14,17 @@ impl DateTimeModule {
         let date = now.format("%a %d %b").to_string().into();
 
         // Update every 60 seconds
-        cx.spawn(async move |this, cx| {
-            loop {
-                cx.background_executor()
-                    .timer(Duration::from_secs(60))
-                    .await;
+        cx.spawn(async move |this, cx| loop {
+            cx.background_executor()
+                .timer(Duration::from_secs(60))
+                .await;
 
-                let now = chrono::Local::now();
-                if let Ok(()) = this.update(cx, |this, cx| {
-                    this.time = now.format("%H:%M").to_string().into();
-                    this.date = now.format("%a %d %b").to_string().into();
-                    cx.notify();
-                }) {}
-            }
+            let now = chrono::Local::now();
+            if let Ok(()) = this.update(cx, |this, cx| {
+                this.time = now.format("%H:%M").to_string().into();
+                this.date = now.format("%a %d %b").to_string().into();
+                cx.notify();
+            }) {}
         })
         .detach();
 
@@ -45,13 +43,13 @@ impl Render for DateTimeModule {
                 div()
                     .text_sm()
                     .font_weight(FontWeight::SEMIBOLD)
-                    .child(self.time.clone())
+                    .child(self.time.clone()),
             )
             .child(
                 div()
                     .text_xs()
                     .text_color(rgb(0xd8dee9)) // $snow0
-                    .child(self.date.clone())
+                    .child(self.date.clone()),
             )
     }
 }

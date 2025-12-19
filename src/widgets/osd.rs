@@ -10,7 +10,7 @@ pub struct OsdWidget {
 impl OsdWidget {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let osd = OsdService::global(cx);
-        
+
         // On s'abonne juste pour rafraichir la vue, plus de timer ici
         cx.subscribe(&osd, move |_this, _osd, _event: &OsdStateChanged, cx| {
             cx.notify();
@@ -31,7 +31,7 @@ impl Render for OsdWidget {
         if event.is_none() {
             return div().into_any_element();
         }
-        
+
         let event = event.unwrap();
 
         // Nord colors
@@ -46,11 +46,7 @@ impl Render for OsdWidget {
                     .flex()
                     .gap_3()
                     .items_center()
-                    .child(
-                        Icon::new(icon_name)
-                            .size(px(20.))
-                            .color(text_color)
-                    )
+                    .child(Icon::new(icon_name).size(px(20.)).color(text_color))
                     .child(
                         // Barre de progression
                         div()
@@ -66,7 +62,7 @@ impl Render for OsdWidget {
                                     .w_full()
                                     .h_full()
                                     .bg(progress_bg)
-                                    .rounded(px(3.))
+                                    .rounded(px(3.)),
                             )
                             .child(
                                 // Foreground (filled)
@@ -77,33 +73,25 @@ impl Render for OsdWidget {
                                     .w(relative(level as f32 / 100.0))
                                     .h_full()
                                     .bg(progress_fg)
-                                    .rounded(px(3.))
-                            )
+                                    .rounded(px(3.)),
+                            ),
                     )
                     .child(
                         div()
                             .text_size(px(18.))
                             .font_weight(FontWeight::SEMIBOLD)
                             .text_color(text_color)
-                            .child(format!("{}", level))
+                            .child(format!("{}", level)),
                     )
             }
             OsdEvent::Microphone(muted) => {
-                let icon_name = if muted {
-                    "source-muted"
-                } else {
-                    "source-high"
-                };
+                let icon_name = if muted { "source-muted" } else { "source-high" };
 
                 div()
                     .flex()
                     .gap_3()
                     .items_center()
-                    .child(
-                        Icon::new(icon_name)
-                            .size(px(20.))
-                            .color(text_color)
-                    )
+                    .child(Icon::new(icon_name).size(px(20.)).color(text_color))
                     .child(
                         // Barre de progression
                         div()
@@ -118,7 +106,7 @@ impl Render for OsdWidget {
                                     .w_full()
                                     .h_full()
                                     .bg(progress_bg)
-                                    .rounded(px(3.))
+                                    .rounded(px(3.)),
                             )
                             .child(
                                 div()
@@ -128,15 +116,15 @@ impl Render for OsdWidget {
                                     .w(relative(0.89))
                                     .h_full()
                                     .bg(progress_fg)
-                                    .rounded(px(3.))
-                            )
+                                    .rounded(px(3.)),
+                            ),
                     )
                     .child(
                         div()
                             .text_size(px(18.))
                             .font_weight(FontWeight::SEMIBOLD)
                             .text_color(text_color)
-                            .child("89")
+                            .child("89"),
                     )
             }
         };
@@ -158,6 +146,6 @@ impl Render for OsdWidget {
     }
 }
 
-// OsdWindowManager ne gère plus l'ouverture/fermeture, 
+// OsdWindowManager ne gère plus l'ouverture/fermeture,
 // mais on garde la struct pour la gestion initiale si besoin
 pub struct OsdWindowManager;

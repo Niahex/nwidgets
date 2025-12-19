@@ -90,10 +90,8 @@ impl NetworkService {
         let state = Arc::new(RwLock::new(Self::fetch_network_state()));
         let state_clone = Arc::clone(&state);
 
-        cx.spawn(async move |this, mut cx| {
-            Self::monitor_network(this, state_clone, &mut cx).await
-        })
-        .detach();
+        cx.spawn(async move |this, mut cx| Self::monitor_network(this, state_clone, &mut cx).await)
+            .detach();
 
         Self { state }
     }
@@ -108,9 +106,7 @@ impl NetworkService {
         cx: &mut AsyncApp,
     ) {
         loop {
-            cx.background_executor()
-                .timer(Duration::from_secs(3))
-                .await;
+            cx.background_executor().timer(Duration::from_secs(3)).await;
 
             let new_state = Self::fetch_network_state();
 

@@ -2,7 +2,7 @@ mod modules;
 
 pub use modules::{
     ActiveWindowModule, BluetoothModule, DateTimeModule, MprisModule, NetworkModule,
-    PomodoroModule, SinkModule, SourceModule, SystrayModule, WorkspacesModule
+    PomodoroModule, SinkModule, SourceModule, SystrayModule, WorkspacesModule,
 };
 
 use gpui::*;
@@ -58,7 +58,7 @@ impl Render for Panel {
                     .gap_2()
                     .items_center()
                     .h_full()
-                    .child(self.active_window.clone())
+                    .child(self.active_window.clone()),
             )
             // Center section - takes remaining space
             .child(
@@ -71,7 +71,7 @@ impl Render for Panel {
                     .h_full()
                     .child(self.pomodoro.clone())
                     .child(self.workspaces.clone())
-                    .child(self.mpris.clone())
+                    .child(self.mpris.clone()),
             )
             // Right section
             .child(
@@ -80,11 +80,15 @@ impl Render for Panel {
                     .gap_0()
                     .items_center()
                     .h_full()
+                    .child(div().flex().items_center().child(self.systray.clone()))
                     .child(
                         div()
                             .flex()
                             .items_center()
-                            .child(self.systray.clone())
+                            .justify_center()
+                            .w(px(32.))
+                            .h(px(32.))
+                            .child(self.bluetooth.clone()),
                     )
                     .child(
                         div()
@@ -93,7 +97,7 @@ impl Render for Panel {
                             .justify_center()
                             .w(px(32.))
                             .h(px(32.))
-                            .child(self.bluetooth.clone())
+                            .child(self.network.clone()),
                     )
                     .child(
                         div()
@@ -102,7 +106,7 @@ impl Render for Panel {
                             .justify_center()
                             .w(px(32.))
                             .h(px(32.))
-                            .child(self.network.clone())
+                            .child(self.source.clone()),
                     )
                     .child(
                         div()
@@ -111,24 +115,15 @@ impl Render for Panel {
                             .justify_center()
                             .w(px(32.))
                             .h(px(32.))
-                            .child(self.source.clone())
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .w(px(32.))
-                            .h(px(32.))
-                            .child(self.sink.clone())
+                            .child(self.sink.clone()),
                     )
                     .child(
                         div()
                             .flex()
                             .items_center()
                             .px_3()
-                            .child(self.datetime.clone())
-                    )
+                            .child(self.datetime.clone()),
+                    ),
             )
     }
 }

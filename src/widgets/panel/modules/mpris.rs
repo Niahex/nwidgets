@@ -1,8 +1,8 @@
+use crate::services::mpris::{MprisService, MprisStateChanged, PlaybackStatus};
 use gpui::prelude::*;
 use gpui::*;
-use crate::services::mpris::{MprisService, MprisStateChanged, PlaybackStatus};
-use std::time::{Duration, Instant};
 use std::cell::Cell;
+use std::time::{Duration, Instant};
 
 pub struct MprisModule {
     mpris: Entity<MprisService>,
@@ -31,7 +31,10 @@ impl Render for MprisModule {
 
         if let Some(player) = player {
             let mpris = self.mpris.clone();
-            let title = player.metadata.title.unwrap_or_else(|| "No title".to_string());
+            let title = player
+                .metadata
+                .title
+                .unwrap_or_else(|| "No title".to_string());
             let artist = player.metadata.artist;
             let is_paused = player.status == PlaybackStatus::Paused;
 
@@ -51,9 +54,7 @@ impl Render for MprisModule {
                 .when(is_paused, |this| {
                     this.text_color(rgba(0xd8dee980)) // Dimmed when paused
                 })
-                .when(!is_paused, |this| {
-                    this.text_color(rgb(0xeceff4))
-                })
+                .when(!is_paused, |this| this.text_color(rgb(0xeceff4)))
                 .hover(|style| style.bg(rgba(0x4c566a40)))
                 // Click to play/pause
                 .on_click(move |_event, _window, cx| {
@@ -94,7 +95,7 @@ impl Render for MprisModule {
                         .font_weight(FontWeight::SEMIBOLD)
                         .overflow_hidden()
                         .text_ellipsis()
-                        .child(title)
+                        .child(title),
                 )
                 .when_some(artist, |this, artist_name| {
                     this.child(
@@ -103,7 +104,7 @@ impl Render for MprisModule {
                             .text_color(rgba(0xd8dee980)) // $snow0 with opacity
                             .overflow_hidden()
                             .text_ellipsis()
-                            .child(artist_name)
+                            .child(artist_name),
                     )
                 })
                 .into_any_element()

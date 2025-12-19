@@ -1,13 +1,13 @@
+use crate::services::audio::{AudioService, AudioStateChanged};
 use gpui::*;
 use parking_lot::RwLock;
 use std::sync::Arc;
 use std::time::Duration;
-use crate::services::audio::{AudioService, AudioStateChanged};
 
 #[derive(Debug, Clone)]
 pub enum OsdEvent {
     Volume(String, u8, bool), // icon_name, volume %, muted
-    Microphone(bool),          // muted
+    Microphone(bool),         // muted
 }
 
 #[derive(Clone)]
@@ -32,34 +32,37 @@ impl OsdService {
         let first_event_clone = Arc::clone(&first_event);
 
         // S'abonner aux changements audio pour afficher l'OSD automatiquement
-        cx.subscribe(&audio, move |this, _audio, event: &AudioStateChanged, cx| {
-            // Ignorer le premier événement (état initial)
-            if *first_event_clone.read() {
-                *first_event_clone.write() = false;
-                return;
-            }
+        cx.subscribe(
+            &audio,
+            move |this, _audio, event: &AudioStateChanged, cx| {
+                // Ignorer le premier événement (état initial)
+                if *first_event_clone.read() {
+                    *first_event_clone.write() = false;
+                    return;
+                }
 
-            let state = &event.state;
+                let state = &event.state;
 
-            // Déterminer l'icône en fonction du volume et du mute
-            let icon_name = if state.sink_muted {
-                "sink-muted".to_string()
-            } else if state.sink_volume == 0 {
-                "sink-zero".to_string()
-            } else if state.sink_volume < 33 {
-                "sink-low".to_string()
-            } else if state.sink_volume < 66 {
-                "sink-medium".to_string()
-            } else {
-                "sink-high".to_string()
-            };
+                // Déterminer l'icône en fonction du volume et du mute
+                let icon_name = if state.sink_muted {
+                    "sink-muted".to_string()
+                } else if state.sink_volume == 0 {
+                    "sink-zero".to_string()
+                } else if state.sink_volume < 33 {
+                    "sink-low".to_string()
+                } else if state.sink_volume < 66 {
+                    "sink-medium".to_string()
+                } else {
+                    "sink-high".to_string()
+                };
 
-            // Afficher l'OSD pour le volume
-            this.show_event(
-                OsdEvent::Volume(icon_name, state.sink_volume, state.sink_muted),
-                cx
-            );
-        })
+                // Afficher l'OSD pour le volume
+                this.show_event(
+                    OsdEvent::Volume(icon_name, state.sink_volume, state.sink_muted),
+                    cx,
+                );
+            },
+        )
         .detach();
 
         Self {
@@ -73,7 +76,7 @@ impl OsdService {
     pub fn show_event(&self, event: OsdEvent, cx: &mut Context<Self>) {
         *self.current_event.write() = Some(event.clone());
         *self.visible.write() = true;
-        
+
         // Annuler le timer précédent s'il existe
         *self.hide_task.write() = None;
 
@@ -81,16 +84,19 @@ impl OsdService {
             event: Some(event),
             visible: true,
         });
-        
+
         // Lancer un nouveau timer pour cacher dans 2.5s
         let task = cx.spawn(async move |this, mut cx| {
-            cx.background_executor().timer(Duration::from_millis(2500)).await;
-            
+            cx.background_executor()
+                .timer(Duration::from_millis(2500))
+                .await;
+
             this.update(cx, |service, cx| {
                 service.hide(cx);
-            }).ok();
+            })
+            .ok();
         });
-        
+
         *self.hide_task.write() = Some(task);
         cx.notify();
     }

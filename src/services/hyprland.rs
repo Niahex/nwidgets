@@ -115,7 +115,8 @@ impl HyprlandService {
             }
         };
 
-        let socket_path = format!("/run/user/{}/hypr/{}/.socket2.sock",
+        let socket_path = format!(
+            "/run/user/{}/hypr/{}/.socket2.sock",
             std::env::var("UID").unwrap_or_else(|_| "1000".to_string()),
             hypr_sig
         );
@@ -190,12 +191,12 @@ impl HyprlandService {
         let workspaces_json = Self::hyprctl(&["workspaces", "-j"]);
         let active_workspace_json = Self::hyprctl(&["activeworkspace", "-j"]);
 
-        let workspaces: Vec<Workspace> = serde_json::from_str(&workspaces_json)
-            .unwrap_or_default();
+        let workspaces: Vec<Workspace> = serde_json::from_str(&workspaces_json).unwrap_or_default();
 
-        let active_workspace_id: i32 = serde_json::from_str::<serde_json::Value>(&active_workspace_json)
-            .and_then(|v| Ok(v["id"].as_i64().unwrap_or(1) as i32))
-            .unwrap_or(1);
+        let active_workspace_id: i32 =
+            serde_json::from_str::<serde_json::Value>(&active_workspace_json)
+                .and_then(|v| Ok(v["id"].as_i64().unwrap_or(1) as i32))
+                .unwrap_or(1);
 
         (workspaces, active_workspace_id)
     }

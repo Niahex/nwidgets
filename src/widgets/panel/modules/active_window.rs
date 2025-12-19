@@ -28,11 +28,14 @@ impl ActiveWindowModule {
     /// Exemples: "Firefox" -> "firefox.svg", "discord" -> "discord.svg", "dev.zed.Zed" -> "dev.zed.zed.svg"
     fn get_icon_name(class: &str) -> String {
         let icon_name = class.to_lowercase();
-        
+
         // Log seulement si l'icône n'existe pas
         let icon_path = format!("assets/{}.svg", icon_name);
         if !std::path::Path::new(&icon_path).exists() {
-            eprintln!("[ActiveWindow] Icon not found for class '{}' -> '{}'", class, icon_path);
+            eprintln!(
+                "[ActiveWindow] Icon not found for class '{}' -> '{}'",
+                class, icon_path
+            );
         }
 
         icon_name
@@ -85,16 +88,9 @@ impl Render for ActiveWindowModule {
             .py_2()
             .min_w(px(350.))
             .max_w(px(450.))
-            .child(
-                div()
-                    .size(px(32.))
-                    .flex_shrink_0()
-                    .child(
-                        Icon::new(icon_name)
-                            .size(px(32.))
-                            .preserve_colors(true) // Préserver les couleurs des logos d'applications
-                    )
-            )
+            .child(div().size(px(32.)).flex_shrink_0().child(
+                Icon::new(icon_name).size(px(32.)).preserve_colors(true), // Préserver les couleurs des logos d'applications
+            ))
             .child(
                 div()
                     .flex()

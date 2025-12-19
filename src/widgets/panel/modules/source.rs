@@ -1,7 +1,7 @@
-use gpui::prelude::*;
-use gpui::*;
 use crate::services::audio::{AudioService, AudioStateChanged};
 use crate::utils::Icon;
+use gpui::prelude::*;
+use gpui::*;
 
 pub struct SourceModule {
     audio: Entity<AudioService>,
@@ -36,8 +36,6 @@ impl Render for SourceModule {
             "source-zero"
         };
 
-        Icon::new(icon_name)
-            .size(px(16.))
-            .color(rgb(0xeceff4))
+        Icon::new(icon_name).size(px(16.)).color(rgb(0xeceff4))
     }
 }

@@ -295,11 +295,8 @@ impl MprisService {
             // Extract artist (it's an array)
             if let Some(value) = metadata_map.get("xesam:artist") {
                 if let Ok(artist_array) = value.downcast_ref::<zbus::zvariant::Array>() {
-                    if let Ok(Some(first_artist)) =
-                        artist_array.get::<zbus::zvariant::Value>(0)
-                    {
-                        if let Ok(artist_str) = first_artist.downcast_ref::<zbus::zvariant::Str>()
-                        {
+                    if let Ok(Some(first_artist)) = artist_array.get::<zbus::zvariant::Value>(0) {
+                        if let Ok(artist_str) = first_artist.downcast_ref::<zbus::zvariant::Str>() {
                             metadata.artist = Some(artist_str.to_string());
                         }
                     }
