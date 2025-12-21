@@ -1,6 +1,7 @@
 pub mod audio;
 pub mod bluetooth;
 pub mod clipboard;
+pub mod control_center;
 pub mod hyprland;
 pub mod lock_state;
 pub mod mpris;

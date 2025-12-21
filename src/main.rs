@@ -18,6 +18,7 @@ use services::{
     osd::OsdService,
     pomodoro::PomodoroService,
     systray::SystrayService,
+    control_center::ControlCenterService,
 };
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -78,6 +79,7 @@ fn main() {
             SystrayService::init(cx);
             let notif_service = NotificationService::init(cx);
             let osd_service = OsdService::init(cx);
+            ControlCenterService::init(cx);
 
             // Create panel window with LayerShell - full width (3440px), 50px height
             cx.open_window(

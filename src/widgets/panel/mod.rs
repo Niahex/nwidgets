@@ -5,6 +5,7 @@ pub use modules::{
     PomodoroModule, SinkModule, SourceModule, SystrayModule, WorkspacesModule,
 };
 
+use crate::services::control_center::ControlCenterService;
 use gpui::*;
 
 pub struct Panel {
@@ -18,6 +19,7 @@ pub struct Panel {
     sink: Entity<SinkModule>,
     source: Entity<SourceModule>,
     datetime: Entity<DateTimeModule>,
+    control_center: Entity<ControlCenterService>,
 }
 
 impl Panel {
@@ -33,14 +35,16 @@ impl Panel {
             sink: cx.new(|cx| SinkModule::new(cx)),
             source: cx.new(|cx| SourceModule::new(cx)),
             datetime: cx.new(|cx| DateTimeModule::new(cx)),
+            control_center: ControlCenterService::global(cx),
         }
     }
 }
 
 impl Render for Panel {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let bg_color = rgb(0x2e3440); // $polar0
         let text_color = rgb(0xeceff4); // $snow2
+        let hover_bg = rgb(0x4c566a); // $polar3
 
         div()
             .flex()
@@ -81,48 +85,65 @@ impl Render for Panel {
                     .items_center()
                     .h_full()
                     .child(div().flex().items_center().child(self.systray.clone()))
+                    // Group interactive modules for Control Center toggle
                     .child(
                         div()
+                            .id("control-center-trigger")
                             .flex()
+                            .gap_0()
                             .items_center()
-                            .justify_center()
-                            .w(px(32.))
-                            .h(px(32.))
-                            .child(self.bluetooth.clone()),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .w(px(32.))
-                            .h(px(32.))
-                            .child(self.network.clone()),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .w(px(32.))
-                            .h(px(32.))
-                            .child(self.source.clone()),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .w(px(32.))
-                            .h(px(32.))
-                            .child(self.sink.clone()),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .px_3()
-                            .child(self.datetime.clone()),
+                            .h_full()
+                            .hover(|s| s.bg(hover_bg))
+                            .rounded_md()
+                            .cursor_pointer()
+                            .on_click(cx.listener(|this, _, _window, cx| {
+                                this.control_center.update(cx, |cc, cx| {
+                                    cc.toggle(cx);
+                                });
+                            }))
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .w(px(32.))
+                                    .h(px(32.))
+                                    .child(self.bluetooth.clone()),
+                            )
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .w(px(32.))
+                                    .h(px(32.))
+                                    .child(self.network.clone()),
+                            )
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .w(px(32.))
+                                    .h(px(32.))
+                                    .child(self.source.clone()),
+                            )
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .w(px(32.))
+                                    .h(px(32.))
+                                    .child(self.sink.clone()),
+                            )
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .px_3()
+                                    .child(self.datetime.clone()),
+                            )
                     ),
             )
     }
