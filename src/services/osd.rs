@@ -1,4 +1,6 @@
 use crate::services::audio::{AudioService, AudioStateChanged};
+use crate::services::clipboard::{ClipboardEvent, ClipboardMonitor};
+use crate::services::lock_state::{LockMonitor, LockStateChanged, LockType};
 use gpui::*;
 use gpui::layer_shell::{Anchor, KeyboardInteractivity, LayerShellOptions, Layer};
 use parking_lot::RwLock;
@@ -9,6 +11,8 @@ use std::time::Duration;
 pub enum OsdEvent {
     Volume(String, u8, bool), // icon_name, volume %, muted
     Microphone(bool),         // muted
+    CapsLock(bool),           // enabled
+    Clipboard,                // copied
 }
 
 #[derive(Clone)]
@@ -24,6 +28,8 @@ pub struct OsdService {
     first_event: Arc<RwLock<bool>>,
     hide_task: Arc<RwLock<Option<Task<()>>>>,
     window_handle: Arc<RwLock<Option<AnyWindowHandle>>>,
+    lock_monitor: Entity<LockMonitor>,
+    clipboard_monitor: Entity<ClipboardMonitor>,
 }
 
 impl EventEmitter<OsdStateChanged> for OsdService {}
@@ -31,6 +37,11 @@ impl EventEmitter<OsdStateChanged> for OsdService {}
 impl OsdService {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let audio = AudioService::global(cx);
+        // Initialiser les moniteurs s'ils ne le sont pas déjà (ou créer des instances locales si ce ne sont pas des Singletons globaux)
+        // Ici LockMonitor et ClipboardMonitor sont implémentés comme des Models locaux qu'on instancie.
+        let lock_monitor = LockMonitor::init(cx);
+        let clipboard_monitor = ClipboardMonitor::init(cx);
+
         let first_event = Arc::new(RwLock::new(true));
         let first_event_clone = Arc::clone(&first_event);
 
@@ -68,12 +79,28 @@ impl OsdService {
         )
         .detach();
 
+        // Abonnement CapsLock/NumLock
+        cx.subscribe(&lock_monitor, |this, _monitor, event: &LockStateChanged, cx| {
+            if let LockType::CapsLock = event.lock_type {
+                this.show_event(OsdEvent::CapsLock(event.enabled), cx);
+            }
+        })
+        .detach();
+
+        // Abonnement Clipboard
+        cx.subscribe(&clipboard_monitor, |this, _monitor, _event: &ClipboardEvent, cx| {
+            this.show_event(OsdEvent::Clipboard, cx);
+        })
+        .detach();
+
         Self {
             current_event: Arc::new(RwLock::new(None)),
             visible: Arc::new(RwLock::new(false)),
             first_event,
             hide_task: Arc::new(RwLock::new(None)),
             window_handle: Arc::new(RwLock::new(None)),
+            lock_monitor,
+            clipboard_monitor,
         }
     }
 
