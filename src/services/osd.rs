@@ -17,6 +17,7 @@ pub struct OsdStateChanged {
     pub visible: bool,
 }
 
+#[derive(Clone)]
 pub struct OsdService {
     current_event: Arc<RwLock<Option<OsdEvent>>>,
     visible: Arc<RwLock<bool>>,
@@ -83,8 +84,19 @@ impl OsdService {
         // Annuler le timer précédent s'il existe
         *self.hide_task.write() = None;
 
-        // Ouvrir la fenêtre si elle n'existe pas
-        self.open_window(cx);
+        // Ouvrir la fenêtre si elle n'existe pas via une tâche asynchrone
+        // On clone le service (struct légère avec Arc) pour l'utiliser sans verrouiller l'entité GPUI
+        let service = self.clone();
+        cx.spawn(|_, cx: &mut AsyncApp| {
+            let mut cx = cx.clone();
+            async move {
+                cx.update(|cx| {
+                    service.open_window(cx);
+                })
+                .ok();
+            }
+        })
+        .detach();
 
         cx.emit(OsdStateChanged {
             event: Some(event),
@@ -97,6 +109,7 @@ impl OsdService {
                 .timer(Duration::from_millis(2500))
                 .await;
 
+            // Correction ici: passer `cx` directement (par valeur/move), pas &mut cx
             this.update(cx, |service, cx| {
                 service.hide(cx);
             })
@@ -121,7 +134,7 @@ impl OsdService {
         cx.notify();
     }
 
-    fn open_window(&self, cx: &mut Context<Self>) {
+    fn open_window(&self, cx: &mut App) {
         if self.window_handle.read().is_some() {
             return; // Déjà ouverte
         }
