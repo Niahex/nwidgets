@@ -126,10 +126,8 @@
           nativeBuildInputs = devTools;
           env = envVars;
 
-          LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (buildInputs ++ runtimeDependencies);
+          LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath (buildInputs ++ runtimeDependencies)}:/run/opengl/driver/lib:/run/opengl/lib";
           FONTCONFIG_FILE = pkgs.makeFontsConf {fontDirectories = buildInputs;};
-          VK_DRIVER_FILES = "${pkgs.mesa}/share/vulkan/icd.d/radeon_icd.x86_64.json";
-          VK_ICD_FILENAMES = "${pkgs.mesa}/share/vulkan/icd.d/radeon_icd.x86_64.json";
 
           shellHook = ''
             echo "[🦀 Rust $(rustc --version)] - Ready to develop nwidgets!"
