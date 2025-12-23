@@ -1,5 +1,6 @@
 use crate::services::audio::{AudioService, AudioStateChanged};
 use crate::services::clipboard::{ClipboardEvent, ClipboardMonitor};
+use crate::services::control_center::ControlCenterService;
 use crate::services::lock_state::{LockMonitor, LockStateChanged, LockType};
 use gpui::*;
 use gpui::layer_shell::{Anchor, KeyboardInteractivity, LayerShellOptions, Layer};
@@ -52,6 +53,12 @@ impl OsdService {
                 // Ignorer le premier événement (état initial)
                 if *first_event_clone.read() {
                     *first_event_clone.write() = false;
+                    return;
+                }
+                
+                // Ne pas afficher l'OSD si le control center est ouvert
+                let control_center = ControlCenterService::global(cx);
+                if control_center.read(cx).is_visible() {
                     return;
                 }
 

@@ -35,7 +35,12 @@ impl ControlCenterWidget {
 
         // Subscriptions
         cx.subscribe(&control_center, |_, _, _, cx| cx.notify()).detach();
-        cx.subscribe(&audio, |_, _, _, cx| cx.notify()).detach();
+        cx.subscribe(&audio, |this, _, _, cx| {
+            let audio_state = this.audio.read(cx).state();
+            this.last_volume = audio_state.sink_volume;
+            this.last_mic_volume = audio_state.source_volume;
+            cx.notify();
+        }).detach();
         cx.subscribe(&bluetooth, |_, _, _, cx| cx.notify()).detach();
         cx.subscribe(&network, |_, _, _, cx| cx.notify()).detach();
         cx.subscribe(&notifications, |_, _, _: &NotificationAdded, cx| cx.notify()).detach();
@@ -101,15 +106,25 @@ impl ControlCenterWidget {
                                     .on_scroll_wheel(cx.listener(|this, event: &gpui::ScrollWheelEvent, _, cx| {
                                         let delta_point = event.delta.pixel_delta(px(20.0));
                                         let delta = if delta_point.y > px(0.0) { 5 } else { -5 };
-                                        let current = this.audio.read(cx).state().sink_volume as i32;
+                                        let current = this.last_volume as i32;
                                         let new_volume = (current + delta).clamp(0, 100) as u8;
-                                        this.audio.update(cx, |audio, _| {
-                                            audio.set_sink_volume(new_volume);
-                                        });
+                                        
+                                        if new_volume != this.last_volume {
+                                            this.last_volume = new_volume;
+                                            cx.notify();
+                                            
+                                            let now = Instant::now();
+                                            if this.last_volume_update.map(|last| now.duration_since(last) >= Duration::from_millis(30)).unwrap_or(true) {
+                                                this.last_volume_update = Some(now);
+                                                this.audio.update(cx, |audio, _| {
+                                                    audio.set_sink_volume(new_volume);
+                                                });
+                                            }
+                                        }
                                     }))
                                     .child(
                                         div()
-                                            .w(relative(audio_state.sink_volume as f32 / 100.0))
+                                            .w(relative(self.last_volume as f32 / 100.0))
                                             .h_full()
                                             .bg(theme.accent_alt)
                                             .rounded_full()
@@ -120,7 +135,7 @@ impl ControlCenterWidget {
                         div()
                             .text_xs()
                             .text_color(theme.text)
-                            .child(format!("{}%", audio_state.sink_volume))
+                            .child(format!("{}%", self.last_volume))
                     )
                     .child(
                         div()
@@ -170,15 +185,25 @@ impl ControlCenterWidget {
                                     .on_scroll_wheel(cx.listener(|this, event: &gpui::ScrollWheelEvent, _, cx| {
                                         let delta_point = event.delta.pixel_delta(px(20.0));
                                         let delta = if delta_point.y > px(0.0) { 5 } else { -5 };
-                                        let current = this.audio.read(cx).state().source_volume as i32;
+                                        let current = this.last_mic_volume as i32;
                                         let new_volume = (current + delta).clamp(0, 100) as u8;
-                                        this.audio.update(cx, |audio, _| {
-                                            audio.set_source_volume(new_volume);
-                                        });
+                                        
+                                        if new_volume != this.last_mic_volume {
+                                            this.last_mic_volume = new_volume;
+                                            cx.notify();
+                                            
+                                            let now = Instant::now();
+                                            if this.last_mic_update.map(|last| now.duration_since(last) >= Duration::from_millis(50)).unwrap_or(true) {
+                                                this.last_mic_update = Some(now);
+                                                this.audio.update(cx, |audio, _| {
+                                                    audio.set_source_volume(new_volume);
+                                                });
+                                            }
+                                        }
                                     }))
                                     .child(
                                         div()
-                                            .w(relative(audio_state.source_volume as f32 / 100.0))
+                                            .w(relative(self.last_mic_volume as f32 / 100.0))
                                             .h_full()
                                             .bg(theme.accent_alt)
                                             .rounded_full()
@@ -189,7 +214,7 @@ impl ControlCenterWidget {
                         div()
                             .text_xs()
                             .text_color(theme.text)
-                            .child(format!("{}%", audio_state.source_volume))
+                            .child(format!("{}%", self.last_mic_volume))
                     )
                     .child(
                          div()
