@@ -272,7 +272,6 @@ impl SliderState {
     pub fn set_value(
         &mut self,
         value: impl Into<SliderValue>,
-        _: &mut Window,
         cx: &mut Context<Self>,
     ) {
         self.value = value.into();
@@ -447,7 +446,7 @@ impl Slider {
         bar_color: Background,
         thumb_color: Hsla,
         window: &mut Window,
-        cx: &mut App,
+        _cx: &mut App,
     ) -> impl gpui::IntoElement {
         let entity_id = self.state.entity_id();
         let axis = self.axis;
@@ -576,7 +575,18 @@ impl RenderOnce for Slider {
             .when(matches!(axis, Axis::Horizontal), |this| this.w_full())
             .child(
                 h_flex()
+                    .on_children_prepainted({
+                        let state = self.state.clone();
+                        move |bounds, _window, cx| {
+                            state.update(cx, |this, _cx| {
+                                if let Some(b) = bounds.first() {
+                                    this.bounds = *b;
+                                }
+                            });
+                        }
+                    })
                     .id("slider-bar-container")
+                    .size_full()
                     .when(!self.disabled, |this| {
                         this.on_mouse_down(
                             MouseButton::Left,
@@ -603,15 +613,10 @@ impl RenderOnce for Slider {
                             &self.state,
                             move |state, e: &gpui::ScrollWheelEvent, window, cx| {
                                 let delta = e.delta.pixel_delta(px(20.0));
-                                let delta_val = if matches!(axis, Axis::Horizontal) {
-                                    if delta.y > px(0.0) { -state.step } else { state.step }
-                                } else {
-                                    if delta.y > px(0.0) { state.step } else { -state.step }
-                                };
                                 
                                 // Invert direction for natural scrolling if needed, or stick to standard
                                 // Typically scroll up (positive y) increases value
-                                let change = if delta.y.0 > 0.0 { state.step } else { -state.step };
+                                let change = if delta.y > px(0.0) { state.step } else { -state.step };
                                 
                                 let current_val = match state.value {
                                     SliderValue::Single(v) => v,
@@ -619,7 +624,7 @@ impl RenderOnce for Slider {
                                 };
                                 
                                 let new_val = (current_val + change).clamp(state.min, state.max);
-                                state.set_value(new_val, window, cx);
+                                state.set_value(new_val, cx);
                                 cx.emit(SliderEvent::Change(state.value));
                             }
                         ))

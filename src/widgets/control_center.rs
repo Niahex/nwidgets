@@ -4,6 +4,7 @@ use crate::services::control_center::{ControlCenterSection, ControlCenterService
 use crate::services::network::NetworkService;
 use crate::services::notifications::{NotificationAdded, NotificationService};
 use crate::utils::Icon;
+use crate::components::slider::{Slider, SliderState, SliderEvent};
 use gpui::prelude::*;
 use gpui::*;
 use std::time::{Duration, Instant};
@@ -21,6 +22,8 @@ pub struct ControlCenterWidget {
     last_mic_volume: u8,
     last_volume_update: Option<Instant>,
     last_mic_update: Option<Instant>,
+    volume_slider: Entity<SliderState>,
+    mic_slider: Entity<SliderState>,
 }
 
 impl ControlCenterWidget {
@@ -33,21 +36,58 @@ impl ControlCenterWidget {
 
         let audio_state = audio.read(cx).state();
 
+        let volume_slider = cx.new(|_| SliderState::new().min(0.).max(100.).step(5.).default_value(audio_state.sink_volume as f32));
+        let mic_slider = cx.new(|_| SliderState::new().min(0.).max(100.).step(5.).default_value(audio_state.source_volume as f32));
+
         // Subscriptions
         cx.subscribe(&control_center, |_, _, _, cx| cx.notify()).detach();
+        
         cx.subscribe(&audio, |this, _, _, cx| {
             let audio_state = this.audio.read(cx).state();
             let now = Instant::now();
             
-            // Ne sync que si on n'a pas scrollé récemment
+            // Sync UI with audio state if no recent user interaction (prevents jumping)
             if this.last_volume_update.map(|last| now.duration_since(last) > Duration::from_millis(200)).unwrap_or(true) {
                 this.last_volume = audio_state.sink_volume;
+                this.volume_slider.update(cx, |slider, cx| slider.set_value(audio_state.sink_volume as f32, cx));
             }
             if this.last_mic_update.map(|last| now.duration_since(last) > Duration::from_millis(200)).unwrap_or(true) {
                 this.last_mic_volume = audio_state.source_volume;
+                this.mic_slider.update(cx, |slider, cx| slider.set_value(audio_state.source_volume as f32, cx));
             }
             cx.notify();
         }).detach();
+
+        cx.subscribe(&volume_slider, |this, _, event: &SliderEvent, cx| {
+            let SliderEvent::Change(val) = event;
+            let new_volume = val.end() as u8;
+            this.last_volume = new_volume;
+            cx.notify();
+            
+            let now = Instant::now();
+            if this.last_volume_update.map(|last| now.duration_since(last) >= Duration::from_millis(30)).unwrap_or(true) {
+                this.last_volume_update = Some(now);
+                this.audio.update(cx, |audio, cx| {
+                    audio.set_sink_volume(new_volume, cx);
+                });
+            }
+        }).detach();
+
+        cx.subscribe(&mic_slider, |this, _, event: &SliderEvent, cx| {
+            let SliderEvent::Change(val) = event;
+            let new_volume = val.end() as u8;
+            this.last_mic_volume = new_volume;
+            cx.notify();
+            
+            let now = Instant::now();
+            if this.last_mic_update.map(|last| now.duration_since(last) >= Duration::from_millis(30)).unwrap_or(true) {
+                this.last_mic_update = Some(now);
+                this.audio.update(cx, |audio, cx| {
+                    audio.set_source_volume(new_volume, cx);
+                });
+            }
+        }).detach();
+
         cx.subscribe(&bluetooth, |_, _, _, cx| cx.notify()).detach();
         cx.subscribe(&network, |_, _, _, cx| cx.notify()).detach();
         cx.subscribe(&notifications, |_, _, _: &NotificationAdded, cx| cx.notify()).detach();
@@ -65,6 +105,8 @@ impl ControlCenterWidget {
             last_mic_volume: audio_state.source_volume,
             last_volume_update: None,
             last_mic_update: None,
+            volume_slider,
+            mic_slider,
         }
     }
 
@@ -102,40 +144,8 @@ impl ControlCenterWidget {
                             .flex()
                             .items_center()
                             .child(
-                                div()
-                                    .id("volume-bar")
-                                    .flex_1()
-                                    .h(px(6.))
-                                    .bg(theme.hover)
-                                    .rounded_full()
-                                    .relative()
-                                    .cursor_pointer()
-                                    .on_scroll_wheel(cx.listener(|this, event: &gpui::ScrollWheelEvent, _, cx| {
-                                        let delta_point = event.delta.pixel_delta(px(20.0));
-                                        let delta = if delta_point.y > px(0.0) { 5 } else { -5 };
-                                        let current = this.last_volume as i32;
-                                        let new_volume = (current + delta).clamp(0, 100) as u8;
-                                        
-                                        if new_volume != this.last_volume {
-                                            this.last_volume = new_volume;
-                                            cx.notify();
-                                            
-                                            let now = Instant::now();
-                                            if this.last_volume_update.map(|last| now.duration_since(last) >= Duration::from_millis(30)).unwrap_or(true) {
-                                                this.last_volume_update = Some(now);
-                                                this.audio.update(cx, |audio, cx| {
-                                                    audio.set_sink_volume(new_volume, cx);
-                                                });
-                                            }
-                                        }
-                                    }))
-                                    .child(
-                                        div()
-                                            .w(relative(self.last_volume as f32 / 100.0))
-                                            .h_full()
-                                            .bg(theme.accent_alt)
-                                            .rounded_full()
-                                    )
+                                Slider::new(&self.volume_slider)
+                                    .horizontal()
                             )
                     )
                     .child(
@@ -181,40 +191,8 @@ impl ControlCenterWidget {
                             .flex()
                             .items_center()
                             .child(
-                                div()
-                                    .id("mic-bar")
-                                    .flex_1()
-                                    .h(px(6.))
-                                    .bg(theme.hover)
-                                    .rounded_full()
-                                    .relative()
-                                    .cursor_pointer()
-                                    .on_scroll_wheel(cx.listener(|this, event: &gpui::ScrollWheelEvent, _, cx| {
-                                        let delta_point = event.delta.pixel_delta(px(20.0));
-                                        let delta = if delta_point.y > px(0.0) { 5 } else { -5 };
-                                        let current = this.last_mic_volume as i32;
-                                        let new_volume = (current + delta).clamp(0, 100) as u8;
-                                        
-                                        if new_volume != this.last_mic_volume {
-                                            this.last_mic_volume = new_volume;
-                                            cx.notify();
-                                            
-                                            let now = Instant::now();
-                                            if this.last_mic_update.map(|last| now.duration_since(last) >= Duration::from_millis(50)).unwrap_or(true) {
-                                                this.last_mic_update = Some(now);
-                                                this.audio.update(cx, |audio, cx| {
-                                                    audio.set_source_volume(new_volume, cx);
-                                                });
-                                            }
-                                        }
-                                    }))
-                                    .child(
-                                        div()
-                                            .w(relative(self.last_mic_volume as f32 / 100.0))
-                                            .h_full()
-                                            .bg(theme.accent_alt)
-                                            .rounded_full()
-                                    )
+                                Slider::new(&self.mic_slider)
+                                    .horizontal()
                             )
                     )
                     .child(
