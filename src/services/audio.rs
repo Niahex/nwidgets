@@ -40,6 +40,7 @@ pub struct AudioStream {
     pub app_name: String,
     pub volume: u8,
     pub muted: bool,
+    pub window_title: Option<String>,
 }
 
 #[derive(Clone)]
@@ -435,11 +436,17 @@ impl AudioService {
                     .and_then(|p| p["mute"].as_bool())
                     .unwrap_or(false);
                 
+                let window_title = node["info"]["props"]["media.name"]
+                    .as_str()
+                    .or_else(|| node["info"]["props"]["node.description"].as_str())
+                    .map(|s| s.to_string());
+                
                 Some(AudioStream {
                     id,
                     app_name,
                     volume,
                     muted,
+                    window_title,
                 })
             })
             .collect()
@@ -482,11 +489,17 @@ impl AudioService {
                     .and_then(|p| p["mute"].as_bool())
                     .unwrap_or(false);
                 
+                let window_title = node["info"]["props"]["media.name"]
+                    .as_str()
+                    .or_else(|| node["info"]["props"]["node.description"].as_str())
+                    .map(|s| s.to_string());
+                
                 Some(AudioStream {
                     id,
                     app_name,
                     volume,
                     muted,
+                    window_title,
                 })
             })
             .collect()
