@@ -54,7 +54,7 @@ impl Render for MprisModule {
                 .when(is_paused, |this| {
                     this.text_color(rgba(0xd8dee980)) // Dimmed when paused
                 })
-                .when(!is_paused, |this| this.text_color(rgb(0xeceff4)))
+                .when(!is_paused, |this| this.text_color(cx.global::<crate::theme::Theme>().text))
                 .hover(|style| style.bg(rgba(0x4c566a40)))
                 // Click to play/pause
                 .on_click(move |_event, _window, cx| {

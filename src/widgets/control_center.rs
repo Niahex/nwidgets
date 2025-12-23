@@ -49,10 +49,7 @@ impl ControlCenterWidget {
         let vol_expanded = expanded == Some(ControlCenterSection::Volume);
         let mic_expanded = expanded == Some(ControlCenterSection::Mic);
 
-        // Nord colors
-        let bg_color = rgb(0x3b4252); // polar1
-        let text_color = rgb(0xeceff4); // snow3
-        let active_color = rgb(0x8fbcbb); // frost3
+        let theme = cx.global::<crate::theme::Theme>();
 
         let volume_icon = if audio_state.sink_muted { "sink-muted" } else { "sink-high" };
         let mic_icon = if audio_state.source_muted { "source-muted" } else { "source-high" };
@@ -67,28 +64,28 @@ impl ControlCenterWidget {
                     .flex()
                     .items_center()
                     .gap_2()
-                    .bg(bg_color)
+                    .bg(theme.surface)
                     .rounded_md()
                     .p_2()
-                    .child(Icon::new(volume_icon).size(px(20.)).color(text_color))
+                    .child(Icon::new(volume_icon).size(px(20.)).color(theme.text))
                     .child(
                         div() // Slider bar placeholder
                             .flex_1()
                             .h(px(6.))
-                            .bg(rgb(0x4c566a))
+                            .bg(theme.hover)
                             .rounded_full()
                             .child(
                                 div()
                                     .w(relative(audio_state.sink_volume as f32 / 100.0))
                                     .h_full()
-                                    .bg(active_color)
+                                    .bg(theme.accent_alt)
                                     .rounded_full()
                             )
                     )
                     .child(
                         div()
                             .id("volume-expand")
-                            .child(Icon::new(if vol_expanded { "arrow-up" } else { "arrow-down" }).size(px(16.)).color(text_color))
+                            .child(Icon::new(if vol_expanded { "arrow-up" } else { "arrow-down" }).size(px(16.)).color(theme.text))
                             .on_click(cx.listener(|this, _, _window, cx| {
                                 this.control_center.update(cx, |cc, cx| {
                                     cc.toggle_section(ControlCenterSection::Volume, cx);
@@ -100,7 +97,7 @@ impl ControlCenterWidget {
             .child(
                 // Volume Expanded Area
                 if vol_expanded {
-                    div().bg(rgb(0x2e3440)).p_2().child("Volume Details (TODO)").into_any_element()
+                    div().bg(theme.bg).p_2().child("Volume Details (TODO)").into_any_element()
                 } else {
                     div().into_any_element()
                 }
@@ -111,28 +108,28 @@ impl ControlCenterWidget {
                     .flex()
                     .items_center()
                     .gap_2()
-                    .bg(bg_color)
+                    .bg(theme.surface)
                     .rounded_md()
                     .p_2()
-                    .child(Icon::new(mic_icon).size(px(20.)).color(text_color))
+                    .child(Icon::new(mic_icon).size(px(20.)).color(theme.text))
                     .child(
                         div() // Slider bar placeholder
                             .flex_1()
                             .h(px(6.))
-                            .bg(rgb(0x4c566a))
+                            .bg(theme.hover)
                             .rounded_full()
                             .child(
                                 div()
                                     .w(relative(audio_state.source_volume as f32 / 100.0))
                                     .h_full()
-                                    .bg(active_color)
+                                    .bg(theme.accent_alt)
                                     .rounded_full()
                             )
                     )
                     .child(
                          div()
                             .id("mic-expand")
-                            .child(Icon::new(if mic_expanded { "arrow-up" } else { "arrow-down" }).size(px(16.)).color(text_color))
+                            .child(Icon::new(if mic_expanded { "arrow-up" } else { "arrow-down" }).size(px(16.)).color(theme.text))
                             .on_click(cx.listener(|this, _, _window, cx| {
                                 this.control_center.update(cx, |cc, cx| {
                                     cc.toggle_section(ControlCenterSection::Mic, cx);

@@ -67,6 +67,8 @@ impl Render for ActiveWindowModule {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let active_window = self.hyprland.read(cx).active_window();
 
+        let theme = cx.global::<crate::theme::Theme>();
+
         let (icon_name, class_text, title_text) = if let Some(window) = active_window {
             let icon = Self::get_icon_name(&window.class);
             let class = Self::format_class_name(&window.class);
@@ -109,7 +111,7 @@ impl Render for ActiveWindowModule {
                     .child(
                         div()
                             .text_sm()
-                            .text_color(rgb(0xeceff4)) // $snow3 à 100%
+                            .text_color(theme.text)
                             .overflow_hidden()
                             .whitespace_nowrap()
                             .child(title_text),

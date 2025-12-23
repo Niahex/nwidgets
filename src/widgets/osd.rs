@@ -34,11 +34,7 @@ impl Render for OsdWidget {
 
         let event = event.unwrap();
 
-        // Nord colors
-        let bg_color = rgb(0x2e3440); // polar0
-        let text_color = rgb(0xeceff4); // snow3
-        let progress_bg = rgb(0x4c566a); // polar3
-        let progress_fg = rgb(0x8fbcbb); // frost3
+        let theme = cx.global::<crate::theme::Theme>();
 
         let content = match event {
             OsdEvent::Volume(icon_name, level, _muted) => {
@@ -46,7 +42,7 @@ impl Render for OsdWidget {
                     .flex()
                     .gap_3()
                     .items_center()
-                    .child(Icon::new(icon_name).size(px(20.)).color(text_color))
+                    .child(Icon::new(icon_name).size(px(20.)).color(theme.text))
                     .child(
                         // Barre de progression
                         div()
@@ -61,7 +57,7 @@ impl Render for OsdWidget {
                                     .left_0()
                                     .w_full()
                                     .h_full()
-                                    .bg(progress_bg)
+                                    .bg(theme.hover)
                                     .rounded(px(3.)),
                             )
                             .child(
@@ -72,7 +68,7 @@ impl Render for OsdWidget {
                                     .left_0()
                                     .w(relative(level as f32 / 100.0))
                                     .h_full()
-                                    .bg(progress_fg)
+                                    .bg(theme.accent_alt)
                                     .rounded(px(3.)),
                             ),
                     )
@@ -80,7 +76,7 @@ impl Render for OsdWidget {
                         div()
                             .text_size(px(18.))
                             .font_weight(FontWeight::SEMIBOLD)
-                            .text_color(text_color)
+                            .text_color(theme.text)
                             .child(format!("{level}")),
                     )
             }
@@ -91,12 +87,12 @@ impl Render for OsdWidget {
                     .flex()
                     .gap_3()
                     .items_center()
-                    .child(Icon::new(icon_name).size(px(20.)).color(text_color))
+                    .child(Icon::new(icon_name).size(px(20.)).color(theme.text))
                     .child(
                         div()
                             .text_size(px(18.))
                             .font_weight(FontWeight::SEMIBOLD)
-                            .text_color(text_color)
+                            .text_color(theme.text)
                             .child(if muted { "Microphone Muted" } else { "Microphone Active" }),
                     )
             }
@@ -109,12 +105,12 @@ impl Render for OsdWidget {
                     .gap_3()
                     .items_center()
                     .justify_center()
-                    .child(Icon::new(icon_name).size(px(20.)).color(text_color))
+                    .child(Icon::new(icon_name).size(px(20.)).color(theme.text))
                     .child(
                         div()
                             .text_size(px(18.))
                             .font_weight(FontWeight::SEMIBOLD)
-                            .text_color(text_color)
+                            .text_color(theme.text)
                             .child(text),
                     )
             }
@@ -124,12 +120,12 @@ impl Render for OsdWidget {
                     .gap_3()
                     .items_center()
                     .justify_center()
-                    .child(Icon::new("copy").size(px(20.)).color(text_color))
+                    .child(Icon::new("copy").size(px(20.)).color(theme.text))
                     .child(
                         div()
                             .text_size(px(18.))
                             .font_weight(FontWeight::SEMIBOLD)
-                            .text_color(text_color)
+                            .text_color(theme.text)
                             .child("Copied to clipboard"),
                     )
             }
@@ -138,7 +134,7 @@ impl Render for OsdWidget {
         let base_div = div()
             .w(px(400.))
             .h(px(64.))
-            .bg(bg_color)
+            .bg(theme.bg)
             .rounded(px(12.))
             .px_4()
             .py_3()

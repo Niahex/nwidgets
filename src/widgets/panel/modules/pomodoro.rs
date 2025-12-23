@@ -37,6 +37,8 @@ impl Render for PomodoroModule {
         let pomodoro_left = self.pomodoro.clone();
         let pomodoro_middle = self.pomodoro.clone();
 
+        let theme = cx.global::<crate::theme::Theme>();
+
         let element = match status {
             PomodoroStatus::Idle => div()
                 .id("pomodoro-idle")
@@ -46,7 +48,7 @@ impl Render for PomodoroModule {
                         service.start_work(cx);
                     });
                 })
-                .child(Icon::new("play").size(px(16.)).color(rgb(0xeceff4))),
+                .child(Icon::new("play").size(px(16.)).color(theme.text)),
             PomodoroStatus::Paused { .. } => div()
                 .id("pomodoro-paused")
                 .cursor_pointer()
@@ -55,15 +57,15 @@ impl Render for PomodoroModule {
                         service.resume(cx);
                     });
                 })
-                .child(Icon::new("pause").size(px(16.)).color(rgb(0xeceff4))),
+                .child(Icon::new("pause").size(px(16.)).color(theme.text)),
             PomodoroStatus::Running {
                 phase,
                 remaining_secs,
             } => {
                 let color = match phase {
-                    PomodoroPhase::Work => rgb(0xbf616a),
-                    PomodoroPhase::ShortBreak => rgb(0xa3be8c),
-                    PomodoroPhase::LongBreak => rgb(0x88c0d0),
+                    PomodoroPhase::Work => theme.error,
+                    PomodoroPhase::ShortBreak => theme.success,
+                    PomodoroPhase::LongBreak => theme.accent,
                 };
 
                 div()

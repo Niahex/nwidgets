@@ -117,7 +117,7 @@ impl Icon {
 }
 
 impl RenderOnce for Icon {
-    fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
+    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let path_str = self.get_path();
 
         // GPUI rend les SVG comme des alpha masks et applique une couleur unique
@@ -135,7 +135,7 @@ impl RenderOnce for Icon {
                 svg_element = svg_element.text_color(color);
             } else {
                 // Couleur par défaut si aucune n'est spécifiée
-                svg_element = svg_element.text_color(rgb(0xFFFFFF));
+                svg_element = svg_element.text_color(cx.global::<crate::theme::Theme>().white);
             }
 
             svg_element.into_any_element()

@@ -1,4 +1,5 @@
 mod services;
+mod theme;
 mod utils;
 mod widgets;
 
@@ -69,6 +70,9 @@ fn main() {
     Application::new()
         .with_assets(Assets { base: assets_path })
         .run(|cx: &mut App| {
+            // Initialize theme
+            cx.set_global(theme::Theme::nord_dark());
+            
             // Initialize global services
             HyprlandService::init(cx);
             AudioService::init(cx);

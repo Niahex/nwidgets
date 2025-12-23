@@ -42,9 +42,7 @@ impl Panel {
 
 impl Render for Panel {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let bg_color = rgb(0x2e3440); // $polar0
-        let text_color = rgb(0xeceff4); // $snow2
-        let hover_bg = rgb(0x4c566a); // $polar3
+        let theme = cx.global::<crate::theme::Theme>();
 
         div()
             .flex()
@@ -53,8 +51,8 @@ impl Render for Panel {
             .h(px(50.))
             .w_full()
             .px_3()
-            .bg(bg_color)
-            .text_color(text_color)
+            .bg(theme.bg)
+            .text_color(theme.text)
             // Left section - Active window info
             .child(
                 div()
@@ -93,7 +91,7 @@ impl Render for Panel {
                             .gap_0()
                             .items_center()
                             .h_full()
-                            .hover(|s| s.bg(hover_bg))
+                            .hover(|s| s.bg(theme.hover))
                             .rounded_md()
                             .cursor_pointer()
                             .on_click(cx.listener(|this, _, _window, cx| {

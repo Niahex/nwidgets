@@ -37,7 +37,7 @@ impl Render for SystrayModule {
                     .px_2()
                     .py_1()
                     .rounded_sm()
-                    .hover(|style| style.bg(rgb(0x313244)))
+                    .hover(|style| style.bg(cx.global::<crate::theme::Theme>().systray_hover))
                     .cursor_pointer()
                     .child(item.icon_name.unwrap_or_else(|| "📦".to_string()))
             }))

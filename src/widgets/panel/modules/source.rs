@@ -36,6 +36,6 @@ impl Render for SourceModule {
             "source-zero"
         };
 
-        Icon::new(icon_name).size(px(16.)).color(rgb(0xeceff4))
+        Icon::new(icon_name).size(px(16.)).color(cx.global::<crate::theme::Theme>().text)
     }
 }

@@ -32,10 +32,7 @@ impl Render for WorkspacesModule {
         // Sort workspaces in ascending order by ID
         workspaces.sort_by_key(|ws| ws.id);
 
-        // Nord colors
-        let frost1 = rgb(0x88c0d0);
-        let _polar1 = rgb(0x3b4252);
-        let _snow2 = rgb(0xeceff4);
+        let theme = cx.global::<crate::theme::Theme>();
 
         div()
             .flex()
@@ -69,15 +66,15 @@ impl Render for WorkspacesModule {
                         FontWeight::MEDIUM
                     })
                     .when(is_active, |this| {
-                        this.bg(rgba(0x88c0d033)) // frost1 with opacity
-                            .text_color(frost1)
+                        this.bg(theme.accent.opacity(0.2))
+                            .text_color(theme.accent)
                     })
                     .when(!is_active, |this| {
-                        this.text_color(rgba(0xd8dee980)) // snow0 with opacity
+                        this.text_color(theme.text_muted.opacity(0.5))
                             .hover(|style| {
                                 style
-                                    .bg(rgba(0x88c0d01a)) // frost1 hover
-                                    .text_color(rgba(0xd8dee9cc))
+                                    .bg(theme.accent.opacity(0.1))
+                                    .text_color(theme.text_muted.opacity(0.8))
                             })
                     })
                     .cursor_pointer()

@@ -82,14 +82,10 @@ impl NotificationsWidget {
 }
 
 impl Render for NotificationsWidget {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let notifs = self.notifications.read().clone();
 
-        // Nord colors
-        let bg_color = rgb(0x2e3440);
-        let text_color = rgb(0xeceff4);
-        let time_color = rgb(0xd8dee9);
-        let body_color = rgb(0xe5e9f0);
+        let theme = cx.global::<crate::theme::Theme>();
 
         div()
             .flex()
@@ -98,9 +94,9 @@ impl Render for NotificationsWidget {
             .w(px(380.0))
             .children(notifs.iter().map(|notif| {
                 let urgency_class = match notif.urgency {
-                    2 => rgb(0xbf616a),
-                    1 => bg_color,
-                    _ => rgb(0x4c566a),
+                    2 => theme.error,
+                    1 => theme.bg,
+                    _ => theme.hover,
                 };
 
                 div()
@@ -123,7 +119,7 @@ impl Render for NotificationsWidget {
                                     .child(if !notif.app_icon.is_empty() {
                                         Icon::new(&notif.app_icon)
                                             .size(px(20.0))
-                                            .color(text_color)
+                                            .color(theme.text)
                                             .preserve_colors(true)
                                             .into_any_element()
                                     } else {
@@ -133,14 +129,14 @@ impl Render for NotificationsWidget {
                                         div()
                                             .text_sm()
                                             .font_weight(FontWeight::SEMIBOLD)
-                                            .text_color(text_color)
+                                            .text_color(theme.text)
                                             .child(notif.app_name.clone()),
                                     ),
                             )
                             .child(
                                 div()
                                     .text_xs()
-                                    .text_color(time_color)
+                                    .text_color(theme.text_muted)
                                     .child(format_time_ago(notif.timestamp)),
                             ),
                     )
@@ -148,14 +144,14 @@ impl Render for NotificationsWidget {
                         div()
                             .text_base()
                             .font_weight(FontWeight::BOLD)
-                            .text_color(text_color)
+                            .text_color(theme.text)
                             .child(notif.summary.clone()),
                     )
                     .when(!notif.body.is_empty(), |this| {
                         this.child(
                             div()
                                 .text_sm()
-                                .text_color(body_color)
+                                .text_color(theme.text_bright)
                                 .child(notif.body.clone()),
                         )
                     })

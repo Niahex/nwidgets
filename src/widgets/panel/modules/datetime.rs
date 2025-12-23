@@ -33,7 +33,7 @@ impl DateTimeModule {
 }
 
 impl Render for DateTimeModule {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         div()
             .flex()
             .flex_col()
@@ -48,7 +48,7 @@ impl Render for DateTimeModule {
             .child(
                 div()
                     .text_xs()
-                    .text_color(rgb(0xd8dee9)) // $snow0
+                    .text_color(cx.global::<crate::theme::Theme>().text_muted)
                     .child(self.date.clone()),
             )
     }
