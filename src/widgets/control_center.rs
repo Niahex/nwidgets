@@ -73,11 +73,15 @@ impl ControlCenterWidget {
                     .p_2()
                     .child(Icon::new(volume_icon).size(px(20.)).color(theme.text))
                     .child(
-                        div() // Slider bar placeholder
+                        // Slider bar
+                        div()
+                            .id("volume-slider")
                             .flex_1()
                             .h(px(6.))
                             .bg(theme.hover)
                             .rounded_full()
+                            .relative()
+                            .cursor_pointer()
                             .child(
                                 div()
                                     .w(relative(audio_state.sink_volume as f32 / 100.0))
@@ -123,11 +127,15 @@ impl ControlCenterWidget {
                     .p_2()
                     .child(Icon::new(mic_icon).size(px(20.)).color(theme.text))
                     .child(
-                        div() // Slider bar placeholder
+                        // Slider bar
+                        div()
+                            .id("mic-slider")
                             .flex_1()
                             .h(px(6.))
                             .bg(theme.hover)
                             .rounded_full()
+                            .relative()
+                            .cursor_pointer()
                             .child(
                                 div()
                                     .w(relative(audio_state.source_volume as f32 / 100.0))
@@ -264,6 +272,55 @@ impl ControlCenterWidget {
                         .child("No output devices")
                 )
             })
+            .child(
+                // Streams section
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap_1()
+                    .mt_3()
+                    .child(
+                        div()
+                            .text_xs()
+                            .font_weight(FontWeight::BOLD)
+                            .text_color(theme.text_muted)
+                            .child("Applications")
+                    )
+                    .children({
+                        let streams = self.audio.read(cx).sink_inputs();
+                        if streams.is_empty() {
+                            vec![div()
+                                .text_xs()
+                                .text_color(theme.text_muted)
+                                .child("No active playback")
+                                .into_any_element()]
+                        } else {
+                            streams.iter().map(|stream| {
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .gap_2()
+                                    .p_2()
+                                    .bg(theme.surface)
+                                    .rounded_md()
+                                    .child(
+                                        div()
+                                            .flex_1()
+                                            .text_xs()
+                                            .text_color(theme.text)
+                                            .child(stream.app_name.clone())
+                                    )
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .text_color(theme.text_muted)
+                                            .child(format!("{}%", stream.volume))
+                                    )
+                                    .into_any_element()
+                            }).collect()
+                        }
+                    })
+            )
             .into_any_element()
     }
 
@@ -367,6 +424,55 @@ impl ControlCenterWidget {
                         .child("No input devices")
                 )
             })
+            .child(
+                // Streams section
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap_1()
+                    .mt_3()
+                    .child(
+                        div()
+                            .text_xs()
+                            .font_weight(FontWeight::BOLD)
+                            .text_color(theme.text_muted)
+                            .child("Applications")
+                    )
+                    .children({
+                        let streams = self.audio.read(cx).source_outputs();
+                        if streams.is_empty() {
+                            vec![div()
+                                .text_xs()
+                                .text_color(theme.text_muted)
+                                .child("No active recording")
+                                .into_any_element()]
+                        } else {
+                            streams.iter().map(|stream| {
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .gap_2()
+                                    .p_2()
+                                    .bg(theme.surface)
+                                    .rounded_md()
+                                    .child(
+                                        div()
+                                            .flex_1()
+                                            .text_xs()
+                                            .text_color(theme.text)
+                                            .child(stream.app_name.clone())
+                                    )
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .text_color(theme.text_muted)
+                                            .child(format!("{}%", stream.volume))
+                                    )
+                                    .into_any_element()
+                            }).collect()
+                        }
+                    })
+            )
             .into_any_element()
     }
 

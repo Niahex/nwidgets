@@ -34,6 +34,14 @@ pub struct AudioDevice {
     pub is_default: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AudioStream {
+    pub id: u32,
+    pub app_name: String,
+    pub volume: u8,
+    pub muted: bool,
+}
+
 #[derive(Clone)]
 pub struct AudioStateChanged {
     pub state: AudioState,
@@ -43,6 +51,8 @@ pub struct AudioService {
     state: Arc<RwLock<AudioState>>,
     sinks: Arc<RwLock<Vec<AudioDevice>>>,
     sources: Arc<RwLock<Vec<AudioDevice>>>,
+    sink_inputs: Arc<RwLock<Vec<AudioStream>>>,
+    source_outputs: Arc<RwLock<Vec<AudioStream>>>,
 }
 
 impl EventEmitter<AudioStateChanged> for AudioService {}
@@ -52,14 +62,18 @@ impl AudioService {
         let state = Arc::new(RwLock::new(Self::fetch_audio_state()));
         let sinks = Arc::new(RwLock::new(Self::fetch_sinks()));
         let sources = Arc::new(RwLock::new(Self::fetch_sources()));
+        let sink_inputs = Arc::new(RwLock::new(Self::fetch_sink_inputs()));
+        let source_outputs = Arc::new(RwLock::new(Self::fetch_source_outputs()));
 
         let state_clone = Arc::clone(&state);
         let sinks_clone = Arc::clone(&sinks);
         let sources_clone = Arc::clone(&sources);
+        let sink_inputs_clone = Arc::clone(&sink_inputs);
+        let source_outputs_clone = Arc::clone(&source_outputs);
 
         // Spawn background task to monitor PipeWire events with pw-mon
         cx.spawn(async move |this, cx| {
-            Self::monitor_audio_events(this, state_clone, sinks_clone, sources_clone, cx).await
+            Self::monitor_audio_events(this, state_clone, sinks_clone, sources_clone, sink_inputs_clone, source_outputs_clone, cx).await
         })
         .detach();
 
@@ -67,6 +81,8 @@ impl AudioService {
             state,
             sinks,
             sources,
+            sink_inputs,
+            source_outputs,
         }
     }
 
@@ -80,6 +96,14 @@ impl AudioService {
 
     pub fn sources(&self) -> Vec<AudioDevice> {
         self.sources.read().clone()
+    }
+
+    pub fn sink_inputs(&self) -> Vec<AudioStream> {
+        self.sink_inputs.read().clone()
+    }
+
+    pub fn source_outputs(&self) -> Vec<AudioStream> {
+        self.source_outputs.read().clone()
     }
 
     pub fn set_sink_volume(&self, volume: u8) {
@@ -145,6 +169,8 @@ impl AudioService {
         state: Arc<RwLock<AudioState>>,
         sinks: Arc<RwLock<Vec<AudioDevice>>>,
         sources: Arc<RwLock<Vec<AudioDevice>>>,
+        sink_inputs: Arc<RwLock<Vec<AudioStream>>>,
+        source_outputs: Arc<RwLock<Vec<AudioStream>>>,
         cx: &mut AsyncApp,
     ) {
         loop {
@@ -215,6 +241,8 @@ impl AudioService {
                 let new_state = Self::fetch_audio_state();
                 let new_sinks = Self::fetch_sinks();
                 let new_sources = Self::fetch_sources();
+                let new_sink_inputs = Self::fetch_sink_inputs();
+                let new_source_outputs = Self::fetch_source_outputs();
 
                 let state_changed = {
                     let mut current_state = state.write();
@@ -236,7 +264,18 @@ impl AudioService {
                     changed
                 };
 
-                if state_changed || devices_changed {
+                let streams_changed = {
+                    let mut current_sink_inputs = sink_inputs.write();
+                    let mut current_source_outputs = source_outputs.write();
+                    let changed = *current_sink_inputs != new_sink_inputs || *current_source_outputs != new_source_outputs;
+                    if changed {
+                        *current_sink_inputs = new_sink_inputs;
+                        *current_source_outputs = new_source_outputs;
+                    }
+                    changed
+                };
+
+                if state_changed || devices_changed || streams_changed {
                     let _ = this.update(cx, |_, cx| {
                         if state_changed {
                             cx.emit(AudioStateChanged { state: new_state });
@@ -355,6 +394,101 @@ impl AudioService {
                     name: desc.clone(),
                     description: desc,
                     is_default,
+                })
+            })
+            .collect()
+    }
+
+    fn fetch_sink_inputs() -> Vec<AudioStream> {
+        let output = Command::new("pw-dump")
+            .output()
+            .ok()
+            .and_then(|o| String::from_utf8(o.stdout).ok())
+            .unwrap_or_default();
+
+        let nodes: Vec<serde_json::Value> = serde_json::from_str(&output).unwrap_or_default();
+        
+        nodes
+            .iter()
+            .filter(|node| {
+                node["type"] == "PipeWire:Interface:Node"
+                    && node["info"]["props"]["media.class"] == "Stream/Output/Audio"
+            })
+            .filter_map(|node| {
+                let id = node["id"].as_u64()? as u32;
+                let app_name = node["info"]["props"]["application.name"]
+                    .as_str()
+                    .or_else(|| node["info"]["props"]["node.name"].as_str())?
+                    .to_string();
+                
+                // Get volume from channelVolumes if available
+                let volume = node["info"]["params"]["Props"]
+                    .as_array()
+                    .and_then(|arr| arr.first())
+                    .and_then(|p| p["channelVolumes"].as_array())
+                    .and_then(|vols| vols.first())
+                    .and_then(|v| v.as_f64())
+                    .map(|v| (v * 100.0) as u8)
+                    .unwrap_or(100);
+                
+                let muted = node["info"]["params"]["Props"]
+                    .as_array()
+                    .and_then(|arr| arr.first())
+                    .and_then(|p| p["mute"].as_bool())
+                    .unwrap_or(false);
+                
+                Some(AudioStream {
+                    id,
+                    app_name,
+                    volume,
+                    muted,
+                })
+            })
+            .collect()
+    }
+
+    fn fetch_source_outputs() -> Vec<AudioStream> {
+        let output = Command::new("pw-dump")
+            .output()
+            .ok()
+            .and_then(|o| String::from_utf8(o.stdout).ok())
+            .unwrap_or_default();
+
+        let nodes: Vec<serde_json::Value> = serde_json::from_str(&output).unwrap_or_default();
+        
+        nodes
+            .iter()
+            .filter(|node| {
+                node["type"] == "PipeWire:Interface:Node"
+                    && node["info"]["props"]["media.class"] == "Stream/Input/Audio"
+            })
+            .filter_map(|node| {
+                let id = node["id"].as_u64()? as u32;
+                let app_name = node["info"]["props"]["application.name"]
+                    .as_str()
+                    .or_else(|| node["info"]["props"]["node.name"].as_str())?
+                    .to_string();
+                
+                let volume = node["info"]["params"]["Props"]
+                    .as_array()
+                    .and_then(|arr| arr.first())
+                    .and_then(|p| p["channelVolumes"].as_array())
+                    .and_then(|vols| vols.first())
+                    .and_then(|v| v.as_f64())
+                    .map(|v| (v * 100.0) as u8)
+                    .unwrap_or(100);
+                
+                let muted = node["info"]["params"]["Props"]
+                    .as_array()
+                    .and_then(|arr| arr.first())
+                    .and_then(|p| p["mute"].as_bool())
+                    .unwrap_or(false);
+                
+                Some(AudioStream {
+                    id,
+                    app_name,
+                    volume,
+                    muted,
                 })
             })
             .collect()
