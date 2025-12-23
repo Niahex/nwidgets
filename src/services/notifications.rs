@@ -219,7 +219,7 @@ impl NotificationService {
             let state_ref = Arc::clone(&STATE);
 
             std::thread::spawn(move || {
-                crate::utils::runtime::block_on(async {
+                futures::executor::block_on(async {
                     if let Err(e) = Self::run_dbus_server(state_ref).await {
                         eprintln!("[NOTIF] ❌ D-Bus Error: {e}");
                     }

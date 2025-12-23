@@ -87,34 +87,34 @@ impl MprisService {
         self.current_player.read().clone()
     }
 
-    pub fn play_pause(&self) {
-        crate::utils::runtime::spawn(async {
+    pub fn play_pause(&self, cx: &mut Context<Self>) {
+        gpui_tokio::Tokio::spawn(cx, async {
             if let Ok(conn) = Connection::session().await {
                 if let Ok(proxy) = MediaPlayer2PlayerProxy::new(&conn).await {
                     let _ = proxy.play_pause().await;
                 }
             }
-        });
+        }).detach();
     }
 
-    pub fn next(&self) {
-        crate::utils::runtime::spawn(async {
+    pub fn next(&self, cx: &mut Context<Self>) {
+        gpui_tokio::Tokio::spawn(cx, async {
             if let Ok(conn) = Connection::session().await {
                 if let Ok(proxy) = MediaPlayer2PlayerProxy::new(&conn).await {
                     let _ = proxy.next().await;
                 }
             }
-        });
+        }).detach();
     }
 
-    pub fn previous(&self) {
-        crate::utils::runtime::spawn(async {
+    pub fn previous(&self, cx: &mut Context<Self>) {
+        gpui_tokio::Tokio::spawn(cx, async {
             if let Ok(conn) = Connection::session().await {
                 if let Ok(proxy) = MediaPlayer2PlayerProxy::new(&conn).await {
                     let _ = proxy.previous().await;
                 }
             }
-        });
+        }).detach();
     }
 
     pub fn volume_up(&self) {

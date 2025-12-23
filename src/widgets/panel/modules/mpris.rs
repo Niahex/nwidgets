@@ -58,11 +58,10 @@ impl Render for MprisModule {
                 .hover(|style| style.bg(rgba(0x4c566a40)))
                 // Click to play/pause
                 .on_click(move |_event, _window, cx| {
-                    mpris_for_click.read(cx).play_pause();
+                    mpris_for_click.update(cx, |mpris, cx| mpris.play_pause(cx));
                 })
                 // Scroll handlers
                 .on_scroll_wheel(move |event, window, cx| {
-                    let mpris = mpris_for_scroll.read(cx);
                     let delta_pixels = event.delta.pixel_delta(window.line_height());
 
                     // Horizontal scroll for track navigation (with debounce)
@@ -71,17 +70,20 @@ impl Render for MprisModule {
                         let cooldown = Duration::from_millis(300);
 
                         if now.duration_since(last_track_change.get()) >= cooldown {
-                            if delta_pixels.x < px(0.0) {
-                                mpris.previous();
-                            } else {
-                                mpris.next();
-                            }
+                            mpris_for_scroll.update(cx, |mpris, cx| {
+                                if delta_pixels.x < px(0.0) {
+                                    mpris.previous(cx);
+                                } else {
+                                    mpris.next(cx);
+                                }
+                            });
                             last_track_change.set(now);
                         }
                     }
 
                     // Vertical scroll for volume (inverted: scroll up = volume up)
                     if !delta_pixels.y.is_zero() {
+                        let mpris = mpris_for_scroll.read(cx);
                         if delta_pixels.y < px(0.0) {
                             mpris.volume_down();
                         } else {

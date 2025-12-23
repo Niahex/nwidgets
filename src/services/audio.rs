@@ -174,9 +174,9 @@ impl AudioService {
         loop {
             let (tx, mut rx) = futures::channel::mpsc::unbounded();
 
-            // Spawn pw-mon in background thread via shared runtime
+            // Spawn pw-mon in background thread
             let tx_clone = tx.clone();
-            crate::utils::runtime::spawn_blocking(move || {
+            std::thread::spawn(move || {
                 let mut child = match Command::new("pw-mon").stdout(Stdio::piped()).spawn() {
                     Ok(child) => child,
                     Err(e) => {

@@ -599,6 +599,30 @@ impl RenderOnce for Slider {
                                 },
                             ),
                         )
+                        .on_scroll_wheel(window.listener_for(
+                            &self.state,
+                            move |state, e: &gpui::ScrollWheelEvent, window, cx| {
+                                let delta = e.delta.pixel_delta(px(20.0));
+                                let delta_val = if matches!(axis, Axis::Horizontal) {
+                                    if delta.y > px(0.0) { -state.step } else { state.step }
+                                } else {
+                                    if delta.y > px(0.0) { state.step } else { -state.step }
+                                };
+                                
+                                // Invert direction for natural scrolling if needed, or stick to standard
+                                // Typically scroll up (positive y) increases value
+                                let change = if delta.y.0 > 0.0 { state.step } else { -state.step };
+                                
+                                let current_val = match state.value {
+                                    SliderValue::Single(v) => v,
+                                    SliderValue::Range(_, end) => end, // Default to modifying end for range? Or ignore range scroll for now
+                                };
+                                
+                                let new_val = (current_val + change).clamp(state.min, state.max);
+                                state.set_value(new_val, window, cx);
+                                cx.emit(SliderEvent::Change(state.value));
+                            }
+                        ))
                     })
                     .when(!self.disabled && !is_range, |this| {
                         this.on_drag(DragSlider(entity_id), |drag, _, _, cx| {
