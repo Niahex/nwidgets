@@ -106,12 +106,12 @@ impl ControlCenterService {
             WindowOptions {
                 window_bounds: Some(WindowBounds::Windowed(Bounds {
                     origin: Point {
-                        x: px(3440.0 - 500.0 - 20.0), // Top Right with margin
-                        y: px(10.0),
+                        x: px(3440.0 - 500.0 - 20.0),
+                        y: px(50.0),
                     },
                     size: Size {
                         width: px(500.0),
-                        height: px(600.0),
+                        height: px(1390.0),
                     },
                 })),
                 titlebar: None,
@@ -122,7 +122,7 @@ impl ControlCenterService {
                     anchor: Anchor::TOP | Anchor::RIGHT | Anchor::BOTTOM,
                     exclusive_zone: None,
                     margin: Some((px(10.0), px(20.0), px(10.0), px(0.0))),
-                    keyboard_interactivity: KeyboardInteractivity::OnDemand,
+                    keyboard_interactivity: KeyboardInteractivity::None,
                     ..Default::default()
                 }),
                 ..Default::default()
@@ -134,6 +134,10 @@ impl ControlCenterService {
         );
 
         if let Ok(handle) = handle {
+            let _ = handle.update(cx, |view, window, cx| {
+                window.focus(&view.focus_handle);
+                cx.activate(true);
+            });
             *self.window_handle.write() = Some(handle.into());
         }
     }

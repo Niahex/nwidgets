@@ -1,8 +1,7 @@
 target/
 result/
 debug/
-stock/
-sources/
+examples/
 .amazonq/
 .ai/
 qt-webviews/*/build/

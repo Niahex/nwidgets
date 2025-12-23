@@ -8,6 +8,7 @@ use gpui::prelude::*;
 use gpui::*;
 
 pub struct ControlCenterWidget {
+    pub focus_handle: FocusHandle,
     control_center: Entity<ControlCenterService>,
     audio: Entity<AudioService>,
     bluetooth: Entity<BluetoothService>,
@@ -31,6 +32,7 @@ impl ControlCenterWidget {
         cx.subscribe(&notifications, |_, _, _: &NotificationAdded, cx| cx.notify()).detach();
 
         Self {
+            focus_handle: cx.focus_handle(),
             control_center,
             audio,
             bluetooth,
@@ -271,19 +273,29 @@ impl ControlCenterWidget {
 
 
 impl Render for ControlCenterWidget {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        window.focus(&self.focus_handle);
+        
         div()
+            .track_focus(&self.focus_handle)
             .flex()
             .flex_col()
             .size_full()
-            .bg(rgb(0x2e3440)) // polar0
+            .bg(rgb(0x2e3440))
             .text_color(rgb(0xeceff4))
             .p_4()
             .gap_4()
+            .on_key_down(cx.listener(|this, event: &KeyDownEvent, _window, cx| {
+                if event.keystroke.key == "escape" {
+                    this.control_center.update(cx, |cc, cx| {
+                        cc.toggle(cx);
+                    });
+                }
+            }))
             .child(self.render_audio_section(cx))
             .child(self.render_connectivity_section(cx))
             .child(
-                div().h(px(1.)).bg(rgb(0x4c566a)) // Separator
+                div().h(px(1.)).bg(rgb(0x4c566a))
             )
             .child(self.render_notifications_section(cx))
     }
