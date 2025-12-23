@@ -3,30 +3,14 @@ use std::ops::Range;
 use gpui::{
     prelude::FluentBuilder as _, px, div, App, AppContext, Axis, Background, Bounds, Context, Corners,
     DragMoveEvent, Empty, Entity, EntityId, EventEmitter, Hsla, InteractiveElement, IntoElement,
-    MouseButton, MouseDownEvent, ParentElement as _, Pixels, Point, Render, RenderOnce,
+    MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParentElement as _, Pixels, Point, Render, RenderOnce,
     StatefulInteractiveElement as _, StyleRefinement, Styled, Window,
 };
 
+use super::element_ext::ElementExt;
+
 fn h_flex() -> gpui::Div {
     div().flex().flex_row()
-}
-
-#[derive(Clone)]
-struct DragThumb((EntityId, bool));
-
-impl Render for DragThumb {
-    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
-        Empty
-    }
-}
-
-#[derive(Clone)]
-struct DragSlider(EntityId);
-
-impl Render for DragSlider {
-    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
-        Empty
-    }
 }
 
 /// Events emitted by the [`SliderState`].
@@ -192,6 +176,10 @@ pub struct SliderState {
     /// The bounds of the slider after rendered.
     bounds: Bounds<Pixels>,
     scale: SliderScale,
+    /// Track if currently dragging
+    dragging: bool,
+    /// Track which thumb is being dragged (for range sliders)
+    dragging_start: bool,
 }
 
 impl SliderState {
@@ -205,6 +193,8 @@ impl SliderState {
             percentage: (0.0..0.0),
             bounds: Bounds::default(),
             scale: SliderScale::default(),
+            dragging: false,
+            dragging_start: false,
         }
     }
 
@@ -354,9 +344,9 @@ impl SliderState {
             Axis::Horizontal => bounds.size.width,
             Axis::Vertical => bounds.size.height,
         };
-        let percentage = inner_pos.clamp(px(0.), total_size) / total_size;
+        let mut percentage = inner_pos.clamp(px(0.), total_size) / total_size;
 
-        let percentage = if is_start {
+        percentage = if is_start {
             percentage.clamp(0.0, self.percentage.end)
         } else {
             percentage.clamp(self.percentage.start, 1.0)
@@ -365,14 +355,28 @@ impl SliderState {
         let value = self.percentage_to_value(percentage);
         let value = (value / step).round() * step;
 
+        let old_value = self.value;
+        
+        // Update percentage for smooth visual movement
         if is_start {
             self.percentage.start = percentage;
-            self.value.set_start(value);
         } else {
             self.percentage.end = percentage;
+        }
+        
+        // Update value (snapped to step)
+        if is_start {
+            self.value.set_start(value);
+        } else {
             self.value.set_end(value);
         }
-        cx.emit(SliderEvent::Change(self.value));
+        
+        // Emit event only if value changed
+        if old_value != self.value {
+            cx.emit(SliderEvent::Change(self.value));
+        }
+        
+        // Always notify for visual update
         cx.notify();
     }
 }
@@ -428,10 +432,9 @@ impl Slider {
         is_start: bool,
         bar_color: Background,
         thumb_color: Hsla,
-        window: &mut Window,
-        cx: &mut App,
+        _window: &mut Window,
+        _cx: &mut App,
     ) -> impl gpui::IntoElement {
-        let entity_id = self.state.entity_id();
         let axis = self.axis;
         let id = ("slider-thumb", is_start as u32);
 
@@ -464,34 +467,6 @@ impl Slider {
                     .rounded_full()
                     .bg(thumb_color),
             )
-            .on_mouse_down(MouseButton::Left, |_, _, cx| {
-                cx.stop_propagation();
-            })
-            .on_drag(DragThumb((entity_id, is_start)), |drag, _, _, cx| {
-                cx.stop_propagation();
-                cx.new(|_| drag.clone())
-            })
-            .on_drag_move(window.listener_for(
-                &self.state,
-                move |view, e: &DragMoveEvent<DragThumb>, window, cx| {
-                    match e.drag(cx) {
-                        DragThumb((id, is_start)) => {
-                            if *id != entity_id {
-                                return;
-                            }
-
-                            // set value by mouse position
-                            view.update_value_by_position(
-                                axis,
-                                e.event.position,
-                                *is_start,
-                                window,
-                                cx,
-                            )
-                        }
-                    }
-                },
-            ))
     }
 }
 
@@ -548,6 +523,34 @@ impl RenderOnce for Slider {
                 .unwrap_or(default_radius),
         };
 
+        // Setup mouse event handlers like scrollbar
+        window.on_mouse_event({
+            let state = self.state.clone();
+            move |event: &MouseMoveEvent, _phase, window, cx| {
+                state.update(cx, |state, cx| {
+                    if state.dragging {
+                        state.update_value_by_position(
+                            axis,
+                            event.position,
+                            state.dragging_start,
+                            window,
+                            cx,
+                        );
+                        cx.stop_propagation();
+                    }
+                });
+            }
+        });
+
+        window.on_mouse_event({
+            let state = self.state.clone();
+            move |_event: &MouseUpEvent, _phase, _window, cx| {
+                state.update(cx, |state, _cx| {
+                    state.dragging = false;
+                });
+            }
+        });
+
         div()
             .id(("slider", self.state.entity_id()))
             .flex()
@@ -575,37 +578,14 @@ impl RenderOnce for Slider {
                                         is_start = inner_pos < center;
                                     }
 
+                                    state.dragging = true;
+                                    state.dragging_start = is_start;
                                     state.update_value_by_position(
                                         axis, e.position, is_start, window, cx,
-                                    )
+                                    );
                                 },
                             ),
                         )
-                    })
-                    .when(!self.disabled && !is_range, |this| {
-                        this.on_drag(DragSlider(entity_id), |drag, _, _, cx| {
-                            cx.stop_propagation();
-                            cx.new(|_| drag.clone())
-                        })
-                        .on_drag_move(window.listener_for(
-                            &self.state,
-                            move |view, e: &DragMoveEvent<DragSlider>, window, cx| match e.drag(cx)
-                            {
-                                DragSlider(id) => {
-                                    if *id != entity_id {
-                                        return;
-                                    }
-
-                                    view.update_value_by_position(
-                                        axis,
-                                        e.event.position,
-                                        false,
-                                        window,
-                                        cx,
-                                    )
-                                }
-                            },
-                        ))
                     })
                     .when(matches!(axis, Axis::Horizontal), |this| {
                         this.items_center().h_6().w_full()
@@ -652,7 +632,11 @@ impl RenderOnce for Slider {
                                 thumb_color,
                                 window,
                                 cx,
-                            )),
+                            ))
+                            .on_prepaint({
+                                let state = self.state.clone();
+                                move |bounds, _, cx| state.update(cx, |r, _| r.bounds = bounds)
+                            }),
                     ),
             )
     }

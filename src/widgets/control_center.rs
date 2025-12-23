@@ -1,3 +1,4 @@
+use crate::components::slider::{Slider, SliderEvent, SliderState, SliderValue};
 use crate::services::audio::AudioService;
 use crate::services::bluetooth::BluetoothService;
 use crate::services::control_center::{ControlCenterSection, ControlCenterService};
@@ -6,6 +7,7 @@ use crate::services::notifications::{NotificationAdded, NotificationService};
 use crate::utils::Icon;
 use gpui::prelude::*;
 use gpui::*;
+use std::time::{Duration, Instant};
 
 pub struct ControlCenterWidget {
     pub focus_handle: FocusHandle,
@@ -16,6 +18,12 @@ pub struct ControlCenterWidget {
     notifications: Entity<NotificationService>,
     sink_dropdown_open: bool,
     source_dropdown_open: bool,
+    volume_slider: Entity<SliderState>,
+    mic_slider: Entity<SliderState>,
+    last_volume: u8,
+    last_mic_volume: u8,
+    last_volume_update: Option<Instant>,
+    last_mic_update: Option<Instant>,
 }
 
 impl ControlCenterWidget {
@@ -26,12 +34,72 @@ impl ControlCenterWidget {
         let network = NetworkService::global(cx);
         let notifications = NotificationService::global(cx);
 
+        let audio_state = audio.read(cx).state();
+        let volume_slider = cx.new(|_| {
+            SliderState::new()
+                .min(0.0)
+                .max(100.0)
+                .step(5.0)
+                .default_value(audio_state.sink_volume as f32)
+        });
+        let mic_slider = cx.new(|_| {
+            SliderState::new()
+                .min(0.0)
+                .max(100.0)
+                .step(5.0)
+                .default_value(audio_state.source_volume as f32)
+        });
+
         // Subscriptions
         cx.subscribe(&control_center, |_, _, _, cx| cx.notify()).detach();
         cx.subscribe(&audio, |_, _, _, cx| cx.notify()).detach();
         cx.subscribe(&bluetooth, |_, _, _, cx| cx.notify()).detach();
         cx.subscribe(&network, |_, _, _, cx| cx.notify()).detach();
         cx.subscribe(&notifications, |_, _, _: &NotificationAdded, cx| cx.notify()).detach();
+        
+        // Subscribe to volume slider changes
+        cx.subscribe(&volume_slider, |this, _, event: &SliderEvent, cx| {
+            if let SliderEvent::Change(SliderValue::Single(value)) = event {
+                let volume = *value as u8;
+                if volume != this.last_volume {
+                    this.last_volume = volume;
+                    
+                    let now = Instant::now();
+                    let should_update = this.last_volume_update
+                        .map(|last| now.duration_since(last) >= Duration::from_millis(50))
+                        .unwrap_or(true);
+                    
+                    if should_update {
+                        this.last_volume_update = Some(now);
+                        this.audio.update(cx, |audio, _| {
+                            audio.set_sink_volume(volume);
+                        });
+                    }
+                }
+            }
+        }).detach();
+        
+        // Subscribe to mic slider changes
+        cx.subscribe(&mic_slider, |this, _, event: &SliderEvent, cx| {
+            if let SliderEvent::Change(SliderValue::Single(value)) = event {
+                let volume = *value as u8;
+                if volume != this.last_mic_volume {
+                    this.last_mic_volume = volume;
+                    
+                    let now = Instant::now();
+                    let should_update = this.last_mic_update
+                        .map(|last| now.duration_since(last) >= Duration::from_millis(50))
+                        .unwrap_or(true);
+                    
+                    if should_update {
+                        this.last_mic_update = Some(now);
+                        this.audio.update(cx, |audio, _| {
+                            audio.set_source_volume(volume);
+                        });
+                    }
+                }
+            }
+        }).detach();
 
         Self {
             focus_handle: cx.focus_handle(),
@@ -42,6 +110,12 @@ impl ControlCenterWidget {
             notifications,
             sink_dropdown_open: false,
             source_dropdown_open: false,
+            volume_slider,
+            mic_slider,
+            last_volume: audio_state.sink_volume,
+            last_mic_volume: audio_state.source_volume,
+            last_volume_update: None,
+            last_mic_update: None,
         }
     }
 
@@ -73,22 +147,12 @@ impl ControlCenterWidget {
                     .p_2()
                     .child(Icon::new(volume_icon).size(px(20.)).color(theme.text))
                     .child(
-                        // Slider bar
                         div()
-                            .id("volume-slider")
                             .flex_1()
-                            .h(px(6.))
-                            .bg(theme.hover)
-                            .rounded_full()
-                            .relative()
-                            .cursor_pointer()
-                            .child(
-                                div()
-                                    .w(relative(audio_state.sink_volume as f32 / 100.0))
-                                    .h_full()
-                                    .bg(theme.accent_alt)
-                                    .rounded_full()
-                            )
+                            .h(px(20.))
+                            .flex()
+                            .items_center()
+                            .child(Slider::new(&self.volume_slider).horizontal())
                     )
                     .child(
                         div()
@@ -127,22 +191,12 @@ impl ControlCenterWidget {
                     .p_2()
                     .child(Icon::new(mic_icon).size(px(20.)).color(theme.text))
                     .child(
-                        // Slider bar
                         div()
-                            .id("mic-slider")
                             .flex_1()
-                            .h(px(6.))
-                            .bg(theme.hover)
-                            .rounded_full()
-                            .relative()
-                            .cursor_pointer()
-                            .child(
-                                div()
-                                    .w(relative(audio_state.source_volume as f32 / 100.0))
-                                    .h_full()
-                                    .bg(theme.accent_alt)
-                                    .rounded_full()
-                            )
+                            .h(px(20.))
+                            .flex()
+                            .items_center()
+                            .child(Slider::new(&self.mic_slider).horizontal())
                     )
                     .child(
                         div()
