@@ -71,6 +71,9 @@ fn main() {
     Application::new()
         .with_assets(Assets { base: assets_path })
         .run(|cx: &mut App| {
+            // Initialize gpui_tokio
+            gpui_tokio::init(cx);
+            
             // Initialize theme
             cx.set_global(theme::Theme::nord_dark());
             

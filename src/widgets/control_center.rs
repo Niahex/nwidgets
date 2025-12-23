@@ -37,8 +37,15 @@ impl ControlCenterWidget {
         cx.subscribe(&control_center, |_, _, _, cx| cx.notify()).detach();
         cx.subscribe(&audio, |this, _, _, cx| {
             let audio_state = this.audio.read(cx).state();
-            this.last_volume = audio_state.sink_volume;
-            this.last_mic_volume = audio_state.source_volume;
+            let now = Instant::now();
+            
+            // Ne sync que si on n'a pas scrollé récemment
+            if this.last_volume_update.map(|last| now.duration_since(last) > Duration::from_millis(200)).unwrap_or(true) {
+                this.last_volume = audio_state.sink_volume;
+            }
+            if this.last_mic_update.map(|last| now.duration_since(last) > Duration::from_millis(200)).unwrap_or(true) {
+                this.last_mic_volume = audio_state.source_volume;
+            }
             cx.notify();
         }).detach();
         cx.subscribe(&bluetooth, |_, _, _, cx| cx.notify()).detach();
@@ -116,8 +123,8 @@ impl ControlCenterWidget {
                                             let now = Instant::now();
                                             if this.last_volume_update.map(|last| now.duration_since(last) >= Duration::from_millis(30)).unwrap_or(true) {
                                                 this.last_volume_update = Some(now);
-                                                this.audio.update(cx, |audio, _| {
-                                                    audio.set_sink_volume(new_volume);
+                                                this.audio.update(cx, |audio, cx| {
+                                                    audio.set_sink_volume(new_volume, cx);
                                                 });
                                             }
                                         }
@@ -195,8 +202,8 @@ impl ControlCenterWidget {
                                             let now = Instant::now();
                                             if this.last_mic_update.map(|last| now.duration_since(last) >= Duration::from_millis(50)).unwrap_or(true) {
                                                 this.last_mic_update = Some(now);
-                                                this.audio.update(cx, |audio, _| {
-                                                    audio.set_source_volume(new_volume);
+                                                this.audio.update(cx, |audio, cx| {
+                                                    audio.set_source_volume(new_volume, cx);
                                                 });
                                             }
                                         }
@@ -306,8 +313,8 @@ impl ControlCenterWidget {
                                 .hover(|s| s.bg(theme.hover))
                                 .when(sink.is_default, |this| this.bg(theme.surface))
                                 .on_click(cx.listener(move |this, _, _window, cx| {
-                                    audio.update(cx, |audio, _cx| {
-                                        audio.set_default_sink(sink_id);
+                                    audio.update(cx, |audio, cx| {
+                                        audio.set_default_sink(sink_id, cx);
                                     });
                                     this.sink_dropdown_open = false;
                                     cx.notify();
@@ -458,8 +465,8 @@ impl ControlCenterWidget {
                                 .hover(|s| s.bg(theme.hover))
                                 .when(source.is_default, |this| this.bg(theme.surface))
                                 .on_click(cx.listener(move |this, _, _window, cx| {
-                                    audio.update(cx, |audio, _cx| {
-                                        audio.set_default_source(source_id);
+                                    audio.update(cx, |audio, cx| {
+                                        audio.set_default_source(source_id, cx);
                                     });
                                     this.source_dropdown_open = false;
                                     cx.notify();

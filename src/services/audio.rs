@@ -106,62 +106,60 @@ impl AudioService {
         self.source_outputs.read().clone()
     }
 
-    pub fn set_sink_volume(&self, volume: u8) {
+    pub fn set_sink_volume(&self, volume: u8, cx: &mut Context<Self>) {
         let volume = volume.min(100);
-        std::thread::spawn(move || {
-            let _ = Command::new("wpctl")
-                .args([
-                    "set-volume",
-                    "@DEFAULT_AUDIO_SINK@",
-                    &format!("{volume}%"),
-                ])
-                .status();
-        });
+        gpui_tokio::Tokio::spawn(cx, async move {
+            let _ = tokio::process::Command::new("wpctl")
+                .args(["set-volume", "@DEFAULT_AUDIO_SINK@", &format!("{volume}%")])
+                .output()
+                .await;
+        }).detach();
     }
 
-    pub fn set_source_volume(&self, volume: u8) {
+    pub fn set_source_volume(&self, volume: u8, cx: &mut Context<Self>) {
         let volume = volume.min(100);
-        std::thread::spawn(move || {
-            let _ = Command::new("wpctl")
-                .args([
-                    "set-volume",
-                    "@DEFAULT_AUDIO_SOURCE@",
-                    &format!("{volume}%"),
-                ])
-                .status();
-        });
+        gpui_tokio::Tokio::spawn(cx, async move {
+            let _ = tokio::process::Command::new("wpctl")
+                .args(["set-volume", "@DEFAULT_AUDIO_SOURCE@", &format!("{volume}%")])
+                .output()
+                .await;
+        }).detach();
     }
 
-    pub fn toggle_sink_mute(&self) {
-        std::thread::spawn(|| {
-            let _ = Command::new("wpctl")
+    pub fn toggle_sink_mute(&self, cx: &mut Context<Self>) {
+        gpui_tokio::Tokio::spawn(cx, async move {
+            let _ = tokio::process::Command::new("wpctl")
                 .args(["set-mute", "@DEFAULT_AUDIO_SINK@", "toggle"])
-                .status();
-        });
+                .output()
+                .await;
+        }).detach();
     }
 
-    pub fn toggle_source_mute(&self) {
-        std::thread::spawn(|| {
-            let _ = Command::new("wpctl")
+    pub fn toggle_source_mute(&self, cx: &mut Context<Self>) {
+        gpui_tokio::Tokio::spawn(cx, async move {
+            let _ = tokio::process::Command::new("wpctl")
                 .args(["set-mute", "@DEFAULT_AUDIO_SOURCE@", "toggle"])
-                .status();
-        });
+                .output()
+                .await;
+        }).detach();
     }
 
-    pub fn set_default_sink(&self, id: u32) {
-        std::thread::spawn(move || {
-            let _ = Command::new("wpctl")
+    pub fn set_default_sink(&self, id: u32, cx: &mut Context<Self>) {
+        gpui_tokio::Tokio::spawn(cx, async move {
+            let _ = tokio::process::Command::new("wpctl")
                 .args(["set-default", &id.to_string()])
-                .status();
-        });
+                .output()
+                .await;
+        }).detach();
     }
 
-    pub fn set_default_source(&self, id: u32) {
-        std::thread::spawn(move || {
-            let _ = Command::new("wpctl")
+    pub fn set_default_source(&self, id: u32, cx: &mut Context<Self>) {
+        gpui_tokio::Tokio::spawn(cx, async move {
+            let _ = tokio::process::Command::new("wpctl")
                 .args(["set-default", &id.to_string()])
-                .status();
-        });
+                .output()
+                .await;
+        }).detach();
     }
 
     async fn monitor_audio_events(

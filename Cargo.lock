@@ -2140,6 +2140,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "gpui_tokio"
+version = "0.1.0"
+source = "git+https://github.com/zed-industries/zed?tag=v0.216.1#81870d5cf77d61d40ec526a37141ebe3a74318ca"
+dependencies = [
+ "anyhow",
+ "gpui",
+ "tokio",
+ "util",
+]
+
+[[package]]
 name = "grid"
 version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3289,6 +3300,8 @@ dependencies = [
  "futures",
  "futures-util",
  "gpui",
+ "gpui_macros",
+ "gpui_tokio",
  "once_cell",
  "parking_lot",
  "serde",
