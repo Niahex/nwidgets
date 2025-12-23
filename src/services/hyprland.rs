@@ -64,13 +64,13 @@ impl HyprlandService {
         let active_workspace_id_clone = Arc::clone(&active_workspace_id);
         let active_window_clone = Arc::clone(&active_window);
 
-        cx.spawn(async move |this, mut cx| {
+        cx.spawn(async move |this, cx| {
             Self::monitor_hyprland_events(
                 this,
                 workspaces_clone,
                 active_workspace_id_clone,
                 active_window_clone,
-                &mut cx,
+                cx,
             )
             .await
         })
@@ -195,7 +195,7 @@ impl HyprlandService {
 
         let active_workspace_id: i32 =
             serde_json::from_str::<serde_json::Value>(&active_workspace_json)
-                .and_then(|v| Ok(v["id"].as_i64().unwrap_or(1) as i32))
+                .map(|v| v["id"].as_i64().unwrap_or(1) as i32)
                 .unwrap_or(1);
 
         (workspaces, active_workspace_id)
@@ -231,7 +231,7 @@ impl HyprlandService {
     }
 
     pub fn init(cx: &mut App) -> Entity<Self> {
-        let service = cx.new(|cx| Self::new(cx));
+        let service = cx.new(Self::new);
         cx.set_global(GlobalHyprlandService(service.clone()));
         service
     }

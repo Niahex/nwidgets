@@ -25,16 +25,16 @@ pub struct Panel {
 impl Panel {
     pub fn new(cx: &mut Context<Self>) -> Self {
         Self {
-            active_window: cx.new(|cx| ActiveWindowModule::new(cx)),
-            workspaces: cx.new(|cx| WorkspacesModule::new(cx)),
-            pomodoro: cx.new(|cx| PomodoroModule::new(cx)),
-            mpris: cx.new(|cx| MprisModule::new(cx)),
-            systray: cx.new(|cx| SystrayModule::new(cx)),
-            bluetooth: cx.new(|cx| BluetoothModule::new(cx)),
-            network: cx.new(|cx| NetworkModule::new(cx)),
-            sink: cx.new(|cx| SinkModule::new(cx)),
-            source: cx.new(|cx| SourceModule::new(cx)),
-            datetime: cx.new(|cx| DateTimeModule::new(cx)),
+            active_window: cx.new(ActiveWindowModule::new),
+            workspaces: cx.new(WorkspacesModule::new),
+            pomodoro: cx.new(PomodoroModule::new),
+            mpris: cx.new(MprisModule::new),
+            systray: cx.new(SystrayModule::new),
+            bluetooth: cx.new(BluetoothModule::new),
+            network: cx.new(NetworkModule::new),
+            sink: cx.new(SinkModule::new),
+            source: cx.new(SourceModule::new),
+            datetime: cx.new(DateTimeModule::new),
             control_center: ControlCenterService::global(cx),
         }
     }

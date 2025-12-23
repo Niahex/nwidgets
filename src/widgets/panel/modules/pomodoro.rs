@@ -27,7 +27,7 @@ impl PomodoroModule {
     fn format_time(seconds: u32) -> String {
         let mins = seconds / 60;
         let secs = seconds % 60;
-        format!("{:02}:{:02}", mins, secs)
+        format!("{mins:02}:{secs:02}")
     }
 }
 

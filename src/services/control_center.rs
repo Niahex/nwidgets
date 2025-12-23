@@ -47,7 +47,7 @@ impl ControlCenterService {
             // On utilise le même pattern que pour l'OSD pour éviter les blocages
             let service = self.clone();
             cx.spawn(|_, cx: &mut AsyncApp| {
-                let mut cx = cx.clone();
+                let cx = cx.clone();
                 async move {
                     cx.update(|cx| {
                         service.open_window(cx);
@@ -129,7 +129,7 @@ impl ControlCenterService {
             },
             |_window, cx| {
                 use crate::widgets::control_center::ControlCenterWidget;
-                cx.new(|cx| ControlCenterWidget::new(cx))
+                cx.new(ControlCenterWidget::new)
             },
         );
 
@@ -161,7 +161,7 @@ impl ControlCenterService {
     }
 
     pub fn init(cx: &mut App) -> Entity<Self> {
-        let service = cx.new(|cx| Self::new(cx));
+        let service = cx.new(Self::new);
         cx.set_global(GlobalControlCenterService(service.clone()));
         service
     }

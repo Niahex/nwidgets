@@ -90,7 +90,7 @@ impl NetworkService {
         let state = Arc::new(RwLock::new(Self::fetch_network_state()));
         let state_clone = Arc::clone(&state);
 
-        cx.spawn(async move |this, mut cx| Self::monitor_network(this, state_clone, &mut cx).await)
+        cx.spawn(async move |this, cx| Self::monitor_network(this, state_clone, cx).await)
             .detach();
 
         Self { state }
@@ -192,7 +192,7 @@ impl NetworkService {
     }
 
     pub fn init(cx: &mut App) -> Entity<Self> {
-        let service = cx.new(|cx| Self::new(cx));
+        let service = cx.new(Self::new);
         cx.set_global(GlobalNetworkService(service.clone()));
         service
     }

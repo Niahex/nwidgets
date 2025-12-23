@@ -107,7 +107,7 @@ fn main() {
                     }),
                     ..Default::default()
                 },
-                |_window, cx| cx.new(|cx| Panel::new(cx)),
+                |_window, cx| cx.new(Panel::new),
             )
             .unwrap();
 
@@ -121,7 +121,7 @@ fn main() {
             // Ouvrir la fenêtre à la première notification
             cx.subscribe(
                 &notif_service,
-                move |_service, event: &NotificationAdded, cx| {
+                move |_service, _event: &NotificationAdded, cx| {
                     let mut manager = notif_manager_clone.lock();
 
                     if let Some(widget) = manager.open_window(cx) {

@@ -58,8 +58,8 @@ impl AudioService {
         let sources_clone = Arc::clone(&sources);
 
         // Spawn background task to monitor PipeWire events with pw-mon
-        cx.spawn(async move |this, mut cx| {
-            Self::monitor_audio_events(this, state_clone, sinks_clone, sources_clone, &mut cx).await
+        cx.spawn(async move |this, cx| {
+            Self::monitor_audio_events(this, state_clone, sinks_clone, sources_clone, cx).await
         })
         .detach();
 
@@ -89,7 +89,7 @@ impl AudioService {
                 .args([
                     "set-volume",
                     "@DEFAULT_AUDIO_SINK@",
-                    &format!("{}%", volume),
+                    &format!("{volume}%"),
                 ])
                 .status();
         });
@@ -102,7 +102,7 @@ impl AudioService {
                 .args([
                     "set-volume",
                     "@DEFAULT_AUDIO_SOURCE@",
-                    &format!("{}%", volume),
+                    &format!("{volume}%"),
                 ])
                 .status();
         });
@@ -156,11 +156,10 @@ impl AudioService {
                     let reader = BufReader::new(stdout);
                     for line in reader.lines().map_while(Result::ok) {
                         // Look for "changed:" events which indicate state changes
-                        if line.trim().starts_with("changed:") {
-                            if tx_clone.unbounded_send(()).is_err() {
+                        if line.trim().starts_with("changed:")
+                            && tx_clone.unbounded_send(()).is_err() {
                                 break;
                             }
-                        }
                     }
                 }
 
@@ -301,7 +300,7 @@ impl AudioService {
     }
 
     pub fn init(cx: &mut App) -> Entity<Self> {
-        let service = cx.new(|cx| Self::new(cx));
+        let service = cx.new(Self::new);
         cx.set_global(GlobalAudioService(service.clone()));
         service
     }

@@ -5,20 +5,12 @@ use std::process::Command;
 use std::sync::Arc;
 use std::time::Duration;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct BluetoothState {
     pub powered: bool,
     pub connected_devices: usize,
 }
 
-impl Default for BluetoothState {
-    fn default() -> Self {
-        Self {
-            powered: false,
-            connected_devices: 0,
-        }
-    }
-}
 
 #[derive(Clone)]
 pub struct BluetoothStateChanged {
@@ -36,8 +28,8 @@ impl BluetoothService {
         let state = Arc::new(RwLock::new(Self::fetch_bluetooth_state()));
         let state_clone = Arc::clone(&state);
 
-        cx.spawn(async move |this, mut cx| {
-            Self::monitor_bluetooth(this, state_clone, &mut cx).await
+        cx.spawn(async move |this, cx| {
+            Self::monitor_bluetooth(this, state_clone, cx).await
         })
         .detach();
 
@@ -111,7 +103,7 @@ impl BluetoothService {
     }
 
     pub fn init(cx: &mut App) -> Entity<Self> {
-        let service = cx.new(|cx| Self::new(cx));
+        let service = cx.new(Self::new);
         cx.set_global(GlobalBluetoothService(service.clone()));
         service
     }

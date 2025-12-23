@@ -1,4 +1,4 @@
-use crate::services::network::{ConnectionType, NetworkService, NetworkStateChanged};
+use crate::services::network::{NetworkService, NetworkStateChanged};
 use crate::utils::Icon;
 use gpui::prelude::*;
 use gpui::*;

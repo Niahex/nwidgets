@@ -1,5 +1,5 @@
 use crate::services::notifications::{
-    Notification, NotificationAdded, NotificationService, NotificationsEmpty,
+    Notification, NotificationAdded, NotificationService,
 };
 use crate::utils::Icon;
 use gpui::prelude::*;
@@ -29,7 +29,7 @@ impl NotificationsWidget {
         let notifications_clone = Arc::clone(&notifications);
         cx.subscribe(
             &service,
-            move |this, _service, event: &NotificationAdded, cx| {
+            move |_this, _service, event: &NotificationAdded, cx| {
                 let mut notifs = notifications_clone.write();
 
                 // Ajouter en début de liste (plus récent en haut)
@@ -47,7 +47,7 @@ impl NotificationsWidget {
 
         // Timer pour nettoyer les notifications expirées
         let notifications_clone = Arc::clone(&notifications);
-        cx.spawn(async move |this, mut cx| loop {
+        cx.spawn(async move |this, cx| loop {
             cx.background_executor().timer(Duration::from_secs(1)).await;
 
             let now = SystemTime::now()
@@ -223,7 +223,7 @@ impl NotificationsWindowManager {
                     }),
                     ..Default::default()
                 },
-                |_window, cx| cx.new(|cx| NotificationsWidget::new(cx)),
+                |_window, cx| cx.new(NotificationsWidget::new),
             )
             .ok()?;
 

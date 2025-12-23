@@ -51,8 +51,8 @@ impl PomodoroService {
         let start_time_clone = Arc::clone(&start_time);
 
         // Update timer every second
-        cx.spawn(async move |this, mut cx| {
-            Self::monitor_timer(this, status_clone, start_time_clone, &mut cx).await
+        cx.spawn(async move |this, cx| {
+            Self::monitor_timer(this, status_clone, start_time_clone, cx).await
         })
         .detach();
 
@@ -155,7 +155,7 @@ impl PomodoroService {
     async fn monitor_timer(
         this: WeakEntity<Self>,
         status: Arc<RwLock<PomodoroStatus>>,
-        start_time: Arc<RwLock<Option<Instant>>>,
+        _start_time: Arc<RwLock<Option<Instant>>>,
         cx: &mut AsyncApp,
     ) {
         loop {
@@ -215,7 +215,7 @@ impl PomodoroService {
     }
 
     pub fn init(cx: &mut App) -> Entity<Self> {
-        let service = cx.new(|cx| Self::new(cx));
+        let service = cx.new(Self::new);
         cx.set_global(GlobalPomodoroService(service.clone()));
         service
     }

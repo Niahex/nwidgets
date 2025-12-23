@@ -34,8 +34,8 @@ impl Render for WorkspacesModule {
 
         // Nord colors
         let frost1 = rgb(0x88c0d0);
-        let polar1 = rgb(0x3b4252);
-        let snow2 = rgb(0xeceff4);
+        let _polar1 = rgb(0x3b4252);
+        let _snow2 = rgb(0xeceff4);
 
         div()
             .flex()

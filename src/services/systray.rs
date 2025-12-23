@@ -60,7 +60,7 @@ impl SystrayService {
     }
 
     pub fn init(cx: &mut App) -> Entity<Self> {
-        let service = cx.new(|cx| Self::new(cx));
+        let service = cx.new(Self::new);
         cx.set_global(GlobalSystrayService(service.clone()));
         service
     }

@@ -194,7 +194,7 @@ impl NotificationService {
                     let notifs = notifications_clone.read();
                     for notification in notifs.iter().skip(last_count) {
                         let notif = notification.clone();
-                        let _ = this.update(cx, |this, cx| {
+                        let _ = this.update(cx, |_this, cx| {
                             cx.emit(NotificationAdded {
                                 notification: notif,
                             });
@@ -275,7 +275,7 @@ impl NotificationService {
     }
 
     pub fn init(cx: &mut App) -> Entity<Self> {
-        let service = cx.new(|cx| Self::new(cx));
+        let service = cx.new(Self::new);
         cx.set_global(GlobalNotificationService(service.clone()));
         service
     }

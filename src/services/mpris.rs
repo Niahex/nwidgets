@@ -25,22 +25,13 @@ impl From<String> for PlaybackStatus {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct MprisMetadata {
     pub title: Option<String>,
     pub artist: Option<String>,
     pub album: Option<String>,
 }
 
-impl Default for MprisMetadata {
-    fn default() -> Self {
-        Self {
-            title: None,
-            artist: None,
-            album: None,
-        }
-    }
-}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct MprisPlayer {
@@ -84,8 +75,8 @@ impl MprisService {
         let current_player_clone = Arc::clone(&current_player);
 
         // Start event-driven D-Bus monitoring
-        cx.spawn(async move |this, mut cx| {
-            Self::monitor_mpris_dbus(this, current_player_clone, &mut cx).await
+        cx.spawn(async move |this, cx| {
+            Self::monitor_mpris_dbus(this, current_player_clone, cx).await
         })
         .detach();
 
@@ -329,7 +320,7 @@ impl MprisService {
     }
 
     pub fn init(cx: &mut App) -> Entity<Self> {
-        let service = cx.new(|cx| Self::new(cx));
+        let service = cx.new(Self::new);
         cx.set_global(GlobalMprisService(service.clone()));
         service
     }

@@ -115,7 +115,7 @@ impl OsdService {
         // On clone le service (struct légère avec Arc) pour l'utiliser sans verrouiller l'entité GPUI
         let service = self.clone();
         cx.spawn(|_, cx: &mut AsyncApp| {
-            let mut cx = cx.clone();
+            let cx = cx.clone();
             async move {
                 cx.update(|cx| {
                     service.open_window(cx);
@@ -131,7 +131,7 @@ impl OsdService {
         });
 
         // Lancer un nouveau timer pour cacher dans 2.5s
-        let task = cx.spawn(async move |this, mut cx| {
+        let task = cx.spawn(async move |this, cx| {
             cx.background_executor()
                 .timer(Duration::from_millis(2500))
                 .await;
@@ -193,7 +193,7 @@ impl OsdService {
             },
             |_window, cx| {
                 use crate::widgets::osd::OsdWidget;
-                cx.new(|cx| OsdWidget::new(cx))
+                cx.new(OsdWidget::new)
             },
         );
 
@@ -229,7 +229,7 @@ impl OsdService {
     }
 
     pub fn init(cx: &mut App) -> Entity<Self> {
-        let service = cx.new(|cx| Self::new(cx));
+        let service = cx.new(Self::new);
         cx.set_global(GlobalOsdService(service.clone()));
         service
     }

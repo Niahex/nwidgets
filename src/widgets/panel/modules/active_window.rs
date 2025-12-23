@@ -1,4 +1,4 @@
-use crate::services::hyprland::{ActiveWindow, ActiveWindowChanged, HyprlandService};
+use crate::services::hyprland::{ActiveWindowChanged, HyprlandService};
 use crate::utils::Icon;
 use gpui::prelude::*;
 use gpui::*;
@@ -30,11 +30,10 @@ impl ActiveWindowModule {
         let icon_name = class.to_lowercase();
 
         // Log seulement si l'icône n'existe pas
-        let icon_path = format!("assets/{}.svg", icon_name);
+        let icon_path = format!("assets/{icon_name}.svg");
         if !std::path::Path::new(&icon_path).exists() {
             eprintln!(
-                "[ActiveWindow] Icon not found for class '{}' -> '{}'",
-                class, icon_path
+                "[ActiveWindow] Icon not found for class '{class}' -> '{icon_path}'"
             );
         }
 

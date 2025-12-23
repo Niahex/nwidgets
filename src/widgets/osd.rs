@@ -81,7 +81,7 @@ impl Render for OsdWidget {
                             .text_size(px(18.))
                             .font_weight(FontWeight::SEMIBOLD)
                             .text_color(text_color)
-                            .child(format!("{}", level)),
+                            .child(format!("{level}")),
                     )
             }
             OsdEvent::Microphone(muted) => {
