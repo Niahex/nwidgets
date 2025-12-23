@@ -124,6 +124,22 @@ impl AudioService {
         });
     }
 
+    pub fn set_default_sink(&self, id: u32) {
+        std::thread::spawn(move || {
+            let _ = Command::new("wpctl")
+                .args(["set-default", &id.to_string()])
+                .status();
+        });
+    }
+
+    pub fn set_default_source(&self, id: u32) {
+        std::thread::spawn(move || {
+            let _ = Command::new("wpctl")
+                .args(["set-default", &id.to_string()])
+                .status();
+        });
+    }
+
     async fn monitor_audio_events(
         this: WeakEntity<Self>,
         state: Arc<RwLock<AudioState>>,
@@ -276,17 +292,72 @@ impl AudioService {
     }
 
     fn fetch_sinks() -> Vec<AudioDevice> {
-        // TODO: Implement proper device enumeration with wpctl status
-        // Parse output from: wpctl status
-        // Look for "Sinks:" section and parse device list
-        Vec::new()
+        let output = Command::new("pw-dump")
+            .output()
+            .ok()
+            .and_then(|o| String::from_utf8(o.stdout).ok())
+            .unwrap_or_default();
+
+        let nodes: Vec<serde_json::Value> = serde_json::from_str(&output).unwrap_or_default();
+        
+        nodes
+            .iter()
+            .filter(|node| {
+                node["type"] == "PipeWire:Interface:Node"
+                    && node["info"]["props"]["media.class"] == "Audio/Sink"
+            })
+            .filter_map(|node| {
+                let id = node["id"].as_u64()? as u32;
+                let desc = node["info"]["props"]["node.description"]
+                    .as_str()
+                    .or_else(|| node["info"]["props"]["node.name"].as_str())?
+                    .to_string();
+                
+                // Check if it's the default sink by looking at metadata
+                let is_default = false; // We'll get this from metadata separately
+                
+                Some(AudioDevice {
+                    id,
+                    name: desc.clone(),
+                    description: desc,
+                    is_default,
+                })
+            })
+            .collect()
     }
 
     fn fetch_sources() -> Vec<AudioDevice> {
-        // TODO: Implement proper device enumeration with wpctl status
-        // Parse output from: wpctl status
-        // Look for "Sources:" section and parse device list
-        Vec::new()
+        let output = Command::new("pw-dump")
+            .output()
+            .ok()
+            .and_then(|o| String::from_utf8(o.stdout).ok())
+            .unwrap_or_default();
+
+        let nodes: Vec<serde_json::Value> = serde_json::from_str(&output).unwrap_or_default();
+        
+        nodes
+            .iter()
+            .filter(|node| {
+                node["type"] == "PipeWire:Interface:Node"
+                    && node["info"]["props"]["media.class"] == "Audio/Source"
+            })
+            .filter_map(|node| {
+                let id = node["id"].as_u64()? as u32;
+                let desc = node["info"]["props"]["node.description"]
+                    .as_str()
+                    .or_else(|| node["info"]["props"]["node.name"].as_str())?
+                    .to_string();
+                
+                let is_default = false;
+                
+                Some(AudioDevice {
+                    id,
+                    name: desc.clone(),
+                    description: desc,
+                    is_default,
+                })
+            })
+            .collect()
     }
 }
 
