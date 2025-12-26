@@ -3,11 +3,15 @@ use gtk4::{gdk, glib, Image};
 use once_cell::sync::Lazy;
 use resvg::usvg;
 use std::collections::HashMap;
+use std::sync::Mutex;
 
 static ICON_DATA: Lazy<HashMap<&'static str, &'static [u8]>> = Lazy::new(|| {
     let icons: &[(&str, &[u8])] = &include!(concat!(env!("OUT_DIR"), "/generated_icons.rs"));
     icons.iter().copied().collect()
 });
+
+static TEXTURE_CACHE: Lazy<Mutex<HashMap<(String, Option<u32>), gdk::Texture>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
 
 fn svg_to_pixbuf(data: &[u8], target_size: Option<u32>) -> Option<Pixbuf> {
     let opt = usvg::Options::default();
@@ -55,10 +59,26 @@ pub fn get_paintable(icon_name: &str) -> Option<gdk::Texture> {
 }
 
 pub fn get_paintable_with_size(icon_name: &str, size: Option<u32>) -> Option<gdk::Texture> {
+    let key = (icon_name.to_string(), size);
+
+    // Check cache first
+    if let Ok(cache) = TEXTURE_CACHE.lock() {
+        if let Some(texture) = cache.get(&key) {
+            return Some(texture.clone());
+        }
+    }
+
     let svg_data = ICON_DATA.get(icon_name)?;
 
     match svg_to_pixbuf(svg_data, size) {
-        Some(pixbuf) => Some(gdk::Texture::for_pixbuf(&pixbuf)),
+        Some(pixbuf) => {
+            let texture = gdk::Texture::for_pixbuf(&pixbuf);
+            // Store in cache
+            if let Ok(mut cache) = TEXTURE_CACHE.lock() {
+                cache.insert(key, texture.clone());
+            }
+            Some(texture)
+        }
         None => {
             println!("DEBUG: Failed to create pixbuf for icon '{icon_name}'");
             None

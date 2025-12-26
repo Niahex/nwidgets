@@ -4,16 +4,20 @@ pub struct AudioState {
     pub muted: bool,
     pub mic_volume: u8,
     pub mic_muted: bool,
+    pub sinks: Vec<AudioDevice>,
+    pub sources: Vec<AudioDevice>,
+    pub sink_inputs: Vec<AudioStream>,
+    pub source_outputs: Vec<AudioStream>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct AudioDevice {
     pub id: u32,
     pub description: String,
     pub is_default: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct AudioStream {
     pub id: u32,
     pub app_name: String,

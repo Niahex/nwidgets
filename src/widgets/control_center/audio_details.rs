@@ -1,9 +1,9 @@
-use crate::services::pipewire::{AudioDevice, AudioStream, PipeWireService};
+use crate::services::pipewire::{AudioDevice, AudioState, AudioStream, PipeWireService};
 use crate::utils::icons;
 use gtk::prelude::*;
 use gtk4 as gtk;
 
-use super::section_helpers::{setup_expand_callback, setup_periodic_updates};
+use super::section_helpers::setup_expand_callback;
 
 pub fn create_audio_section() -> (
     gtk::Box,
@@ -110,25 +110,33 @@ pub fn setup_audio_section_callbacks(
     mic_expand_btn: &gtk::Button,
     panels: &PanelManager,
 ) {
-    setup_expand_callback(
-        volume_expanded,
-        volume_expand_btn,
-        panels,
-        "volume",
-        populate_volume_details,
-    );
-    setup_expand_callback(
-        mic_expanded,
-        mic_expand_btn,
-        panels,
-        "mic",
-        populate_mic_details,
-    );
-}
+    let panels_clone = panels.clone();
+    let volume_expanded_clone = volume_expanded.clone();
+    volume_expand_btn.connect_clicked(move |btn| {
+        let is_visible = volume_expanded_clone.is_visible();
+        if !is_visible {
+            panels_clone.collapse_all_except("volume");
+            volume_expanded_clone.set_visible(true);
+            btn.set_icon_name("go-up-symbolic");
+        } else {
+            volume_expanded_clone.set_visible(false);
+            btn.set_icon_name("go-down-symbolic");
+        }
+    });
 
-pub fn setup_audio_updates(volume_expanded: &gtk::Box, mic_expanded: &gtk::Box) {
-    setup_periodic_updates(volume_expanded, 2, populate_volume_details);
-    setup_periodic_updates(mic_expanded, 2, populate_mic_details);
+    let panels_clone = panels.clone();
+    let mic_expanded_clone = mic_expanded.clone();
+    mic_expand_btn.connect_clicked(move |btn| {
+        let is_visible = mic_expanded_clone.is_visible();
+        if !is_visible {
+            panels_clone.collapse_all_except("mic");
+            mic_expanded_clone.set_visible(true);
+            btn.set_icon_name("go-up-symbolic");
+        } else {
+            mic_expanded_clone.set_visible(false);
+            btn.set_icon_name("go-down-symbolic");
+        }
+    });
 }
 
 // Struct pour gérer l'état des panneaux
@@ -224,53 +232,57 @@ pub fn create_mic_details() -> gtk::Box {
     container
 }
 
-/// Populate the volume details section with devices and applications
-pub fn populate_volume_details(container: &gtk::Box) {
+/// Update the volume details section with data from AudioState
+pub fn update_volume_details(container: &gtk::Box, state: &AudioState) {
+    if !container.is_visible() {
+        return;
+    }
+
     // Clear existing widgets
     while let Some(child) = container.first_child() {
         container.remove(&child);
     }
 
-    let sinks = PipeWireService::list_sinks();
-    let device_dropdown = create_device_dropdown(sinks, true);
+    let device_dropdown = create_device_dropdown(state.sinks.clone(), true);
     container.append(&device_dropdown);
 
     // Applications section
-    let streams = PipeWireService::list_sink_inputs();
-    if streams.is_empty() {
+    if state.sink_inputs.is_empty() {
         let empty_label = gtk::Label::new(Some("No active playback"));
         empty_label.add_css_class("empty-label");
         empty_label.set_halign(gtk::Align::Start);
         container.append(&empty_label);
     } else {
-        for stream in streams {
-            let stream_row = create_stream_row(stream);
+        for stream in &state.sink_inputs {
+            let stream_row = create_stream_row(stream.clone());
             container.append(&stream_row);
         }
     }
 }
 
-/// Populate the mic details section with devices and applications
-pub fn populate_mic_details(container: &gtk::Box) {
+/// Update the mic details section with data from AudioState
+pub fn update_mic_details(container: &gtk::Box, state: &AudioState) {
+    if !container.is_visible() {
+        return;
+    }
+
     // Clear existing widgets
     while let Some(child) = container.first_child() {
         container.remove(&child);
     }
 
     // Input Devices section
-    let sources = PipeWireService::list_sources();
-    let device_dropdown = create_device_dropdown(sources, false);
+    let device_dropdown = create_device_dropdown(state.sources.clone(), false);
     container.append(&device_dropdown);
 
-    let streams = PipeWireService::list_source_outputs();
-    if streams.is_empty() {
+    if state.source_outputs.is_empty() {
         let empty_label = gtk::Label::new(Some("No active recording"));
         empty_label.add_css_class("empty-label");
         empty_label.set_halign(gtk::Align::Start);
         container.append(&empty_label);
     } else {
-        for stream in streams {
-            let stream_row = create_stream_row(stream);
+        for stream in &state.source_outputs {
+            let stream_row = create_stream_row(stream.clone());
             container.append(&stream_row);
         }
     }

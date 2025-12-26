@@ -16,11 +16,15 @@ pub struct PipeWireService;
 
 impl PipeWireService {
     pub fn set_volume(volume: u8) {
-        VolumeControl::set_volume(volume);
+        crate::utils::runtime::get().spawn(async move {
+            VolumeControl::set_volume(volume);
+        });
     }
 
     pub fn set_mic_volume(volume: u8) {
-        VolumeControl::set_mic_volume(volume);
+        crate::utils::runtime::get().spawn(async move {
+            VolumeControl::set_mic_volume(volume);
+        });
     }
 
     pub fn get_audio_state() -> AudioState {
@@ -44,19 +48,27 @@ impl PipeWireService {
     }
 
     pub fn set_stream_volume(stream_id: u32, volume: u8) {
-        StreamManager::set_stream_volume(stream_id, volume);
+        crate::utils::runtime::get().spawn(async move {
+            StreamManager::set_stream_volume(stream_id, volume);
+        });
     }
 
     pub fn toggle_stream_mute(stream_id: u32) {
-        StreamManager::toggle_stream_mute(stream_id);
+        crate::utils::runtime::get().spawn(async move {
+            StreamManager::toggle_stream_mute(stream_id);
+        });
     }
 
     pub fn set_default_sink(sink_id: u32) {
-        DeviceManager::set_default_sink(sink_id);
+        crate::utils::runtime::get().spawn(async move {
+            DeviceManager::set_default_sink(sink_id);
+        });
     }
 
     pub fn set_default_source(source_id: u32) {
-        DeviceManager::set_default_source(source_id);
+        crate::utils::runtime::get().spawn(async move {
+            DeviceManager::set_default_source(source_id);
+        });
     }
 
     pub fn subscribe_audio<F>(callback: F)

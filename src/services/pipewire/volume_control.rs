@@ -1,4 +1,6 @@
 use super::audio_state::AudioState;
+use super::device_manager::DeviceManager;
+use super::stream_manager::StreamManager;
 use crate::services::osd::{OsdEvent, OsdEventService};
 use std::process::Command;
 
@@ -111,6 +113,10 @@ impl VolumeControl {
             muted: Self::is_muted(),
             mic_volume: Self::get_mic_volume(),
             mic_muted: Self::is_mic_muted(),
+            sinks: DeviceManager::list_sinks(),
+            sources: DeviceManager::list_sources(),
+            sink_inputs: StreamManager::list_sink_inputs(),
+            source_outputs: StreamManager::list_source_outputs(),
         }
     }
 }

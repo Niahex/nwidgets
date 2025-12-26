@@ -12,7 +12,8 @@ use gtk4 as gtk;
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 
 use audio_details::{
-    create_audio_section, setup_audio_section_callbacks, setup_audio_updates, PanelManager,
+    create_audio_section, setup_audio_section_callbacks, update_mic_details, update_volume_details,
+    PanelManager,
 };
 use bluetooth_details::populate_bluetooth_details;
 use network_details::populate_network_details;
@@ -142,10 +143,9 @@ pub fn create_control_center_window(application: &gtk::Application) -> gtk::Appl
         shared_expanded_net.set_visible(true);
     });
 
-    // Setup periodic updates
-    setup_audio_updates(&volume_expanded, &mic_expanded);
-
     // Subscribe to audio updates
+    let volume_expanded_sub = volume_expanded.clone();
+    let mic_expanded_sub = mic_expanded.clone();
     PipeWireService::subscribe_audio(move |state: AudioState| {
         volume_scale.set_value(state.volume as f64);
         mic_scale.set_value(state.mic_volume as f64);
@@ -157,6 +157,10 @@ pub fn create_control_center_window(application: &gtk::Application) -> gtk::Appl
         if let Some(paintable) = icons::get_paintable(state.get_source_icon_name()) {
             mic_icon.set_paintable(Some(&paintable));
         }
+
+        // Update expanded details if visible
+        update_volume_details(&volume_expanded_sub, &state);
+        update_mic_details(&mic_expanded_sub, &state);
     });
 
     // Action to toggle control center with optional section parameter
