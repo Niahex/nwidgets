@@ -7,7 +7,6 @@ include = ["data/**/*", "src/**/*", "Cargo.toml", "assets/**/*"]
 [dependencies]
 gtk4 = "0.10.0"
 gdk-pixbuf = "0.21.0"
-cef = "143.3.0+143.0.13"
 gtk4-layer-shell = "0.6.3"
 glib = "0.18.0"
 gdk4 = "0.10.0"

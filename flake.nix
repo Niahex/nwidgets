@@ -21,9 +21,6 @@
         overlays = [(import rust-overlay)];
         pkgs = import nixpkgs {inherit system overlays;};
 
-        # Import CEF package
-        cef-binary = pkgs.callPackage ./nix/cef.nix {};
-
         rustToolchain = pkgs.rust-bin.stable."1.88.0".default.override {
           extensions = ["rust-src"];
         };
@@ -77,7 +74,6 @@
           vulkan-headers
           vulkan-loader
           onnxruntime # For transcribe-rs
-          cef-binary # CEF for webview
           nss
           nspr
           libdrm
@@ -125,8 +121,6 @@
           RUST_BACKTRACE = "full";
           SSL_CERT_FILE = "/nix/var/nix/profiles/system/etc/ssl/certs/ca-bundle.crt";
           NIX_SSL_CERT_FILE = "/nix/var/nix/profiles/system/etc/ssl/certs/ca-bundle.crt";
-          # CEF configuration
-          CEF_PATH = "${cef-binary}";
           # Ensure pkg-config finds openblas
           PKG_CONFIG_PATH = "${pkgs.openblas}/lib/pkgconfig";
           # For bindgen (used by whisper-rs-sys)
@@ -139,7 +133,7 @@
           ORT_NUM_THREADS = "16"; # i9-9900K has 16 threads
           ORT_OPTIMIZATION_LEVEL = "3"; # Maximum optimization
           # CPU-specific optimizations
-          RUSTFLAGS = "-C target-cpu=native -C opt-level=3";
+          RUSTFLAGS = "-C target-cpu=native -C opt-level=3 -L";
         };
 
         # Build artifacts
@@ -194,7 +188,7 @@
           nativeBuildInputs = devTools;
           env = envVars;
 
-          LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (buildInputs ++ runtimeDependencies);
+          LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath (buildInputs ++ runtimeDependencies)}";
           FONTCONFIG_FILE = pkgs.makeFontsConf {fontDirectories = buildInputs;};
 
           shellHook = ''

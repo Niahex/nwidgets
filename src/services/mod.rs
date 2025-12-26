@@ -1,5 +1,4 @@
 pub mod bluetooth;
-pub mod chat;
 pub mod clipboard;
 pub mod hyprland;
 pub mod lock_state;
@@ -12,6 +11,5 @@ pub mod pomodoro;
 pub mod stt;
 pub mod systray;
 
-// Re-export lock state services for backward compatibility
-pub use chat::ChatStateService;
+// Re-export services for backward compatibility
 pub use notifications::NotificationService;

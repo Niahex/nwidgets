@@ -7,7 +7,6 @@ mod style {
 }
 
 use crate::services::bluetooth::BluetoothService;
-use crate::services::chat::ChatStateService;
 use crate::services::clipboard::ClipboardService;
 use crate::services::hyprland::HyprlandService;
 use crate::services::lock_state::{CapsLockService, NumLockService};
@@ -17,9 +16,7 @@ use crate::services::osd::OsdEventService;
 use crate::services::pipewire::PipeWireService;
 use crate::services::stt::SttService;
 use crate::services::systray::SystemTrayService;
-use crate::widgets::chat::create_chat_overlay;
 use crate::widgets::control_center::create_control_center_window;
-use crate::widgets::jisig::create_jisig_overlay;
 use crate::widgets::notifications::create_notifications_window;
 use crate::widgets::osd::create_osd_window;
 use crate::widgets::panel::create_panel_window;
@@ -36,12 +33,6 @@ fn main() {
 
         utils::icons::setup_icon_theme();
 
-        let chat_overlay = create_chat_overlay(app);
-        let chat_pin_controller = chat_overlay.pin_controller.clone();
-
-        let jisig_overlay = create_jisig_overlay(app);
-        let jisig_pin_controller = jisig_overlay.pin_controller.clone();
-
         let _power_menu_window = create_power_menu_window(app);
 
         let _control_center_window = create_control_center_window(app);
@@ -57,29 +48,6 @@ fn main() {
             "[MAIN] Notification history size: {}",
             crate::services::NotificationService::get_history().len()
         );
-
-        let pin_action = gtk::gio::SimpleAction::new("pin-focused-window", None);
-        let chat_window_clone = chat_overlay.window.clone();
-        let jisig_window_clone = jisig_overlay.clone();
-        let chat_pin_clone = chat_pin_controller.clone();
-        let jisig_pin_clone = jisig_pin_controller.clone();
-
-        pin_action.connect_activate(move |_, _| {
-            // Vérifier quelle fenêtre est visible et focus
-            if chat_window_clone.is_visible() && chat_window_clone.is_active() {
-                println!("[PIN] Chat window is focused, toggling pin");
-                chat_pin_clone.toggle();
-            } else if jisig_window_clone.window.is_visible()
-                && jisig_window_clone.window.is_active()
-            {
-                println!("[PIN] jisig window is focused, toggling pin");
-                jisig_pin_clone.toggle();
-            } else {
-                println!("[PIN] No pinnable window is focused");
-            }
-        });
-
-        app.add_action(&pin_action);
 
         // Initialize STT service
         let stt_service = std::sync::Arc::new(SttService::new());
@@ -117,12 +85,6 @@ fn main() {
         let active_window_module_clone = active_window_module.clone();
         HyprlandService::subscribe_active_window(move |active_window| {
             active_window_module_clone.update_hyprland_window(active_window.clone());
-        });
-
-        // S'abonner aux changements d'état du chat
-        let active_window_module_clone2 = active_window_module.clone();
-        ChatStateService::subscribe(move |chat_state| {
-            active_window_module_clone2.update_chat_state(chat_state);
         });
 
         let workspaces_module_clone = workspaces_module.clone();
