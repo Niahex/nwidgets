@@ -1,7 +1,6 @@
 mod audio_state;
 mod device_manager;
 mod pw_dump;
-mod debug;
 mod stream_manager;
 mod volume_control;
 
@@ -219,9 +218,6 @@ impl PipeWireService {
         F: Fn(AudioState) + 'static,
     {
         let (tx, rx) = mpsc::channel();
-
-        // Print debug info to console at startup
-        debug::debug_dump();
 
         std::thread::spawn(move || {
             // Initial state

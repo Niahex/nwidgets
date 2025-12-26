@@ -116,6 +116,10 @@ pub fn setup_audio_section_callbacks(
             panels_clone.collapse_all_except("volume");
             volume_expanded_clone.set_visible(true);
             btn.set_icon_name("go-up-symbolic");
+            
+            // Force immediate update
+            let state = PipeWireService::get_audio_state();
+            update_volume_details(&volume_expanded_clone, &state);
         } else {
             volume_expanded_clone.set_visible(false);
             btn.set_icon_name("go-down-symbolic");
@@ -130,6 +134,10 @@ pub fn setup_audio_section_callbacks(
             panels_clone.collapse_all_except("mic");
             mic_expanded_clone.set_visible(true);
             btn.set_icon_name("go-up-symbolic");
+            
+            // Force immediate update
+            let state = PipeWireService::get_audio_state();
+            update_mic_details(&mic_expanded_clone, &state);
         } else {
             mic_expanded_clone.set_visible(false);
             btn.set_icon_name("go-down-symbolic");
