@@ -32,8 +32,17 @@ impl PipeWireService {
     }
 
     pub fn get_audio_state() -> AudioState {
-        // Fallback for synchronous callers (should be avoided in UI loops)
-        VolumeControl::get_audio_state()
+        // Use pw-dump for synchronous fetch (much faster than iterative wpctl)
+        Self::parse_dump().unwrap_or_else(|| AudioState {
+            volume: 0,
+            muted: false,
+            mic_volume: 0,
+            mic_muted: false,
+            sinks: Vec::new(),
+            sources: Vec::new(),
+            sink_inputs: Vec::new(),
+            source_outputs: Vec::new(),
+        })
     }
 
     pub fn list_sinks() -> Vec<AudioDevice> {
