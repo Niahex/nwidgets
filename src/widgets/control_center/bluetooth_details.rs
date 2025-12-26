@@ -1,24 +1,22 @@
-use crate::services::bluetooth::{BluetoothDevice, BluetoothService};
+use crate::services::bluetooth::{BluetoothDevice, BluetoothService, BluetoothState};
 use gtk::prelude::*;
 use gtk4 as gtk;
 
-/// Populate the bluetooth details section with devices
-pub fn populate_bluetooth_details(container: &gtk::Box) {
+/// Update the bluetooth details section with data from BluetoothState
+pub fn update_bluetooth_details(container: &gtk::Box, state: &BluetoothState) {
     // Clear existing widgets
     while let Some(child) = container.first_child() {
         container.remove(&child);
     }
 
-    let devices = BluetoothService::list_devices();
-
-    if devices.is_empty() {
+    if state.devices.is_empty() {
         let empty_label = gtk::Label::new(Some("No Bluetooth devices found"));
         empty_label.add_css_class("empty-label");
         empty_label.set_halign(gtk::Align::Start);
         container.append(&empty_label);
     } else {
-        for device in devices {
-            let device_row = create_device_row(device);
+        for device in &state.devices {
+            let device_row = create_device_row(device.clone());
             container.append(&device_row);
         }
     }

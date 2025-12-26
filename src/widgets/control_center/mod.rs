@@ -4,6 +4,8 @@ mod network_details;
 mod notifications_details;
 mod section_helpers;
 
+use crate::services::bluetooth::{BluetoothService, BluetoothState};
+use crate::services::network::{NetworkService, NetworkState};
 use crate::services::notifications::NotificationService;
 use crate::services::pipewire::{AudioState, PipeWireService};
 use crate::utils::icons;
@@ -15,8 +17,8 @@ use audio_details::{
     create_audio_section, setup_audio_section_callbacks, update_mic_details, update_volume_details,
     PanelManager,
 };
-use bluetooth_details::populate_bluetooth_details;
-use network_details::populate_network_details;
+use bluetooth_details::update_bluetooth_details;
+use network_details::update_network_details;
 use notifications_details::{add_notification_to_list, create_notifications_section};
 
 pub fn create_control_center_window(application: &gtk::Application) -> gtk::ApplicationWindow {
@@ -120,13 +122,15 @@ pub fn create_control_center_window(application: &gtk::Application) -> gtk::Appl
     let panels_bt = panels.clone();
     bt_button.connect_clicked(move |_| {
         panels_bt.collapse_all_except("bluetooth");
-
-        // Clear and populate with bluetooth content
-        while let Some(child) = shared_expanded_bt.first_child() {
-            shared_expanded_bt.remove(&child);
-        }
-        populate_bluetooth_details(&shared_expanded_bt);
         shared_expanded_bt.set_visible(true);
+
+        // Fetch current state and update
+        let state = crate::utils::runtime::block_on(BluetoothService::get_bluetooth_state()).unwrap_or(BluetoothState {
+            powered: false,
+            connected_devices: 0,
+            devices: Vec::new(),
+        });
+        update_bluetooth_details(&shared_expanded_bt, &state);
     });
 
     // Network button callback
@@ -134,13 +138,18 @@ pub fn create_control_center_window(application: &gtk::Application) -> gtk::Appl
     let panels_net = panels.clone();
     network_button.connect_clicked(move |_| {
         panels_net.collapse_all_except("network");
-
-        // Clear and populate with network content
-        while let Some(child) = shared_expanded_net.first_child() {
-            shared_expanded_net.remove(&child);
-        }
-        populate_network_details(&shared_expanded_net);
         shared_expanded_net.set_visible(true);
+
+        // Fetch current state and update
+        let state = crate::utils::runtime::block_on(NetworkService::get_network_state()).unwrap_or(NetworkState {
+            connected: false,
+            connection_type: crate::services::network::ConnectionType::None,
+            signal_strength: 0,
+            ssid: None,
+            vpn_active: false,
+            vpn_connections: Vec::new(),
+        });
+        update_network_details(&shared_expanded_net, &state);
     });
 
     // Subscribe to audio updates
@@ -150,7 +159,6 @@ pub fn create_control_center_window(application: &gtk::Application) -> gtk::Appl
         volume_scale.set_value(state.volume as f64);
         mic_scale.set_value(state.mic_volume as f64);
 
-        // Update icons dynamically
         if let Some(paintable) = icons::get_paintable(state.get_sink_icon_name()) {
             volume_icon.set_paintable(Some(&paintable));
         }
@@ -158,12 +166,43 @@ pub fn create_control_center_window(application: &gtk::Application) -> gtk::Appl
             mic_icon.set_paintable(Some(&paintable));
         }
 
-        // Update expanded details if visible
         update_volume_details(&volume_expanded_sub, &state);
         update_mic_details(&mic_expanded_sub, &state);
     });
 
-    // Action to toggle control center with optional section parameter
+    // Subscribe to bluetooth updates
+    let shared_expanded_bt_sub = shared_expanded.clone();
+    BluetoothService::subscribe_bluetooth(move |state: BluetoothState| {
+        let icon_name = if !state.powered {
+            "bluetooth-disabled"
+        } else if state.connected_devices > 0 {
+            "bluetooth-paired"
+        } else {
+            "bluetooth-active"
+        };
+        
+        if let Some(paintable) = icons::get_paintable(icon_name) {
+            bt_icon.set_paintable(Some(&paintable));
+        }
+
+        if shared_expanded_bt_sub.is_visible() {
+             update_bluetooth_details(&shared_expanded_bt_sub, &state);
+        }
+    });
+
+    // Subscribe to network updates
+    let shared_expanded_net_sub = shared_expanded.clone();
+    NetworkService::subscribe_network(move |state: NetworkState| {
+        if let Some(paintable) = icons::get_paintable(state.get_icon_name()) {
+            network_icon.set_paintable(Some(&paintable));
+        }
+
+        if shared_expanded_net_sub.is_visible() {
+            update_network_details(&shared_expanded_net_sub, &state);
+        }
+    });
+
+    // Action to toggle control center
     let toggle_action = gtk::gio::SimpleAction::new_stateful(
         "toggle-control-center",
         Some(&String::static_variant_type()),
@@ -178,50 +217,57 @@ pub fn create_control_center_window(application: &gtk::Application) -> gtk::Appl
     toggle_action.connect_activate(move |_, param| {
         let is_visible = window_clone.is_visible();
 
-        // Si la fenêtre est invisible, on l'ouvre
         if !is_visible {
             window_clone.set_visible(true);
             window_clone.present();
 
-            // Si un paramètre de section est fourni, développer cette section
             if let Some(section) = param.and_then(|v| v.get::<String>()) {
                 match section.as_str() {
                     "volume" | "sink" => {
                         panels_clone.collapse_all_except("volume");
                         volume_expanded_clone.set_visible(true);
+                        let state = PipeWireService::get_audio_state();
+                        update_volume_details(&volume_expanded_clone, &state);
                     }
                     "mic" | "source" => {
                         panels_clone.collapse_all_except("mic");
                         mic_expanded_clone.set_visible(true);
+                        let state = PipeWireService::get_audio_state();
+                        update_mic_details(&mic_expanded_clone, &state);
                     }
                     "bluetooth" => {
                         panels_clone.collapse_all_except("bluetooth");
-                        while let Some(child) = shared_expanded_clone.first_child() {
-                            shared_expanded_clone.remove(&child);
-                        }
-                        populate_bluetooth_details(&shared_expanded_clone);
                         shared_expanded_clone.set_visible(true);
+                        let state = crate::utils::runtime::block_on(BluetoothService::get_bluetooth_state()).unwrap_or(BluetoothState {
+                            powered: false,
+                            connected_devices: 0,
+                            devices: Vec::new(),
+                        });
+                        update_bluetooth_details(&shared_expanded_clone, &state);
                     }
                     "network" => {
                         panels_clone.collapse_all_except("network");
-                        while let Some(child) = shared_expanded_clone.first_child() {
-                            shared_expanded_clone.remove(&child);
-                        }
-                        populate_network_details(&shared_expanded_clone);
                         shared_expanded_clone.set_visible(true);
+                        let state = crate::utils::runtime::block_on(NetworkService::get_network_state()).unwrap_or(NetworkState {
+                            connected: false,
+                            connection_type: crate::services::network::ConnectionType::None,
+                            signal_strength: 0,
+                            ssid: None,
+                            vpn_active: false,
+                            vpn_connections: Vec::new(),
+                        });
+                        update_network_details(&shared_expanded_clone, &state);
                     }
                     _ => {}
                 }
             }
         } else {
-            // Si la fenêtre est visible, on la ferme
             window_clone.set_visible(false);
         }
     });
 
     application.add_action(&toggle_action);
 
-    // Subscribe to new notifications
     NotificationService::subscribe_notifications(move |notification| {
         add_notification_to_list(&notifications_list, notification);
     });

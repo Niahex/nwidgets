@@ -12,9 +12,10 @@ pub struct NetworkState {
     pub signal_strength: u8,  // 0-100, only relevant for WiFi
     pub ssid: Option<String>, // WiFi SSID if connected
     pub vpn_active: bool,     // true if VPN connection is active
+    pub vpn_connections: Vec<VpnConnection>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct VpnConnection {
     pub name: String,
     pub vpn_type: String, // "openvpn", "wireguard", etc.
@@ -25,10 +26,7 @@ pub struct VpnConnection {
 impl NetworkState {
     pub fn get_icon_name(&self) -> &'static str {
         if !self.connected {
-            match self.connection_type {
-                ConnectionType::Ethernet => "network-eternet-disconnected",
-                _ => "network-eternet-disconnected",
-            }
+            "network-eternet-disconnected"
         } else {
             match self.connection_type {
                 ConnectionType::Ethernet => {
@@ -49,8 +47,6 @@ impl NetworkState {
                         "low"
                     };
 
-                    // Format: network-wifi-{signal}-{secure/unsecure}
-                    // Ex: network-wifi-high-secure
                     match (signal_level, self.vpn_active) {
                         ("high", true) => "network-wifi-high-secure",
                         ("high", false) => "network-wifi-high-unsecure",

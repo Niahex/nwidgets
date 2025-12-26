@@ -6,9 +6,10 @@ use zbus::{proxy, Connection};
 pub struct BluetoothState {
     pub powered: bool,
     pub connected_devices: usize,
+    pub devices: Vec<BluetoothDevice>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BluetoothDevice {
     pub address: String,
     pub name: String,
@@ -95,6 +96,7 @@ impl BluetoothService {
                     Err(_) => BluetoothState {
                         powered: false,
                         connected_devices: 0,
+                        devices: Vec::new(),
                     },
                 };
                 if tx.send(last_state.clone()).is_err() {
@@ -132,8 +134,8 @@ impl BluetoothService {
                     None
                 };
 
-                // Create a polling fallback stream (every 2s instead of 5s for responsiveness if signals fail)
-                let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(2));
+                // Create a polling fallback stream (every 5s)
+                let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(5));
 
                 loop {
                     let mut should_update = false;
@@ -192,27 +194,6 @@ impl BluetoothService {
         crate::utils::subscription::ServiceSubscription::subscribe(rx, callback);
     }
 
-    /// Start monitoring Bluetooth state changes (ancienne méthode conservée pour compatibilité)
-    #[allow(dead_code)]
-    pub fn start_monitoring() -> mpsc::Receiver<BluetoothState> {
-        let (tx, rx) = mpsc::channel();
-
-        std::thread::spawn(move || {
-            crate::utils::runtime::block_on(async {
-                loop {
-                    if let Ok(state) = Self::get_bluetooth_state().await {
-                        let _ = tx.send(state);
-                    }
-
-                    // Poll every 5 seconds
-                    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-                }
-            });
-        });
-
-        rx
-    }
-
     /// Get current Bluetooth state
     pub async fn get_bluetooth_state() -> zbus::Result<BluetoothState> {
         let connection = Connection::system().await?;
@@ -221,61 +202,30 @@ impl BluetoothService {
         let adapter_proxy = AdapterProxy::new(&connection).await?;
         let powered = adapter_proxy.powered().await.unwrap_or(false);
 
-        // Count connected devices
-        let connected_devices = Self::count_connected_devices(&connection).await;
+        // Get devices
+        let devices = Self::list_devices_async_with_conn(&connection).await.unwrap_or_default();
+        let connected_devices = devices.iter().filter(|d| d.connected).count();
 
         Ok(BluetoothState {
             powered,
             connected_devices,
+            devices,
         })
-    }
-
-    async fn count_connected_devices(connection: &Connection) -> usize {
-        // Get all objects from BlueZ
-        let obj_manager = match zbus::fdo::ObjectManagerProxy::builder(connection)
-            .destination("org.bluez")
-            .ok()
-            .and_then(|b| b.path("/").ok())
-        {
-            Some(builder) => match builder.build().await {
-                Ok(om) => om,
-                Err(_) => return 0,
-            },
-            None => return 0,
-        };
-
-        let objects = match obj_manager.get_managed_objects().await {
-            Ok(objs) => objs,
-            Err(_) => return 0,
-        };
-
-        let mut count = 0;
-        for (path, interfaces) in objects {
-            if interfaces.contains_key("org.bluez.Device1") {
-                // Try to check if device is connected
-                if let Ok(builder) = DeviceProxy::builder(connection).path(path) {
-                    if let Ok(device_proxy) = builder.build().await {
-                        if device_proxy.connected().await.unwrap_or(false) {
-                            count += 1;
-                        }
-                    }
-                }
-            }
-        }
-
-        count
     }
 
     /// List all Bluetooth devices (paired and available)
     pub fn list_devices() -> Vec<BluetoothDevice> {
         crate::utils::runtime::block_on(async {
-            Self::list_devices_async().await.unwrap_or_default()
+            let connection = match Connection::system().await {
+                Ok(conn) => conn,
+                Err(_) => return Vec::new(),
+            };
+            Self::list_devices_async_with_conn(&connection).await.unwrap_or_default()
         })
     }
 
-    async fn list_devices_async() -> zbus::Result<Vec<BluetoothDevice>> {
-        let connection = Connection::system().await?;
-        let obj_manager = zbus::fdo::ObjectManagerProxy::builder(&connection)
+    async fn list_devices_async_with_conn(connection: &Connection) -> zbus::Result<Vec<BluetoothDevice>> {
+        let obj_manager = zbus::fdo::ObjectManagerProxy::builder(connection)
             .destination("org.bluez")?
             .path("/")?
             .build()
@@ -286,7 +236,7 @@ impl BluetoothService {
 
         for (path, interfaces) in objects {
             if interfaces.contains_key("org.bluez.Device1") {
-                if let Ok(device_proxy) = DeviceProxy::builder(&connection)
+                if let Ok(device_proxy) = DeviceProxy::builder(connection)
                     .path(path.clone())?
                     .build()
                     .await
@@ -320,12 +270,10 @@ impl BluetoothService {
     /// Connect to a Bluetooth device
     pub fn connect_device(device_path: &str) {
         let path = device_path.to_string();
-        std::thread::spawn(move || {
-            crate::utils::runtime::block_on(async {
-                if let Err(e) = Self::connect_device_async(&path).await {
-                    eprintln!("Failed to connect device: {e}");
-                }
-            });
+        crate::utils::runtime::get().spawn(async move {
+            if let Err(e) = Self::connect_device_async(&path).await {
+                eprintln!("Failed to connect device: {e}");
+            }
         });
     }
 
@@ -343,12 +291,10 @@ impl BluetoothService {
     /// Disconnect a Bluetooth device
     pub fn disconnect_device(device_path: &str) {
         let path = device_path.to_string();
-        std::thread::spawn(move || {
-            crate::utils::runtime::block_on(async {
-                if let Err(e) = Self::disconnect_device_async(&path).await {
-                    eprintln!("Failed to disconnect device: {e}");
-                }
-            });
+        crate::utils::runtime::get().spawn(async move {
+            if let Err(e) = Self::disconnect_device_async(&path).await {
+                eprintln!("Failed to disconnect device: {e}");
+            }
         });
     }
 
