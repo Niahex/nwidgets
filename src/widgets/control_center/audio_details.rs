@@ -3,8 +3,6 @@ use crate::utils::icons;
 use gtk::prelude::*;
 use gtk4 as gtk;
 
-use super::section_helpers::setup_expand_callback;
-
 pub fn create_audio_section() -> (
     gtk::Box,
     gtk::Scale,

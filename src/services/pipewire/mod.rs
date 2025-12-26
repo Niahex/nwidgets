@@ -1,5 +1,6 @@
 mod audio_state;
 mod device_manager;
+mod pw_dump;
 mod stream_manager;
 mod volume_control;
 
@@ -11,6 +12,8 @@ pub use volume_control::VolumeControl;
 use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
 use std::sync::mpsc;
+use crate::services::pipewire::pw_dump::PipeWireObject;
+use serde_json;
 
 pub struct PipeWireService;
 
@@ -28,6 +31,7 @@ impl PipeWireService {
     }
 
     pub fn get_audio_state() -> AudioState {
+        // Fallback for synchronous callers (should be avoided in UI loops)
         VolumeControl::get_audio_state()
     }
 
@@ -71,6 +75,135 @@ impl PipeWireService {
         });
     }
 
+    fn parse_dump() -> Option<AudioState> {
+        let output = Command::new("pw-dump")
+            .output()
+            .ok()?;
+        
+        let objects: Vec<PipeWireObject> = serde_json::from_slice(&output.stdout).ok()?;
+        
+        // Find default devices from metadata
+        let mut default_sink_name = String::new();
+        let mut default_source_name = String::new();
+        
+        for obj in &objects {
+            if obj.type_ == "PipeWire:Interface:Metadata" {
+                if let Some(metadata) = &obj.metadata {
+                    for entry in metadata {
+                        if entry.key == "default.audio.sink" {
+                             if let Some(val) = entry.value.get("name").and_then(|v| v.as_str()) {
+                                 default_sink_name = val.to_string();
+                             }
+                        }
+                        if entry.key == "default.audio.source" {
+                             if let Some(val) = entry.value.get("name").and_then(|v| v.as_str()) {
+                                 default_source_name = val.to_string();
+                             }
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut sinks = Vec::new();
+        let mut sources = Vec::new();
+        let mut sink_inputs = Vec::new();
+        let mut source_outputs = Vec::new();
+
+        let mut master_volume = 0;
+        let mut master_muted = false;
+        let mut mic_volume = 0;
+        let mut mic_muted = false;
+
+        for obj in &objects {
+             // Only interested in Nodes
+            if obj.type_ != "PipeWire:Interface:Node" {
+                continue;
+            }
+
+            let media_class = match obj.get_media_class() {
+                Some(mc) => mc,
+                None => continue,
+            };
+            
+            let id = obj.id;
+            let (vol_pct, muted) = obj.get_volume_info();
+            
+            match media_class.as_str() {
+                "Audio/Sink" => {
+                    let name = obj.get_node_name().unwrap_or_default();
+                    let desc = obj.get_node_desc().unwrap_or(name.clone());
+                    let is_default = name == default_sink_name;
+                    
+                    if is_default {
+                        master_volume = vol_pct;
+                        master_muted = muted;
+                    }
+                    
+                    sinks.push(AudioDevice {
+                        id,
+                        description: desc,
+                        is_default,
+                    });
+                },
+                "Audio/Source" => {
+                    let name = obj.get_node_name().unwrap_or_default();
+                    let desc = obj.get_node_desc().unwrap_or(name.clone());
+                    let is_default = name == default_source_name;
+
+                    if is_default {
+                        mic_volume = vol_pct;
+                        mic_muted = muted;
+                    }
+
+                    sources.push(AudioDevice {
+                        id,
+                        description: desc,
+                        is_default,
+                    });
+                },
+                "Stream/Input/Audio" => { // Playback stream
+                    let app_name = obj.get_app_name().unwrap_or_else(|| "Unknown App".to_string());
+                    let app_icon = obj.get_app_icon_name();
+                    
+                    sink_inputs.push(AudioStream {
+                        id,
+                        app_name,
+                        volume: vol_pct,
+                        muted,
+                        window_title: None, // pw-dump doesn't easily map to X11 window title without extra logic
+                        app_icon,
+                    });
+                },
+                "Stream/Output/Audio" => { // Record stream
+                     let app_name = obj.get_app_name().unwrap_or_else(|| "Unknown App".to_string());
+                    let app_icon = obj.get_app_icon_name();
+                    
+                    source_outputs.push(AudioStream {
+                        id,
+                        app_name,
+                        volume: vol_pct,
+                        muted,
+                        window_title: None,
+                        app_icon,
+                    });
+                },
+                _ => {}
+            }
+        }
+        
+        Some(AudioState {
+            volume: master_volume,
+            muted: master_muted,
+            mic_volume,
+            mic_muted,
+            sinks,
+            sources,
+            sink_inputs,
+            source_outputs,
+        })
+    }
+
     pub fn subscribe_audio<F>(callback: F)
     where
         F: Fn(AudioState) + 'static,
@@ -78,9 +211,9 @@ impl PipeWireService {
         let (tx, rx) = mpsc::channel();
 
         std::thread::spawn(move || {
-            let mut last_state = Self::get_audio_state();
-            if tx.send(last_state.clone()).is_err() {
-                return;
+            // Initial state
+            if let Some(state) = Self::parse_dump() {
+                let _ = tx.send(state);
             }
 
             // Start pw-mon process to monitor changes
@@ -88,15 +221,13 @@ impl PipeWireService {
                 Ok(child) => child,
                 Err(e) => {
                     eprintln!("Failed to start pw-mon: {e}. Falling back to polling.");
-                    // Fallback polling loop
-                    loop {
-                        std::thread::sleep(std::time::Duration::from_millis(1000));
-                        let new_state = Self::get_audio_state();
-                        if new_state != last_state {
-                            if tx.send(new_state.clone()).is_err() {
+                    // Fallback polling loop using pw-dump every 2s
+                     loop {
+                        std::thread::sleep(std::time::Duration::from_millis(2000));
+                        if let Some(new_state) = Self::parse_dump() {
+                            if tx.send(new_state).is_err() {
                                 break;
                             }
-                            last_state = new_state;
                         }
                     }
                     return;
@@ -138,12 +269,11 @@ impl PipeWireService {
                 // Drain any other events that came in during the sleep
                 while event_rx.try_recv().is_ok() {}
 
-                let new_state = Self::get_audio_state();
-                if new_state != last_state {
-                    if tx.send(new_state.clone()).is_err() {
+                // Use pw-dump to get the full state in one go
+                if let Some(new_state) = Self::parse_dump() {
+                     if tx.send(new_state).is_err() {
                         break;
                     }
-                    last_state = new_state;
                 }
             }
 
