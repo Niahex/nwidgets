@@ -1,0 +1,221 @@
+// Panel styles
+@import "colors";
+
+.panel {
+    background-color: $polar0;
+    color: $snow2;
+    /* padding: 0 0 0 12px; */
+
+    .panel-left {
+        padding: 0;
+    }
+
+    .panel-center {
+        padding: 0 8px;
+        gap: 8px; // Espacement entre les éléments de la CenterBox
+
+        // Les widgets start et end ne doivent pas expand
+        > :first-child,
+        > :last-child {
+            min-width: auto;
+        }
+    }
+
+    .panel-right {
+        padding: 0;
+
+        // Tous les modules de la section droite ont la même taille et alignement
+        > * {
+            min-width: 32px;
+            min-height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        // Icônes uniformes
+        .bluetooth-icon,
+        .sink-icon,
+        .source-icon,
+        .systray-icon {
+            min-width: 20px;
+            min-height: 20px;
+        }
+    }
+}
+
+.panel-module {
+    padding: 4px 8px;
+    margin: 0 4px;
+    border-radius: 6px;
+    transition: all 200ms ease;
+
+    &:hover {
+        background-color: rgba($polar3, 0.5);
+    }
+}
+
+// Workspace buttons
+.workspaces-widget {
+    .workspace-button {
+        font-size: 14px;
+        font-weight: 500;
+        padding: 0 8px;
+        margin: 0 2px;
+        border-radius: 6px;
+        transition: all 200ms ease;
+    }
+
+    .workspace-active {
+        background-color: rgba($frost1, 0.2);
+        color: $frost1;
+        font-weight: 700;
+    }
+
+    .workspace-inactive {
+        color: rgba($snow0, 0.5);
+
+        &:hover {
+            background-color: rgba($frost1, 0.1);
+            color: rgba($snow0, 0.8);
+        }
+    }
+}
+
+// MPRIS widget
+.mpris-widget {
+    padding: 4px 12px;
+    margin-left: 8px;
+    /* background-color: rgba($polar1, 0.6);
+    border-radius: 8px; */
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 200ms ease;
+
+    &:hover {
+        background-color: rgba($polar2, 0.8);
+    }
+
+    .mpris-icon {
+        min-width: 20px;
+        min-height: 20px;
+        color: $frost1;
+    }
+
+    .mpris-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: $snow1;
+    }
+
+    .mpris-artist {
+        font-size: 11px;
+        color: $snow0;
+        opacity: 0.8;
+    }
+}
+
+.mpris-widget.paused {
+    opacity: 0.5;
+}
+
+// Specific module styles
+.active-window-widget {
+    padding: 0 12px 0 0;
+    display: flex;
+    align-items: center;
+
+    .active-window-icon {
+        min-width: 48px;
+        min-height: 48px;
+        margin-right: 10px;
+    }
+
+    .active-window-class {
+        font-weight: bold;
+        font-size: 14px;
+    }
+
+    .active-window-title {
+        font-size: 12px;
+    }
+}
+
+.appmenu-widget {
+    padding: 0 4px;
+
+    .appmenu-button {
+        padding: 4px 8px;
+        border-radius: 6px;
+        transition: background-color 200ms ease;
+
+        &:hover {
+            background-color: rgba($frost1, 0.1);
+        }
+    }
+}
+
+.datetime-widget,
+.sink-widget,
+.source-widget,
+.bluetooth-widget {
+    font-size: 14px;
+}
+
+.systray-widget {
+    padding: 0;
+    .tray-icon {
+        padding: 0 6px;
+    }
+}
+
+.pomodoro-widget {
+    // Pomodoro aligné à gauche dans sa section
+    justify-content: flex-start !important;
+
+    .pomodoro-icon {
+        font-size: 18px;
+    }
+
+    .pomodoro-time {
+        font-weight: bold;
+        font-size: 12px;
+
+        &.pomodoro-work {
+            color: $red;
+        }
+
+        &.pomodoro-break {
+            color: $green;
+        }
+
+        &.pomodoro-longbreak {
+            color: $yellow;
+        }
+
+        &.pomodoro-idle {
+            color: $snow0;
+        }
+    }
+}
+
+.sink-widget,
+.source-widget {
+    .icon {
+        font-size: 18px;
+        margin-right: 6px;
+    }
+}
+
+/* .bluetooth-widget,
+.source-widget,
+.systray-widget {
+    background-color: $red;
+}
+
+.sink-widget,
+.pomodoro-widget,
+.datetime-widget {
+    background-color: $orange;
+} */

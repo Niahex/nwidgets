@@ -1,32 +1,26 @@
-use crate::services::bluetooth::{BluetoothService, BluetoothStateChanged};
-use crate::utils::Icon;
-use gpui::prelude::*;
-use gpui::*;
+use super::base::{update_icon, PanelModuleConfig};
+use crate::services::bluetooth::BluetoothState;
+use gtk4 as gtk;
 
+#[derive(Clone)]
 pub struct BluetoothModule {
-    bluetooth: Entity<BluetoothService>,
+    pub container: gtk::CenterBox,
+    icon: gtk::Image,
 }
 
 impl BluetoothModule {
-    pub fn new(cx: &mut Context<Self>) -> Self {
-        let bluetooth = BluetoothService::global(cx);
-
-        cx.subscribe(
-            &bluetooth,
-            |_this, _bluetooth, _event: &BluetoothStateChanged, cx| {
-                cx.notify();
-            },
-        )
-        .detach();
-
-        Self { bluetooth }
+    pub fn new() -> Self {
+        let config = PanelModuleConfig::new(
+            "bluetooth-widget",
+            "bluetooth-icon",
+            "bluetooth-disabled",
+            "bluetooth",
+        );
+        let (container, icon) = config.build();
+        Self { container, icon }
     }
-}
 
-impl Render for BluetoothModule {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let state = self.bluetooth.read(cx).state();
-
+    pub fn update(&self, state: BluetoothState) {
         let icon_name = if !state.powered {
             "bluetooth-disabled"
         } else if state.connected_devices > 0 {
@@ -35,6 +29,6 @@ impl Render for BluetoothModule {
             "bluetooth-paired"
         };
 
-        Icon::new(icon_name).size(px(16.)).preserve_colors(true)
+        update_icon(&self.icon, icon_name, Some(20));
     }
 }

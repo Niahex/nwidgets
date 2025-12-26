@@ -1,0 +1,76 @@
+// Launcher Widget Styles
+@import 'colors';
+
+.launcher-window {
+  background-color: transparent;
+  border-radius: 12px;
+}
+
+.launcher-container {
+  background-color: $polar0;
+  border: 1px solid rgba($frost1, 0.25);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.launcher-search {
+  background-color: $polar2;
+  color: $snow0;
+  border: 1px solid $polar3;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 14px;
+  
+  &:focus {
+    border-color: $frost1;
+    box-shadow: 0 0 0 2px rgba($frost1, 0.3);
+  }
+  
+  &::placeholder {
+    color: $polar3;
+  }
+}
+
+.launcher-scrolled {
+  background-color: transparent;
+  border: none;
+}
+
+.launcher-list {
+  background-color: transparent;
+  border: none;
+  
+  row {
+    background-color: transparent;
+    border-radius: 8px;
+    padding: 4px;
+    margin: 2px 0;
+    
+    &:hover {
+      background-color: rgba($frost1, 0.1);
+    }
+    
+    &:selected {
+      background-color: $frost1;
+      
+      .launcher-label {
+        color: $polar0;
+      }
+    }
+  }
+}
+
+.launcher-item {
+  padding: 8px 12px;
+  border-radius: 6px;
+}
+
+.launcher-icon {
+  margin-right: 8px;
+}
+
+.launcher-label {
+  color: $snow0;
+  font-size: 14px;
+  font-weight: 500;
+}

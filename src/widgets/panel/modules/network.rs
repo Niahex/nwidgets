@@ -1,34 +1,27 @@
-use crate::services::network::{NetworkService, NetworkStateChanged};
-use crate::utils::Icon;
-use gpui::prelude::*;
-use gpui::*;
+use super::base::{update_icon, PanelModuleConfig};
+use crate::services::network::NetworkState;
+use gtk4 as gtk;
 
+#[derive(Clone)]
 pub struct NetworkModule {
-    network: Entity<NetworkService>,
+    pub container: gtk::CenterBox,
+    icon: gtk::Image,
 }
 
 impl NetworkModule {
-    pub fn new(cx: &mut Context<Self>) -> Self {
-        let network = NetworkService::global(cx);
-
-        cx.subscribe(
-            &network,
-            |_this, _network, _event: &NetworkStateChanged, cx| {
-                cx.notify();
-            },
-        )
-        .detach();
-
-        Self { network }
+    pub fn new() -> Self {
+        let config = PanelModuleConfig::new(
+            "network-widget",
+            "network-icon",
+            "network-disconnected",
+            "network",
+        );
+        let (container, icon) = config.build();
+        Self { container, icon }
     }
-}
 
-impl Render for NetworkModule {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let state = self.network.read(cx).state();
-
-        Icon::new(state.get_icon_name())
-            .size(px(16.))
-            .preserve_colors(true)
+    pub fn update(&self, state: NetworkState) {
+        let icon_name = state.get_icon_name();
+        update_icon(&self.icon, icon_name, Some(20));
     }
 }

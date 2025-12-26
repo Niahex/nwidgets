@@ -1,0 +1,87 @@
+// Control Center Module - Main styles and imports
+@import "../colors";
+@import "audio_details";
+@import "bluetooth_details";
+@import "network_details";
+@import "notifications_details";
+
+.control-center-window {
+    background-color: transparent;
+    border-radius: 12px;
+}
+
+.control-center-container {
+    background-color: $polar0;
+    border: 1px solid rgba($frost1, 0.3);
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(#000000, 0.4);
+}
+
+.control-section {
+    background-color: $polar0;
+    border-radius: 8px;
+    padding: 12px;
+    margin: 4px 0;
+
+    &:first-child {
+        margin-top: 0;
+    }
+
+    &:last-child {
+        margin-bottom: 0;
+    }
+
+    // Espacement vertical entre les éléments de la section
+    > * + * {
+        margin-top: 8px;
+    }
+}
+
+.section-title {
+    color: $snow0;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.control-icon {
+    color: $frost1;
+    font-size: 18px;
+    min-width: 24px;
+}
+
+.datetime-display {
+    color: $snow0;
+    font-size: 16px;
+    line-height: 1.4;
+    text-align: center;
+}
+
+.subsection-title {
+    color: $frost1;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+// Section buttons for bluetooth/network
+.section-button {
+    background-color: $polar1;
+    border: 1px solid $polar3;
+    border-radius: 6px;
+    color: $snow0;
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 500;
+
+    &:hover {
+        background-color: rgba($frost1, 0.1);
+        border-color: $frost1;
+    }
+
+    &:active {
+        background-color: rgba($frost1, 0.2);
+    }
+}

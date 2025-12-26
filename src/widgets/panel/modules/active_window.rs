@@ -1,121 +1,161 @@
-use crate::services::hyprland::{ActiveWindowChanged, HyprlandService};
-use crate::utils::Icon;
-use gpui::prelude::*;
-use gpui::*;
+use crate::services::chat::ChatState;
+use crate::services::hyprland::ActiveWindow;
+use crate::utils::icons;
+use gtk::prelude::*;
+use gtk4 as gtk;
+use std::cell::RefCell;
+use std::rc::Rc;
 
+#[derive(Clone)]
 pub struct ActiveWindowModule {
-    hyprland: Entity<HyprlandService>,
+    pub container: gtk::Box,
+    icon: gtk::Image,
+    class_label: gtk::Label,
+    title_label: gtk::Label,
+    // État pour savoir si le chat est visible
+    chat_state: Rc<RefCell<ChatState>>,
+    hyprland_window: Rc<RefCell<Option<ActiveWindow>>>,
 }
 
 impl ActiveWindowModule {
-    pub fn new(cx: &mut Context<Self>) -> Self {
-        let hyprland = HyprlandService::global(cx);
+    pub fn new() -> Self {
+        // Container principal - utiliser Box au lieu de CenterBox pour mieux contrôler l'espacement
+        let container = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        container.add_css_class("active-window-widget");
+        // Fixer la largeur pour éviter que les modules centraux ne bougent
+        container.set_width_request(350);
+        container.set_hexpand(false);
 
-        // Subscribe to active window changes
-        cx.subscribe(
-            &hyprland,
-            |_this, _hyprland, _event: &ActiveWindowChanged, cx| {
-                cx.notify();
-            },
-        )
-        .detach();
+        let icon = icons::create_icon_with_size("test", Some(48));
+        icon.add_css_class("active-window-icon");
 
-        Self { hyprland }
-    }
+        let text_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        text_box.set_halign(gtk::Align::Start);
+        text_box.set_valign(gtk::Align::Center);
+        text_box.set_hexpand(true);
 
-    /// Retourne le nom d'icône basé sur la classe de la fenêtre
-    /// La classe est utilisée directement en minuscules comme nom d'icône
-    /// Exemples: "Firefox" -> "firefox.svg", "discord" -> "discord.svg", "dev.zed.Zed" -> "dev.zed.zed.svg"
-    fn get_icon_name(class: &str) -> String {
-        let icon_name = class.to_lowercase();
+        let class_label = gtk::Label::new(None);
+        class_label.add_css_class("active-window-class");
+        class_label.set_halign(gtk::Align::Start);
+        class_label.set_ellipsize(gtk::pango::EllipsizeMode::End);
+        class_label.set_max_width_chars(25);
 
-        // Log seulement si l'icône n'existe pas
-        let icon_path = format!("assets/{icon_name}.svg");
-        if !std::path::Path::new(&icon_path).exists() {
-            eprintln!(
-                "[ActiveWindow] Icon not found for class '{class}' -> '{icon_path}'"
-            );
-        }
+        let title_label = gtk::Label::new(None);
+        title_label.add_css_class("active-window-title");
+        title_label.set_halign(gtk::Align::Start);
+        title_label.set_ellipsize(gtk::pango::EllipsizeMode::End);
+        title_label.set_max_width_chars(35);
 
-        icon_name
-    }
+        text_box.append(&class_label);
+        text_box.append(&title_label);
 
-    /// Extrait le titre court de la fenêtre (avant le premier " - ")
-    fn extract_short_title(title: &str, max_chars: usize) -> String {
-        let short_title = title
-            .split(" - ")
-            .next()
-            .unwrap_or(title)
-            .trim()
-            .to_string();
+        container.append(&icon);
+        container.append(&text_box);
 
-        if short_title.chars().count() > max_chars {
-            let truncated: String = short_title.chars().take(max_chars - 3).collect();
-            format!("{truncated}...")
-        } else {
-            short_title
+        Self {
+            container,
+            icon,
+            class_label,
+            title_label,
+            chat_state: Rc::new(RefCell::new(ChatState::default())),
+            hyprland_window: Rc::new(RefCell::new(None)),
         }
     }
 
-    /// Retourne la classe complète (pas de formatage)
-    fn format_class_name(class: &str) -> String {
-        class.to_string()
+    /// Met à jour l'état du chat
+    pub fn update_chat_state(&self, chat_state: ChatState) {
+        *self.chat_state.borrow_mut() = chat_state;
+        self.refresh_display();
     }
-}
 
-impl Render for ActiveWindowModule {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let active_window = self.hyprland.read(cx).active_window();
+    /// Met à jour la fenêtre Hyprland active
+    pub fn update_hyprland_window(&self, active_window: Option<ActiveWindow>) {
+        *self.hyprland_window.borrow_mut() = active_window;
+        self.refresh_display();
+    }
 
-        let theme = cx.global::<crate::theme::Theme>();
+    /// Rafraîchit l'affichage en fonction de l'état actuel
+    fn refresh_display(&self) {
+        let chat_state = self.chat_state.borrow();
+        let hyprland_window = self.hyprland_window.borrow();
 
-        let (icon_name, class_text, title_text) = if let Some(window) = active_window {
-            let icon = Self::get_icon_name(&window.class);
-            let class = Self::format_class_name(&window.class);
-            let title = Self::extract_short_title(&window.title, 30);
+        // Si le chat est visible, afficher l'info du chat
+        if chat_state.is_visible && !chat_state.selected_site_name.is_empty() {
+            let icon_name = self.get_chat_icon(&chat_state.selected_site_name);
+            let title = &chat_state.selected_site_name;
 
-            (icon, class, title)
+            if let Some(paintable) = icons::get_paintable_with_size(icon_name, Some(48)) {
+                self.icon.set_paintable(Some(&paintable));
+            }
+            self.class_label.set_text("Chat");
+            self.title_label.set_text(title);
         } else {
-            // Pas de fenêtre active - afficher un placeholder
-            ("nixos".to_string(), "NixOS".to_string(), "Nia".to_string())
+            // Sinon, afficher l'info de la fenêtre Hyprland
+            self.display_hyprland_window(hyprland_window.as_ref());
+        }
+    }
+
+    fn get_chat_icon(&self, site_name: &str) -> &str {
+        match site_name {
+            "Gemini" => "gemini",
+            "DeepSeek" => "deepseek",
+            "AI Studio" => "ai-studio",
+            "DuckDuckGo AI" => "duckduckgo",
+            _ => "chat",
+        }
+    }
+
+    fn display_hyprland_window(&self, active_window: Option<&ActiveWindow>) {
+        let (icon_name, class, title) = if let Some(active_window) = active_window {
+            let title_before_dash = active_window
+                .title
+                .split(" - ")
+                .next()
+                .unwrap_or(&active_window.title)
+                .trim()
+                .to_string();
+
+            let truncated_title = if title_before_dash.chars().count() > 30 {
+                let truncated: String = title_before_dash.chars().take(27).collect();
+                format!("{truncated}...")
+            } else {
+                title_before_dash
+            };
+
+            let icon_name = match active_window.class.to_lowercase().as_str() {
+                "firefox" | "zen-twilight" => "firefox",
+                "discord" | "vesktop" => "discord",
+                "steam" => "steam",
+                "vlc" => "vlc",
+                "net.lutris.lutris" => "lutris",
+                "org.keepassxc.keepassxc" => "keepassxc",
+                "spotify" => "spotify",
+                "org.gnome.nautilus" => "file-manager",
+                "org.inkscape.inkscape" => "inkscape",
+                "kitty" | "alacritty" | "terminal" => "terminal",
+                "dev.zed.zed" => "zeditor",
+                _ => {
+                    println!("DEBUG: Unknown window class: {}", active_window.class);
+                    "test"
+                }
+            };
+
+            let display_class = active_window
+                .class
+                .split('-')
+                .next()
+                .unwrap_or(&active_window.class)
+                .to_string();
+
+            (icon_name, display_class, truncated_title)
+        } else {
+            ("nixos", "NixOS".to_string(), "Nia".to_string())
         };
 
-        div()
-            .id("active-window-module")
-            .flex()
-            .gap_2()
-            .items_center()
-            .px_3()
-            .py_2()
-            .min_w(px(350.))
-            .max_w(px(450.))
-            .child(div().size(px(32.)).flex_shrink_0().child(
-                Icon::new(icon_name).size(px(32.)).preserve_colors(true), // Préserver les couleurs des logos d'applications
-            ))
-            .child(
-                div()
-                    .flex()
-                    .flex_col()
-                    .gap_0p5()
-                    .flex_1()
-                    .min_w_0() // Pour permettre l'ellipsis
-                    .child(
-                        div()
-                            .text_xs()
-                            .font_weight(FontWeight::SEMIBOLD)
-                            .text_color(rgba(0xd8dee966)) // $snow1 à 40%
-                            .overflow_hidden()
-                            .whitespace_nowrap()
-                            .child(class_text),
-                    )
-                    .child(
-                        div()
-                            .text_sm()
-                            .text_color(theme.text)
-                            .overflow_hidden()
-                            .whitespace_nowrap()
-                            .child(title_text),
-                    ),
-            )
+        if let Some(paintable) = icons::get_paintable_with_size(icon_name, Some(48)) {
+            self.icon.set_paintable(Some(&paintable));
+        }
+        self.class_label.set_text(&class);
+        self.title_label.set_text(&title);
     }
 }

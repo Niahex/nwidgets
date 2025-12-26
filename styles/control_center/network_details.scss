@@ -1,0 +1,35 @@
+// Network Details Styles
+@import "../colors";
+
+.vpn-row {
+    background-color: $polar2;
+    border-radius: 6px;
+    padding: 8px;
+    margin: 4px 0;
+
+    &:hover {
+        background-color: rgba($frost1, 0.08);
+    }
+}
+
+.vpn-name {
+    color: $snow0;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.vpn-type {
+    color: $polar3;
+    font-size: 10px;
+    font-style: italic;
+}
+
+.vpn-toggle {
+    &:checked {
+        background-color: $green;
+    }
+
+    &:not(:checked) {
+        background-color: $polar3;
+    }
+}

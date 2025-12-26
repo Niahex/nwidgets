@@ -1,148 +1,128 @@
-mod modules;
+use gtk::prelude::*;
+use gtk4 as gtk;
+use gtk4_layer_shell::{Edge, Layer, LayerShell};
+pub mod modules; // Changed from `mod modules;` to `pub mod modules;`
+use modules::active_window::ActiveWindowModule;
+use modules::audio::{AudioDeviceType, AudioModule};
+use modules::bluetooth::BluetoothModule;
+use modules::datetime::DateTimeModule;
+use modules::mpris::MprisModule;
+use modules::network::NetworkModule;
+use modules::pomodoro::PomodoroModule;
+use modules::systray::SystrayModule;
+use modules::workspaces::WorkspacesModule;
 
-pub use modules::{
-    ActiveWindowModule, BluetoothModule, DateTimeModule, MprisModule, NetworkModule,
-    PomodoroModule, SinkModule, SourceModule, SystrayModule, WorkspacesModule,
-};
+// Type aliases for clarity
+type SinkModule = AudioModule;
+type SourceModule = AudioModule;
 
-use crate::services::control_center::ControlCenterService;
-use gpui::*;
+pub fn create_panel_window(
+    application: &gtk::Application,
+) -> (
+    gtk::ApplicationWindow,
+    ActiveWindowModule,
+    WorkspacesModule,
+    MprisModule,
+    BluetoothModule,
+    NetworkModule,
+    SystrayModule,
+    SinkModule,
+    SourceModule,
+    PomodoroModule,
+) {
+    let window = gtk::ApplicationWindow::builder()
+        .application(application)
+        .build();
 
-pub struct Panel {
-    active_window: Entity<ActiveWindowModule>,
-    workspaces: Entity<WorkspacesModule>,
-    pomodoro: Entity<PomodoroModule>,
-    mpris: Entity<MprisModule>,
-    systray: Entity<SystrayModule>,
-    bluetooth: Entity<BluetoothModule>,
-    network: Entity<NetworkModule>,
-    sink: Entity<SinkModule>,
-    source: Entity<SourceModule>,
-    datetime: Entity<DateTimeModule>,
-    control_center: Entity<ControlCenterService>,
-}
+    // --- GTK Layer Shell Setup ---
+    window.init_layer_shell();
+    window.set_layer(Layer::Top);
+    window.set_anchor(Edge::Top, true);
+    window.set_anchor(Edge::Left, true);
+    window.set_anchor(Edge::Right, true);
+    window.set_exclusive_zone(50);
 
-impl Panel {
-    pub fn new(cx: &mut Context<Self>) -> Self {
-        Self {
-            active_window: cx.new(ActiveWindowModule::new),
-            workspaces: cx.new(WorkspacesModule::new),
-            pomodoro: cx.new(PomodoroModule::new),
-            mpris: cx.new(MprisModule::new),
-            systray: cx.new(SystrayModule::new),
-            bluetooth: cx.new(BluetoothModule::new),
-            network: cx.new(NetworkModule::new),
-            sink: cx.new(SinkModule::new),
-            source: cx.new(SourceModule::new),
-            datetime: cx.new(DateTimeModule::new),
-            control_center: ControlCenterService::global(cx),
-        }
-    }
-}
+    let layout = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    layout.set_height_request(50);
+    layout.set_hexpand(true);
+    layout.add_css_class("panel");
 
-impl Render for Panel {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let theme = cx.global::<crate::theme::Theme>();
+    let left_section = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    left_section.add_css_class("panel-left");
 
-        div()
-            .flex()
-            .items_center()
-            .justify_between()
-            .h(px(50.))
-            .w_full()
-            .px_3()
-            .bg(theme.bg)
-            .text_color(theme.text)
-            // Left section - Active window info
-            .child(
-                div()
-                    .flex()
-                    .gap_2()
-                    .items_center()
-                    .h_full()
-                    .child(self.active_window.clone()),
-            )
-            // Center section - takes remaining space
-            .child(
-                div()
-                    .flex()
-                    .flex_1()
-                    .gap_2()
-                    .items_center()
-                    .justify_center()
-                    .h_full()
-                    .child(self.pomodoro.clone())
-                    .child(self.workspaces.clone())
-                    .child(self.mpris.clone()),
-            )
-            // Right section
-            .child(
-                div()
-                    .flex()
-                    .gap_0()
-                    .items_center()
-                    .h_full()
-                    .child(div().flex().items_center().child(self.systray.clone()))
-                    // Group interactive modules for Control Center toggle
-                    .child(
-                        div()
-                            .id("control-center-trigger")
-                            .flex()
-                            .gap_0()
-                            .items_center()
-                            .h_full()
-                            .hover(|s| s.bg(theme.hover))
-                            .rounded_md()
-                            .cursor_pointer()
-                            .on_click(cx.listener(|this, _, _window, cx| {
-                                this.control_center.update(cx, |cc, cx| {
-                                    cc.toggle(cx);
-                                });
-                            }))
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .w(px(32.))
-                                    .h(px(32.))
-                                    .child(self.bluetooth.clone()),
-                            )
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .w(px(32.))
-                                    .h(px(32.))
-                                    .child(self.network.clone()),
-                            )
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .w(px(32.))
-                                    .h(px(32.))
-                                    .child(self.source.clone()),
-                            )
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .w(px(32.))
-                                    .h(px(32.))
-                                    .child(self.sink.clone()),
-                            )
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .px_3()
-                                    .child(self.datetime.clone()),
-                            )
-                    ),
-            )
-    }
+    let active_window_module = ActiveWindowModule::new();
+    left_section.append(&active_window_module.container);
+
+    layout.append(&left_section);
+
+    // Spacer pour centrer la section centrale
+    let spacer_left = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    spacer_left.set_hexpand(true);
+    layout.append(&spacer_left);
+
+    // Section centrale : CenterBox pour centrage absolu des workspaces
+    let center_box = gtk::CenterBox::new();
+    center_box.add_css_class("panel-center");
+
+    // Pomodoro - aligné à droite, s'étend vers la gauche
+    let pomodoro_module = PomodoroModule::new();
+    pomodoro_module.container.set_halign(gtk::Align::End);
+    pomodoro_module.container.set_hexpand(true);
+    center_box.set_start_widget(Some(&pomodoro_module.container));
+
+    // Workspaces au centre (position fixe)
+    let workspaces_module = WorkspacesModule::new();
+    workspaces_module.container.set_halign(gtk::Align::Center);
+    workspaces_module.container.set_hexpand(false);
+    center_box.set_center_widget(Some(&workspaces_module.container));
+
+    // MPRIS - aligné à gauche, s'étend vers la droite
+    let mpris_module = MprisModule::new();
+    mpris_module.container.set_halign(gtk::Align::Start);
+    mpris_module.container.set_hexpand(true);
+    center_box.set_end_widget(Some(&mpris_module.container));
+
+    layout.append(&center_box);
+
+    // Spacer pour pousser la section droite à droite
+    let spacer_right = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    spacer_right.set_hexpand(true);
+    layout.append(&spacer_right);
+
+    // Section droite : Systray, puis les autres modules
+    let right_section = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    right_section.add_css_class("panel-right");
+    right_section.set_halign(gtk::Align::End);
+
+    // Systray en premier (peut changer de taille)
+    let systray_module = SystrayModule::new();
+    right_section.append(&systray_module.container);
+
+    // Autres modules alignés
+    let mic_module = AudioModule::new(AudioDeviceType::Source);
+    right_section.append(&mic_module.container);
+    let volume_module = AudioModule::new(AudioDeviceType::Sink);
+    right_section.append(&volume_module.container);
+    let network_module = NetworkModule::new();
+    right_section.append(&network_module.container);
+    let bluetooth_module = BluetoothModule::new();
+    right_section.append(&bluetooth_module.container);
+    let datetime_module = DateTimeModule::new();
+    right_section.append(&datetime_module.container);
+    layout.append(&right_section);
+
+    window.set_child(Some(&layout));
+
+    (
+        window,
+        active_window_module,
+        workspaces_module,
+        mpris_module,
+        bluetooth_module,
+        network_module,
+        systray_module,
+        volume_module,
+        mic_module,
+        pomodoro_module,
+    )
 }

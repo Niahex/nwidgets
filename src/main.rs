@@ -1,154 +1,199 @@
-mod components;
 mod services;
-mod theme;
 mod utils;
 mod widgets;
 
-use anyhow::Result;
-use gpui::layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions};
-use gpui::prelude::*;
-use gpui::*;
-use gpui::{Bounds, Point, Size, WindowBounds};
-use parking_lot::Mutex;
-use services::{
-    audio::AudioService,
-    bluetooth::BluetoothService,
-    hyprland::HyprlandService,
-    mpris::MprisService,
-    network::NetworkService,
-    notifications::{NotificationAdded, NotificationService},
-    osd::OsdService,
-    pomodoro::PomodoroService,
-    systray::SystrayService,
-    control_center::ControlCenterService,
-};
-use std::path::PathBuf;
-use std::sync::Arc;
-use widgets::{
-    notifications::{NotificationsStateChanged, NotificationsWindowManager},
-    panel::Panel,
-};
-
-struct Assets {
-    base: PathBuf,
+mod style {
+    include!(concat!(env!("OUT_DIR"), "/generated_style.rs"));
 }
 
-impl AssetSource for Assets {
-    fn load(&self, path: &str) -> Result<Option<std::borrow::Cow<'static, [u8]>>> {
-        std::fs::read(self.base.join(path))
-            .map(|data| Some(std::borrow::Cow::Owned(data)))
-            .map_err(|err| err.into())
-    }
+use crate::services::bluetooth::BluetoothService;
+use crate::services::chat::ChatStateService;
+use crate::services::clipboard::ClipboardService;
+use crate::services::hyprland::HyprlandService;
+use crate::services::lock_state::{CapsLockService, NumLockService};
+use crate::services::mpris::MprisService;
+use crate::services::network::NetworkService;
+use crate::services::osd::OsdEventService;
+use crate::services::pipewire::PipeWireService;
+use crate::services::stt::SttService;
+use crate::services::systray::SystemTrayService;
+use crate::widgets::chat::create_chat_overlay;
+use crate::widgets::control_center::create_control_center_window;
+use crate::widgets::jisig::create_jisig_overlay;
+use crate::widgets::notifications::create_notifications_window;
+use crate::widgets::osd::create_osd_window;
+use crate::widgets::panel::create_panel_window;
+use crate::widgets::power_menu::create_power_menu_window;
+use gtk4::{self as gtk, prelude::*, Application};
 
-    fn list(&self, path: &str) -> Result<Vec<SharedString>> {
-        std::fs::read_dir(self.base.join(path))
-            .map(|entries| {
-                entries
-                    .filter_map(|entry| {
-                        entry
-                            .ok()
-                            .and_then(|entry| entry.file_name().into_string().ok())
-                            .map(SharedString::from)
-                    })
-                    .collect()
-            })
-            .map_err(|err| err.into())
-    }
-}
+const APP_ID: &str = "github.niahex.nwidgets";
 
 fn main() {
-    // Determine assets path - in development it's relative to the project root
-    let assets_path = if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
-        PathBuf::from(manifest_dir)
-    } else {
-        // In production, assets should be alongside the binary
-        std::env::current_exe()
-            .ok()
-            .and_then(|path| path.parent().map(|p| p.to_path_buf()))
-            .unwrap_or_else(|| PathBuf::from("."))
-    };
+    let app = Application::builder().application_id(APP_ID).build();
 
-    Application::new()
-        .with_assets(Assets { base: assets_path })
-        .run(|cx: &mut App| {
-            // Initialize gpui_tokio
-            gpui_tokio::init(cx);
-            
-            // Initialize theme
-            cx.set_global(theme::Theme::nord_dark());
-            
-            // Initialize global services
-            HyprlandService::init(cx);
-            AudioService::init(cx);
-            BluetoothService::init(cx);
-            NetworkService::init(cx);
-            MprisService::init(cx);
-            PomodoroService::init(cx);
-            SystrayService::init(cx);
-            let notif_service = NotificationService::init(cx);
-            let osd_service = OsdService::init(cx);
-            ControlCenterService::init(cx);
+    app.connect_activate(|app| {
+        style::load_css();
 
-            // Create panel window with LayerShell - full width (3440px), 50px height
-            cx.open_window(
-                WindowOptions {
-                    window_bounds: Some(WindowBounds::Windowed(Bounds {
-                        origin: Point {
-                            x: px(0.0),
-                            y: px(0.0),
-                        },
-                        size: Size {
-                            width: px(3440.0),
-                            height: px(50.0),
-                        },
-                    })),
-                    titlebar: None,
-                    window_background: WindowBackgroundAppearance::Transparent,
-                    kind: WindowKind::LayerShell(LayerShellOptions {
-                        namespace: "nwidgets-panel".to_string(),
-                        layer: Layer::Top,
-                        anchor: Anchor::TOP | Anchor::LEFT | Anchor::RIGHT,
-                        exclusive_zone: Some(px(50.)),
-                        margin: None,
-                        keyboard_interactivity: KeyboardInteractivity::None,
-                        ..Default::default()
-                    }),
-                    ..Default::default()
-                },
-                |_window, cx| cx.new(Panel::new),
-            )
-            .unwrap();
+        utils::icons::setup_icon_theme();
 
-            // Le service OSD gère maintenant sa propre fenêtre
-            let _osd_service = osd_service;
+        let chat_overlay = create_chat_overlay(app);
+        let chat_pin_controller = chat_overlay.pin_controller.clone();
 
-            // Gestionnaire de fenêtre notifications
-            let notif_manager = Arc::new(Mutex::new(NotificationsWindowManager::new()));
-            let notif_manager_clone = Arc::clone(&notif_manager);
+        let jisig_overlay = create_jisig_overlay(app);
+        let jisig_pin_controller = jisig_overlay.pin_controller.clone();
 
-            // Ouvrir la fenêtre à la première notification
-            cx.subscribe(
-                &notif_service,
-                move |_service, _event: &NotificationAdded, cx| {
-                    let mut manager = notif_manager_clone.lock();
+        let _power_menu_window = create_power_menu_window(app);
 
-                    if let Some(widget) = manager.open_window(cx) {
-                        let notif_manager_clone2 = Arc::clone(&notif_manager_clone);
-                        cx.subscribe(
-                            &widget,
-                            move |_widget, event: &NotificationsStateChanged, cx| {
-                                if !event.has_notifications {
-                                    let mut manager = notif_manager_clone2.lock();
-                                    manager.close_window(cx);
-                                }
-                            },
-                        )
-                        .detach();
-                    }
-                },
-            )
-            .detach();
+        let _control_center_window = create_control_center_window(app);
 
-            cx.activate(true);
+        crate::services::NotificationService::subscribe_notifications(|notification| {
+            println!(
+                "[MAIN] Received notification: {} - {}",
+                notification.summary, notification.body
+            );
         });
+
+        println!(
+            "[MAIN] Notification history size: {}",
+            crate::services::NotificationService::get_history().len()
+        );
+
+        let pin_action = gtk::gio::SimpleAction::new("pin-focused-window", None);
+        let chat_window_clone = chat_overlay.window.clone();
+        let jisig_window_clone = jisig_overlay.clone();
+        let chat_pin_clone = chat_pin_controller.clone();
+        let jisig_pin_clone = jisig_pin_controller.clone();
+
+        pin_action.connect_activate(move |_, _| {
+            // Vérifier quelle fenêtre est visible et focus
+            if chat_window_clone.is_visible() && chat_window_clone.is_active() {
+                println!("[PIN] Chat window is focused, toggling pin");
+                chat_pin_clone.toggle();
+            } else if jisig_window_clone.window.is_visible()
+                && jisig_window_clone.window.is_active()
+            {
+                println!("[PIN] jisig window is focused, toggling pin");
+                jisig_pin_clone.toggle();
+            } else {
+                println!("[PIN] No pinnable window is focused");
+            }
+        });
+
+        app.add_action(&pin_action);
+
+        // Initialize STT service
+        let stt_service = std::sync::Arc::new(SttService::new());
+        let _ = stt_service.initialize();
+
+        // Create STT toggle action
+        let stt_action = gtk::gio::SimpleAction::new("toggle-stt", None);
+        let stt_service_clone = stt_service.clone();
+        stt_action.connect_activate(move |_, _| {
+            if let Err(e) = stt_service_clone.toggle() {
+                eprintln!("[STT] Toggle error: {e}");
+            }
+        });
+        app.add_action(&stt_action);
+
+        let (
+            panel_window,
+            active_window_module,
+            workspaces_module,
+            mpris_module,
+            bluetooth_module,
+            network_module,
+            systray_module,
+            volume_module,
+            mic_module,
+            _pomodoro_module,
+        ) = create_panel_window(app);
+        panel_window.present();
+
+        let osd_window = create_osd_window(app);
+        osd_window.present();
+
+        let _notifications_window = create_notifications_window(app);
+
+        let active_window_module_clone = active_window_module.clone();
+        HyprlandService::subscribe_active_window(move |active_window| {
+            active_window_module_clone.update_hyprland_window(active_window.clone());
+        });
+
+        // S'abonner aux changements d'état du chat
+        let active_window_module_clone2 = active_window_module.clone();
+        ChatStateService::subscribe(move |chat_state| {
+            active_window_module_clone2.update_chat_state(chat_state);
+        });
+
+        let workspaces_module_clone = workspaces_module.clone();
+        HyprlandService::subscribe_workspace(move |workspaces, active_workspace| {
+            workspaces_module_clone.update(workspaces, active_workspace);
+        });
+
+        let mpris_module_clone = mpris_module.clone();
+        MprisService::subscribe(move |state| {
+            mpris_module_clone.update(state);
+        });
+
+        let bluetooth_module_clone = bluetooth_module.clone();
+        BluetoothService::subscribe_bluetooth(move |state| {
+            bluetooth_module_clone.update(state);
+        });
+
+        let network_module_clone = network_module.clone();
+        NetworkService::subscribe_network(move |state| {
+            network_module_clone.update(state);
+        });
+
+        let systray_module_clone = systray_module.clone();
+        SystemTrayService::subscribe_systray(move |items| {
+            systray_module_clone.update(items);
+        });
+
+        let volume_module_clone = volume_module.clone();
+        let mic_module_clone = mic_module.clone();
+        let last_volume = std::cell::Cell::new(0u8);
+        let last_muted = std::cell::Cell::new(false);
+        let last_mic_volume = std::cell::Cell::new(0u8);
+        let last_mic_muted = std::cell::Cell::new(false);
+        PipeWireService::subscribe_audio(move |state| {
+            volume_module_clone.update(&state);
+            mic_module_clone.update(&state);
+
+            if state.volume != last_volume.get() || state.muted != last_muted.get() {
+                OsdEventService::send_event(crate::services::osd::OsdEvent::Volume(
+                    state.get_sink_icon_name().to_string(),
+                    state.volume,
+                    state.muted,
+                ));
+                last_volume.set(state.volume);
+                last_muted.set(state.muted);
+            }
+
+            if state.mic_volume != last_mic_volume.get() || state.mic_muted != last_mic_muted.get()
+            {
+                OsdEventService::send_event(crate::services::osd::OsdEvent::Volume(
+                    state.get_source_icon_name().to_string(),
+                    state.mic_volume,
+                    state.mic_muted,
+                ));
+                last_mic_volume.set(state.mic_volume);
+                last_mic_muted.set(state.mic_muted);
+            }
+        });
+
+        CapsLockService::subscribe_capslock(move |enabled| {
+            OsdEventService::send_event(crate::services::osd::OsdEvent::CapsLock(enabled));
+        });
+
+        NumLockService::subscribe_numlock(move |enabled| {
+            OsdEventService::send_event(crate::services::osd::OsdEvent::NumLock(enabled));
+        });
+
+        ClipboardService::subscribe_clipboard(move || {
+            OsdEventService::send_event(crate::services::osd::OsdEvent::Clipboard);
+        });
+    });
+
+    app.run();
 }

@@ -1,0 +1,45 @@
+// Bluetooth Details Styles
+@import "../colors";
+
+.bluetooth-device-row {
+    background-color: $polar2;
+    border-radius: 6px;
+    padding: 8px;
+    margin: 4px 0;
+
+    &:hover {
+        background-color: rgba($frost1, 0.08);
+    }
+}
+
+.bluetooth-device-name {
+    color: $snow0;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.bluetooth-device-address {
+    color: $polar3;
+    font-size: 10px;
+    font-family: monospace;
+}
+
+.bluetooth-paired {
+    color: $frost2;
+    font-size: 10px;
+    font-weight: 600;
+    background-color: rgba($frost2, 0.15);
+    border-radius: 4px;
+    padding: 2px 8px;
+    margin-right: 8px;
+}
+
+.bluetooth-toggle {
+    &:checked {
+        background-color: $frost1;
+    }
+
+    &:not(:checked) {
+        background-color: $polar3;
+    }
+}

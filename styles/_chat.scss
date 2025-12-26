@@ -1,0 +1,80 @@
+// styles/_chat.scss
+@import "colors";
+
+.chat-window {
+    background-color: $polar0;
+    border: 1px solid $polar3;
+    border-radius: 8px;
+}
+
+.chat-top-bar {
+    padding: 4px;
+    background-color: $polar1;
+    border-bottom: 1px solid $polar3;
+    display: flex;
+    align-items: center;
+}
+
+.chat-site-button {
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    padding: 4px 12px;
+    min-height: 28px;
+    transition: all 200ms ease;
+
+    &:hover {
+        background-color: rgba($frost1, 0.15);
+        border-color: rgba($frost1, 0.3);
+    }
+
+    &:active {
+        background-color: rgba($frost1, 0.25);
+        border-color: $frost1;
+    }
+
+    &:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba($frost1, 0.4);
+    }
+}
+
+.chat-site-label {
+    color: $snow1;
+    font-size: 13px;
+    font-weight: 500;
+    transition: color 150ms ease;
+
+    .chat-site-button:hover & {
+        color: $frost1;
+    }
+}
+
+.chat-pin-button {
+    background-color: transparent;
+    color: $snow1;
+    border: none;
+    padding: 4px;
+    min-width: 28px;
+    min-height: 28px;
+
+    image {
+        min-width: 20px;
+        min-height: 20px;
+        -gtk-icon-size: 20px;
+    }
+
+    &:hover {
+        color: $frost1;
+    }
+}
+
+.chat-webview {
+    // The webview itself doesn't have much to style from GTK,
+    // as its content is web content.
+    // We can style its container if needed.
+}
+
+.chat-layout {
+    // The main vertical box
+}

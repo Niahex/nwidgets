@@ -1,0 +1,75 @@
+// styles/_jisig.scss
+@import "colors";
+
+.jisig-window {
+    background-color: $polar0;
+    border: 1px solid $polar3;
+    border-radius: 8px;
+}
+
+.jisig-top-bar {
+    padding: 6px;
+    background-color: $polar1;
+    border-bottom: 1px solid $polar3;
+}
+
+.jisig-site-dropdown {
+    // Style for the dropdown
+    &,
+    & > .dropdown-list {
+        background-color: $polar2;
+        color: $snow1;
+        border: 1px solid $polar3;
+        border-radius: 4px;
+    }
+
+    &:hover {
+        background-color: $polar3;
+    }
+
+    // Styling for the custom list items (icon + label)
+    .list-item {
+        // This is the default class for GtkListItem
+        padding: 4px 8px;
+
+        & > box {
+            // The box_container created in Rust
+            display: flex;
+            align-items: center; // Vertically center icon and label
+
+            & > image {
+                // The icon_image
+                margin-right: 8px;
+                min-width: 16px; // Ensure consistent icon size
+                min-height: 16px;
+                // You might need to set max-width/height if icons are too big
+            }
+
+            & > label {
+                // The label
+                color: $snow1;
+            }
+        }
+    }
+}
+
+.jisig-pin-button {
+    background-color: transparent;
+    color: $snow1;
+    border: none;
+    font-size: 18px;
+
+    &:hover {
+        color: $frost1;
+    }
+}
+
+.jisig-webview {
+    // The webview itself doesn't have much to style from GTK,
+    // as its content is web content.
+    // We can style its container if needed.
+}
+
+.jisig-layout {
+    // The main vertical box
+}

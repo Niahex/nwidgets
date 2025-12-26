@@ -1,0 +1,46 @@
+// Notifications Details Styles
+@import "../colors";
+
+.notifications-scroll {
+    background-color: transparent;
+    border: none;
+}
+
+.notifications-list {
+    padding: 4px;
+}
+
+.notification-item {
+    background-color: $polar2;
+    border-radius: 6px;
+    padding: 8px;
+    margin: 2px 0;
+
+    &:hover {
+        background-color: rgba($frost1, 0.1);
+    }
+}
+
+.notification-icon {
+    color: $frost1;
+    font-size: 16px;
+    min-width: 20px;
+}
+
+.notification-title {
+    color: $snow0;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.notification-body {
+    color: $snow1;
+    font-size: 11px;
+}
+
+.notification-empty {
+    color: $polar3;
+    font-size: 14px;
+    text-align: center;
+    padding: 20px;
+}

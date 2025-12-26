@@ -1,34 +1,24 @@
-use gpui::prelude::*;
-use gpui::{App, Context, Entity, EventEmitter, Global};
-use parking_lot::Mutex;
+use once_cell::sync::Lazy;
+use parking_lot::Mutex; // Mutex plus rapide et ergonomique
 use std::collections::{HashMap, VecDeque};
+use std::sync::mpsc;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use zbus::Connection;
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone)]
 pub struct Notification {
     pub app_name: String,
     pub summary: String,
     pub body: String,
     pub urgency: u8,
     pub timestamp: u64,
-    pub actions: Vec<String>,
-    pub app_icon: String,
 }
-
-#[derive(Clone)]
-pub struct NotificationAdded {
-    pub notification: Notification,
-}
-
-#[derive(Clone)]
-pub struct NotificationsEmpty;
 
 // État interne partagé protégé par un Mutex
 struct NotificationState {
-    sender: Option<std::sync::mpsc::Sender<Notification>>,
-    history: VecDeque<Notification>,
+    sender: Option<mpsc::Sender<Notification>>,
+    history: VecDeque<Notification>, // VecDeque est optimisé pour push_front/pop_back
 }
 
 impl NotificationState {
@@ -40,19 +30,15 @@ impl NotificationState {
     }
 }
 
-// Instance globale unique
-static STATE: once_cell::sync::Lazy<Arc<Mutex<NotificationState>>> =
-    once_cell::sync::Lazy::new(|| Arc::new(Mutex::new(NotificationState::new())));
+// Instance globale unique lazy
+static STATE: Lazy<Arc<Mutex<NotificationState>>> =
+    Lazy::new(|| Arc::new(Mutex::new(NotificationState::new())));
 
-pub struct NotificationService {
-    pub notifications: Arc<parking_lot::RwLock<Vec<Notification>>>,
-}
-
-impl EventEmitter<NotificationAdded> for NotificationService {}
-impl EventEmitter<NotificationsEmpty> for NotificationService {}
+pub struct NotificationService;
 
 struct NotificationServer {
     next_id: u32,
+    // Le serveur garde une référence vers l'état global
     state: Arc<Mutex<NotificationState>>,
 }
 
@@ -63,10 +49,10 @@ impl NotificationServer {
         &mut self,
         app_name: String,
         replaces_id: u32,
-        app_icon: String,
+        _app_icon: String,
         summary: String,
         body: String,
-        actions: Vec<String>,
+        _actions: Vec<String>,
         hints: HashMap<String, zbus::zvariant::Value>,
         _expire_timeout: i32,
     ) -> u32 {
@@ -91,7 +77,7 @@ impl NotificationServer {
             self.next_id
         };
 
-        // Extraction de l'urgence (default: 1/Normal)
+        // Extraction optimisée de l'urgence (default: 1/Normal)
         // 0: Low, 1: Normal, 2: Critical
         let urgency = hints
             .get("urgency")
@@ -107,14 +93,12 @@ impl NotificationServer {
                 .duration_since(UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs(),
-            actions,
-            app_icon,
         };
 
-        // Mise à jour de l'historique et envoi
+        // Verrouillage unique pour la mise à jour de l'historique ET l'envoi
         let mut state = self.state.lock();
 
-        // 1. Mise à jour de l'historique
+        // 1. Mise à jour de l'historique (O(1) avec VecDeque)
         state.history.push_front(notification.clone());
         if state.history.len() > 50 {
             state.history.pop_back();
@@ -152,74 +136,17 @@ impl NotificationServer {
 }
 
 impl NotificationService {
-    pub fn new(cx: &mut Context<Self>) -> Self {
-        // Démarrer le serveur D-Bus une seule fois
-        Self::start_dbus_server_once();
-
-        // S'abonner aux notifications via le channel
-        let notifications = Arc::new(parking_lot::RwLock::new(Vec::new()));
-        let notifications_clone = Arc::clone(&notifications);
-
-        let (tx, rx) = std::sync::mpsc::channel();
-
-        // Initialiser le sender
-        {
-            let mut state = STATE.lock();
-            state.sender = Some(tx);
-        }
-
-        // Spawner un thread pour recevoir les notifications du D-Bus
-        let notifications_thread = Arc::clone(&notifications);
-        std::thread::spawn(move || {
-            while let Ok(notification) = rx.recv() {
-                println!(
-                    "[NOTIF_GPUI] 📢 Received notification: {} - {}",
-                    notification.summary, notification.body
-                );
-                notifications_thread.write().push(notification);
-            }
-        });
-
-        // Polling pour détecter les nouvelles notifications et émettre les événements
-        cx.spawn(async move |this, cx| {
-            let mut last_count = 0;
-            loop {
-                cx.background_executor()
-                    .timer(std::time::Duration::from_millis(100))
-                    .await;
-
-                let current_count = notifications_clone.read().len();
-                if current_count > last_count {
-                    // Nouvelle(s) notification(s) détectée(s)
-                    let notifs = notifications_clone.read();
-                    for notification in notifs.iter().skip(last_count) {
-                        let notif = notification.clone();
-                        let _ = this.update(cx, |_this, cx| {
-                            cx.emit(NotificationAdded {
-                                notification: notif,
-                            });
-                            cx.notify();
-                        });
-                    }
-                    last_count = current_count;
-                }
-            }
-        })
-        .detach();
-
-        Self { notifications }
-    }
-
     fn start_dbus_server_once() {
         static INIT: std::sync::Once = std::sync::Once::new();
 
         INIT.call_once(|| {
             println!("[NOTIF] 🚀 Starting D-Bus server thread");
 
+            // Clonage de l'Arc pour le thread
             let state_ref = Arc::clone(&STATE);
 
             std::thread::spawn(move || {
-                futures::executor::block_on(async {
+                crate::utils::runtime::block_on(async {
                     if let Err(e) = Self::run_dbus_server(state_ref).await {
                         eprintln!("[NOTIF] ❌ D-Bus Error: {e}");
                     }
@@ -233,7 +160,10 @@ impl NotificationService {
     ) -> Result<(), Box<dyn std::error::Error>> {
         let connection = Connection::session().await?;
 
-        let server = NotificationServer { next_id: 0, state };
+        let server = NotificationServer {
+            next_id: 0,
+            state, // Injection de l'état partagé
+        };
 
         connection
             .object_server()
@@ -252,31 +182,26 @@ impl NotificationService {
     }
 
     /// Récupérer l'historique des notifications
+    /// Retourne un Vec standard pour la compatibilité avec l'interface UI existante
     pub fn get_history() -> Vec<Notification> {
         STATE.lock().history.iter().cloned().collect()
     }
 
-    pub fn get_all(&self) -> Vec<Notification> {
-        self.notifications.read().clone()
-    }
+    /// S'abonner aux notifications
+    pub fn subscribe_notifications<F>(callback: F)
+    where
+        F: Fn(Notification) + 'static,
+    {
+        let (tx, rx) = mpsc::channel();
 
-    pub fn clear(&self, _cx: &mut Context<Self>) {
-        self.notifications.write().clear();
-    }
-}
+        // Initialisation du sender
+        {
+            let mut state = STATE.lock();
+            state.sender = Some(tx);
+        }
 
-// Global accessor
-struct GlobalNotificationService(Entity<NotificationService>);
-impl Global for GlobalNotificationService {}
+        Self::start_dbus_server_once();
 
-impl NotificationService {
-    pub fn global(cx: &App) -> Entity<Self> {
-        cx.global::<GlobalNotificationService>().0.clone()
-    }
-
-    pub fn init(cx: &mut App) -> Entity<Self> {
-        let service = cx.new(Self::new);
-        cx.set_global(GlobalNotificationService(service.clone()));
-        service
+        crate::utils::subscription::ServiceSubscription::subscribe(rx, callback);
     }
 }

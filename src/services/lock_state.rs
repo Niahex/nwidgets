@@ -1,7 +1,9 @@
-use gpui::prelude::*;
-use gpui::*;
-use gpui::AsyncApp;
+use crate::utils::subscription::ServiceSubscription;
+use once_cell::sync::Lazy;
 use std::fs;
+use std::sync::mpsc::Sender;
+use std::sync::{Arc, Mutex};
+use std::thread;
 use std::time::Duration;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -10,88 +12,131 @@ pub enum LockType {
     NumLock,
 }
 
-#[derive(Clone)]
-pub struct LockStateChanged {
-    pub lock_type: LockType,
-    pub enabled: bool,
+impl LockType {
+    fn sysfs_path(&self) -> &str {
+        match self {
+            LockType::CapsLock => "/sys/class/leds/input0::capslock/brightness",
+            LockType::NumLock => "/sys/class/leds/input0::numlock/brightness",
+        }
+    }
 }
 
-// On va utiliser le pattern Model de GPUI
-pub struct LockMonitor {
-    caps_lock: bool,
-    num_lock: bool,
+struct LockStateMonitor {
+    lock_type: LockType,
+    subscribers: Arc<Mutex<Vec<Sender<bool>>>>,
+    monitor_started: Mutex<bool>,
 }
 
-impl EventEmitter<LockStateChanged> for LockMonitor {}
-
-impl LockMonitor {
-    pub fn init(cx: &mut App) -> Entity<Self> {
-        let model = cx.new(|_cx| Self {
-            caps_lock: Self::read_state(LockType::CapsLock),
-            num_lock: Self::read_state(LockType::NumLock),
-        });
-
-        let weak_model = model.downgrade();
-
-        cx.spawn(|cx: &mut AsyncApp| {
-            let mut cx = cx.clone();
-            async move {
-                loop {
-                    cx.background_executor().timer(Duration::from_millis(100)).await;
-                    
-                    let current_caps = Self::read_state(LockType::CapsLock);
-                    let current_num = Self::read_state(LockType::NumLock);
-
-                    let _ = weak_model.update(&mut cx, |this, cx| {
-                        if this.caps_lock != current_caps {
-                            this.caps_lock = current_caps;
-                            cx.emit(LockStateChanged {
-                                lock_type: LockType::CapsLock,
-                                enabled: current_caps,
-                            });
-                        }
-
-                        if this.num_lock != current_num {
-                            this.num_lock = current_num;
-                            cx.emit(LockStateChanged {
-                                lock_type: LockType::NumLock,
-                                enabled: current_num,
-                            });
-                        }
-                    });
-                }
-            }
-        }).detach();
-
-        model
+impl LockStateMonitor {
+    fn new(lock_type: LockType) -> Self {
+        Self {
+            lock_type,
+            subscribers: Arc::new(Mutex::new(Vec::new())),
+            monitor_started: Mutex::new(false),
+        }
     }
 
-    fn read_state(lock_type: LockType) -> bool {
-        // Essayer plusieurs chemins possibles pour capslock car input0 n'est pas garanti
-        let paths = match lock_type {
-            LockType::CapsLock => vec![
-                "/sys/class/leds/input0::capslock/brightness",
-                "/sys/class/leds/input1::capslock/brightness",
-                "/sys/class/leds/input2::capslock/brightness",
-                "/sys/class/leds/input3::capslock/brightness",
-                "/sys/class/leds/capslock/brightness", // Parfois direct
-            ],
-            LockType::NumLock => vec![
-                "/sys/class/leds/input0::numlock/brightness",
-                "/sys/class/leds/input1::numlock/brightness",
-                "/sys/class/leds/input2::numlock/brightness",
-                "/sys/class/leds/input3::numlock/brightness",
-                "/sys/class/leds/numlock/brightness",
-            ],
-        };
-
-        for path in paths {
-            if let Ok(content) = fs::read_to_string(path) {
-                let trimmed = content.trim();
-                return trimmed == "1" || trimmed.parse::<u8>().unwrap_or(0) > 0;
-            }
+    fn get_state(&self) -> bool {
+        if let Ok(content) = fs::read_to_string(self.lock_type.sysfs_path()) {
+            let trimmed = content.trim();
+            // Support both "1" string and numeric comparison
+            return trimmed == "1" || trimmed.parse::<u8>().unwrap_or(0) > 0;
         }
-        
         false
+    }
+
+    fn subscribe<F>(&self, callback: F)
+    where
+        F: Fn(bool) + 'static,
+    {
+        let mut started = self.monitor_started.lock().unwrap();
+        if !*started {
+            *started = true;
+            drop(started);
+            self.start_monitoring();
+        }
+
+        let (tx, rx) = std::sync::mpsc::channel();
+        self.subscribers.lock().unwrap().push(tx);
+
+        ServiceSubscription::subscribe(rx, callback);
+    }
+
+    fn start_monitoring(&self) {
+        let subscribers = Arc::clone(&self.subscribers);
+        let lock_type = self.lock_type;
+
+        thread::spawn(move || {
+            let monitor = LockStateMonitor::new(lock_type);
+            let mut last_state = monitor.get_state();
+
+            loop {
+                thread::sleep(Duration::from_millis(100));
+                let current_state = monitor.get_state();
+
+                if current_state != last_state {
+                    last_state = current_state;
+
+                    let mut subs = subscribers.lock().unwrap();
+                    subs.retain(|tx| tx.send(current_state).is_ok());
+                }
+            }
+        });
+    }
+}
+
+static CAPSLOCK_MONITOR: Lazy<LockStateMonitor> =
+    Lazy::new(|| LockStateMonitor::new(LockType::CapsLock));
+
+static NUMLOCK_MONITOR: Lazy<LockStateMonitor> =
+    Lazy::new(|| LockStateMonitor::new(LockType::NumLock));
+
+pub struct CapsLockService;
+
+impl CapsLockService {
+    #[allow(dead_code)]
+    pub fn new() -> Self {
+        Self
+    }
+
+    pub fn get_caps_lock_state() -> bool {
+        CAPSLOCK_MONITOR.get_state()
+    }
+
+    #[allow(dead_code)]
+    pub fn is_enabled(&self) -> bool {
+        Self::get_caps_lock_state()
+    }
+
+    pub fn subscribe_capslock<F>(callback: F)
+    where
+        F: Fn(bool) + 'static,
+    {
+        CAPSLOCK_MONITOR.subscribe(callback);
+    }
+}
+
+pub struct NumLockService;
+
+impl NumLockService {
+    #[allow(dead_code)]
+    pub fn new() -> Self {
+        Self
+    }
+
+    pub fn get_num_lock_state() -> bool {
+        NUMLOCK_MONITOR.get_state()
+    }
+
+    #[allow(dead_code)]
+    pub fn is_enabled(&self) -> bool {
+        Self::get_num_lock_state()
+    }
+
+    pub fn subscribe_numlock<F>(callback: F)
+    where
+        F: Fn(bool) + 'static,
+    {
+        NUMLOCK_MONITOR.subscribe(callback);
     }
 }
