@@ -59,8 +59,9 @@
           alsa-lib # For audio capture (cpal/vosk)
           udev # For libinput (hotkey detection)
           gtk4 # For GTK4 webview
+          gtk3 # For webkit2gtk compatibility
           glib # Ajout explicite de glib
-          webkitgtk_6_0 # For webkit6 - GTK4 version
+          webkitgtk_4_1 # For webkit2gtk - GTK3/4 version
           libsoup_3 # For webkit6 networking
           glib-networking # For TLS support
           gsettings-desktop-schemas # For WebKit settings
