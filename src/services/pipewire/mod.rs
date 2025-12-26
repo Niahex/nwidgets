@@ -1,6 +1,7 @@
 mod audio_state;
 mod device_manager;
 mod pw_dump;
+mod debug;
 mod stream_manager;
 mod volume_control;
 
@@ -162,31 +163,31 @@ impl PipeWireService {
                         is_default,
                     });
                 },
-                "Stream/Input/Audio" => { // Playback stream
+                mc if mc.contains("Stream") => { 
                     let app_name = obj.get_app_name().unwrap_or_else(|| "Unknown App".to_string());
                     let app_icon = obj.get_app_icon_name();
                     
-                    sink_inputs.push(AudioStream {
-                        id,
-                        app_name,
-                        volume: vol_pct,
-                        muted,
-                        window_title: None, // pw-dump doesn't easily map to X11 window title without extra logic
-                        app_icon,
-                    });
-                },
-                "Stream/Output/Audio" => { // Record stream
-                     let app_name = obj.get_app_name().unwrap_or_else(|| "Unknown App".to_string());
-                    let app_icon = obj.get_app_icon_name();
-                    
-                    source_outputs.push(AudioStream {
+                    let stream = AudioStream {
                         id,
                         app_name,
                         volume: vol_pct,
                         muted,
                         window_title: None,
                         app_icon,
-                    });
+                    };
+
+                    // PipeWire terminology:
+                    // Stream/Output/Audio = Application PRODUCING audio (goes to Sink) -> Sink Input
+                    // Stream/Input/Audio  = Application CONSUMING audio (comes from Source) -> Source Output
+                    
+                    if mc.contains("Output") {
+                        sink_inputs.push(stream);
+                    } else if mc.contains("Input") {
+                        // Filter out internal streams like bluetooth capture
+                        if !mc.contains("Internal") {
+                             source_outputs.push(stream);
+                        }
+                    }
                 },
                 _ => {}
             }
@@ -210,6 +211,9 @@ impl PipeWireService {
     {
         let (tx, rx) = mpsc::channel();
 
+        // Print debug info to console at startup
+        debug::debug_dump();
+
         std::thread::spawn(move || {
             // Initial state
             if let Some(state) = Self::parse_dump() {
@@ -221,8 +225,7 @@ impl PipeWireService {
                 Ok(child) => child,
                 Err(e) => {
                     eprintln!("Failed to start pw-mon: {e}. Falling back to polling.");
-                    // Fallback polling loop using pw-dump every 2s
-                     loop {
+                    loop {
                         std::thread::sleep(std::time::Duration::from_millis(2000));
                         if let Some(new_state) = Self::parse_dump() {
                             if tx.send(new_state).is_err() {
@@ -240,14 +243,11 @@ impl PipeWireService {
                 .expect("Failed to capture pw-mon stdout");
             let reader = BufReader::new(stdout);
 
-            // Channel to signal that an event occurred
             let (event_tx, event_rx) = mpsc::channel();
 
-            // Spawn a thread to read pw-mon output
             std::thread::spawn(move || {
                 for line in reader.lines() {
                     if let Ok(l) = line {
-                        // "changed:" indicates a state change in the PipeWire graph
                         if l.trim().starts_with("changed:") && event_tx.send(()).is_err() {
                             break;
                         }
@@ -258,18 +258,13 @@ impl PipeWireService {
             });
 
             loop {
-                // Wait for an event (blocking)
                 if event_rx.recv().is_err() {
                     break;
                 }
 
-                // Debounce: Wait 50ms to coalesce rapid events (like volume sliding)
                 std::thread::sleep(std::time::Duration::from_millis(50));
-
-                // Drain any other events that came in during the sleep
                 while event_rx.try_recv().is_ok() {}
 
-                // Use pw-dump to get the full state in one go
                 if let Some(new_state) = Self::parse_dump() {
                      if tx.send(new_state).is_err() {
                         break;
@@ -277,7 +272,6 @@ impl PipeWireService {
                 }
             }
 
-            // Cleanup
             let _ = child.kill();
         });
 
