@@ -21,6 +21,9 @@
         overlays = [(import rust-overlay)];
         pkgs = import nixpkgs {inherit system overlays;};
 
+        # Import CEF package
+        cef-binary = pkgs.callPackage ./nix/cef.nix {};
+
         rustToolchain = pkgs.rust-bin.stable."1.88.0".default.override {
           extensions = ["rust-src"];
         };
@@ -74,6 +77,25 @@
           vulkan-headers
           vulkan-loader
           onnxruntime # For transcribe-rs
+          cef-binary # CEF for webview
+          nss
+          nspr
+          libdrm
+          libxkbcommon
+          libgbm
+          pango
+          cairo
+          cups
+          libGL
+          systemdLibs
+          xorg.libxcb
+          xorg.libX11
+          xorg.libXcomposite
+          xorg.libXdamage
+          xorg.libXext
+          xorg.libXfixes
+          xorg.libXrandr
+          xorg.libxshmfence
           # # ROCm pour GPU AMD (whisper.cpp hipBLAS)
           # rocmPackages.clr
           # rocmPackages.hipblas
@@ -103,6 +125,8 @@
           RUST_BACKTRACE = "full";
           SSL_CERT_FILE = "/nix/var/nix/profiles/system/etc/ssl/certs/ca-bundle.crt";
           NIX_SSL_CERT_FILE = "/nix/var/nix/profiles/system/etc/ssl/certs/ca-bundle.crt";
+          # CEF configuration
+          CEF_PATH = "${cef-binary}";
           # Ensure pkg-config finds openblas
           PKG_CONFIG_PATH = "${pkgs.openblas}/lib/pkgconfig";
           # For bindgen (used by whisper-rs-sys)

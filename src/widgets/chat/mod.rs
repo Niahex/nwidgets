@@ -1,4 +1,4 @@
-use crate::utils::PinController;
+use crate::utils::{PinController, cef_manager::{CefManager, CefWebView}};
 use gtk4 as gtk;
 use gtk4::prelude::*;
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
@@ -8,6 +8,7 @@ use std::rc::Rc;
 pub struct ChatOverlay {
     pub window: gtk::ApplicationWindow,
     pub pin_controller: PinController,
+    pub webview: CefWebView,
     #[allow(dead_code)]
     pub id: String,
     #[allow(dead_code)]
@@ -25,6 +26,13 @@ const SITES: &[(&str, &str)] = &[
 ];
 
 pub fn create_chat_overlay(application: &gtk::Application) -> ChatOverlay {
+    // Initialize CEF
+    let cef_manager = CefManager::instance();
+    if let Ok(mut manager) = cef_manager.lock() {
+        manager.initialize();
+    }
+
+    let mut webview = CefWebView::new();
     let window = gtk::ApplicationWindow::builder()
         .application(application)
         .title("Nwidgets Chat")
@@ -61,10 +69,17 @@ pub fn create_chat_overlay(application: &gtk::Application) -> ChatOverlay {
     close_button.add_css_class("destructive-action");
     header_bar.pack_end(&close_button);
 
-    // For now, use a placeholder label instead of CEF webview
-    let placeholder = gtk::Label::new(Some("CEF WebView will be integrated here"));
-    placeholder.add_css_class("chat-placeholder");
-    window.set_child(Some(&placeholder));
+    // Load initial site
+    webview.load_url(SITES[0].1);
+
+    // Site dropdown handler
+    let webview_clone = CefWebView::new();
+    site_dropdown.connect_selected_notify(move |dropdown| {
+        let selected = dropdown.selected() as usize;
+        if selected < SITES.len() {
+            webview_clone.load_url(SITES[selected].1);
+        }
+    });
 
     // Close button handler
     let window_clone = window.clone();
@@ -89,6 +104,7 @@ pub fn create_chat_overlay(application: &gtk::Application) -> ChatOverlay {
     ChatOverlay {
         window,
         pin_controller,
+        webview,
         id,
         is_pinned,
     }
