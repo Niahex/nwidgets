@@ -133,7 +133,7 @@
           ORT_NUM_THREADS = "16"; # i9-9900K has 16 threads
           ORT_OPTIMIZATION_LEVEL = "3"; # Maximum optimization
           # CPU-specific optimizations
-          RUSTFLAGS = "-C target-cpu=native -C opt-level=3 -L";
+          RUSTFLAGS = "-C target-cpu=native -C opt-level=3";
         };
 
         # Build artifacts
