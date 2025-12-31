@@ -6,7 +6,7 @@ use gpui::*;
 use gpui::layer_shell::{Anchor, KeyboardInteractivity, LayerShellOptions, Layer};
 use std::time::Duration;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum OsdEvent {
     Volume(String, u8, bool), // icon_name, volume %, muted
     Microphone(bool),         // muted
@@ -17,10 +17,12 @@ pub enum OsdEvent {
 #[derive(Clone)]
 pub struct OsdStateChanged {
     pub event: Option<OsdEvent>,
+    pub visible: bool,
 }
 
 pub struct OsdService {
     current_event: Option<OsdEvent>,
+    visible: bool,
     window_handle: Option<AnyWindowHandle>,
     hide_task: Option<Task<()>>,
 }
@@ -33,14 +35,7 @@ impl OsdService {
         let lock_monitor = LockMonitor::init(cx);
         let clipboard_monitor = ClipboardMonitor::init(cx);
 
-        let mut first_event = true;
-
         cx.subscribe(&audio, move |this, _audio, event: &AudioStateChanged, cx| {
-            if first_event {
-                first_event = false;
-                return;
-            }
-            
             let control_center = ControlCenterService::global(cx);
             if control_center.read(cx).is_visible() {
                 return;
@@ -72,48 +67,86 @@ impl OsdService {
             this.show_event(OsdEvent::Clipboard, cx);
         }).detach();
 
-        Self {
+        let mut this = Self {
             current_event: None,
+            visible: false,
             window_handle: None,
             hide_task: None,
-        }
+        };
+
+        this.open_window(cx);
+        this
     }
 
     pub fn show_event(&mut self, event: OsdEvent, cx: &mut Context<Self>) {
-        self.current_event = Some(event.clone());
-        self.hide_task = None;
-
+        // Ensure window exists
         if self.window_handle.is_none() {
             self.open_window(cx);
         }
 
-        cx.emit(OsdStateChanged {
-            event: Some(event),
-        });
+        // Cancel previous hide task
+        self.hide_task = None;
 
+        let mut changed = false;
+
+        // Update data if changed
+        if self.current_event.as_ref() != Some(&event) {
+            self.current_event = Some(event.clone());
+            changed = true;
+        }
+
+        // Make visible if not already
+        if !self.visible {
+            self.visible = true;
+            changed = true;
+        }
+
+        if changed {
+            cx.emit(OsdStateChanged {
+                event: Some(event),
+                visible: true,
+            });
+            cx.notify();
+        }
+
+        // Restart hide timer (debounce)
         let task = cx.spawn(async move |this, cx| {
-            cx.background_executor().timer(Duration::from_millis(2500)).await;
+            cx.background_executor().timer(Duration::from_millis(1500)).await;
             this.update(cx, |service, cx| service.hide(cx)).ok();
         });
 
         self.hide_task = Some(task);
-        cx.notify();
     }
 
     pub fn hide(&mut self, cx: &mut Context<Self>) {
-        self.current_event = None;
+        if self.visible {
+            self.visible = false;
+            // Note: We do NOT clear current_event here. 
+            // We keep the data so the UI can fade it out gracefully.
+            cx.emit(OsdStateChanged { 
+                event: self.current_event.clone(),
+                visible: false 
+            });
+            cx.notify();
+        }
         self.hide_task = None;
-        cx.emit(OsdStateChanged { event: None });
-        cx.notify();
     }
 
     fn open_window(&mut self, cx: &mut Context<Self>) {
         use crate::widgets::osd::OsdWidget;
         
-        let bounds = cx.displays().first().unwrap().bounds();
+        let displays = cx.displays();
+        let Some(display) = displays.first() else {
+            return;
+        };
+        let bounds = display.bounds();
         let width = px(400.0);
         let height = px(64.0);
         
+        // Capture state to pass to widget constructor
+        let initial_event = self.current_event.clone();
+        let initial_visible = self.visible;
+
         let handle = cx.open_window(
             WindowOptions {
                 window_bounds: Some(WindowBounds::Windowed(Bounds {
@@ -136,7 +169,7 @@ impl OsdService {
                 }),
                 ..Default::default()
             },
-            |_, cx| cx.new(OsdWidget::new),
+            move |_, cx| cx.new(|cx| OsdWidget::new(cx, initial_event, initial_visible)),
         );
 
         if let Ok(handle) = handle {
@@ -149,7 +182,7 @@ impl OsdService {
     }
 
     pub fn is_visible(&self) -> bool {
-        self.window_handle.is_some()
+        self.visible
     }
 }
 

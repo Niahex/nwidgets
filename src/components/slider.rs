@@ -611,8 +611,7 @@ impl RenderOnce for Slider {
                         )
                         .on_scroll_wheel(window.listener_for(
                             &self.state,
-                            move |state, e: &gpui::ScrollWheelEvent, window, cx| {
-                                let delta = e.delta.pixel_delta(px(20.0));
+                                                            move |state, e: &gpui::ScrollWheelEvent, _window, cx| {                                let delta = e.delta.pixel_delta(px(20.0));
                                 
                                 // Invert direction for natural scrolling if needed, or stick to standard
                                 // Typically scroll up (positive y) increases value

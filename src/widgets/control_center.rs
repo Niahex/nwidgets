@@ -398,8 +398,7 @@ impl ControlCenterWidget {
                                 .into_any_element()]
                         } else {
                             streams.iter().map(|stream| {
-                                let stream_id = stream.id;
-                                let stream_volume = stream.volume;
+                                                                        let _stream_id = stream.id;                                let stream_volume = stream.volume;
                                 let (display_name, icon_name, preserve_colors) = get_stream_display(stream);
                                 
                                 div()

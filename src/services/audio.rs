@@ -220,7 +220,7 @@ impl AudioService {
 
             // Process events with debouncing
             let mut last_update = std::time::Instant::now();
-            let debounce_duration = std::time::Duration::from_millis(50);
+            let debounce_duration = std::time::Duration::from_millis(16); // ~60fps
 
             while let Some(()) = rx.next().await {
                 // Debounce: only update if enough time has passed
