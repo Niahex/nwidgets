@@ -4,35 +4,31 @@ use gpui::prelude::*;
 use gpui::*;
 
 pub struct OsdWidget {
-    osd: Entity<OsdService>,
+    current_event: Option<OsdEvent>,
 }
 
 impl OsdWidget {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let osd = OsdService::global(cx);
 
-        // On s'abonne juste pour rafraichir la vue, plus de timer ici
-        cx.subscribe(&osd, move |_this, _osd, _event: &OsdStateChanged, cx| {
+        cx.subscribe(&osd, move |this, _osd, event: &OsdStateChanged, cx| {
+            this.current_event = event.event.clone();
             cx.notify();
         })
         .detach();
 
-        Self { osd }
+        Self { current_event: None }
     }
 }
 
 impl Render for OsdWidget {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let osd = self.osd.read(cx);
-        let visible = osd.is_visible();
-        let event = osd.current_event();
-
-        // Si on n'a jamais eu d'événement, on rend vide
-        if event.is_none() {
-            return div().into_any_element();
+        // Si pas d'événement, retourner un div vide pour cacher la fenêtre layer shell
+        if self.current_event.is_none() {
+            return div().size_0().into_any_element();
         }
 
-        let event = event.unwrap();
+        let event = self.current_event.as_ref().unwrap();
 
         let theme = cx.global::<crate::theme::Theme>();
 
@@ -66,7 +62,7 @@ impl Render for OsdWidget {
                                     .absolute()
                                     .top_0()
                                     .left_0()
-                                    .w(relative(level as f32 / 100.0))
+                                    .w(relative(*level as f32 / 100.0))
                                     .h_full()
                                     .bg(theme.accent_alt)
                                     .rounded(px(3.)),
@@ -81,7 +77,7 @@ impl Render for OsdWidget {
                     )
             }
             OsdEvent::Microphone(muted) => {
-                let icon_name = if muted { "source-muted" } else { "source-high" };
+                let icon_name = if *muted { "source-muted" } else { "source-high" };
 
                 div()
                     .flex()
@@ -93,12 +89,12 @@ impl Render for OsdWidget {
                             .text_size(px(18.))
                             .font_weight(FontWeight::SEMIBOLD)
                             .text_color(theme.text)
-                            .child(if muted { "Microphone Muted" } else { "Microphone Active" }),
+                            .child(if *muted { "Microphone Muted" } else { "Microphone Active" }),
                     )
             }
             OsdEvent::CapsLock(enabled) => {
-                let icon_name = if enabled { "capslock-on" } else { "capslock-off" };
-                let text = if enabled { "Caps Lock On" } else { "Caps Lock Off" };
+                let icon_name = if *enabled { "capslock-on" } else { "capslock-off" };
+                let text = if *enabled { "Caps Lock On" } else { "Caps Lock Off" };
 
                 div()
                     .flex()
@@ -131,19 +127,14 @@ impl Render for OsdWidget {
             }
         };
 
-        let base_div = div()
+        div()
             .w(px(400.))
             .h(px(64.))
             .bg(theme.bg)
             .rounded(px(12.))
             .px_4()
             .py_3()
-            .child(content);
-
-        if visible {
-            base_div.visible().into_any_element()
-        } else {
-            base_div.invisible().into_any_element()
-        }
+            .child(content)
+            .into_any_element()
     }
 }

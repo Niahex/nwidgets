@@ -91,9 +91,9 @@ impl OsdService {
             event: Some(event),
         });
 
-        let task = cx.spawn(|this, mut cx| async move {
+        let task = cx.spawn(async move |this, cx| {
             cx.background_executor().timer(Duration::from_millis(2500)).await;
-            this.update(&mut cx, |service, cx| service.hide(cx)).ok();
+            this.update(cx, |service, cx| service.hide(cx)).ok();
         });
 
         self.hide_task = Some(task);
@@ -101,9 +101,7 @@ impl OsdService {
     }
 
     pub fn hide(&mut self, cx: &mut Context<Self>) {
-        if let Some(handle) = self.window_handle.take() {
-            let _ = handle.update(cx, |_, window, _| window.remove_window());
-        }
+        self.current_event = None;
         self.hide_task = None;
         cx.emit(OsdStateChanged { event: None });
         cx.notify();
