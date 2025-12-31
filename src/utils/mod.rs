@@ -1,3 +1,3 @@
-pub mod icons;
-pub mod runtime;
-pub mod subscription;
+pub mod icon;
+
+pub use icon::Icon;

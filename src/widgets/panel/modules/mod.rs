@@ -1,12 +1,21 @@
-pub mod active_window;
-pub mod audio;
-pub mod base;
-pub mod bluetooth;
-pub mod datetime;
-pub mod mpris;
-pub mod network;
-pub mod pomodoro;
-pub mod systray;
-pub mod workspaces;
+mod active_window;
+mod bluetooth;
+mod datetime;
+mod mpris;
+mod network;
+mod pomodoro;
+mod sink;
+mod source;
+mod systray;
+mod workspaces;
 
-// Re-export audio module types for backward compatibility
+pub use active_window::ActiveWindowModule;
+pub use bluetooth::BluetoothModule;
+pub use datetime::DateTimeModule;
+pub use mpris::MprisModule;
+pub use network::NetworkModule;
+pub use pomodoro::PomodoroModule;
+pub use sink::SinkModule;
+pub use source::SourceModule;
+pub use systray::SystrayModule;
+pub use workspaces::WorkspacesModule;

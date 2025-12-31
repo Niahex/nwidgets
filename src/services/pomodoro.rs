@@ -1,233 +1,222 @@
+use gpui::prelude::*;
+use gpui::{App, AsyncApp, Context, Entity, EventEmitter, Global, WeakEntity};
+use parking_lot::RwLock;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum PomodoroState {
-    Idle,
+#[derive(Clone, Debug, PartialEq)]
+pub enum PomodoroPhase {
     Work,
-    WorkPaused,
     ShortBreak,
-    ShortBreakPaused,
     LongBreak,
-    LongBreakPaused,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum PomodoroStatus {
+    Idle,
+    Running {
+        phase: PomodoroPhase,
+        remaining_secs: u32,
+    },
+    Paused {
+        phase: PomodoroPhase,
+        remaining_secs: u32,
+    },
+}
+
+#[derive(Clone)]
+pub struct PomodoroStateChanged {
+    pub status: PomodoroStatus,
 }
 
 pub struct PomodoroService {
-    state: PomodoroState,
-    start_time: Option<Instant>,
-    paused_time: Option<Instant>,
-    elapsed_before_pause: Duration,
-    work_duration: Duration, // 25 minutes
-    short_break: Duration,   // 5 minutes
-    long_break: Duration,    // 15 minutes
-    sessions_completed: u8,  // Pour compter les sessions avant la longue pause
+    status: Arc<RwLock<PomodoroStatus>>,
+    work_duration: u32, // in seconds
+    short_break_duration: u32,
+    long_break_duration: u32,
+    pomodoros_until_long_break: u32,
+    pomodoro_count: Arc<RwLock<u32>>,
+    start_time: Arc<RwLock<Option<Instant>>>,
 }
 
+impl EventEmitter<PomodoroStateChanged> for PomodoroService {}
+
 impl PomodoroService {
-    pub fn new() -> Self {
+    pub fn new(cx: &mut Context<Self>) -> Self {
+        let status = Arc::new(RwLock::new(PomodoroStatus::Idle));
+        let pomodoro_count = Arc::new(RwLock::new(0));
+        let start_time = Arc::new(RwLock::new(None));
+
+        let status_clone = Arc::clone(&status);
+        let start_time_clone = Arc::clone(&start_time);
+
+        // Update timer every second
+        cx.spawn(async move |this, cx| {
+            Self::monitor_timer(this, status_clone, start_time_clone, cx).await
+        })
+        .detach();
+
         Self {
-            state: PomodoroState::Idle,
-            start_time: None,
-            paused_time: None,
-            elapsed_before_pause: Duration::ZERO,
-            work_duration: Duration::from_secs(25 * 60),
-            short_break: Duration::from_secs(5 * 60),
-            long_break: Duration::from_secs(15 * 60),
-            sessions_completed: 0,
+            status,
+            work_duration: 25 * 60,       // 25 minutes
+            short_break_duration: 5 * 60, // 5 minutes
+            long_break_duration: 15 * 60, // 15 minutes
+            pomodoros_until_long_break: 4,
+            pomodoro_count,
+            start_time,
         }
     }
 
-    pub fn pause(&mut self) {
-        match self.state {
-            PomodoroState::Work => {
-                if let Some(start) = self.start_time {
-                    self.elapsed_before_pause = start.elapsed();
-                    self.paused_time = Some(Instant::now());
-                    self.state = PomodoroState::WorkPaused;
-                    println!("[POMODORO] ⏸️  Work paused at {}", self.format_time());
-                }
-            }
-            PomodoroState::ShortBreak => {
-                if let Some(start) = self.start_time {
-                    self.elapsed_before_pause = start.elapsed();
-                    self.paused_time = Some(Instant::now());
-                    self.state = PomodoroState::ShortBreakPaused;
-                    println!("[POMODORO] ⏸️  Short break paused");
-                }
-            }
-            PomodoroState::LongBreak => {
-                if let Some(start) = self.start_time {
-                    self.elapsed_before_pause = start.elapsed();
-                    self.paused_time = Some(Instant::now());
-                    self.state = PomodoroState::LongBreakPaused;
-                    println!("[POMODORO] ⏸️  Long break paused");
-                }
-            }
-            _ => {}
-        }
+    pub fn status(&self) -> PomodoroStatus {
+        self.status.read().clone()
     }
 
-    pub fn resume(&mut self) {
-        match self.state {
-            PomodoroState::WorkPaused => {
-                self.start_time = Some(Instant::now() - self.elapsed_before_pause);
-                self.paused_time = None;
-                self.state = PomodoroState::Work;
-                println!("[POMODORO] ▶️  Work resumed");
-            }
-            PomodoroState::ShortBreakPaused => {
-                self.start_time = Some(Instant::now() - self.elapsed_before_pause);
-                self.paused_time = None;
-                self.state = PomodoroState::ShortBreak;
-                println!("[POMODORO] ▶️  Short break resumed");
-            }
-            PomodoroState::LongBreakPaused => {
-                self.start_time = Some(Instant::now() - self.elapsed_before_pause);
-                self.paused_time = None;
-                self.state = PomodoroState::LongBreak;
-                println!("[POMODORO] ▶️  Long break resumed");
-            }
-            _ => {}
-        }
+    pub fn start_work(&self, cx: &mut Context<Self>) {
+        let duration = self.work_duration;
+        *self.status.write() = PomodoroStatus::Running {
+            phase: PomodoroPhase::Work,
+            remaining_secs: duration,
+        };
+        *self.start_time.write() = Some(Instant::now());
+        cx.emit(PomodoroStateChanged {
+            status: self.status(),
+        });
+        cx.notify();
     }
 
-    pub fn is_paused(&self) -> bool {
-        matches!(
-            self.state,
-            PomodoroState::WorkPaused
-                | PomodoroState::ShortBreakPaused
-                | PomodoroState::LongBreakPaused
-        )
-    }
+    pub fn start_break(&self, cx: &mut Context<Self>) {
+        let count = *self.pomodoro_count.read();
+        let is_long_break = count % self.pomodoros_until_long_break == 0 && count > 0;
 
-    pub fn start_work(&mut self) {
-        self.state = PomodoroState::Work;
-        self.start_time = Some(Instant::now());
-        println!("[POMODORO] 🍅 Work session started");
-    }
-
-    pub fn start_short_break(&mut self) {
-        self.state = PomodoroState::ShortBreak;
-        self.start_time = Some(Instant::now());
-        println!("[POMODORO] ☕ Short break started");
-    }
-
-    pub fn start_long_break(&mut self) {
-        self.state = PomodoroState::LongBreak;
-        self.start_time = Some(Instant::now());
-        println!("[POMODORO] 🌴 Long break started");
-    }
-
-    pub fn stop(&mut self) {
-        self.state = PomodoroState::Idle;
-        self.start_time = None;
-        println!("[POMODORO] ⏹️  Stopped");
-    }
-
-    pub fn reset(&mut self) {
-        self.state = PomodoroState::Idle;
-        self.start_time = None;
-        self.paused_time = None;
-        self.elapsed_before_pause = Duration::ZERO;
-        self.sessions_completed = 0;
-        println!("[POMODORO] 🔄 Reset");
-    }
-
-    #[allow(dead_code)]
-    pub fn toggle(&mut self) {
-        match self.state {
-            PomodoroState::Idle => self.start_work(),
-            _ => self.stop(),
-        }
-    }
-
-    pub fn get_state(&self) -> PomodoroState {
-        self.state
-    }
-
-    pub fn get_remaining_seconds(&self) -> u32 {
-        let elapsed = if self.is_paused() {
-            // When paused, use the elapsed time captured at pause
-            self.elapsed_before_pause
-        } else if let Some(start) = self.start_time {
-            // When running, calculate current elapsed time
-            start.elapsed()
+        let (phase, duration) = if is_long_break {
+            (PomodoroPhase::LongBreak, self.long_break_duration)
         } else {
-            // No timer running
-            return 0;
+            (PomodoroPhase::ShortBreak, self.short_break_duration)
         };
 
-        let total_duration = match self.state {
-            PomodoroState::Work | PomodoroState::WorkPaused => self.work_duration,
-            PomodoroState::ShortBreak | PomodoroState::ShortBreakPaused => self.short_break,
-            PomodoroState::LongBreak | PomodoroState::LongBreakPaused => self.long_break,
-            PomodoroState::Idle => return 0,
+        *self.status.write() = PomodoroStatus::Running {
+            phase,
+            remaining_secs: duration,
         };
-
-        if elapsed >= total_duration {
-            return 0;
-        }
-
-        (total_duration - elapsed).as_secs() as u32
+        *self.start_time.write() = Some(Instant::now());
+        cx.emit(PomodoroStateChanged {
+            status: self.status(),
+        });
+        cx.notify();
     }
 
-    pub fn is_finished(&self) -> bool {
-        // Don't auto-transition when paused
-        if self.is_paused() {
-            return false;
+    pub fn pause(&self, cx: &mut Context<Self>) {
+        let current_status = self.status.read().clone();
+        if let PomodoroStatus::Running {
+            phase,
+            remaining_secs,
+        } = current_status
+        {
+            *self.status.write() = PomodoroStatus::Paused {
+                phase,
+                remaining_secs,
+            };
+            *self.start_time.write() = None;
+            cx.emit(PomodoroStateChanged {
+                status: self.status(),
+            });
+            cx.notify();
         }
+    }
 
-        if let Some(start) = self.start_time {
-            let elapsed = start.elapsed();
-            let total_duration = match self.state {
-                PomodoroState::Work => self.work_duration,
-                PomodoroState::ShortBreak => self.short_break,
-                PomodoroState::LongBreak => self.long_break,
-                _ => return false,
+    pub fn resume(&self, cx: &mut Context<Self>) {
+        let current_status = self.status.read().clone();
+        if let PomodoroStatus::Paused {
+            phase,
+            remaining_secs,
+        } = current_status
+        {
+            *self.status.write() = PomodoroStatus::Running {
+                phase,
+                remaining_secs,
+            };
+            *self.start_time.write() = Some(Instant::now());
+            cx.emit(PomodoroStateChanged {
+                status: self.status(),
+            });
+            cx.notify();
+        }
+    }
+
+    pub fn stop(&self, cx: &mut Context<Self>) {
+        *self.status.write() = PomodoroStatus::Idle;
+        *self.start_time.write() = None;
+        cx.emit(PomodoroStateChanged {
+            status: self.status(),
+        });
+        cx.notify();
+    }
+
+    async fn monitor_timer(
+        this: WeakEntity<Self>,
+        status: Arc<RwLock<PomodoroStatus>>,
+        _start_time: Arc<RwLock<Option<Instant>>>,
+        cx: &mut AsyncApp,
+    ) {
+        loop {
+            cx.background_executor().timer(Duration::from_secs(1)).await;
+
+            let should_update = {
+                let current_status = status.read().clone();
+                matches!(current_status, PomodoroStatus::Running { .. })
             };
 
-            elapsed >= total_duration
-        } else {
-            false
-        }
-    }
+            if should_update {
+                if let Ok(()) = this.update(cx, |service, cx| {
+                    let mut current_status = service.status.write();
 
-    pub fn auto_transition(&mut self) {
-        if self.is_finished() {
-            match self.state {
-                PomodoroState::Work => {
-                    self.sessions_completed += 1;
-                    println!(
-                        "[POMODORO] ✅ Work session completed ({}/4)",
-                        self.sessions_completed
-                    );
+                    if let PomodoroStatus::Running {
+                        phase,
+                        remaining_secs,
+                    } = &*current_status
+                    {
+                        if *remaining_secs > 0 {
+                            *current_status = PomodoroStatus::Running {
+                                phase: phase.clone(),
+                                remaining_secs: remaining_secs - 1,
+                            };
 
-                    if self.sessions_completed >= 4 {
-                        self.sessions_completed = 0;
-                        self.start_long_break();
-                    } else {
-                        self.start_short_break();
+                            cx.emit(PomodoroStateChanged {
+                                status: current_status.clone(),
+                            });
+                            cx.notify();
+                        } else {
+                            // Timer finished
+                            if matches!(phase, PomodoroPhase::Work) {
+                                *service.pomodoro_count.write() += 1;
+                            }
+                            *current_status = PomodoroStatus::Idle;
+                            *service.start_time.write() = None;
+
+                            cx.emit(PomodoroStateChanged {
+                                status: PomodoroStatus::Idle,
+                            });
+                            cx.notify();
+                        }
                     }
-                }
-                PomodoroState::ShortBreak => {
-                    println!("[POMODORO] ✅ Short break completed");
-                    self.start_work();
-                }
-                PomodoroState::LongBreak => {
-                    println!("[POMODORO] ✅ Long break completed");
-                    self.stop();
-                }
-                PomodoroState::Idle
-                | PomodoroState::WorkPaused
-                | PomodoroState::ShortBreakPaused
-                | PomodoroState::LongBreakPaused => {}
+                }) {}
             }
         }
     }
+}
 
-    pub fn format_time(&self) -> String {
-        let seconds = self.get_remaining_seconds();
-        let minutes = seconds / 60;
-        let secs = seconds % 60;
-        format!("{minutes:02}:{secs:02}")
+// Global accessor
+struct GlobalPomodoroService(Entity<PomodoroService>);
+impl Global for GlobalPomodoroService {}
+
+impl PomodoroService {
+    pub fn global(cx: &App) -> Entity<Self> {
+        cx.global::<GlobalPomodoroService>().0.clone()
+    }
+
+    pub fn init(cx: &mut App) -> Entity<Self> {
+        let service = cx.new(Self::new);
+        cx.set_global(GlobalPomodoroService(service.clone()));
+        service
     }
 }

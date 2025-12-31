@@ -1,68 +1,55 @@
-use super::base::add_control_center_click_handler;
-use chrono::Local;
-use glib::ControlFlow;
-use gtk::prelude::*;
-use gtk4 as gtk;
+use gpui::prelude::*;
+use gpui::*;
+use std::time::Duration;
 
-#[derive(Clone)]
 pub struct DateTimeModule {
-    pub container: gtk::CenterBox,
-    time_label: gtk::Label,
-    date_label: gtk::Label,
+    time: SharedString,
+    date: SharedString,
 }
 
 impl DateTimeModule {
-    pub fn new() -> Self {
-        let container = gtk::CenterBox::new();
-        container.add_css_class("datetime-widget");
-        container.set_width_request(100);
-        container.set_height_request(50);
-        container.set_halign(gtk::Align::Center);
-        container.set_valign(gtk::Align::Center);
+    pub fn new(cx: &mut Context<Self>) -> Self {
+        let now = chrono::Local::now();
+        let time = now.format("%H:%M").to_string().into();
+        let date = now.format("%a %d %b").to_string().into();
 
-        // Box interne pour les labels verticaux
-        let datetime_box = gtk::Box::new(gtk::Orientation::Vertical, 2);
-        datetime_box.set_halign(gtk::Align::Center);
-        datetime_box.set_valign(gtk::Align::Center);
+        // Update every 60 seconds
+        cx.spawn(async move |this, cx| loop {
+            cx.background_executor()
+                .timer(Duration::from_secs(60))
+                .await;
 
-        let time_label = gtk::Label::new(None);
-        time_label.add_css_class("datetime-time");
-        time_label.set_halign(gtk::Align::Center);
+            let now = chrono::Local::now();
+            if let Ok(()) = this.update(cx, |this, cx| {
+                this.time = now.format("%H:%M").to_string().into();
+                this.date = now.format("%a %d %b").to_string().into();
+                cx.notify();
+            }) {}
+        })
+        .detach();
 
-        let date_label = gtk::Label::new(None);
-        date_label.add_css_class("datetime-date");
-        date_label.set_halign(gtk::Align::Center);
-
-        datetime_box.append(&time_label);
-        datetime_box.append(&date_label);
-        container.set_center_widget(Some(&datetime_box));
-
-        // Gestionnaire de clic pour ouvrir le centre de contrôle (sans section spécifique)
-        add_control_center_click_handler(&container, "");
-
-        let module = Self {
-            container,
-            time_label,
-            date_label,
-        };
-
-        // Mise à jour initiale
-        module.update();
-
-        // Mettre à jour toutes les secondes
-        let module_clone = module.clone();
-        glib::timeout_add_seconds_local(1, move || {
-            module_clone.update();
-            ControlFlow::Continue
-        });
-
-        module
+        Self { time, date }
     }
+}
 
-    fn update(&self) {
-        let now = Local::now();
-        self.time_label.set_text(&now.format("%H:%M").to_string());
-        self.date_label
-            .set_text(&now.format("%d/%m/%y").to_string());
+impl Render for DateTimeModule {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        div()
+            .flex()
+            .flex_col()
+            .items_center()
+            .px_2()
+            .child(
+                div()
+                    .text_sm()
+                    .font_weight(FontWeight::SEMIBOLD)
+                    .child(self.time.clone()),
+            )
+            .child(
+                div()
+                    .text_xs()
+                    .text_color(cx.global::<crate::theme::Theme>().text_muted)
+                    .child(self.date.clone()),
+            )
     }
 }

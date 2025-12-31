@@ -1,67 +1,87 @@
-use crate::services::hyprland::Workspace;
-use gtk::prelude::*;
-use gtk4 as gtk;
+use crate::services::hyprland::{HyprlandService, WorkspaceChanged};
+use gpui::prelude::*;
+use gpui::*;
 
-#[derive(Clone)]
 pub struct WorkspacesModule {
-    pub container: gtk::Box,
-    workspace_buttons: Vec<gtk::Label>,
+    hyprland: Entity<HyprlandService>,
 }
 
 impl WorkspacesModule {
-    pub fn new() -> Self {
-        let container = gtk::Box::new(gtk::Orientation::Horizontal, 8); // gap-2 (8px)
-        container.set_halign(gtk::Align::Center);
-        container.add_css_class("workspaces-widget");
+    pub fn new(cx: &mut Context<Self>) -> Self {
+        let hyprland = HyprlandService::global(cx);
 
-        let workspace_buttons: Vec<gtk::Label> = (1..=8)
-            .map(|i| {
-                let label = gtk::Label::new(Some(&i.to_string()));
-                label.set_width_request(32); // w-8 (32px)
-                label.set_height_request(32); // h-8 (32px)
-                label.set_halign(gtk::Align::Center);
-                label.set_valign(gtk::Align::Center);
-                label.add_css_class("workspace-button");
-                label.add_css_class("workspace-inactive");
-                label.set_visible(false); // Cachés par défaut
-                container.append(&label);
-                label
-            })
-            .collect();
+        // Subscribe to workspace changes
+        cx.subscribe(
+            &hyprland,
+            |_this, _hyprland, _event: &WorkspaceChanged, cx| {
+                cx.notify(); // Trigger re-render
+            },
+        )
+        .detach();
 
-        Self {
-            container,
-            workspace_buttons,
-        }
+        Self { hyprland }
     }
+}
 
-    pub fn update(&self, workspaces: Vec<Workspace>, active_workspace: i32) {
-        let mut sorted_workspaces = workspaces.clone();
-        sorted_workspaces.sort_by(|a, b| match (a.id <= 6, b.id <= 6) {
-            (true, true) => a.id.cmp(&b.id),
-            (true, false) => std::cmp::Ordering::Less,
-            (false, true) => std::cmp::Ordering::Greater,
-            (false, false) => a.id.cmp(&b.id),
-        });
+impl Render for WorkspacesModule {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let mut workspaces = self.hyprland.read(cx).workspaces();
+        let active_id = self.hyprland.read(cx).active_workspace_id();
+        let hyprland = self.hyprland.clone();
 
-        for button in &self.workspace_buttons {
-            button.set_visible(false);
-        }
+        // Sort workspaces in ascending order by ID
+        workspaces.sort_by_key(|ws| ws.id);
 
-        for (idx, ws) in sorted_workspaces.iter().take(8).enumerate() {
-            if let Some(button) = self.workspace_buttons.get(idx) {
-                button.set_text(&ws.id.to_string());
-                button.set_visible(true);
+        let theme = cx.global::<crate::theme::Theme>();
 
-                button.remove_css_class("workspace-active");
-                button.remove_css_class("workspace-inactive");
+        div()
+            .flex()
+            .gap_1()
+            .children(workspaces.into_iter().map(|ws| {
+                let is_active = ws.id == active_id;
+                let ws_id = ws.id;
+                let hyprland = hyprland.clone();
 
-                if ws.id == active_workspace {
-                    button.add_css_class("workspace-active");
+                // Format workspace name: if it's not a number, use first letter capitalized
+                let display_name = if ws.name.parse::<i32>().is_ok() {
+                    ws.name.clone()
                 } else {
-                    button.add_css_class("workspace-inactive");
-                }
-            }
-        }
+                    ws.name
+                        .chars()
+                        .next()
+                        .unwrap_or('?')
+                        .to_uppercase()
+                        .to_string()
+                };
+
+                div()
+                    .id(("workspace", ws.id as u32))
+                    .px_3()
+                    .py_1()
+                    .rounded_md()
+                    .text_sm()
+                    .font_weight(if is_active {
+                        FontWeight::BOLD
+                    } else {
+                        FontWeight::MEDIUM
+                    })
+                    .when(is_active, |this| {
+                        this.bg(theme.accent.opacity(0.2))
+                            .text_color(theme.accent)
+                    })
+                    .when(!is_active, |this| {
+                        this.text_color(theme.text_muted.opacity(0.5))
+                            .hover(|style| {
+                                style
+                                    .bg(theme.accent.opacity(0.1))
+                                    .text_color(theme.text_muted.opacity(0.8))
+                            })
+                    })
+                    .cursor_pointer()
+                    .on_click(move |_event, _window, cx| {
+                        hyprland.read(cx).switch_to_workspace(ws_id);
+                    })
+                    .child(display_name)
+            }))
     }
 }

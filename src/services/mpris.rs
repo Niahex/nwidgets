@@ -1,20 +1,17 @@
 use futures_util::StreamExt;
+use gpui::prelude::*;
+use gpui::{App, AsyncApp, Context, Entity, EventEmitter, Global, WeakEntity};
+use parking_lot::RwLock;
 use std::collections::HashMap;
-use std::sync::mpsc;
-use zbus::{proxy, Connection};
+use std::sync::Arc;
+use zbus::proxy;
+use zbus::zvariant::OwnedValue;
+use zbus::Connection;
 
-#[derive(Debug, Clone, Default)]
-pub struct MprisMetadata {
-    pub title: String,
-    pub artist: String,
-    pub art_url: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum PlaybackStatus {
     Playing,
     Paused,
-    #[default]
     Stopped,
 }
 
@@ -28,233 +25,303 @@ impl From<String> for PlaybackStatus {
     }
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct MprisState {
-    pub metadata: MprisMetadata,
-    pub status: PlaybackStatus,
+#[derive(Clone, Debug, PartialEq, Default)]
+pub struct MprisMetadata {
+    pub title: Option<String>,
+    pub artist: Option<String>,
+    pub album: Option<String>,
 }
 
-// MPRIS Interface
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct MprisPlayer {
+    pub player_name: String,
+    pub status: PlaybackStatus,
+    pub metadata: MprisMetadata,
+}
+
+#[derive(Clone)]
+pub struct MprisStateChanged {
+    pub player: Option<MprisPlayer>,
+}
+
+pub struct MprisService {
+    current_player: Arc<RwLock<Option<MprisPlayer>>>,
+}
+
+// D-Bus proxy for MPRIS2 Player interface
 #[proxy(
     interface = "org.mpris.MediaPlayer2.Player",
-    default_service = "org.mpris.MediaPlayer2",
+    default_service = "org.mpris.MediaPlayer2.spotify",
     default_path = "/org/mpris/MediaPlayer2"
 )]
 trait MediaPlayer2Player {
     #[zbus(property)]
     fn playback_status(&self) -> zbus::Result<String>;
+
     #[zbus(property)]
-    fn metadata(&self) -> zbus::Result<HashMap<String, zbus::zvariant::OwnedValue>>;
-    #[zbus(property)]
-    fn volume(&self) -> zbus::Result<f64>;
-    #[zbus(property)]
-    fn set_volume(&self, volume: f64) -> zbus::Result<()>;
+    fn metadata(&self) -> zbus::Result<HashMap<String, OwnedValue>>;
 
     fn next(&self) -> zbus::Result<()>;
     fn previous(&self) -> zbus::Result<()>;
     fn play_pause(&self) -> zbus::Result<()>;
 }
 
-pub struct MprisService;
-
-// Constantes pour Spotify
-const SPOTIFY_DEST: &str = "org.mpris.MediaPlayer2.spotify";
-const MPRIS_PATH: &str = "/org/mpris/MediaPlayer2";
+impl EventEmitter<MprisStateChanged> for MprisService {}
 
 impl MprisService {
-    pub fn subscribe<F>(callback: F)
-    where
-        F: Fn(MprisState) + 'static,
-    {
-        let (tx, rx) = mpsc::channel();
+    pub fn new(cx: &mut Context<Self>) -> Self {
+        let current_player = Arc::new(RwLock::new(None));
+        let current_player_clone = Arc::clone(&current_player);
 
-        std::thread::spawn(move || {
-            crate::utils::runtime::block_on(async {
-                let connection = match Connection::session().await {
-                    Ok(c) => c,
-                    Err(_) => return,
+        // Start event-driven D-Bus monitoring
+        cx.spawn(async move |this, cx| {
+            Self::monitor_mpris_dbus(this, current_player_clone, cx).await
+        })
+        .detach();
+
+        Self { current_player }
+    }
+
+    pub fn current_player(&self) -> Option<MprisPlayer> {
+        self.current_player.read().clone()
+    }
+
+    pub fn play_pause(&self, cx: &mut Context<Self>) {
+        gpui_tokio::Tokio::spawn(cx, async {
+            if let Ok(conn) = Connection::session().await {
+                if let Ok(proxy) = MediaPlayer2PlayerProxy::new(&conn).await {
+                    let _ = proxy.play_pause().await;
+                }
+            }
+        }).detach();
+    }
+
+    pub fn next(&self, cx: &mut Context<Self>) {
+        gpui_tokio::Tokio::spawn(cx, async {
+            if let Ok(conn) = Connection::session().await {
+                if let Ok(proxy) = MediaPlayer2PlayerProxy::new(&conn).await {
+                    let _ = proxy.next().await;
+                }
+            }
+        }).detach();
+    }
+
+    pub fn previous(&self, cx: &mut Context<Self>) {
+        gpui_tokio::Tokio::spawn(cx, async {
+            if let Ok(conn) = Connection::session().await {
+                if let Ok(proxy) = MediaPlayer2PlayerProxy::new(&conn).await {
+                    let _ = proxy.previous().await;
+                }
+            }
+        }).detach();
+    }
+
+    pub fn volume_up(&self) {
+        // Volume control via D-Bus requires org.mpris.MediaPlayer2.Player.Volume property
+        // For now, fallback to playerctl for volume
+        std::thread::spawn(|| {
+            let _ = std::process::Command::new("playerctl")
+                .args(["-p", "spotify", "volume", "0.05+"])
+                .status();
+        });
+    }
+
+    pub fn volume_down(&self) {
+        std::thread::spawn(|| {
+            let _ = std::process::Command::new("playerctl")
+                .args(["-p", "spotify", "volume", "0.05-"])
+                .status();
+        });
+    }
+
+    async fn monitor_mpris_dbus(
+        this: WeakEntity<Self>,
+        current_player: Arc<RwLock<Option<MprisPlayer>>>,
+        cx: &mut AsyncApp,
+    ) {
+        loop {
+            // Try to connect to Spotify via D-Bus
+            let connection = match Connection::session().await {
+                Ok(conn) => conn,
+                Err(_) => {
+                    // Connection failed, wait and retry
+                    cx.background_executor()
+                        .timer(std::time::Duration::from_secs(2))
+                        .await;
+                    continue;
+                }
+            };
+
+            let proxy = match MediaPlayer2PlayerProxy::new(&connection).await {
+                Ok(p) => p,
+                Err(_) => {
+                    // Spotify not running, set state to None
+                    let state_changed = {
+                        let mut current = current_player.write();
+                        let changed = current.is_some();
+                        if changed {
+                            *current = None;
+                        }
+                        changed
+                    };
+
+                    if state_changed {
+                        let _ = this.update(cx, |_, cx| {
+                            cx.emit(MprisStateChanged { player: None });
+                            cx.notify();
+                        });
+                    }
+
+                    // Wait before retrying
+                    cx.background_executor()
+                        .timer(std::time::Duration::from_secs(2))
+                        .await;
+                    continue;
+                }
+            };
+
+            // Get initial state
+            if let Ok(player) = Self::fetch_player_state(&proxy).await {
+                let state_changed = {
+                    let mut current = current_player.write();
+                    let changed = *current != Some(player.clone());
+                    if changed {
+                        *current = Some(player.clone());
+                    }
+                    changed
                 };
 
-                // État initial vide
-                let mut last_state = MprisState::default();
-                let _ = tx.send(last_state.clone());
+                if state_changed {
+                    let _ = this.update(cx, |_, cx| {
+                        cx.emit(MprisStateChanged {
+                            player: Some(player),
+                        });
+                        cx.notify();
+                    });
+                }
+            }
 
-                loop {
-                    // Essayer de se connecter à Spotify
-                    let proxy_result = MediaPlayer2PlayerProxy::builder(&connection)
-                        .destination(SPOTIFY_DEST)
-                        .and_then(|b| b.path(MPRIS_PATH))
-                        .map(|b| b.build());
+            // Subscribe to property changes
+            let mut status_stream = proxy.receive_playback_status_changed().await;
+            let mut metadata_stream = proxy.receive_metadata_changed().await;
 
-                    if let Ok(builder_future) = proxy_result {
-                        match builder_future.await {
-                            Ok(proxy) => {
-                                // 1. Récupérer l'état initial actuel
-                                if let Ok(state) = Self::get_spotify_state(&proxy).await {
-                                    if tx.send(state.clone()).is_err() {
-                                        break;
-                                    }
-                                    last_state = state;
+            // Event loop: listen for D-Bus property changes
+            loop {
+                tokio::select! {
+                    status_change = status_stream.next() => {
+                        if status_change.is_none() {
+                            // Stream ended, reconnect
+                            break;
+                        }
+
+                        if let Ok(player) = Self::fetch_player_state(&proxy).await {
+                            let state_changed = {
+                                let mut current = current_player.write();
+                                let changed = *current != Some(player.clone());
+                                if changed {
+                                    *current = Some(player.clone());
                                 }
+                                changed
+                            };
 
-                                // 2. Écouter les changements (Signal PropertiesChanged)
-                                // On écoute les changements de playback_status pour détecter play/pause
-                                let mut status_stream =
-                                    proxy.receive_playback_status_changed().await;
-
-                                // On écoute aussi les changements de metadata pour les changements de piste
-                                let mut metadata_stream = proxy.receive_metadata_changed().await;
-
-                                // On écoute les changements de volume
-                                let mut volume_stream = proxy.receive_volume_changed().await;
-
-                                loop {
-                                    tokio::select! {
-                                        status_change = status_stream.next() => {
-                                            if status_change.is_none() { break; }
-                                            if let Ok(state) = Self::get_spotify_state(&proxy).await {
-                                                if tx.send(state.clone()).is_err() {
-                                                    return;
-                                                }
-                                                last_state = state;
-                                            }
-                                        }
-                                        metadata_change = metadata_stream.next() => {
-                                            if metadata_change.is_none() { break; }
-                                            if let Ok(state) = Self::get_spotify_state(&proxy).await {
-                                                if tx.send(state.clone()).is_err() {
-                                                    return;
-                                                }
-                                                last_state = state;
-                                            }
-                                        }
-                                        volume_change = volume_stream.next() => {
-                                            if volume_change.is_none() { break; }
-                                            if let Ok(state) = Self::get_spotify_state(&proxy).await {
-                                                if tx.send(state.clone()).is_err() {
-                                                    return;
-                                                }
-                                                last_state = state;
-                                            }
-                                        }
-                                    }
-                                }
-                                // Si on sort de la boucle while, c'est que Spotify a probablement fermé ou le stream a coupé
-                            }
-                            Err(_) => {
-                                // Spotify n'est pas ouvert ou erreur de connexion au proxy
-                                // On envoie un état "Stopped" si on n'y est pas déjà
-                                if last_state.status != PlaybackStatus::Stopped {
-                                    last_state = MprisState::default();
-                                    let _ = tx.send(last_state.clone());
-                                }
+                            if state_changed {
+                                let _ = this.update(cx, |_, cx| {
+                                    cx.emit(MprisStateChanged { player: Some(player) });
+                                    cx.notify();
+                                });
                             }
                         }
                     }
+                    metadata_change = metadata_stream.next() => {
+                        if metadata_change.is_none() {
+                            // Stream ended, reconnect
+                            break;
+                        }
 
-                    // Si on est ici, c'est que la connexion a échoué ou a été perdue.
-                    // On attend un peu avant de réessayer de détecter Spotify.
-                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                        if let Ok(player) = Self::fetch_player_state(&proxy).await {
+                            let state_changed = {
+                                let mut current = current_player.write();
+                                let changed = *current != Some(player.clone());
+                                if changed {
+                                    *current = Some(player.clone());
+                                }
+                                changed
+                            };
+
+                            if state_changed {
+                                let _ = this.update(cx, |_, cx| {
+                                    cx.emit(MprisStateChanged { player: Some(player) });
+                                    cx.notify();
+                                });
+                            }
+                        }
+                    }
                 }
-            });
-        });
+            }
 
-        crate::utils::subscription::ServiceSubscription::subscribe(rx, callback);
+            // Connection lost, wait before reconnecting
+            cx.background_executor()
+                .timer(std::time::Duration::from_secs(2))
+                .await;
+        }
     }
 
-    async fn get_spotify_state(proxy: &MediaPlayer2PlayerProxy<'_>) -> zbus::Result<MprisState> {
-        let status_str = proxy
-            .playback_status()
-            .await
-            .unwrap_or_else(|_| "Stopped".to_string());
+    async fn fetch_player_state(
+        proxy: &MediaPlayer2PlayerProxy<'_>,
+    ) -> Result<MprisPlayer, zbus::Error> {
+        let status_str = proxy.playback_status().await?;
         let status = PlaybackStatus::from(status_str);
 
         let mut metadata = MprisMetadata::default();
 
         if let Ok(metadata_map) = proxy.metadata().await {
-            if let Some(v) = metadata_map.get("xesam:title") {
-                metadata.title = v
-                    .downcast_ref::<zbus::zvariant::Str>()
-                    .map(|s| s.to_string())
-                    .unwrap_or_default();
-            }
-            if let Some(v) = metadata_map.get("xesam:artist") {
-                if let Ok(arr) = v.downcast_ref::<zbus::zvariant::Array>() {
-                    if let Ok(Some(first)) = arr.get::<zbus::zvariant::Value>(0) {
-                        metadata.artist = first
-                            .downcast_ref::<zbus::zvariant::Str>()
-                            .map(|s| s.to_string())
-                            .unwrap_or_default();
-                    }
-                } else if let Ok(s) = v.downcast_ref::<zbus::zvariant::Str>() {
-                    metadata.artist = s.to_string();
+            // Extract title
+            if let Some(value) = metadata_map.get("xesam:title") {
+                if let Ok(title_str) = value.downcast_ref::<zbus::zvariant::Str>() {
+                    metadata.title = Some(title_str.to_string());
                 }
             }
-            if let Some(v) = metadata_map.get("mpris:artUrl") {
-                metadata.art_url = v
-                    .downcast_ref::<zbus::zvariant::Str>()
-                    .map(|s| s.to_string())
-                    .unwrap_or_default();
-            }
-        }
 
-        Ok(MprisState { metadata, status })
-    }
-
-    // Commandes pour Spotify uniquement
-
-    pub fn play_pause() {
-        Self::run_spotify_command(|p| async move { p.play_pause().await });
-    }
-
-    pub fn next() {
-        Self::run_spotify_command(|p| async move { p.next().await });
-    }
-
-    pub fn previous() {
-        Self::run_spotify_command(|p| async move { p.previous().await });
-    }
-
-    pub fn volume_up() {
-        Self::run_spotify_command(|p| async move {
-            if let Ok(vol) = p.volume().await {
-                p.set_volume((vol + 0.05).min(1.0)).await
-            } else {
-                Ok(())
-            }
-        });
-    }
-
-    pub fn volume_down() {
-        Self::run_spotify_command(|p| async move {
-            if let Ok(vol) = p.volume().await {
-                p.set_volume((vol - 0.05).max(0.0)).await
-            } else {
-                Ok(())
-            }
-        });
-    }
-
-    fn run_spotify_command<F, Fut>(action: F)
-    where
-        F: FnOnce(MediaPlayer2PlayerProxy<'static>) -> Fut + Send + 'static,
-        Fut: std::future::Future<Output = zbus::Result<()>> + Send,
-    {
-        std::thread::spawn(move || {
-            crate::utils::runtime::block_on(async {
-                if let Ok(conn) = Connection::session().await {
-                    let proxy_builder = MediaPlayer2PlayerProxy::builder(&conn)
-                        .destination(SPOTIFY_DEST)
-                        .and_then(|b| b.path(MPRIS_PATH))
-                        .map(|b| b.build());
-
-                    if let Ok(future) = proxy_builder {
-                        if let Ok(proxy) = future.await {
-                            let _ = action(proxy).await;
+            // Extract artist (it's an array)
+            if let Some(value) = metadata_map.get("xesam:artist") {
+                if let Ok(artist_array) = value.downcast_ref::<zbus::zvariant::Array>() {
+                    if let Ok(Some(first_artist)) = artist_array.get::<zbus::zvariant::Value>(0) {
+                        if let Ok(artist_str) = first_artist.downcast_ref::<zbus::zvariant::Str>() {
+                            metadata.artist = Some(artist_str.to_string());
                         }
                     }
                 }
-            });
-        });
+            }
+
+            // Extract album
+            if let Some(value) = metadata_map.get("xesam:album") {
+                if let Ok(album_str) = value.downcast_ref::<zbus::zvariant::Str>() {
+                    metadata.album = Some(album_str.to_string());
+                }
+            }
+        }
+
+        Ok(MprisPlayer {
+            player_name: "spotify".to_string(),
+            status,
+            metadata,
+        })
+    }
+}
+
+// Global accessor
+struct GlobalMprisService(Entity<MprisService>);
+impl Global for GlobalMprisService {}
+
+impl MprisService {
+    pub fn global(cx: &App) -> Entity<Self> {
+        cx.global::<GlobalMprisService>().0.clone()
+    }
+
+    pub fn init(cx: &mut App) -> Entity<Self> {
+        let service = cx.new(Self::new);
+        cx.set_global(GlobalMprisService(service.clone()));
+        service
     }
 }

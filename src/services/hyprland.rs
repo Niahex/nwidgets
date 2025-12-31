@@ -1,16 +1,19 @@
-use once_cell::sync::Lazy;
+use futures::StreamExt;
+use gpui::prelude::*;
+use gpui::{App, AsyncApp, Context, Entity, EventEmitter, Global, WeakEntity};
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{BufRead, BufReader};
 use std::os::unix::net::UnixStream;
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::Arc;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Workspace {
     pub id: i32,
     pub name: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 pub struct ActiveWindow {
     pub class: String,
     pub title: String,
@@ -22,48 +25,110 @@ pub struct ActiveWindow {
     pub address: String,
 }
 
-// Types pour les callbacks
-type WorkspaceSender = mpsc::Sender<(Vec<Workspace>, i32)>;
-type ActiveWindowSender = mpsc::Sender<Option<ActiveWindow>>;
-
-/// Structure pour gérer le monitoring centralisé de Hyprland
-struct HyprlandMonitor {
-    workspace_subscribers: Arc<Mutex<Vec<WorkspaceSender>>>,
-    active_window_subscribers: Arc<Mutex<Vec<ActiveWindowSender>>>,
-    started: Arc<Mutex<bool>>,
+#[derive(Clone)]
+pub struct WorkspaceChanged {
+    pub workspaces: Vec<Workspace>,
+    pub active_workspace_id: i32,
 }
 
-impl HyprlandMonitor {
-    fn new() -> Self {
+#[derive(Clone)]
+pub struct ActiveWindowChanged {
+    pub window: Option<ActiveWindow>,
+}
+
+pub struct HyprlandService {
+    workspaces: Arc<RwLock<Vec<Workspace>>>,
+    active_workspace_id: Arc<RwLock<i32>>,
+    active_window: Arc<RwLock<Option<ActiveWindow>>>,
+}
+
+impl EventEmitter<WorkspaceChanged> for HyprlandService {}
+impl EventEmitter<ActiveWindowChanged> for HyprlandService {}
+
+impl HyprlandService {
+    pub fn new(cx: &mut Context<Self>) -> Self {
+        let workspaces = Arc::new(RwLock::new(Vec::new()));
+        let active_workspace_id = Arc::new(RwLock::new(1));
+        let active_window = Arc::new(RwLock::new(None));
+
+        // Fetch initial state
+        let (initial_workspaces, initial_active) = Self::fetch_hyprland_data();
+        let initial_window = Self::fetch_active_window();
+
+        *workspaces.write() = initial_workspaces.clone();
+        *active_workspace_id.write() = initial_active;
+        *active_window.write() = initial_window.clone();
+
+        // Spawn background task to monitor Hyprland events
+        let workspaces_clone = Arc::clone(&workspaces);
+        let active_workspace_id_clone = Arc::clone(&active_workspace_id);
+        let active_window_clone = Arc::clone(&active_window);
+
+        cx.spawn(async move |this, cx| {
+            Self::monitor_hyprland_events(
+                this,
+                workspaces_clone,
+                active_workspace_id_clone,
+                active_window_clone,
+                cx,
+            )
+            .await
+        })
+        .detach();
+
         Self {
-            workspace_subscribers: Arc::new(Mutex::new(Vec::new())),
-            active_window_subscribers: Arc::new(Mutex::new(Vec::new())),
-            started: Arc::new(Mutex::new(false)),
+            workspaces,
+            active_workspace_id,
+            active_window,
         }
     }
 
-    fn ensure_started(&self) {
-        let mut started = self.started.lock().unwrap();
-        if *started {
-            return;
-        }
-        *started = true;
+    pub fn workspaces(&self) -> Vec<Workspace> {
+        self.workspaces.read().clone()
+    }
 
-        let workspace_subscribers = Arc::clone(&self.workspace_subscribers);
-        let active_window_subscribers = Arc::clone(&self.active_window_subscribers);
+    pub fn active_workspace_id(&self) -> i32 {
+        *self.active_workspace_id.read()
+    }
 
+    pub fn active_window(&self) -> Option<ActiveWindow> {
+        self.active_window.read().clone()
+    }
+
+    pub fn switch_to_workspace(&self, workspace_id: i32) {
         std::thread::spawn(move || {
-            if let Ok(hypr_sig) = std::env::var("HYPRLAND_INSTANCE_SIGNATURE") {
-                let socket_path = format!("/run/user/1000/hypr/{hypr_sig}/.socket2.sock");
+            let _ = Self::hyprctl(&["dispatch", "workspace", &workspace_id.to_string()]);
+        });
+    }
 
+    async fn monitor_hyprland_events(
+        this: WeakEntity<Self>,
+        workspaces: Arc<RwLock<Vec<Workspace>>>,
+        active_workspace_id: Arc<RwLock<i32>>,
+        active_window: Arc<RwLock<Option<ActiveWindow>>>,
+        cx: &mut AsyncApp,
+    ) {
+        let hypr_sig = match std::env::var("HYPRLAND_INSTANCE_SIGNATURE") {
+            Ok(sig) => sig,
+            Err(_) => {
+                return;
+            }
+        };
+
+        let socket_path = format!(
+            "/run/user/{}/hypr/{}/.socket2.sock",
+            std::env::var("UID").unwrap_or_else(|_| "1000".to_string()),
+            hypr_sig
+        );
+
+        // Run blocking socket IO on background executor
+        let (tx, mut rx) = futures::channel::mpsc::unbounded();
+
+        cx.background_executor()
+            .spawn(async move {
                 if let Ok(stream) = UnixStream::connect(&socket_path) {
                     let reader = BufReader::new(stream);
-
-                    // Envoyer l'état initial
-                    Self::broadcast_updates(&workspace_subscribers, &active_window_subscribers);
-
                     for line in reader.lines().map_while(Result::ok) {
-                        // Monitor workspace et active window changes
                         if line.starts_with("workspace>>")
                             || line.starts_with("createworkspace>>")
                             || line.starts_with("destroyworkspace>>")
@@ -71,136 +136,103 @@ impl HyprlandMonitor {
                             || line.starts_with("closewindow>>")
                             || line.starts_with("openwindow>>")
                         {
-                            Self::broadcast_updates(
-                                &workspace_subscribers,
-                                &active_window_subscribers,
-                            );
+                            let _ = tx.unbounded_send(());
                         }
                     }
                 }
+            })
+            .detach();
+
+        // Process events on foreground
+        while rx.next().await.is_some() {
+            let (new_workspaces, new_active_id) = Self::fetch_hyprland_data();
+            let new_window = Self::fetch_active_window();
+
+            let workspace_changed = {
+                let mut ws = workspaces.write();
+                let mut active_id = active_workspace_id.write();
+                let changed = *ws != new_workspaces || *active_id != new_active_id;
+                if changed {
+                    *ws = new_workspaces.clone();
+                    *active_id = new_active_id;
+                }
+                changed
+            };
+
+            let window_changed = {
+                let mut win = active_window.write();
+                let changed = *win != new_window;
+                if changed {
+                    *win = new_window.clone();
+                }
+                changed
+            };
+
+            if workspace_changed || window_changed {
+                if let Ok(()) = this.update(cx, |_this, cx| {
+                    if workspace_changed {
+                        cx.emit(WorkspaceChanged {
+                            workspaces: new_workspaces.clone(),
+                            active_workspace_id: new_active_id,
+                        });
+                    }
+                    if window_changed {
+                        cx.emit(ActiveWindowChanged {
+                            window: new_window.clone(),
+                        });
+                    }
+                    cx.notify();
+                }) {}
             }
-        });
-    }
-
-    fn broadcast_updates(
-        workspace_subscribers: &Arc<Mutex<Vec<WorkspaceSender>>>,
-        active_window_subscribers: &Arc<Mutex<Vec<ActiveWindowSender>>>,
-    ) {
-        let (workspaces, active_workspace) = HyprlandService::get_hyprland_data();
-        let active_window = HyprlandService::get_active_window();
-
-        // Broadcast aux workspace subscribers
-        if let Ok(mut subs) = workspace_subscribers.lock() {
-            subs.retain(|tx| tx.send((workspaces.clone(), active_workspace)).is_ok());
-        }
-
-        // Broadcast aux active window subscribers
-        if let Ok(mut subs) = active_window_subscribers.lock() {
-            subs.retain(|tx| tx.send(active_window.clone()).is_ok());
         }
     }
 
-    fn add_workspace_subscriber(&self, tx: WorkspaceSender) {
-        if let Ok(mut subs) = self.workspace_subscribers.lock() {
-            subs.push(tx);
-        }
+    fn fetch_hyprland_data() -> (Vec<Workspace>, i32) {
+        let workspaces_json = Self::hyprctl(&["workspaces", "-j"]);
+        let active_workspace_json = Self::hyprctl(&["activeworkspace", "-j"]);
+
+        let workspaces: Vec<Workspace> = serde_json::from_str(&workspaces_json).unwrap_or_default();
+
+        let active_workspace_id: i32 =
+            serde_json::from_str::<serde_json::Value>(&active_workspace_json)
+                .map(|v| v["id"].as_i64().unwrap_or(1) as i32)
+                .unwrap_or(1);
+
+        (workspaces, active_workspace_id)
     }
 
-    fn add_active_window_subscriber(&self, tx: ActiveWindowSender) {
-        if let Ok(mut subs) = self.active_window_subscribers.lock() {
-            subs.push(tx);
+    fn fetch_active_window() -> Option<ActiveWindow> {
+        let active_window_json = Self::hyprctl(&["activewindow", "-j"]);
+
+        if active_window_json.trim().is_empty() || active_window_json == "{}" {
+            return None;
         }
+
+        serde_json::from_str::<ActiveWindow>(&active_window_json).ok()
+    }
+
+    fn hyprctl(args: &[&str]) -> String {
+        std::process::Command::new("hyprctl")
+            .args(args)
+            .output()
+            .ok()
+            .and_then(|output| String::from_utf8(output.stdout).ok())
+            .unwrap_or_default()
     }
 }
 
-/// Instance statique globale du moniteur
-static MONITOR: Lazy<HyprlandMonitor> = Lazy::new(HyprlandMonitor::new);
-
-pub struct HyprlandService;
+// Global accessor
+struct GlobalHyprlandService(Entity<HyprlandService>);
+impl Global for GlobalHyprlandService {}
 
 impl HyprlandService {
-    #[allow(dead_code)]
-    pub fn new() -> Self {
-        Self
+    pub fn global(cx: &App) -> Entity<Self> {
+        cx.global::<GlobalHyprlandService>().0.clone()
     }
 
-    /// Abonne un callback aux changements de workspace
-    /// Le callback sera appelé sur le thread principal GTK
-    pub fn subscribe_workspace<F>(callback: F)
-    where
-        F: Fn(Vec<Workspace>, i32) + 'static,
-    {
-        let (tx, rx) = mpsc::channel();
-
-        // Ajouter le sender à la liste des subscribers
-        MONITOR.add_workspace_subscriber(tx);
-
-        // Utiliser l'abstraction de subscription
-        crate::utils::subscription::ServiceSubscription::subscribe(
-            rx,
-            move |(workspaces, active_workspace)| {
-                callback(workspaces, active_workspace);
-            },
-        );
-
-        // Démarrer le monitoring si ce n'est pas déjà fait
-        MONITOR.ensure_started();
-    }
-
-    /// Abonne un callback aux changements de la fenêtre active
-    /// Le callback sera appelé sur le thread principal GTK
-    pub fn subscribe_active_window<F>(callback: F)
-    where
-        F: Fn(Option<ActiveWindow>) + 'static,
-    {
-        let (tx, rx) = mpsc::channel();
-
-        // Ajouter le sender à la liste des subscribers
-        MONITOR.add_active_window_subscriber(tx);
-
-        // Utiliser l'abstraction de subscription
-        crate::utils::subscription::ServiceSubscription::subscribe(rx, callback);
-
-        // Démarrer le monitoring si ce n'est pas déjà fait
-        MONITOR.ensure_started();
-    }
-
-    pub fn get_socket_path() -> Option<String> {
-        std::env::var("HYPRLAND_INSTANCE_SIGNATURE")
-            .ok()
-            .map(|sig| format!("/run/user/1000/hypr/{sig}/.socket.sock"))
-    }
-
-    pub fn send_command(command: &str) -> Result<String, Box<dyn std::error::Error>> {
-        let socket_path = Self::get_socket_path().ok_or("HYPRLAND_INSTANCE_SIGNATURE not found")?;
-
-        let mut stream = UnixStream::connect(socket_path)?;
-        stream.write_all(command.as_bytes())?;
-
-        let mut response = String::new();
-        stream.read_to_string(&mut response)?;
-        Ok(response)
-    }
-
-    /// Get the currently active window information
-    pub fn get_active_window() -> Option<ActiveWindow> {
-        Self::send_command("j/activewindow")
-            .ok()
-            .and_then(|response| serde_json::from_str::<ActiveWindow>(&response).ok())
-    }
-
-    pub fn get_hyprland_data() -> (Vec<Workspace>, i32) {
-        let workspaces = Self::send_command("j/workspaces")
-            .ok()
-            .and_then(|response| serde_json::from_str::<Vec<Workspace>>(&response).ok())
-            .unwrap_or_default();
-
-        let active_workspace = Self::send_command("j/activeworkspace")
-            .ok()
-            .and_then(|response| serde_json::from_str::<Workspace>(&response).ok())
-            .map(|ws| ws.id)
-            .unwrap_or(1);
-
-        (workspaces, active_workspace)
+    pub fn init(cx: &mut App) -> Entity<Self> {
+        let service = cx.new(Self::new);
+        cx.set_global(GlobalHyprlandService(service.clone()));
+        service
     }
 }

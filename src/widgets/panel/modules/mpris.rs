@@ -1,137 +1,117 @@
-use crate::services::mpris::{MprisService, MprisState, PlaybackStatus};
-use gtk::prelude::*;
-use gtk4 as gtk;
+use crate::services::mpris::{MprisService, MprisStateChanged, PlaybackStatus};
+use gpui::prelude::*;
+use gpui::*;
 use std::cell::Cell;
-use std::rc::Rc;
 use std::time::{Duration, Instant};
 
-#[derive(Clone)]
 pub struct MprisModule {
-    pub container: gtk::Box,
-    title_label: gtk::Label,
-    artist_label: gtk::Label,
+    mpris: Entity<MprisService>,
+    last_track_change: Cell<Instant>,
 }
 
 impl MprisModule {
-    pub fn new() -> Self {
-        let container = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-        container.add_css_class("mpris-widget");
-        // Fixer la largeur pour éviter les changements de taille
-        container.set_width_request(250);
+    pub fn new(cx: &mut Context<Self>) -> Self {
+        let mpris = MprisService::global(cx);
 
-        // Container pour le texte
-        let text_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        text_box.set_valign(gtk::Align::Center);
-        text_box.set_hexpand(true);
-
-        let title_label = gtk::Label::new(None);
-        title_label.add_css_class("mpris-title");
-        title_label.set_halign(gtk::Align::Start);
-        title_label.set_ellipsize(gtk::pango::EllipsizeMode::End);
-        title_label.set_max_width_chars(30);
-
-        let artist_label = gtk::Label::new(None);
-        artist_label.add_css_class("mpris-artist");
-        artist_label.set_halign(gtk::Align::Start);
-        artist_label.set_ellipsize(gtk::pango::EllipsizeMode::End);
-        artist_label.set_max_width_chars(30);
-
-        text_box.append(&title_label);
-        text_box.append(&artist_label);
-        container.append(&text_box);
-
-        // Masquer par défaut
-        container.set_visible(false);
-
-        // Ajouter le contrôleur de clic pour play/pause
-        let gesture_click = gtk::GestureClick::new();
-        gesture_click.set_button(gtk::gdk::ffi::GDK_BUTTON_PRIMARY as u32);
-
-        gesture_click.connect_released(move |_, _, _, _| {
-            MprisService::play_pause();
-        });
-
-        container.add_controller(gesture_click);
-
-        // Ajouter le contrôleur de scroll pour volume/pistes
-        let scroll_controller =
-            gtk::EventControllerScroll::new(gtk::EventControllerScrollFlags::BOTH_AXES);
-
-        // Debounce pour éviter les changements de piste trop rapides
-        let last_track_change = Rc::new(Cell::new(Instant::now() - Duration::from_secs(1)));
-        let track_change_cooldown = Duration::from_millis(300);
-
-        let container_clone = container.clone();
-        let last_track_change_clone = Rc::clone(&last_track_change);
-        scroll_controller.connect_scroll(move |_controller, dx, dy| {
-            if !container_clone.is_visible() {
-                return gtk::glib::Propagation::Proceed;
-            }
-
-            let now = Instant::now();
-
-            if dx.abs() > 0.0 {
-                if now.duration_since(last_track_change_clone.get()) >= track_change_cooldown {
-                    if dx < 0.0 {
-                        println!("[MPRIS] Scroll LEFT -> Previous track");
-                        MprisService::previous();
-                    } else {
-                        println!("[MPRIS] Scroll RIGHT -> Next track");
-                        MprisService::next();
-                    }
-                    last_track_change_clone.set(now);
-                } else {
-                    println!("[MPRIS] Track change ignored (cooldown)");
-                }
-            } else if dy.abs() > 0.0 {
-                if dy < 0.0 {
-                    println!("[MPRIS] Scroll UP -> Volume up");
-                    MprisService::volume_up();
-                } else {
-                    println!("[MPRIS] Scroll DOWN -> Volume down");
-                    MprisService::volume_down();
-                }
-            }
-
-            gtk::glib::Propagation::Stop
-        });
-
-        container.add_controller(scroll_controller);
+        cx.subscribe(&mpris, |_this, _mpris, _event: &MprisStateChanged, cx| {
+            cx.notify();
+        })
+        .detach();
 
         Self {
-            container,
-            title_label,
-            artist_label,
+            mpris,
+            last_track_change: Cell::new(Instant::now() - Duration::from_secs(1)),
         }
     }
+}
 
-    pub fn update(&self, state: MprisState) {
-        // Si rien ne joue, masquer le widget
-        if state.status == PlaybackStatus::Stopped || state.metadata.title.is_empty() {
-            self.container.set_visible(false);
-            return;
-        }
+impl Render for MprisModule {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let player = self.mpris.read(cx).current_player();
 
-        // Afficher le widget
-        self.container.set_visible(true);
+        if let Some(player) = player {
+            let mpris = self.mpris.clone();
+            let title = player
+                .metadata
+                .title
+                .unwrap_or_else(|| "No title".to_string());
+            let artist = player.metadata.artist;
+            let is_paused = player.status == PlaybackStatus::Paused;
 
-        // --- GESTION DU STYLE ---
-        // Ajoute ou retire la classe CSS "paused" dynamiquement
-        if state.status == PlaybackStatus::Paused {
-            self.container.add_css_class("paused");
+            let last_track_change = self.last_track_change.clone();
+            let mpris_for_click = mpris.clone();
+            let mpris_for_scroll = mpris.clone();
+
+            div()
+                .id("mpris-module")
+                .flex()
+                .flex_col()
+                .w(px(250.))
+                .px_2()
+                .py_1()
+                .rounded_sm()
+                .cursor_pointer()
+                .when(is_paused, |this| {
+                    this.text_color(rgba(0xd8dee980)) // Dimmed when paused
+                })
+                .when(!is_paused, |this| this.text_color(cx.global::<crate::theme::Theme>().text))
+                .hover(|style| style.bg(rgba(0x4c566a40)))
+                // Click to play/pause
+                .on_click(move |_event, _window, cx| {
+                    mpris_for_click.update(cx, |mpris, cx| mpris.play_pause(cx));
+                })
+                // Scroll handlers
+                .on_scroll_wheel(move |event, window, cx| {
+                    let delta_pixels = event.delta.pixel_delta(window.line_height());
+
+                    // Horizontal scroll for track navigation (with debounce)
+                    if !delta_pixels.x.is_zero() {
+                        let now = Instant::now();
+                        let cooldown = Duration::from_millis(300);
+
+                        if now.duration_since(last_track_change.get()) >= cooldown {
+                            mpris_for_scroll.update(cx, |mpris, cx| {
+                                if delta_pixels.x < px(0.0) {
+                                    mpris.previous(cx);
+                                } else {
+                                    mpris.next(cx);
+                                }
+                            });
+                            last_track_change.set(now);
+                        }
+                    }
+
+                    // Vertical scroll for volume (inverted: scroll up = volume up)
+                    if !delta_pixels.y.is_zero() {
+                        let mpris = mpris_for_scroll.read(cx);
+                        if delta_pixels.y < px(0.0) {
+                            mpris.volume_down();
+                        } else {
+                            mpris.volume_up();
+                        }
+                    }
+                })
+                .child(
+                    div()
+                        .text_xs()
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .overflow_hidden()
+                        .text_ellipsis()
+                        .child(title),
+                )
+                .when_some(artist, |this, artist_name| {
+                    this.child(
+                        div()
+                            .text_xs()
+                            .text_color(rgba(0xd8dee980)) // $snow0 with opacity
+                            .overflow_hidden()
+                            .text_ellipsis()
+                            .child(artist_name),
+                    )
+                })
+                .into_any_element()
         } else {
-            self.container.remove_css_class("paused");
-        }
-
-        // Mettre à jour le titre
-        self.title_label.set_text(&state.metadata.title);
-
-        // Mettre à jour l'artiste
-        if !state.metadata.artist.is_empty() {
-            self.artist_label.set_text(&state.metadata.artist);
-            self.artist_label.set_visible(true);
-        } else {
-            self.artist_label.set_visible(false);
+            div().into_any_element()
         }
     }
 }

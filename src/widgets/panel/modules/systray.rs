@@ -1,46 +1,46 @@
-use crate::services::systray::TrayItem;
-use crate::utils::icons;
-use gtk::prelude::*;
-use gtk4 as gtk;
+use crate::services::systray::{SystrayChanged, SystrayService};
+use gpui::prelude::*;
+use gpui::*;
 
-#[derive(Clone)]
 pub struct SystrayModule {
-    pub container: gtk::CenterBox,
+    systray: Entity<SystrayService>,
 }
 
 impl SystrayModule {
-    pub fn new() -> Self {
-        let container = gtk::CenterBox::new();
-        container.add_css_class("systray-widget");
-        container.set_width_request(35);
-        container.set_height_request(50);
-        container.set_halign(gtk::Align::Center);
-        container.set_valign(gtk::Align::Center);
+    pub fn new(cx: &mut Context<Self>) -> Self {
+        let systray = SystrayService::global(cx);
 
-        Self { container }
+        cx.subscribe(&systray, |_this, _systray, _event: &SystrayChanged, cx| {
+            cx.notify();
+        })
+        .detach();
+
+        Self { systray }
     }
+}
 
-    pub fn update(&self, items: Vec<TrayItem>) {
-        // Supprimer le widget central existant
-        self.container.set_center_widget(None::<&gtk::Widget>);
+impl Render for SystrayModule {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let items = self.systray.read(cx).items();
 
-        // Ajouter le premier item (ou rien si vide)
-        if let Some(item) = items.first() {
-            let icon_name = match item.title.to_lowercase().as_str() {
-                s if s.contains("discord") => "discord",
-                s if s.contains("firefox") => "firefox",
-                s if s.contains("chrome") => "google-chrome",
-                s if s.contains("steam") => "steam-tray",
-                _ => "application-default-icon",
-            };
-
-            let icon = icons::create_icon(icon_name);
-            icon.set_halign(gtk::Align::Center);
-            icon.set_valign(gtk::Align::Center);
-            icon.add_css_class("systray-item");
-            icon.set_tooltip_text(Some(&format!("{} - {}", item.title, item.id)));
-
-            self.container.set_center_widget(Some(&icon));
+        if items.is_empty() {
+            return div().into_any_element();
         }
+
+        div()
+            .flex()
+            .gap_2()
+            .items_center()
+            .children(items.into_iter().enumerate().map(|(idx, item)| {
+                div()
+                    .id(("systray-item", idx))
+                    .px_2()
+                    .py_1()
+                    .rounded_sm()
+                    .hover(|style| style.bg(cx.global::<crate::theme::Theme>().systray_hover))
+                    .cursor_pointer()
+                    .child(item.icon_name.unwrap_or_else(|| "📦".to_string()))
+            }))
+            .into_any_element()
     }
 }
