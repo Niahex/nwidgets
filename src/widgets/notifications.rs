@@ -85,6 +85,11 @@ impl Render for NotificationsWidget {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let notifs = self.notifications.read().clone();
 
+        // Si pas de notifications, retourner un div vide pour cacher la fenêtre layer shell
+        if notifs.is_empty() {
+            return div().size_0().into_any_element();
+        }
+
         let theme = cx.global::<crate::theme::Theme>();
 
         div()
@@ -156,6 +161,7 @@ impl Render for NotificationsWidget {
                         )
                     })
             }))
+            .into_any_element()
     }
 }
 
@@ -228,13 +234,7 @@ impl NotificationsWindowManager {
         entity
     }
 
-    pub fn close_window(&mut self, cx: &mut App) {
-        if let Some(window) = self.window.take() {
-            window
-                .update(cx, |_, window, _| {
-                    window.remove_window();
-                })
-                .ok();
-        }
+    pub fn close_window(&mut self, _cx: &mut App) {
+        // Ne plus fermer la fenêtre, elle reste ouverte et se cache via le rendu
     }
 }
