@@ -60,11 +60,13 @@ impl EventEmitter<AudioStateChanged> for AudioService {}
 
 impl AudioService {
     pub fn new(cx: &mut Context<Self>) -> Self {
-        let state = Arc::new(RwLock::new(Self::fetch_audio_state()));
-        let sinks = Arc::new(RwLock::new(Self::fetch_sinks()));
-        let sources = Arc::new(RwLock::new(Self::fetch_sources()));
-        let sink_inputs = Arc::new(RwLock::new(Self::fetch_sink_inputs()));
-        let source_outputs = Arc::new(RwLock::new(Self::fetch_source_outputs()));
+        let (initial_state, initial_sinks, initial_sources, initial_sink_inputs, initial_source_outputs) = Self::fetch_full_state();
+        
+        let state = Arc::new(RwLock::new(initial_state));
+        let sinks = Arc::new(RwLock::new(initial_sinks));
+        let sources = Arc::new(RwLock::new(initial_sources));
+        let sink_inputs = Arc::new(RwLock::new(initial_sink_inputs));
+        let source_outputs = Arc::new(RwLock::new(initial_source_outputs));
 
         let state_clone = Arc::clone(&state);
         let sinks_clone = Arc::clone(&sinks);
@@ -182,7 +184,6 @@ impl AudioService {
                     Ok(child) => child,
                     Err(e) => {
                         eprintln!("Failed to start pw-mon: {e}. Falling back to polling.");
-                        // Fallback: poll every second
                         loop {
                             std::thread::sleep(std::time::Duration::from_secs(1));
                             if tx_clone.unbounded_send(()).is_err() {
@@ -196,7 +197,6 @@ impl AudioService {
                 if let Some(stdout) = child.stdout.take() {
                     let reader = BufReader::new(stdout);
                     for line in reader.lines().map_while(Result::ok) {
-                        // Look for "changed:" events which indicate state changes
                         if line.trim().starts_with("changed:")
                             && tx_clone.unbounded_send(()).is_err() {
                                 break;
@@ -204,31 +204,17 @@ impl AudioService {
                     }
                 }
 
-                // Cleanup
                 let _ = child.kill();
-            });
-
-            // Initial state fetch
-            let initial_state = Self::fetch_audio_state();
-            *state.write() = initial_state.clone();
-            let _ = this.update(cx, |_, cx| {
-                cx.emit(AudioStateChanged {
-                    state: initial_state,
-                });
-                cx.notify();
             });
 
             // Process events with debouncing
             let mut last_update = std::time::Instant::now();
-            let debounce_duration = std::time::Duration::from_millis(16); // ~60fps
+            let debounce_duration = std::time::Duration::from_millis(50); // Increased slightly for better efficiency
 
             while let Some(()) = rx.next().await {
-                // Debounce: only update if enough time has passed
                 let now = std::time::Instant::now();
                 if now.duration_since(last_update) < debounce_duration {
-                    // Drain any other events that came in during debounce
                     while let Ok(Some(())) = rx.try_next() {}
-                    // Wait for remaining debounce time
                     cx.background_executor()
                         .timer(debounce_duration - now.duration_since(last_update))
                         .await;
@@ -236,12 +222,8 @@ impl AudioService {
 
                 last_update = std::time::Instant::now();
 
-                // Fetch new state
-                let new_state = Self::fetch_audio_state();
-                let new_sinks = Self::fetch_sinks();
-                let new_sources = Self::fetch_sources();
-                let new_sink_inputs = Self::fetch_sink_inputs();
-                let new_source_outputs = Self::fetch_source_outputs();
+                // Optimized: Fetch everything in one go
+                let (new_state, new_sinks, new_sources, new_sink_inputs, new_source_outputs) = Self::fetch_full_state();
 
                 let state_changed = {
                     let mut current_state = state.write();
@@ -284,12 +266,109 @@ impl AudioService {
                 }
             }
 
-            // pw-mon died, restart after delay
             eprintln!("pw-mon process ended, restarting in 2 seconds...");
             cx.background_executor()
                 .timer(std::time::Duration::from_secs(2))
                 .await;
         }
+    }
+
+    fn fetch_full_state() -> (AudioState, Vec<AudioDevice>, Vec<AudioDevice>, Vec<AudioStream>, Vec<AudioStream>) {
+        // 1. Fetch volume/mute via wpctl (faster than parsing large pw-dump for this)
+        let state = Self::fetch_audio_state();
+
+        // 2. Fetch everything else via a SINGLE pw-dump call
+        let output = Command::new("pw-dump")
+            .output()
+            .ok()
+            .and_then(|o| String::from_utf8(o.stdout).ok())
+            .unwrap_or_default();
+
+        let nodes: Vec<serde_json::Value> = serde_json::from_str(&output).unwrap_or_default();
+        
+        let mut sinks = Vec::new();
+        let mut sources = Vec::new();
+        let mut sink_inputs = Vec::new();
+        let mut source_outputs = Vec::new();
+
+        for node in &nodes {
+            if node["type"] != "PipeWire:Interface:Node" {
+                continue;
+            }
+
+            let props = &node["info"]["props"];
+            let media_class = props["media.class"].as_str().unwrap_or_default();
+            let id = node["id"].as_u64().unwrap_or(0) as u32;
+
+            match media_class {
+                "Audio/Sink" => {
+                    let desc = props["node.description"]
+                        .as_str()
+                        .or_else(|| props["node.name"].as_str())
+                        .unwrap_or("Unknown Sink")
+                        .to_string();
+                    sinks.push(AudioDevice { id, name: desc.clone(), description: desc, is_default: false });
+                }
+                "Audio/Source" => {
+                    let desc = props["node.description"]
+                        .as_str()
+                        .or_else(|| props["node.name"].as_str())
+                        .unwrap_or("Unknown Source")
+                        .to_string();
+                    sources.push(AudioDevice { id, name: desc.clone(), description: desc, is_default: false });
+                }
+                "Stream/Output/Audio" => {
+                    if let Some(stream) = Self::parse_stream(node, true) {
+                        sink_inputs.push(stream);
+                    }
+                }
+                "Stream/Input/Audio" => {
+                    if let Some(stream) = Self::parse_stream(node, false) {
+                        source_outputs.push(stream);
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        (state, sinks, sources, sink_inputs, source_outputs)
+    }
+
+    fn parse_stream(node: &serde_json::Value, is_input: bool) -> Option<AudioStream> {
+        let id = node["id"].as_u64()? as u32;
+        let props = &node["info"]["props"];
+        
+        let app_name = props["application.name"]
+            .as_str()
+            .or_else(|| props["node.name"].as_str())?
+            .to_string();
+        
+        let params = &node["info"]["params"]["Props"];
+        let vol_muted = params.as_array().and_then(|arr| arr.first());
+        
+        let volume = vol_muted
+            .and_then(|p| p["channelVolumes"].as_array())
+            .and_then(|vols| vols.first())
+            .and_then(|v| v.as_f64())
+            .map(|v| (v * 100.0) as u8)
+            .unwrap_or(100);
+        
+        let muted = vol_muted
+            .and_then(|p| p["mute"].as_bool())
+            .unwrap_or(false);
+        
+        let window_title = props["media.name"]
+            .as_str()
+            .or_else(|| props["node.description"].as_str())
+            .map(|s| s.to_string());
+        
+        Some(AudioStream {
+            id,
+            app_name,
+            volume,
+            muted,
+            window_title,
+        })
     }
 
     fn fetch_audio_state() -> AudioState {
@@ -327,182 +406,6 @@ impl AudioService {
             source_volume,
             source_muted,
         }
-    }
-
-    fn fetch_sinks() -> Vec<AudioDevice> {
-        let output = Command::new("pw-dump")
-            .output()
-            .ok()
-            .and_then(|o| String::from_utf8(o.stdout).ok())
-            .unwrap_or_default();
-
-        let nodes: Vec<serde_json::Value> = serde_json::from_str(&output).unwrap_or_default();
-        
-        nodes
-            .iter()
-            .filter(|node| {
-                node["type"] == "PipeWire:Interface:Node"
-                    && node["info"]["props"]["media.class"] == "Audio/Sink"
-            })
-            .filter_map(|node| {
-                let id = node["id"].as_u64()? as u32;
-                let desc = node["info"]["props"]["node.description"]
-                    .as_str()
-                    .or_else(|| node["info"]["props"]["node.name"].as_str())?
-                    .to_string();
-                
-                // Check if it's the default sink by looking at metadata
-                let is_default = false; // We'll get this from metadata separately
-                
-                Some(AudioDevice {
-                    id,
-                    name: desc.clone(),
-                    description: desc,
-                    is_default,
-                })
-            })
-            .collect()
-    }
-
-    fn fetch_sources() -> Vec<AudioDevice> {
-        let output = Command::new("pw-dump")
-            .output()
-            .ok()
-            .and_then(|o| String::from_utf8(o.stdout).ok())
-            .unwrap_or_default();
-
-        let nodes: Vec<serde_json::Value> = serde_json::from_str(&output).unwrap_or_default();
-        
-        nodes
-            .iter()
-            .filter(|node| {
-                node["type"] == "PipeWire:Interface:Node"
-                    && node["info"]["props"]["media.class"] == "Audio/Source"
-            })
-            .filter_map(|node| {
-                let id = node["id"].as_u64()? as u32;
-                let desc = node["info"]["props"]["node.description"]
-                    .as_str()
-                    .or_else(|| node["info"]["props"]["node.name"].as_str())?
-                    .to_string();
-                
-                let is_default = false;
-                
-                Some(AudioDevice {
-                    id,
-                    name: desc.clone(),
-                    description: desc,
-                    is_default,
-                })
-            })
-            .collect()
-    }
-
-    fn fetch_sink_inputs() -> Vec<AudioStream> {
-        let output = Command::new("pw-dump")
-            .output()
-            .ok()
-            .and_then(|o| String::from_utf8(o.stdout).ok())
-            .unwrap_or_default();
-
-        let nodes: Vec<serde_json::Value> = serde_json::from_str(&output).unwrap_or_default();
-        
-        nodes
-            .iter()
-            .filter(|node| {
-                node["type"] == "PipeWire:Interface:Node"
-                    && node["info"]["props"]["media.class"] == "Stream/Output/Audio"
-            })
-            .filter_map(|node| {
-                let id = node["id"].as_u64()? as u32;
-                let app_name = node["info"]["props"]["application.name"]
-                    .as_str()
-                    .or_else(|| node["info"]["props"]["node.name"].as_str())?
-                    .to_string();
-                
-                // Get volume from channelVolumes if available
-                let volume = node["info"]["params"]["Props"]
-                    .as_array()
-                    .and_then(|arr| arr.first())
-                    .and_then(|p| p["channelVolumes"].as_array())
-                    .and_then(|vols| vols.first())
-                    .and_then(|v| v.as_f64())
-                    .map(|v| (v * 100.0) as u8)
-                    .unwrap_or(100);
-                
-                let muted = node["info"]["params"]["Props"]
-                    .as_array()
-                    .and_then(|arr| arr.first())
-                    .and_then(|p| p["mute"].as_bool())
-                    .unwrap_or(false);
-                
-                let window_title = node["info"]["props"]["media.name"]
-                    .as_str()
-                    .or_else(|| node["info"]["props"]["node.description"].as_str())
-                    .map(|s| s.to_string());
-                
-                Some(AudioStream {
-                    id,
-                    app_name,
-                    volume,
-                    muted,
-                    window_title,
-                })
-            })
-            .collect()
-    }
-
-    fn fetch_source_outputs() -> Vec<AudioStream> {
-        let output = Command::new("pw-dump")
-            .output()
-            .ok()
-            .and_then(|o| String::from_utf8(o.stdout).ok())
-            .unwrap_or_default();
-
-        let nodes: Vec<serde_json::Value> = serde_json::from_str(&output).unwrap_or_default();
-        
-        nodes
-            .iter()
-            .filter(|node| {
-                node["type"] == "PipeWire:Interface:Node"
-                    && node["info"]["props"]["media.class"] == "Stream/Input/Audio"
-            })
-            .filter_map(|node| {
-                let id = node["id"].as_u64()? as u32;
-                let app_name = node["info"]["props"]["application.name"]
-                    .as_str()
-                    .or_else(|| node["info"]["props"]["node.name"].as_str())?
-                    .to_string();
-                
-                let volume = node["info"]["params"]["Props"]
-                    .as_array()
-                    .and_then(|arr| arr.first())
-                    .and_then(|p| p["channelVolumes"].as_array())
-                    .and_then(|vols| vols.first())
-                    .and_then(|v| v.as_f64())
-                    .map(|v| (v * 100.0) as u8)
-                    .unwrap_or(100);
-                
-                let muted = node["info"]["params"]["Props"]
-                    .as_array()
-                    .and_then(|arr| arr.first())
-                    .and_then(|p| p["mute"].as_bool())
-                    .unwrap_or(false);
-                
-                let window_title = node["info"]["props"]["media.name"]
-                    .as_str()
-                    .or_else(|| node["info"]["props"]["node.description"].as_str())
-                    .map(|s| s.to_string());
-                
-                Some(AudioStream {
-                    id,
-                    app_name,
-                    volume,
-                    muted,
-                    window_title,
-                })
-            })
-            .collect()
     }
 }
 

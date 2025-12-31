@@ -47,17 +47,12 @@ impl EventEmitter<ActiveWindowChanged> for HyprlandService {}
 
 impl HyprlandService {
     pub fn new(cx: &mut Context<Self>) -> Self {
-        let workspaces = Arc::new(RwLock::new(Vec::new()));
-        let active_workspace_id = Arc::new(RwLock::new(1));
-        let active_window = Arc::new(RwLock::new(None));
-
-        // Fetch initial state
         let (initial_workspaces, initial_active) = Self::fetch_hyprland_data();
         let initial_window = Self::fetch_active_window();
 
-        *workspaces.write() = initial_workspaces.clone();
-        *active_workspace_id.write() = initial_active;
-        *active_window.write() = initial_window.clone();
+        let workspaces = Arc::new(RwLock::new(initial_workspaces));
+        let active_workspace_id = Arc::new(RwLock::new(initial_active));
+        let active_window = Arc::new(RwLock::new(initial_window));
 
         // Spawn background task to monitor Hyprland events
         let workspaces_clone = Arc::clone(&workspaces);
@@ -110,9 +105,7 @@ impl HyprlandService {
     ) {
         let hypr_sig = match std::env::var("HYPRLAND_INSTANCE_SIGNATURE") {
             Ok(sig) => sig,
-            Err(_) => {
-                return;
-            }
+            Err(_) => return,
         };
 
         let socket_path = format!(
@@ -121,7 +114,6 @@ impl HyprlandService {
             hypr_sig
         );
 
-        // Run blocking socket IO on background executor
         let (tx, mut rx) = futures::channel::mpsc::unbounded();
 
         cx.background_executor()
@@ -129,60 +121,81 @@ impl HyprlandService {
                 if let Ok(stream) = UnixStream::connect(&socket_path) {
                     let reader = BufReader::new(stream);
                     for line in reader.lines().map_while(Result::ok) {
+                        // Notify which type of update is needed
                         if line.starts_with("workspace>>")
                             || line.starts_with("createworkspace>>")
-                            || line.starts_with("destroyworkspace>>")
-                            || line.starts_with("activewindow>>")
+                            || line.starts_with("destroyworkspace>>") {
+                            let _ = tx.unbounded_send(true); // Workspace update
+                        } else if line.starts_with("activewindow>>")
                             || line.starts_with("closewindow>>")
-                            || line.starts_with("openwindow>>")
-                        {
-                            let _ = tx.unbounded_send(());
+                            || line.starts_with("openwindow>>") {
+                            let _ = tx.unbounded_send(false); // Window update
                         }
                     }
                 }
             })
             .detach();
 
-        // Process events on foreground
-        while rx.next().await.is_some() {
-            let (new_workspaces, new_active_id) = Self::fetch_hyprland_data();
-            let new_window = Self::fetch_active_window();
+        while let Some(is_workspace_event) = rx.next().await {
+            // Drain remaining events in channel to avoid redundant updates
+            let mut more_ws = false;
+            let mut more_win = false;
+            while let Ok(Some(ev)) = rx.try_next() {
+                if ev { more_ws = true; } else { more_win = true; }
+            }
 
-            let workspace_changed = {
+            let do_ws = is_workspace_event || more_ws;
+            let do_win = !is_workspace_event || more_win;
+
+            let mut updated_ws = None;
+            let mut updated_active_id = None;
+            let mut updated_win = None;
+
+            if do_ws {
+                let (ws, id) = Self::fetch_hyprland_data();
+                updated_ws = Some(ws);
+                updated_active_id = Some(id);
+            }
+
+            if do_win {
+                updated_win = Some(Self::fetch_active_window());
+            }
+
+            let workspace_changed = if let (Some(new_ws), Some(new_id)) = (updated_ws.clone(), updated_active_id) {
                 let mut ws = workspaces.write();
                 let mut active_id = active_workspace_id.write();
-                let changed = *ws != new_workspaces || *active_id != new_active_id;
+                let changed = *ws != new_ws || *active_id != new_id;
                 if changed {
-                    *ws = new_workspaces.clone();
-                    *active_id = new_active_id;
+                    *ws = new_ws;
+                    *active_id = new_id;
                 }
                 changed
-            };
+            } else { false };
 
-            let window_changed = {
+            let window_changed = if let Some(new_win) = updated_win.clone() {
                 let mut win = active_window.write();
-                let changed = *win != new_window;
+                let changed = *win != new_win;
                 if changed {
-                    *win = new_window.clone();
+                    *win = new_win;
                 }
                 changed
-            };
+            } else { false };
 
             if workspace_changed || window_changed {
-                if let Ok(()) = this.update(cx, |_this, cx| {
+                let _ = this.update(cx, |_this, cx| {
                     if workspace_changed {
                         cx.emit(WorkspaceChanged {
-                            workspaces: new_workspaces.clone(),
-                            active_workspace_id: new_active_id,
+                            workspaces: workspaces.read().clone(),
+                            active_workspace_id: *active_workspace_id.read(),
                         });
                     }
                     if window_changed {
                         cx.emit(ActiveWindowChanged {
-                            window: new_window.clone(),
+                            window: active_window.read().clone(),
                         });
                     }
                     cx.notify();
-                }) {}
+                });
             }
         }
     }
@@ -192,7 +205,6 @@ impl HyprlandService {
         let active_workspace_json = Self::hyprctl(&["activeworkspace", "-j"]);
 
         let workspaces: Vec<Workspace> = serde_json::from_str(&workspaces_json).unwrap_or_default();
-
         let active_workspace_id: i32 =
             serde_json::from_str::<serde_json::Value>(&active_workspace_json)
                 .map(|v| v["id"].as_i64().unwrap_or(1) as i32)
@@ -203,11 +215,9 @@ impl HyprlandService {
 
     fn fetch_active_window() -> Option<ActiveWindow> {
         let active_window_json = Self::hyprctl(&["activewindow", "-j"]);
-
         if active_window_json.trim().is_empty() || active_window_json == "{}" {
             return None;
         }
-
         serde_json::from_str::<ActiveWindow>(&active_window_json).ok()
     }
 
@@ -221,7 +231,6 @@ impl HyprlandService {
     }
 }
 
-// Global accessor
 struct GlobalHyprlandService(Entity<HyprlandService>);
 impl Global for GlobalHyprlandService {}
 

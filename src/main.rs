@@ -22,6 +22,7 @@ use services::{
     systray::SystrayService,
     control_center::ControlCenterService,
 };
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use widgets::{
@@ -31,13 +32,32 @@ use widgets::{
 
 struct Assets {
     base: PathBuf,
+    cache: parking_lot::RwLock<HashMap<String, Vec<u8>>>,
 }
 
 impl AssetSource for Assets {
     fn load(&self, path: &str) -> Result<Option<std::borrow::Cow<'static, [u8]>>> {
-        std::fs::read(self.base.join(path))
-            .map(|data| Some(std::borrow::Cow::Owned(data)))
-            .map_err(|err| err.into())
+        {
+            let cache = self.cache.read();
+            if let Some(data) = cache.get(path) {
+                return Ok(Some(std::borrow::Cow::Owned(data.clone())));
+            }
+        }
+
+        match std::fs::read(self.base.join(path)) {
+            Ok(data) => {
+                let mut cache = self.cache.write();
+                cache.insert(path.to_string(), data.clone());
+                Ok(Some(std::borrow::Cow::Owned(data)))
+            }
+            Err(e) => {
+                // If file not found or other error, return None or propagate error
+                // GPUI expects Ok(None) for "not found" usually, or just error.
+                // Original code: .map_err(|err| err.into())
+                // fs::read returns io::Error.
+                Err(e.into())
+            }
+        }
     }
 
     fn list(&self, path: &str) -> Result<Vec<SharedString>> {
@@ -69,7 +89,10 @@ fn main() {
     };
 
     Application::new()
-        .with_assets(Assets { base: assets_path })
+        .with_assets(Assets {
+            base: assets_path,
+            cache: parking_lot::RwLock::new(HashMap::new()),
+        })
         .run(|cx: &mut App| {
             // Initialize gpui_tokio
             gpui_tokio::init(cx);
