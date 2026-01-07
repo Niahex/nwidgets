@@ -109,14 +109,15 @@ impl AudioService {
         self.source_outputs.read().clone()
     }
 
-    pub fn set_sink_volume(&self, volume: u8, cx: &mut Context<Self>) {
-        let volume = volume.min(100);
-        gpui_tokio::Tokio::spawn(cx, async move {
-            let _ = tokio::process::Command::new("wpctl")
-                .args(["set-volume", "@DEFAULT_AUDIO_SINK@", &format!("{volume}%")])
-                .output()
-                .await;
-        }).detach();
+    pub fn set_sink_volume(&self, volume: u8, _cx: &mut Context<Self>) {
+        let _volume = volume.min(100);
+        // Commande wpctl désactivée pour test
+        // gpui_tokio::Tokio::spawn(cx, async move {
+        //     let _ = tokio::process::Command::new("wpctl")
+        //         .args(["set-volume", "@DEFAULT_AUDIO_SINK@", &format!("{volume}%")])
+        //         .output()
+        //         .await;
+        // }).detach();
     }
 
     pub fn set_source_volume(&self, volume: u8, cx: &mut Context<Self>) {

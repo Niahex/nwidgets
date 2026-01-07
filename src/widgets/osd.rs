@@ -8,26 +8,27 @@ pub struct OsdWidget {
     current_event: Option<OsdEvent>,
     visible: bool,
     displayed_volume: f32, // Volume affiché (animé)
-    target_volume: f32,    // Volume cible
+    target_volume: f32,    // Volume cible (local)
+    last_system_volume: u8, // Dernier volume reçu du système
 }
 
 impl OsdWidget {
     pub fn new(cx: &mut Context<Self>, initial_event: Option<OsdEvent>, initial_visible: bool) -> Self {
         let osd = OsdService::global(cx);
         
-        let initial_volume = if let Some(OsdEvent::Volume(_, vol, _)) = &initial_event {
-            *vol as f32
-        } else {
-            0.0
-        };
+        // Récupérer le volume initial une seule fois
+        let initial_volume = Self::get_initial_volume();
         
         cx.subscribe(&osd, move |this, _osd, event: &OsdStateChanged, cx| {
             this.current_event = event.event.clone();
             this.visible = event.visible;
             
-            // Mettre à jour le volume cible directement sans arrondir
-            if let Some(OsdEvent::Volume(_, vol, _)) = &event.event {
-                this.target_volume = *vol as f32;
+            // Calculer le delta et incrémenter/décrémenter localement
+            if let Some(OsdEvent::Volume(_, new_vol, _)) = &event.event {
+                let delta = (*new_vol as i16) - (this.last_system_volume as i16);
+                this.target_volume = (this.target_volume + delta as f32).clamp(0.0, 100.0);
+                this.last_system_volume = *new_vol;
+                
                 // Snap immédiatement si la différence est grande
                 if (this.displayed_volume - this.target_volume).abs() > 10.0 {
                     this.displayed_volume = this.target_volume;
@@ -57,7 +58,26 @@ impl OsdWidget {
             visible: initial_visible,
             displayed_volume: initial_volume,
             target_volume: initial_volume,
+            last_system_volume: initial_volume as u8,
         }
+    }
+    
+    fn get_initial_volume() -> f32 {
+        // Récupérer le volume une seule fois au démarrage
+        if let Ok(output) = std::process::Command::new("wpctl")
+            .args(["get-volume", "@DEFAULT_AUDIO_SINK@"])
+            .output()
+        {
+            if let Ok(text) = String::from_utf8(output.stdout) {
+                // Format: "Volume: 0.50" -> 50%
+                if let Some(vol_str) = text.split_whitespace().nth(1) {
+                    if let Ok(vol) = vol_str.parse::<f32>() {
+                        return (vol * 100.0).clamp(0.0, 100.0);
+                    }
+                }
+            }
+        }
+        50.0 // Fallback
     }
 }
 
