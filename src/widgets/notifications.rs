@@ -120,8 +120,8 @@ impl Render for NotificationsWidget {
                                     .flex()
                                     .gap_2()
                                     .items_center()
-                                    .child(if !notif.app_icon.is_empty() {
-                                        Icon::new(&notif.app_icon)
+                                    .child(if !notif.app_icon.as_ref().is_empty() {
+                                        Icon::new(notif.app_icon.to_string())
                                             .size(px(20.0))
                                             .color(theme.text)
                                             .preserve_colors(true)
@@ -151,7 +151,7 @@ impl Render for NotificationsWidget {
                             .text_color(theme.text)
                             .child(notif.summary.clone()),
                     )
-                    .when(!notif.body.is_empty(), |this| {
+                    .when(!notif.body.as_ref().is_empty(), |this| {
                         this.child(
                             div()
                                 .text_sm()

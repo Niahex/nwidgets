@@ -1,5 +1,5 @@
 use gpui::prelude::*;
-use gpui::{App, Context, Entity, EventEmitter, Global};
+use gpui::{App, Context, Entity, EventEmitter, Global, SharedString};
 use parking_lot::Mutex;
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
@@ -8,14 +8,14 @@ use zbus::Connection;
 
 #[derive(Clone, Debug)]
 pub struct Notification {
-    pub app_name: String,
-    pub summary: String,
-    pub body: String,
+    pub app_name: SharedString,
+    pub summary: SharedString,
+    pub body: SharedString,
     pub urgency: u8,
     pub timestamp: u64,
     #[allow(dead_code)]
     pub actions: Vec<String>,
-    pub app_icon: String,
+    pub app_icon: SharedString,
 }
 
 #[derive(Clone)]
@@ -101,16 +101,16 @@ impl NotificationServer {
             .unwrap_or(1);
 
         let notification = Notification {
-            app_name,
-            summary,
-            body,
+            app_name: app_name.into(),
+            summary: summary.into(),
+            body: body.into(),
             urgency,
             timestamp: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs(),
             actions,
-            app_icon,
+            app_icon: app_icon.into(),
         };
 
         // Mise à jour de l'historique et envoi

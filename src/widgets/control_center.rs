@@ -453,7 +453,6 @@ impl ControlCenterWidget {
                             streams
                                 .iter()
                                 .map(|stream| {
-                                    let _stream_id = stream.id;
                                     let stream_volume = stream.volume;
                                     let (display_name, icon_name, preserve_colors) =
                                         get_stream_display(stream);
@@ -820,7 +819,7 @@ impl ControlCenterWidget {
                                 net_state
                                     .ssid
                                     .clone()
-                                    .unwrap_or_else(|| "Not connected".to_string()),
+                                    .unwrap_or_else(|| "Not connected".into()),
                             ),
                         )
                         .into_any_element()
@@ -860,7 +859,7 @@ impl ControlCenterWidget {
                     .when(!n.body.is_empty(), |this| {
                         this.child(
                             div()
-                                .text_size(px(12.))
+                                .text_size(px(12.0))
                                 .text_color(theme.text_muted)
                                 .child(n.body.clone()),
                         )
