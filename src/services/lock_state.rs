@@ -16,7 +16,6 @@ pub struct LockStateChanged {
     pub enabled: bool,
 }
 
-// On va utiliser le pattern Model de GPUI
 pub struct LockMonitor {
     caps_lock: bool,
     num_lock: bool,
@@ -36,13 +35,19 @@ impl LockMonitor {
         cx.spawn(|cx: &mut AsyncApp| {
             let mut cx = cx.clone();
             async move {
-                loop {
-                    cx.background_executor()
-                        .timer(Duration::from_millis(100))
-                        .await;
+                // Timer un peu plus lent pour économiser le CPU (200ms est assez réactif pour une LED)
+                let mut interval = cx.background_executor().timer(Duration::from_millis(200));
 
-                    let current_caps = Self::read_state(LockType::CapsLock);
-                    let current_num = Self::read_state(LockType::NumLock);
+                // Pré-calculer les chemins valides pour éviter de scanner à chaque itération
+                let caps_paths = Self::find_valid_paths(LockType::CapsLock);
+                let num_paths = Self::find_valid_paths(LockType::NumLock);
+
+                loop {
+                    interval.await;
+                    interval = cx.background_executor().timer(Duration::from_millis(200));
+
+                    let current_caps = Self::check_paths(&caps_paths);
+                    let current_num = Self::check_paths(&num_paths);
 
                     let _ = weak_model.update(&mut cx, |this, cx| {
                         if this.caps_lock != current_caps {
@@ -69,32 +74,38 @@ impl LockMonitor {
         model
     }
 
-    fn read_state(lock_type: LockType) -> bool {
-        // Essayer plusieurs chemins possibles pour capslock car input0 n'est pas garanti
-        let paths = match lock_type {
-            LockType::CapsLock => vec![
-                "/sys/class/leds/input0::capslock/brightness",
-                "/sys/class/leds/input1::capslock/brightness",
-                "/sys/class/leds/input2::capslock/brightness",
-                "/sys/class/leds/input3::capslock/brightness",
-                "/sys/class/leds/capslock/brightness", // Parfois direct
-            ],
-            LockType::NumLock => vec![
-                "/sys/class/leds/input0::numlock/brightness",
-                "/sys/class/leds/input1::numlock/brightness",
-                "/sys/class/leds/input2::numlock/brightness",
-                "/sys/class/leds/input3::numlock/brightness",
-                "/sys/class/leds/numlock/brightness",
-            ],
+    fn find_valid_paths(lock_type: LockType) -> Vec<std::path::PathBuf> {
+        let mut valid_paths = Vec::new();
+        let pattern = match lock_type {
+            LockType::CapsLock => "capslock",
+            LockType::NumLock => "numlock",
         };
 
+        if let Ok(entries) = fs::read_dir("/sys/class/leds") {
+            for entry in entries.flatten() {
+                if entry.file_name().to_string_lossy().contains(pattern) {
+                    valid_paths.push(entry.path().join("brightness"));
+                }
+            }
+        }
+        valid_paths
+    }
+
+    fn check_paths(paths: &[std::path::PathBuf]) -> bool {
         for path in paths {
             if let Ok(content) = fs::read_to_string(path) {
                 let trimmed = content.trim();
-                return trimmed == "1" || trimmed.parse::<u8>().unwrap_or(0) > 0;
+                if trimmed == "1" || trimmed.parse::<u8>().unwrap_or(0) > 0 {
+                    return true;
+                }
             }
         }
-
         false
+    }
+
+    // Méthode de fallback pour l'initialisation (avant le spawn du thread)
+    fn read_state(lock_type: LockType) -> bool {
+        let paths = Self::find_valid_paths(lock_type);
+        Self::check_paths(&paths)
     }
 }
