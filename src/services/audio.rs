@@ -103,10 +103,12 @@ impl AudioService {
         }
     }
 
-    fn get_volume_wpctl(device: &str) -> (u8, bool) {
-        if let Ok(output) = std::process::Command::new("wpctl")
+    // Changed to async and use tokio::process::Command to avoid blocking the runtime
+    async fn get_volume_wpctl(device: &str) -> (u8, bool) {
+        if let Ok(output) = tokio::process::Command::new("wpctl")
             .args(["get-volume", device])
             .output()
+            .await
         {
             if let Ok(text) = String::from_utf8(output.stdout) {
                 let muted = text.contains("[MUTED]");
@@ -244,8 +246,8 @@ impl AudioService {
             });
 
             // Initial state fetch
-            let (sink_vol, sink_muted) = Self::get_volume_wpctl("@DEFAULT_AUDIO_SINK@");
-            let (source_vol, source_muted) = Self::get_volume_wpctl("@DEFAULT_AUDIO_SOURCE@");
+            let (sink_vol, sink_muted) = Self::get_volume_wpctl("@DEFAULT_AUDIO_SINK@").await;
+            let (source_vol, source_muted) = Self::get_volume_wpctl("@DEFAULT_AUDIO_SOURCE@").await;
             {
                 let mut s = state.write();
                 s.sink_volume = sink_vol;
@@ -269,9 +271,9 @@ impl AudioService {
                 }
                 last_update = std::time::Instant::now();
 
-                // Update volumes
-                let (sink_vol, sink_muted) = Self::get_volume_wpctl("@DEFAULT_AUDIO_SINK@");
-                let (source_vol, source_muted) = Self::get_volume_wpctl("@DEFAULT_AUDIO_SOURCE@");
+                // Update volumes asynchronously
+                let (sink_vol, sink_muted) = Self::get_volume_wpctl("@DEFAULT_AUDIO_SINK@").await;
+                let (source_vol, source_muted) = Self::get_volume_wpctl("@DEFAULT_AUDIO_SOURCE@").await;
 
                 // Build device lists from collected nodes
                 let nodes_snapshot = nodes_data.read();

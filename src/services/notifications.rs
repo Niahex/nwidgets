@@ -29,7 +29,7 @@ pub struct NotificationsEmpty;
 
 // État interne partagé protégé par un Mutex
 struct NotificationState {
-    sender: Option<std::sync::mpsc::Sender<Notification>>,
+    sender: Option<tokio::sync::mpsc::UnboundedSender<Notification>>,
     history: VecDeque<Notification>,
 }
 
@@ -122,7 +122,7 @@ impl NotificationServer {
             state.history.pop_back();
         }
 
-        // 2. Envoi via le channel
+        // 2. Envoi via le channel tokio
         if let Some(sender) = &state.sender {
             if let Err(e) = sender.send(notification) {
                 eprintln!("[NOTIF] ❌ Failed to send to UI: {e}");
@@ -158,53 +158,33 @@ impl NotificationService {
         // Démarrer le serveur D-Bus une seule fois
         Self::start_dbus_server_once();
 
-        // S'abonner aux notifications via le channel
         let notifications = Arc::new(parking_lot::RwLock::new(Vec::new()));
-        let notifications_clone = Arc::clone(&notifications);
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
 
-        let (tx, rx) = std::sync::mpsc::channel();
-
-        // Initialiser le sender
+        // Initialiser le sender dans l'état global
         {
             let mut state = STATE.lock();
             state.sender = Some(tx);
         }
 
-        // Spawner un thread pour recevoir les notifications du D-Bus
-        let notifications_thread = Arc::clone(&notifications);
-        std::thread::spawn(move || {
-            while let Ok(notification) = rx.recv() {
+        let notifications_clone = Arc::clone(&notifications);
+
+        // Traitement réactif des notifications (sans polling !)
+        cx.spawn(async move |this, cx| {
+            while let Some(notification) = rx.recv().await {
                 println!(
-                    "[NOTIF_GPUI] 📢 Received notification: {} - {}",
+                    "[NOTIF_GPUI] 📢 Processing notification: {} - {}",
                     notification.summary, notification.body
                 );
-                notifications_thread.write().push(notification);
-            }
-        });
-
-        // Polling pour détecter les nouvelles notifications et émettre les événements
-        cx.spawn(async move |this, cx| {
-            let mut last_count = 0;
-            loop {
-                cx.background_executor()
-                    .timer(std::time::Duration::from_millis(100))
-                    .await;
-
-                let current_count = notifications_clone.read().len();
-                if current_count > last_count {
-                    // Nouvelle(s) notification(s) détectée(s)
-                    let notifs = notifications_clone.read();
-                    for notification in notifs.iter().skip(last_count) {
-                        let notif = notification.clone();
-                        let _ = this.update(cx, |_this, cx| {
-                            cx.emit(NotificationAdded {
-                                notification: notif,
-                            });
-                            cx.notify();
-                        });
-                    }
-                    last_count = current_count;
-                }
+                
+                notifications_clone.write().push(notification.clone());
+                
+                let _ = this.update(cx, |_this, cx| {
+                    cx.emit(NotificationAdded {
+                        notification,
+                    });
+                    cx.notify();
+                });
             }
         })
         .detach();
@@ -221,7 +201,12 @@ impl NotificationService {
             let state_ref = Arc::clone(&STATE);
 
             std::thread::spawn(move || {
-                futures::executor::block_on(async {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("Failed to create tokio runtime for notifications");
+                
+                rt.block_on(async {
                     if let Err(e) = Self::run_dbus_server(state_ref).await {
                         eprintln!("[NOTIF] ❌ D-Bus Error: {e}");
                     }
