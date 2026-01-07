@@ -52,13 +52,10 @@ impl AudioService {
     }
 
     fn get_initial_state() -> AudioState {
-        let sink_volume = Self::get_volume_wpctl("@DEFAULT_AUDIO_SINK@");
-        let source_volume = Self::get_volume_wpctl("@DEFAULT_AUDIO_SOURCE@");
-        
         AudioState {
-            sink_volume,
+            sink_volume: Self::get_volume_wpctl("@DEFAULT_AUDIO_SINK@"),
             sink_muted: false,
-            source_volume,
+            source_volume: Self::get_volume_wpctl("@DEFAULT_AUDIO_SOURCE@"),
             source_muted: false,
         }
     }
@@ -85,55 +82,89 @@ impl AudioService {
         cx: &mut gpui::AsyncApp,
     ) {
         loop {
-            let (tx, mut rx) = futures::channel::mpsc::unbounded();
+            let (tx, mut rx) = futures::channel::mpsc::unbounded::<()>();
             
             // Spawn PipeWire listener in background thread
-            std::thread::spawn(move || {
-                pw::init();
-                
-                let mainloop = match pw::main_loop::MainLoopBox::new(None) {
-                    Ok(ml) => ml,
-                    Err(e) => {
-                        eprintln!("Failed to create PipeWire mainloop: {e}");
-                        return;
-                    }
-                };
-                
-                let context = match pw::context::ContextBox::new(&mainloop.loop_(), None) {
-                    Ok(ctx) => ctx,
-                    Err(e) => {
-                        eprintln!("Failed to create PipeWire context: {e}");
-                        return;
-                    }
-                };
-                
-                let core = match context.connect(None) {
-                    Ok(c) => c,
-                    Err(e) => {
-                        eprintln!("Failed to connect to PipeWire: {e}");
-                        return;
-                    }
-                };
-                
-                let registry = match core.get_registry() {
-                    Ok(r) => r,
-                    Err(e) => {
-                        eprintln!("Failed to get PipeWire registry: {e}");
-                        return;
-                    }
-                };
-                
-                let _listener = registry
-                    .add_listener_local()
-                    .global(move |global| {
-                        // Notify on any node change (includes volume changes)
-                        if global.type_ == pw::types::ObjectType::Node {
-                            let _ = tx.unbounded_send(());
+            std::thread::spawn({
+                let tx = tx;
+                move || {
+                    pw::init();
+                    
+                    let mainloop = match pw::main_loop::MainLoopRc::new(None) {
+                        Ok(ml) => ml,
+                        Err(e) => {
+                            eprintln!("[AudioService] Failed to create PipeWire mainloop: {e}");
+                            return;
                         }
-                    })
-                    .register();
-                
-                mainloop.run();
+                    };
+                    
+                    let context = match pw::context::ContextRc::new(&mainloop, None) {
+                        Ok(ctx) => ctx,
+                        Err(e) => {
+                            eprintln!("[AudioService] Failed to create PipeWire context: {e}");
+                            return;
+                        }
+                    };
+                    
+                    let core = match context.connect_rc(None) {
+                        Ok(c) => c,
+                        Err(e) => {
+                            eprintln!("[AudioService] Failed to connect to PipeWire: {e}");
+                            return;
+                        }
+                    };
+                    
+                    let registry = match core.get_registry_rc() {
+                        Ok(r) => r,
+                        Err(e) => {
+                            eprintln!("[AudioService] Failed to get PipeWire registry: {e}");
+                            return;
+                        }
+                    };
+                    
+                    // Store nodes to keep them alive
+                    let nodes: std::rc::Rc<std::cell::RefCell<Vec<pw::node::Node>>> = 
+                        std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
+                    let listeners: std::rc::Rc<std::cell::RefCell<Vec<pw::node::NodeListener>>> = 
+                        std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
+                    
+                    let nodes_clone = nodes.clone();
+                    let listeners_clone = listeners.clone();
+                    let registry_clone = registry.clone();
+                    
+                    let _registry_listener = registry
+                        .add_listener_local()
+                        .global(move |global| {
+                            if global.type_ == pw::types::ObjectType::Node {
+                                if let Some(props) = &global.props {
+                                    let media_class = props.get("media.class");
+                                    
+                                    if let Some(class) = media_class {
+                                        if class.contains("Audio/Sink") || class.contains("Audio/Source") {
+                                            if let Ok(node) = registry_clone.bind::<pw::node::Node, _>(global) {
+                                                let tx_param = tx.clone();
+                                                
+                                                let node_listener = node
+                                                    .add_listener_local()
+                                                    .param(move |_, _, _, _, _| {
+                                                        let _ = tx_param.unbounded_send(());
+                                                    })
+                                                    .register();
+                                                
+                                                node.subscribe_params(&[pw::spa::param::ParamType::Props]);
+                                                
+                                                nodes_clone.borrow_mut().push(node);
+                                                listeners_clone.borrow_mut().push(node_listener);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        })
+                        .register();
+                    
+                    mainloop.run();
+                }
             });
             
             // Process events with debouncing
@@ -143,7 +174,6 @@ impl AudioService {
             while let Some(()) = rx.next().await {
                 let now = std::time::Instant::now();
                 if now.duration_since(last_update) < debounce_duration {
-                    // Drain pending events
                     while rx.try_next().is_ok() {}
                     cx.background_executor()
                         .timer(debounce_duration - now.duration_since(last_update))
@@ -152,7 +182,6 @@ impl AudioService {
                 
                 last_update = std::time::Instant::now();
                 
-                // Get new state
                 let new_state = Self::get_initial_state();
                 
                 let changed = {
@@ -172,7 +201,7 @@ impl AudioService {
                 }
             }
             
-            eprintln!("PipeWire connection lost, restarting in 2 seconds...");
+            eprintln!("[AudioService] PipeWire connection lost, reconnecting...");
             cx.background_executor().timer(std::time::Duration::from_secs(2)).await;
         }
     }
