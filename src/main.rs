@@ -96,10 +96,10 @@ fn main() {
         .run(|cx: &mut App| {
             // Initialize gpui_tokio
             gpui_tokio::init(cx);
-            
+
             // Initialize theme
             cx.set_global(theme::Theme::nord_dark());
-            
+
             // Initialize global services
             HyprlandService::init(cx);
             AudioService::init(cx);

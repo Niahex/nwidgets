@@ -1,6 +1,4 @@
-use crate::services::notifications::{
-    Notification, NotificationAdded, NotificationService,
-};
+use crate::services::notifications::{Notification, NotificationAdded, NotificationService};
 use crate::utils::Icon;
 use gpui::prelude::*;
 use gpui::*;
@@ -14,6 +12,7 @@ pub struct NotificationsStateChanged {
 }
 
 pub struct NotificationsWidget {
+    #[allow(dead_code)]
     service: Entity<NotificationService>,
     notifications: Arc<RwLock<Vec<Notification>>>,
 }

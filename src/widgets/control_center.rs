@@ -23,10 +23,12 @@ pub struct ControlCenterWidget {
     last_mic_update: Option<Instant>,
 }
 
-fn get_stream_display(stream: &crate::services::audio::AudioStream) -> (SharedString, &'static str, bool) {
+fn get_stream_display(
+    stream: &crate::services::audio::AudioStream,
+) -> (SharedString, &'static str, bool) {
     let title = stream.window_title.as_ref().unwrap_or(&stream.app_name);
     let title_lower = title.to_lowercase();
-    
+
     let (icon, preserve_colors) = if title_lower.contains("youtube") {
         ("youtube", true)
     } else if title_lower.contains("twitch") {
@@ -44,13 +46,13 @@ fn get_stream_display(stream: &crate::services::audio::AudioStream) -> (SharedSt
     } else {
         ("application-x-executable", false)
     };
-    
+
     let display_name: SharedString = if title.len() > 40 {
         format!("{}...", &title[..37]).into()
     } else {
         title.clone()
     };
-    
+
     (display_name, icon, preserve_colors)
 }
 
@@ -65,25 +67,38 @@ impl ControlCenterWidget {
         let audio_state = audio.read(cx).state();
 
         // Subscriptions
-        cx.subscribe(&control_center, |_, _, _, cx| cx.notify()).detach();
-        
+        cx.subscribe(&control_center, |_, _, _, cx| cx.notify())
+            .detach();
+
         cx.subscribe(&audio, |this, _, _, cx| {
             let audio_state = this.audio.read(cx).state();
             let now = Instant::now();
-            
+
             // Sync UI with audio state if no recent user interaction (prevents jumping)
-            if this.last_volume_update.map(|last| now.duration_since(last) > Duration::from_millis(200)).unwrap_or(true) {
+            if this
+                .last_volume_update
+                .map(|last| now.duration_since(last) > Duration::from_millis(200))
+                .unwrap_or(true)
+            {
                 this.last_volume = audio_state.sink_volume;
             }
-            if this.last_mic_update.map(|last| now.duration_since(last) > Duration::from_millis(200)).unwrap_or(true) {
+            if this
+                .last_mic_update
+                .map(|last| now.duration_since(last) > Duration::from_millis(200))
+                .unwrap_or(true)
+            {
                 this.last_mic_volume = audio_state.source_volume;
             }
             cx.notify();
-        }).detach();
+        })
+        .detach();
 
         cx.subscribe(&bluetooth, |_, _, _, cx| cx.notify()).detach();
         cx.subscribe(&network, |_, _, _, cx| cx.notify()).detach();
-        cx.subscribe(&notifications, |_, _, _: &NotificationAdded, cx| cx.notify()).detach();
+        cx.subscribe(&notifications, |_, _, _: &NotificationAdded, cx| {
+            cx.notify()
+        })
+        .detach();
 
         Self {
             focus_handle: cx.focus_handle(),
@@ -111,8 +126,16 @@ impl ControlCenterWidget {
 
         let theme = cx.global::<crate::theme::Theme>().clone();
 
-        let volume_icon = if audio_state.sink_muted { "sink-muted" } else { "sink-high" };
-        let mic_icon = if audio_state.source_muted { "source-muted" } else { "source-high" };
+        let volume_icon = if audio_state.sink_muted {
+            "sink-muted"
+        } else {
+            "sink-high"
+        };
+        let mic_icon = if audio_state.source_muted {
+            "source-muted"
+        } else {
+            "source-high"
+        };
 
         div()
             .flex()
@@ -134,25 +157,34 @@ impl ControlCenterWidget {
                             .h(px(20.))
                             .flex()
                             .items_center()
-                            .on_scroll_wheel(cx.listener(|this, event: &ScrollWheelEvent, window, cx| {
-                                let delta_point = event.delta.pixel_delta(window.line_height());
-                                let delta = if delta_point.y > px(0.0) { 5 } else { -5 };
-                                let current = this.last_volume as i32;
-                                let new_volume = (current + delta).clamp(0, 100) as u8;
-                                
-                                if new_volume != this.last_volume {
-                                    this.last_volume = new_volume;
-                                    cx.notify();
-                                    
-                                    let now = Instant::now();
-                                    if this.last_volume_update.map(|last| now.duration_since(last) >= Duration::from_millis(30)).unwrap_or(true) {
-                                        this.last_volume_update = Some(now);
-                                        this.audio.update(cx, |audio, cx| {
-                                            audio.set_sink_volume(new_volume, cx);
-                                        });
+                            .on_scroll_wheel(cx.listener(
+                                |this, event: &ScrollWheelEvent, window, cx| {
+                                    let delta_point = event.delta.pixel_delta(window.line_height());
+                                    let delta = if delta_point.y > px(0.0) { 5 } else { -5 };
+                                    let current = this.last_volume as i32;
+                                    let new_volume = (current + delta).clamp(0, 100) as u8;
+
+                                    if new_volume != this.last_volume {
+                                        this.last_volume = new_volume;
+                                        cx.notify();
+
+                                        let now = Instant::now();
+                                        if this
+                                            .last_volume_update
+                                            .map(|last| {
+                                                now.duration_since(last)
+                                                    >= Duration::from_millis(30)
+                                            })
+                                            .unwrap_or(true)
+                                        {
+                                            this.last_volume_update = Some(now);
+                                            this.audio.update(cx, |audio, cx| {
+                                                audio.set_sink_volume(new_volume, cx);
+                                            });
+                                        }
                                     }
-                                }
-                            }))
+                                },
+                            ))
                             .child(
                                 div()
                                     .flex_1()
@@ -164,27 +196,35 @@ impl ControlCenterWidget {
                                             .w(relative(self.last_volume as f32 / 100.0))
                                             .h_full()
                                             .bg(theme.accent)
-                                            .rounded(px(2.))
-                                    )
-                            )
+                                            .rounded(px(2.)),
+                                    ),
+                            ),
                     )
                     .child(
                         div()
                             .text_xs()
                             .text_color(theme.text)
-                            .child(format!("{}%", self.last_volume))
+                            .child(format!("{}%", self.last_volume)),
                     )
                     .child(
                         div()
                             .id("volume-expand")
-                            .child(Icon::new(if vol_expanded { "arrow-up" } else { "arrow-down" }).size(px(16.)).color(theme.text))
+                            .child(
+                                Icon::new(if vol_expanded {
+                                    "arrow-up"
+                                } else {
+                                    "arrow-down"
+                                })
+                                .size(px(16.))
+                                .color(theme.text),
+                            )
                             .on_click(cx.listener(|this, _, _window, cx| {
                                 this.control_center.update(cx, |cc, cx| {
                                     cc.toggle_section(ControlCenterSection::Volume, cx);
                                 });
                             }))
-                            .cursor_pointer()
-                    )
+                            .cursor_pointer(),
+                    ),
             )
             .child(
                 // Volume Expanded Area
@@ -192,7 +232,7 @@ impl ControlCenterWidget {
                     self.render_volume_details(cx)
                 } else {
                     div().into_any_element()
-                }
+                },
             )
             .child(
                 // Mic Row
@@ -210,25 +250,34 @@ impl ControlCenterWidget {
                             .h(px(20.))
                             .flex()
                             .items_center()
-                            .on_scroll_wheel(cx.listener(|this, event: &ScrollWheelEvent, window, cx| {
-                                let delta_point = event.delta.pixel_delta(window.line_height());
-                                let delta = if delta_point.y > px(0.0) { 5 } else { -5 };
-                                let current = this.last_mic_volume as i32;
-                                let new_volume = (current + delta).clamp(0, 100) as u8;
-                                
-                                if new_volume != this.last_mic_volume {
-                                    this.last_mic_volume = new_volume;
-                                    cx.notify();
-                                    
-                                    let now = Instant::now();
-                                    if this.last_mic_update.map(|last| now.duration_since(last) >= Duration::from_millis(30)).unwrap_or(true) {
-                                        this.last_mic_update = Some(now);
-                                        this.audio.update(cx, |audio, cx| {
-                                            audio.set_source_volume(new_volume, cx);
-                                        });
+                            .on_scroll_wheel(cx.listener(
+                                |this, event: &ScrollWheelEvent, window, cx| {
+                                    let delta_point = event.delta.pixel_delta(window.line_height());
+                                    let delta = if delta_point.y > px(0.0) { 5 } else { -5 };
+                                    let current = this.last_mic_volume as i32;
+                                    let new_volume = (current + delta).clamp(0, 100) as u8;
+
+                                    if new_volume != this.last_mic_volume {
+                                        this.last_mic_volume = new_volume;
+                                        cx.notify();
+
+                                        let now = Instant::now();
+                                        if this
+                                            .last_mic_update
+                                            .map(|last| {
+                                                now.duration_since(last)
+                                                    >= Duration::from_millis(30)
+                                            })
+                                            .unwrap_or(true)
+                                        {
+                                            this.last_mic_update = Some(now);
+                                            this.audio.update(cx, |audio, cx| {
+                                                audio.set_source_volume(new_volume, cx);
+                                            });
+                                        }
                                     }
-                                }
-                            }))
+                                },
+                            ))
                             .child(
                                 div()
                                     .flex_1()
@@ -240,27 +289,35 @@ impl ControlCenterWidget {
                                             .w(relative(self.last_mic_volume as f32 / 100.0))
                                             .h_full()
                                             .bg(theme.accent_alt)
-                                            .rounded(px(2.))
-                                    )
-                            )
+                                            .rounded(px(2.)),
+                                    ),
+                            ),
                     )
                     .child(
                         div()
                             .text_xs()
                             .text_color(theme.text)
-                            .child(format!("{}%", self.last_mic_volume))
+                            .child(format!("{}%", self.last_mic_volume)),
                     )
                     .child(
-                         div()
+                        div()
                             .id("mic-expand")
-                            .child(Icon::new(if mic_expanded { "arrow-up" } else { "arrow-down" }).size(px(16.)).color(theme.text))
+                            .child(
+                                Icon::new(if mic_expanded {
+                                    "arrow-up"
+                                } else {
+                                    "arrow-down"
+                                })
+                                .size(px(16.))
+                                .color(theme.text),
+                            )
                             .on_click(cx.listener(|this, _, _window, cx| {
                                 this.control_center.update(cx, |cc, cx| {
                                     cc.toggle_section(ControlCenterSection::Mic, cx);
                                 });
                             }))
-                            .cursor_pointer()
-                    )
+                            .cursor_pointer(),
+                    ),
             )
             .child(
                 // Mic Expanded Area
@@ -268,7 +325,7 @@ impl ControlCenterWidget {
                     self.render_mic_details(cx)
                 } else {
                     div().into_any_element()
-                }
+                },
             )
     }
 
@@ -290,7 +347,7 @@ impl ControlCenterWidget {
                     .text_xs()
                     .font_weight(FontWeight::BOLD)
                     .text_color(theme.text_muted)
-                    .child("Output Device")
+                    .child("Output Device"),
             )
             .child(
                 // Dropdown header
@@ -308,14 +365,17 @@ impl ControlCenterWidget {
                         cx.notify();
                     }))
                     .child(
-                        div()
-                            .text_xs()
-                            .text_color(theme.text)
-                            .child(default_sink.map(|s| s.description.clone()).unwrap_or_else(|| "No device".into()))
+                        div().text_xs().text_color(theme.text).child(
+                            default_sink
+                                .map(|s| s.description.clone())
+                                .unwrap_or_else(|| "No device".into()),
+                        ),
                     )
                     .child(
-                        Icon::new(if is_open { "arrow-up" } else { "arrow-down" }).size(px(12.)).color(theme.text_muted)
-                    )
+                        Icon::new(if is_open { "arrow-up" } else { "arrow-down" })
+                            .size(px(12.))
+                            .color(theme.text_muted),
+                    ),
             )
             .when(is_open, |this| {
                 this.child(
@@ -328,7 +388,7 @@ impl ControlCenterWidget {
                         .children(sinks.iter().enumerate().map(|(idx, sink)| {
                             let sink_id = sink.id;
                             let audio = self.audio.clone();
-                            
+
                             div()
                                 .id(("sink-device", idx))
                                 .flex()
@@ -351,17 +411,12 @@ impl ControlCenterWidget {
                                         .flex_1()
                                         .text_xs()
                                         .text_color(theme.text)
-                                        .child(sink.description.clone())
+                                        .child(sink.description.clone()),
                                 )
                                 .when(sink.is_default, |this| {
-                                    this.child(
-                                        div()
-                                            .text_xs()
-                                            .text_color(theme.accent)
-                                            .child("✓")
-                                    )
+                                    this.child(div().text_xs().text_color(theme.accent).child("✓"))
                                 })
-                        }))
+                        })),
                 )
             })
             .when(sinks.is_empty(), |this| {
@@ -369,7 +424,7 @@ impl ControlCenterWidget {
                     div()
                         .text_xs()
                         .text_color(theme.text_muted)
-                        .child("No output devices")
+                        .child("No output devices"),
                 )
             })
             .child(
@@ -384,7 +439,7 @@ impl ControlCenterWidget {
                             .text_xs()
                             .font_weight(FontWeight::BOLD)
                             .text_color(theme.text_muted)
-                            .child("Applications")
+                            .child("Applications"),
                     )
                     .children({
                         let streams = self.audio.read(cx).sink_inputs();
@@ -395,45 +450,49 @@ impl ControlCenterWidget {
                                 .child("No active playback")
                                 .into_any_element()]
                         } else {
-                            streams.iter().map(|stream| {
-                                                                        let _stream_id = stream.id;                                let stream_volume = stream.volume;
-                                let (display_name, icon_name, preserve_colors) = get_stream_display(stream);
-                                
-                                div()
-                                    .flex()
-                                    .flex_col()
-                                    .gap_1()
-                                    .p_2()
-                                    .bg(theme.surface)
-                                    .rounded_md()
-                                    .child(
-                                        // First line: icon + app name + volume %
-                                        div()
-                                            .flex()
-                                            .items_center()
-                                            .gap_2()
-                                            .child(Icon::new(icon_name).size(px(20.)).preserve_colors(preserve_colors))
-                                            .child(
-                                                div()
-                                                    .flex_1()
-                                                    .text_xs()
-                                                    .text_color(theme.text)
-                                                    .child(display_name)
-                                            )
-                                            .child(
-                                                div()
-                                                    .text_xs()
-                                                    .text_color(theme.text_muted)
-                                                    .child(format!("{}%", stream_volume))
-                                            )
-                                    )
-                                    .child(
-                                        // Second line: volume bar (visual only)
-                                        div()
-                                            .h(px(20.))
-                                            .flex()
-                                            .items_center()
-                                            .child(
+                            streams
+                                .iter()
+                                .map(|stream| {
+                                    let _stream_id = stream.id;
+                                    let stream_volume = stream.volume;
+                                    let (display_name, icon_name, preserve_colors) =
+                                        get_stream_display(stream);
+
+                                    div()
+                                        .flex()
+                                        .flex_col()
+                                        .gap_1()
+                                        .p_2()
+                                        .bg(theme.surface)
+                                        .rounded_md()
+                                        .child(
+                                            // First line: icon + app name + volume %
+                                            div()
+                                                .flex()
+                                                .items_center()
+                                                .gap_2()
+                                                .child(
+                                                    Icon::new(icon_name)
+                                                        .size(px(20.))
+                                                        .preserve_colors(preserve_colors),
+                                                )
+                                                .child(
+                                                    div()
+                                                        .flex_1()
+                                                        .text_xs()
+                                                        .text_color(theme.text)
+                                                        .child(display_name),
+                                                )
+                                                .child(
+                                                    div()
+                                                        .text_xs()
+                                                        .text_color(theme.text_muted)
+                                                        .child(format!("{stream_volume}%")),
+                                                ),
+                                        )
+                                        .child(
+                                            // Second line: volume bar (visual only)
+                                            div().h(px(20.)).flex().items_center().child(
                                                 div()
                                                     .flex_1()
                                                     .h(px(4.))
@@ -441,17 +500,20 @@ impl ControlCenterWidget {
                                                     .rounded(px(2.))
                                                     .child(
                                                         div()
-                                                            .w(relative(stream_volume as f32 / 100.0))
+                                                            .w(relative(
+                                                                stream_volume as f32 / 100.0,
+                                                            ))
                                                             .h_full()
                                                             .bg(theme.accent)
-                                                            .rounded(px(2.))
-                                                    )
-                                            )
-                                    )
-                                    .into_any_element()
-                            }).collect()
+                                                            .rounded(px(2.)),
+                                                    ),
+                                            ),
+                                        )
+                                        .into_any_element()
+                                })
+                                .collect()
                         }
-                    })
+                    }),
             )
             .into_any_element()
     }
@@ -474,7 +536,7 @@ impl ControlCenterWidget {
                     .text_xs()
                     .font_weight(FontWeight::BOLD)
                     .text_color(theme.text_muted)
-                    .child("Input Device")
+                    .child("Input Device"),
             )
             .child(
                 // Dropdown header
@@ -492,27 +554,26 @@ impl ControlCenterWidget {
                         cx.notify();
                     }))
                     .child(
-                        div()
-                            .text_xs()
-                            .text_color(theme.text)
-                            .child(default_source.map(|s| s.description.clone()).unwrap_or_else(|| "No device".into()))
+                        div().text_xs().text_color(theme.text).child(
+                            default_source
+                                .map(|s| s.description.clone())
+                                .unwrap_or_else(|| "No device".into()),
+                        ),
                     )
                     .child(
-                        Icon::new(if is_open { "arrow-up" } else { "arrow-down" }).size(px(12.)).color(theme.text_muted)
-                    )
+                        Icon::new(if is_open { "arrow-up" } else { "arrow-down" })
+                            .size(px(12.))
+                            .color(theme.text_muted),
+                    ),
             )
             .when(is_open, |this| {
                 this.child(
                     // Device list
-                    div()
-                        .flex()
-                        .flex_col()
-                        .gap_1()
-                        .mt_2()
-                        .children(sources.iter().enumerate().map(|(idx, source)| {
+                    div().flex().flex_col().gap_1().mt_2().children(
+                        sources.iter().enumerate().map(|(idx, source)| {
                             let source_id = source.id;
                             let audio = self.audio.clone();
-                            
+
                             div()
                                 .id(("source-device", idx))
                                 .flex()
@@ -535,17 +596,13 @@ impl ControlCenterWidget {
                                         .flex_1()
                                         .text_xs()
                                         .text_color(theme.text)
-                                        .child(source.description.clone())
+                                        .child(source.description.clone()),
                                 )
                                 .when(source.is_default, |this| {
-                                    this.child(
-                                        div()
-                                            .text_xs()
-                                            .text_color(theme.accent)
-                                            .child("✓")
-                                    )
+                                    this.child(div().text_xs().text_color(theme.accent).child("✓"))
                                 })
-                        }))
+                        }),
+                    ),
                 )
             })
             .when(sources.is_empty(), |this| {
@@ -553,7 +610,7 @@ impl ControlCenterWidget {
                     div()
                         .text_xs()
                         .text_color(theme.text_muted)
-                        .child("No input devices")
+                        .child("No input devices"),
                 )
             })
             .child(
@@ -568,7 +625,7 @@ impl ControlCenterWidget {
                             .text_xs()
                             .font_weight(FontWeight::BOLD)
                             .text_color(theme.text_muted)
-                            .child("Applications")
+                            .child("Applications"),
                     )
                     .children({
                         let streams = self.audio.read(cx).source_outputs();
@@ -579,45 +636,48 @@ impl ControlCenterWidget {
                                 .child("No active recording")
                                 .into_any_element()]
                         } else {
-                            streams.iter().map(|stream| {
-                                let stream_volume = stream.volume;
-                                let (display_name, icon_name, preserve_colors) = get_stream_display(stream);
-                                
-                                div()
-                                    .flex()
-                                    .flex_col()
-                                    .gap_1()
-                                    .p_2()
-                                    .bg(theme.surface)
-                                    .rounded_md()
-                                    .child(
-                                        // First line: icon + app name + volume %
-                                        div()
-                                            .flex()
-                                            .items_center()
-                                            .gap_2()
-                                            .child(Icon::new(icon_name).size(px(20.)).preserve_colors(preserve_colors))
-                                            .child(
-                                                div()
-                                                    .flex_1()
-                                                    .text_xs()
-                                                    .text_color(theme.text)
-                                                    .child(display_name)
-                                            )
-                                            .child(
-                                                div()
-                                                    .text_xs()
-                                                    .text_color(theme.text_muted)
-                                                    .child(format!("{}%", stream_volume))
-                                            )
-                                    )
-                                    .child(
-                                        // Second line: volume bar (visual only)
-                                        div()
-                                            .h(px(20.))
-                                            .flex()
-                                            .items_center()
-                                            .child(
+                            streams
+                                .iter()
+                                .map(|stream| {
+                                    let stream_volume = stream.volume;
+                                    let (display_name, icon_name, preserve_colors) =
+                                        get_stream_display(stream);
+
+                                    div()
+                                        .flex()
+                                        .flex_col()
+                                        .gap_1()
+                                        .p_2()
+                                        .bg(theme.surface)
+                                        .rounded_md()
+                                        .child(
+                                            // First line: icon + app name + volume %
+                                            div()
+                                                .flex()
+                                                .items_center()
+                                                .gap_2()
+                                                .child(
+                                                    Icon::new(icon_name)
+                                                        .size(px(20.))
+                                                        .preserve_colors(preserve_colors),
+                                                )
+                                                .child(
+                                                    div()
+                                                        .flex_1()
+                                                        .text_xs()
+                                                        .text_color(theme.text)
+                                                        .child(display_name),
+                                                )
+                                                .child(
+                                                    div()
+                                                        .text_xs()
+                                                        .text_color(theme.text_muted)
+                                                        .child(format!("{stream_volume}%")),
+                                                ),
+                                        )
+                                        .child(
+                                            // Second line: volume bar (visual only)
+                                            div().h(px(20.)).flex().items_center().child(
                                                 div()
                                                     .flex_1()
                                                     .h(px(4.))
@@ -625,17 +685,20 @@ impl ControlCenterWidget {
                                                     .rounded(px(2.))
                                                     .child(
                                                         div()
-                                                            .w(relative(stream_volume as f32 / 100.0))
+                                                            .w(relative(
+                                                                stream_volume as f32 / 100.0,
+                                                            ))
                                                             .h_full()
                                                             .bg(theme.accent_alt)
-                                                            .rounded(px(2.))
-                                                    )
-                                            )
-                                    )
-                                    .into_any_element()
-                            }).collect()
+                                                            .rounded(px(2.)),
+                                                    ),
+                                            ),
+                                        )
+                                        .into_any_element()
+                                })
+                                .collect()
                         }
-                    })
+                    }),
             )
             .into_any_element()
     }
@@ -668,7 +731,11 @@ impl ControlCenterWidget {
                             .items_center()
                             .justify_center()
                             .gap_2()
-                            .bg(if bt_state.powered { theme.accent } else { theme.surface })
+                            .bg(if bt_state.powered {
+                                theme.accent
+                            } else {
+                                theme.surface
+                            })
                             .rounded_md()
                             .p_4()
                             .cursor_pointer()
@@ -680,7 +747,7 @@ impl ControlCenterWidget {
                             .child(Icon::new("bluetooth").size(px(24.)).color(theme.text))
                             .when(bt_state.connected_devices > 0, |this| {
                                 this.child(format!("{}", bt_state.connected_devices))
-                            })
+                            }),
                     )
                     .child(
                         // Network Button
@@ -691,7 +758,11 @@ impl ControlCenterWidget {
                             .items_center()
                             .justify_center()
                             .gap_2()
-                            .bg(if net_state.connected { theme.accent } else { theme.surface })
+                            .bg(if net_state.connected {
+                                theme.accent
+                            } else {
+                                theme.surface
+                            })
                             .rounded_md()
                             .p_4()
                             .cursor_pointer()
@@ -700,8 +771,12 @@ impl ControlCenterWidget {
                                     cc.toggle_section(ControlCenterSection::Network, cx);
                                 });
                             }))
-                            .child(Icon::new(net_state.get_icon_name()).size(px(24.)).color(theme.text))
-                    )
+                            .child(
+                                Icon::new(net_state.get_icon_name())
+                                    .size(px(24.))
+                                    .color(theme.text),
+                            ),
+                    ),
             )
             .child(
                 // Expanded Area (Shared)
@@ -718,14 +793,12 @@ impl ControlCenterWidget {
                                 .text_sm()
                                 .font_weight(FontWeight::BOLD)
                                 .text_color(theme.text)
-                                .child("Bluetooth Devices")
+                                .child("Bluetooth Devices"),
                         )
-                        .child(
-                            div()
-                                .text_xs()
-                                .text_color(theme.text_muted)
-                                .child(format!("{} device(s) connected", bt_state.connected_devices))
-                        )
+                        .child(div().text_xs().text_color(theme.text_muted).child(format!(
+                            "{} device(s) connected",
+                            bt_state.connected_devices
+                        )))
                         .into_any_element()
                 } else if net_expanded {
                     div()
@@ -740,18 +813,20 @@ impl ControlCenterWidget {
                                 .text_sm()
                                 .font_weight(FontWeight::BOLD)
                                 .text_color(theme.text)
-                                .child("Network")
+                                .child("Network"),
                         )
                         .child(
-                            div()
-                                .text_xs()
-                                .text_color(theme.text_muted)
-                                .child(net_state.ssid.clone().unwrap_or_else(|| "Not connected".to_string()))
+                            div().text_xs().text_color(theme.text_muted).child(
+                                net_state
+                                    .ssid
+                                    .clone()
+                                    .unwrap_or_else(|| "Not connected".to_string()),
+                            ),
                         )
                         .into_any_element()
                 } else {
                     div().into_any_element()
-                }
+                },
             )
     }
 
@@ -768,49 +843,46 @@ impl ControlCenterWidget {
                     .text_size(px(16.))
                     .font_weight(FontWeight::BOLD)
                     .text_color(theme.text)
-                    .child("Notifications")
+                    .child("Notifications"),
             )
-            .children(
-                notifications.iter().take(5).map(|n| {
-                    div()
-                        .bg(theme.surface)
-                        .rounded_md()
-                        .p_2()
-                        .mb_1()
-                        .child(
+            .children(notifications.iter().take(5).map(|n| {
+                div()
+                    .bg(theme.surface)
+                    .rounded_md()
+                    .p_2()
+                    .mb_1()
+                    .child(
+                        div()
+                            .font_weight(FontWeight::BOLD)
+                            .text_color(theme.text)
+                            .child(n.summary.clone()),
+                    )
+                    .when(!n.body.is_empty(), |this| {
+                        this.child(
                             div()
-                                .font_weight(FontWeight::BOLD)
-                                .text_color(theme.text)
-                                .child(n.summary.clone())
+                                .text_size(px(12.))
+                                .text_color(theme.text_muted)
+                                .child(n.body.clone()),
                         )
-                        .when(!n.body.is_empty(), |this| {
-                            this.child(
-                                div()
-                                    .text_size(px(12.))
-                                    .text_color(theme.text_muted)
-                                    .child(n.body.clone())
-                            )
-                        })
-                })
-            )
+                    })
+            }))
             .when(notifications.is_empty(), |this| {
                 this.child(
                     div()
                         .text_xs()
                         .text_color(theme.text_muted)
-                        .child("No notifications")
+                        .child("No notifications"),
                 )
             })
     }
 }
 
-
 impl Render for ControlCenterWidget {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         window.focus(&self.focus_handle);
-        
+
         let theme = cx.global::<crate::theme::Theme>().clone();
-        
+
         div()
             .track_focus(&self.focus_handle)
             .flex()
@@ -829,9 +901,7 @@ impl Render for ControlCenterWidget {
             }))
             .child(self.render_audio_section(cx))
             .child(self.render_connectivity_section(cx))
-            .child(
-                div().h(px(1.)).bg(theme.hover)
-            )
+            .child(div().h(px(1.)).bg(theme.hover))
             .child(self.render_notifications_section(cx))
     }
 }

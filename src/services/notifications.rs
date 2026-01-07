@@ -13,6 +13,7 @@ pub struct Notification {
     pub body: String,
     pub urgency: u8,
     pub timestamp: u64,
+    #[allow(dead_code)]
     pub actions: Vec<String>,
     pub app_icon: String,
 }
@@ -23,6 +24,7 @@ pub struct NotificationAdded {
 }
 
 #[derive(Clone)]
+#[allow(dead_code)]
 pub struct NotificationsEmpty;
 
 // État interne partagé protégé par un Mutex
@@ -251,15 +253,11 @@ impl NotificationService {
         Ok(())
     }
 
-    /// Récupérer l'historique des notifications
-    pub fn get_history() -> Vec<Notification> {
-        STATE.lock().history.iter().cloned().collect()
-    }
-
     pub fn get_all(&self) -> Vec<Notification> {
         self.notifications.read().clone()
     }
 
+    #[allow(dead_code)]
     pub fn clear(&self, _cx: &mut Context<Self>) {
         self.notifications.write().clear();
     }

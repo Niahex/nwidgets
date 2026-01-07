@@ -32,7 +32,6 @@ pub struct MprisMetadata {
     pub album: Option<String>,
 }
 
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct MprisPlayer {
     pub player_name: String,
@@ -41,9 +40,7 @@ pub struct MprisPlayer {
 }
 
 #[derive(Clone)]
-pub struct MprisStateChanged {
-    pub player: Option<MprisPlayer>,
-}
+pub struct MprisStateChanged;
 
 pub struct MprisService {
     current_player: Arc<RwLock<Option<MprisPlayer>>>,
@@ -94,7 +91,8 @@ impl MprisService {
                     let _ = proxy.play_pause().await;
                 }
             }
-        }).detach();
+        })
+        .detach();
     }
 
     pub fn next(&self, cx: &mut Context<Self>) {
@@ -104,7 +102,8 @@ impl MprisService {
                     let _ = proxy.next().await;
                 }
             }
-        }).detach();
+        })
+        .detach();
     }
 
     pub fn previous(&self, cx: &mut Context<Self>) {
@@ -114,7 +113,8 @@ impl MprisService {
                     let _ = proxy.previous().await;
                 }
             }
-        }).detach();
+        })
+        .detach();
     }
 
     pub fn volume_up(&self) {
@@ -168,7 +168,7 @@ impl MprisService {
 
                     if state_changed {
                         let _ = this.update(cx, |_, cx| {
-                            cx.emit(MprisStateChanged { player: None });
+                            cx.emit(MprisStateChanged);
                             cx.notify();
                         });
                     }
@@ -187,16 +187,14 @@ impl MprisService {
                     let mut current = current_player.write();
                     let changed = *current != Some(player.clone());
                     if changed {
-                        *current = Some(player.clone());
+                        *current = Some(player);
                     }
                     changed
                 };
 
                 if state_changed {
                     let _ = this.update(cx, |_, cx| {
-                        cx.emit(MprisStateChanged {
-                            player: Some(player),
-                        });
+                        cx.emit(MprisStateChanged);
                         cx.notify();
                     });
                 }
@@ -211,7 +209,6 @@ impl MprisService {
                 tokio::select! {
                     status_change = status_stream.next() => {
                         if status_change.is_none() {
-                            // Stream ended, reconnect
                             break;
                         }
 
@@ -220,14 +217,14 @@ impl MprisService {
                                 let mut current = current_player.write();
                                 let changed = *current != Some(player.clone());
                                 if changed {
-                                    *current = Some(player.clone());
+                                    *current = Some(player);
                                 }
                                 changed
                             };
 
                             if state_changed {
                                 let _ = this.update(cx, |_, cx| {
-                                    cx.emit(MprisStateChanged { player: Some(player) });
+                                    cx.emit(MprisStateChanged);
                                     cx.notify();
                                 });
                             }
@@ -235,7 +232,6 @@ impl MprisService {
                     }
                     metadata_change = metadata_stream.next() => {
                         if metadata_change.is_none() {
-                            // Stream ended, reconnect
                             break;
                         }
 
@@ -244,14 +240,14 @@ impl MprisService {
                                 let mut current = current_player.write();
                                 let changed = *current != Some(player.clone());
                                 if changed {
-                                    *current = Some(player.clone());
+                                    *current = Some(player);
                                 }
                                 changed
                             };
 
                             if state_changed {
                                 let _ = this.update(cx, |_, cx| {
-                                    cx.emit(MprisStateChanged { player: Some(player) });
+                                    cx.emit(MprisStateChanged);
                                     cx.notify();
                                 });
                             }

@@ -1,5 +1,6 @@
-use gpui::{App, Bounds, ParentElement, Pixels, Styled as _, Window, canvas};
+use gpui::{canvas, App, Bounds, ParentElement, Pixels, Styled as _, Window};
 
+#[allow(dead_code)]
 pub trait ElementExt: ParentElement + Sized {
     fn on_prepaint<F>(self, f: F) -> Self
     where

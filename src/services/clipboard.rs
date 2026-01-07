@@ -1,5 +1,5 @@
 use gpui::prelude::*;
-use gpui::{App, Entity, EventEmitter, AsyncApp};
+use gpui::{App, AsyncApp, Entity, EventEmitter};
 use std::process::Command;
 use std::time::Duration;
 
@@ -21,8 +21,10 @@ impl ClipboardMonitor {
                 let mut last_content = Self::get_clipboard_content();
 
                 loop {
-                    cx.background_executor().timer(Duration::from_millis(250)).await;
-                    
+                    cx.background_executor()
+                        .timer(Duration::from_millis(250))
+                        .await;
+
                     let current_content = Self::get_clipboard_content();
 
                     // Si le contenu a changé et n'est pas vide (et différent de None)
@@ -35,7 +37,8 @@ impl ClipboardMonitor {
                     }
                 }
             }
-        }).detach();
+        })
+        .detach();
 
         model
     }

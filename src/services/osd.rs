@@ -1,14 +1,15 @@
+use crate::services::audio::{AudioService, AudioStateChanged};
 use crate::services::clipboard::{ClipboardEvent, ClipboardMonitor};
 use crate::services::lock_state::{LockMonitor, LockStateChanged, LockType};
-use crate::services::audio::{AudioService, AudioStateChanged};
+use gpui::layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions};
 use gpui::*;
-use gpui::layer_shell::{Anchor, KeyboardInteractivity, LayerShellOptions, Layer};
 use std::time::Duration;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum OsdEvent {
     Volume(String, u8, bool), // icon_name, volume %, muted
-    Microphone(bool),         // muted
+    #[allow(dead_code)]
+    Microphone(bool), // muted
     CapsLock(bool),           // enabled
     Clipboard,                // copied
 }
@@ -35,32 +36,47 @@ impl OsdService {
         let clipboard_monitor = ClipboardMonitor::init(cx);
 
         // Écouter les changements audio
-        cx.subscribe(&audio, move |this, _audio, event: &AudioStateChanged, cx| {
-            let state = &event.state;
-            let icon_name = if state.sink_muted {
-                "sink-muted".to_string()
-            } else if state.sink_volume == 0 {
-                "sink-zero".to_string()
-            } else if state.sink_volume < 33 {
-                "sink-low".to_string()
-            } else if state.sink_volume < 66 {
-                "sink-medium".to_string()
-            } else {
-                "sink-high".to_string()
-            };
+        cx.subscribe(
+            &audio,
+            move |this, _audio, event: &AudioStateChanged, cx| {
+                let state = &event.state;
+                let icon_name = if state.sink_muted {
+                    "sink-muted".to_string()
+                } else if state.sink_volume == 0 {
+                    "sink-zero".to_string()
+                } else if state.sink_volume < 33 {
+                    "sink-low".to_string()
+                } else if state.sink_volume < 66 {
+                    "sink-medium".to_string()
+                } else {
+                    "sink-high".to_string()
+                };
 
-            this.show_event(OsdEvent::Volume(icon_name, state.sink_volume, state.sink_muted), cx);
-        }).detach();
+                this.show_event(
+                    OsdEvent::Volume(icon_name, state.sink_volume, state.sink_muted),
+                    cx,
+                );
+            },
+        )
+        .detach();
 
-        cx.subscribe(&lock_monitor, |this, _monitor, event: &LockStateChanged, cx| {
-            if let LockType::CapsLock = event.lock_type {
-                this.show_event(OsdEvent::CapsLock(event.enabled), cx);
-            }
-        }).detach();
+        cx.subscribe(
+            &lock_monitor,
+            |this, _monitor, event: &LockStateChanged, cx| {
+                if let LockType::CapsLock = event.lock_type {
+                    this.show_event(OsdEvent::CapsLock(event.enabled), cx);
+                }
+            },
+        )
+        .detach();
 
-        cx.subscribe(&clipboard_monitor, |this, _monitor, _event: &ClipboardEvent, cx| {
-            this.show_event(OsdEvent::Clipboard, cx);
-        }).detach();
+        cx.subscribe(
+            &clipboard_monitor,
+            |this, _monitor, _event: &ClipboardEvent, cx| {
+                this.show_event(OsdEvent::Clipboard, cx);
+            },
+        )
+        .detach();
 
         let mut this = Self {
             current_event: None,
@@ -106,7 +122,9 @@ impl OsdService {
 
         // Restart hide timer (debounce)
         let task = cx.spawn(async move |this, cx| {
-            cx.background_executor().timer(Duration::from_millis(1500)).await;
+            cx.background_executor()
+                .timer(Duration::from_millis(1500))
+                .await;
             this.update(cx, |service, cx| service.hide(cx)).ok();
         });
 
@@ -116,11 +134,11 @@ impl OsdService {
     pub fn hide(&mut self, cx: &mut Context<Self>) {
         if self.visible {
             self.visible = false;
-            // Note: We do NOT clear current_event here. 
+            // Note: We do NOT clear current_event here.
             // We keep the data so the UI can fade it out gracefully.
-            cx.emit(OsdStateChanged { 
+            cx.emit(OsdStateChanged {
                 event: self.current_event.clone(),
-                visible: false 
+                visible: false,
             });
             cx.notify();
         }
@@ -129,7 +147,7 @@ impl OsdService {
 
     fn open_window(&mut self, cx: &mut Context<Self>) {
         use crate::widgets::osd::OsdWidget;
-        
+
         let displays = cx.displays();
         let Some(display) = displays.first() else {
             return;
@@ -137,7 +155,7 @@ impl OsdService {
         let bounds = display.bounds();
         let width = px(400.0);
         let height = px(64.0);
-        
+
         // Capture state to pass to widget constructor
         let initial_event = self.current_event.clone();
         let initial_visible = self.visible;
@@ -172,10 +190,12 @@ impl OsdService {
         }
     }
 
+    #[allow(dead_code)]
     pub fn current_event(&self) -> Option<OsdEvent> {
         self.current_event.clone()
     }
 
+    #[allow(dead_code)]
     pub fn is_visible(&self) -> bool {
         self.visible
     }

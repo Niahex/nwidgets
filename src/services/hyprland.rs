@@ -26,15 +26,10 @@ pub struct ActiveWindow {
 }
 
 #[derive(Clone)]
-pub struct WorkspaceChanged {
-    pub workspaces: Vec<Workspace>,
-    pub active_workspace_id: i32,
-}
+pub struct WorkspaceChanged;
 
 #[derive(Clone)]
-pub struct ActiveWindowChanged {
-    pub window: Option<ActiveWindow>,
-}
+pub struct ActiveWindowChanged;
 
 pub struct HyprlandService {
     workspaces: Arc<RwLock<Vec<Workspace>>>,
@@ -124,11 +119,13 @@ impl HyprlandService {
                         // Notify which type of update is needed
                         if line.starts_with("workspace>>")
                             || line.starts_with("createworkspace>>")
-                            || line.starts_with("destroyworkspace>>") {
+                            || line.starts_with("destroyworkspace>>")
+                        {
                             let _ = tx.unbounded_send(true); // Workspace update
                         } else if line.starts_with("activewindow>>")
                             || line.starts_with("closewindow>>")
-                            || line.starts_with("openwindow>>") {
+                            || line.starts_with("openwindow>>")
+                        {
                             let _ = tx.unbounded_send(false); // Window update
                         }
                     }
@@ -141,7 +138,11 @@ impl HyprlandService {
             let mut more_ws = false;
             let mut more_win = false;
             while let Ok(Some(ev)) = rx.try_next() {
-                if ev { more_ws = true; } else { more_win = true; }
+                if ev {
+                    more_ws = true;
+                } else {
+                    more_win = true;
+                }
             }
 
             let do_ws = is_workspace_event || more_ws;
@@ -161,16 +162,19 @@ impl HyprlandService {
                 updated_win = Some(Self::fetch_active_window());
             }
 
-            let workspace_changed = if let (Some(new_ws), Some(new_id)) = (updated_ws.clone(), updated_active_id) {
-                let mut ws = workspaces.write();
-                let mut active_id = active_workspace_id.write();
-                let changed = *ws != new_ws || *active_id != new_id;
-                if changed {
-                    *ws = new_ws;
-                    *active_id = new_id;
-                }
-                changed
-            } else { false };
+            let workspace_changed =
+                if let (Some(new_ws), Some(new_id)) = (updated_ws.clone(), updated_active_id) {
+                    let mut ws = workspaces.write();
+                    let mut active_id = active_workspace_id.write();
+                    let changed = *ws != new_ws || *active_id != new_id;
+                    if changed {
+                        *ws = new_ws;
+                        *active_id = new_id;
+                    }
+                    changed
+                } else {
+                    false
+                };
 
             let window_changed = if let Some(new_win) = updated_win.clone() {
                 let mut win = active_window.write();
@@ -179,20 +183,17 @@ impl HyprlandService {
                     *win = new_win;
                 }
                 changed
-            } else { false };
+            } else {
+                false
+            };
 
             if workspace_changed || window_changed {
                 let _ = this.update(cx, |_this, cx| {
                     if workspace_changed {
-                        cx.emit(WorkspaceChanged {
-                            workspaces: workspaces.read().clone(),
-                            active_workspace_id: *active_workspace_id.read(),
-                        });
+                        cx.emit(WorkspaceChanged);
                     }
                     if window_changed {
-                        cx.emit(ActiveWindowChanged {
-                            window: active_window.read().clone(),
-                        });
+                        cx.emit(ActiveWindowChanged);
                     }
                     cx.notify();
                 });

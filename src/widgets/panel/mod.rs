@@ -138,7 +138,7 @@ impl Render for Panel {
                                     .items_center()
                                     .px_3()
                                     .child(self.datetime.clone()),
-                            )
+                            ),
                     ),
             )
     }

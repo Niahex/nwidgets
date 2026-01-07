@@ -7,7 +7,9 @@ use std::time::{Duration, Instant};
 #[derive(Clone, Debug, PartialEq)]
 pub enum PomodoroPhase {
     Work,
+    #[allow(dead_code)]
     ShortBreak,
+    #[allow(dead_code)]
     LongBreak,
 }
 
@@ -25,15 +27,16 @@ pub enum PomodoroStatus {
 }
 
 #[derive(Clone)]
-pub struct PomodoroStateChanged {
-    pub status: PomodoroStatus,
-}
+pub struct PomodoroStateChanged;
 
 pub struct PomodoroService {
     status: Arc<RwLock<PomodoroStatus>>,
-    work_duration: u32, // in seconds
+    work_duration: u32,
+    #[allow(dead_code)]
     short_break_duration: u32,
+    #[allow(dead_code)]
     long_break_duration: u32,
+    #[allow(dead_code)]
     pomodoros_until_long_break: u32,
     pomodoro_count: Arc<RwLock<u32>>,
     start_time: Arc<RwLock<Option<Instant>>>,
@@ -78,12 +81,11 @@ impl PomodoroService {
             remaining_secs: duration,
         };
         *self.start_time.write() = Some(Instant::now());
-        cx.emit(PomodoroStateChanged {
-            status: self.status(),
-        });
+        cx.emit(PomodoroStateChanged);
         cx.notify();
     }
 
+    #[allow(dead_code)]
     pub fn start_break(&self, cx: &mut Context<Self>) {
         let count = *self.pomodoro_count.read();
         let is_long_break = count % self.pomodoros_until_long_break == 0 && count > 0;
@@ -99,9 +101,7 @@ impl PomodoroService {
             remaining_secs: duration,
         };
         *self.start_time.write() = Some(Instant::now());
-        cx.emit(PomodoroStateChanged {
-            status: self.status(),
-        });
+        cx.emit(PomodoroStateChanged);
         cx.notify();
     }
 
@@ -117,9 +117,7 @@ impl PomodoroService {
                 remaining_secs,
             };
             *self.start_time.write() = None;
-            cx.emit(PomodoroStateChanged {
-                status: self.status(),
-            });
+            cx.emit(PomodoroStateChanged);
             cx.notify();
         }
     }
@@ -136,9 +134,7 @@ impl PomodoroService {
                 remaining_secs,
             };
             *self.start_time.write() = Some(Instant::now());
-            cx.emit(PomodoroStateChanged {
-                status: self.status(),
-            });
+            cx.emit(PomodoroStateChanged);
             cx.notify();
         }
     }
@@ -146,9 +142,7 @@ impl PomodoroService {
     pub fn stop(&self, cx: &mut Context<Self>) {
         *self.status.write() = PomodoroStatus::Idle;
         *self.start_time.write() = None;
-        cx.emit(PomodoroStateChanged {
-            status: self.status(),
-        });
+        cx.emit(PomodoroStateChanged);
         cx.notify();
     }
 
@@ -181,9 +175,7 @@ impl PomodoroService {
                                 remaining_secs: remaining_secs - 1,
                             };
 
-                            cx.emit(PomodoroStateChanged {
-                                status: current_status.clone(),
-                            });
+                            cx.emit(PomodoroStateChanged);
                             cx.notify();
                         } else {
                             // Timer finished
@@ -193,9 +185,7 @@ impl PomodoroService {
                             *current_status = PomodoroStatus::Idle;
                             *service.start_time.write() = None;
 
-                            cx.emit(PomodoroStateChanged {
-                                status: PomodoroStatus::Idle,
-                            });
+                            cx.emit(PomodoroStateChanged);
                             cx.notify();
                         }
                     }

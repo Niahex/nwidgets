@@ -3,7 +3,7 @@ use gpui::{App, AsyncApp, Context, Entity, EventEmitter, Global, WeakEntity};
 use parking_lot::RwLock;
 use std::sync::Arc;
 use std::time::Duration;
-use zbus::{Connection, proxy, zvariant::OwnedObjectPath};
+use zbus::{proxy, zvariant::OwnedObjectPath, Connection};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ConnectionType {
@@ -76,9 +76,7 @@ impl NetworkState {
 }
 
 #[derive(Clone)]
-pub struct NetworkStateChanged {
-    pub state: NetworkState,
-}
+pub struct NetworkStateChanged;
 
 pub struct NetworkService {
     state: Arc<RwLock<NetworkState>>,
@@ -96,7 +94,7 @@ impl EventEmitter<NetworkStateChanged> for NetworkService {}
 trait NetworkManager {
     #[zbus(property)]
     fn active_connections(&self) -> zbus::Result<Vec<OwnedObjectPath>>;
-    
+
     // Connectivity state: 1=None, 2=Portal, 3=Limited, 4=Full
     #[zbus(property)]
     fn connectivity(&self) -> zbus::Result<u32>;
@@ -152,7 +150,7 @@ impl NetworkService {
         let conn = match Connection::system().await {
             Ok(c) => c,
             Err(e) => {
-                eprintln!("[NetworkService] Failed to connect to system bus: {}", e);
+                eprintln!("[NetworkService] Failed to connect to system bus: {e}");
                 return;
             }
         };
@@ -161,7 +159,7 @@ impl NetworkService {
         let nm_proxy = match NetworkManagerProxy::new(&conn).await {
             Ok(p) => p,
             Err(e) => {
-                eprintln!("[NetworkService] Failed to create NM proxy: {}", e);
+                eprintln!("[NetworkService] Failed to create NM proxy: {e}");
                 return;
             }
         };
@@ -174,7 +172,7 @@ impl NetworkService {
             let state_changed = {
                 let mut current_state = state.write();
                 if *current_state != new_state {
-                    *current_state = new_state.clone();
+                    *current_state = new_state;
                     true
                 } else {
                     false
@@ -183,24 +181,25 @@ impl NetworkService {
 
             if state_changed {
                 let _ = this.update(cx, |_, cx| {
-                    cx.emit(NetworkStateChanged { state: new_state });
+                    cx.emit(NetworkStateChanged);
                     cx.notify();
                 });
             }
 
-            // Sleep for 5 seconds before next check
-            // We could also listen to signals for faster updates, but 5s polling on DBus is cheap
             cx.background_executor().timer(Duration::from_secs(5)).await;
         }
     }
 
-    async fn fetch_network_state_dbus(conn: &Connection, nm: &NetworkManagerProxy<'_>) -> NetworkState {
+    async fn fetch_network_state_dbus(
+        conn: &Connection,
+        nm: &NetworkManagerProxy<'_>,
+    ) -> NetworkState {
         let mut state = NetworkState::default();
 
         // 1. Check Connectivity
         // 4 = Full (Internet access), similar to ping success
-        // We consider "connected" if connectivity >= 4. 
-        // If just local (3), we might show it but maybe with a warning? 
+        // We consider "connected" if connectivity >= 4.
+        // If just local (3), we might show it but maybe with a warning?
         // For now, let's match original ping behavior: ping success = connected.
         // NM Connectivity 4 is "Full".
         if let Ok(connectivity) = nm.connectivity().await {
@@ -211,7 +210,6 @@ impl NetworkService {
         if let Ok(active_paths) = nm.active_connections().await {
             for path in active_paths {
                 if let Ok(ac) = ActiveConnectionProxy::new(conn, path).await {
-                    
                     // Check if VPN
                     if let Ok(is_vpn) = ac.vpn().await {
                         if is_vpn {
@@ -228,7 +226,7 @@ impl NetworkService {
                     if let Ok(type_str) = ac.type_().await {
                         if type_str == "802-11-wireless" {
                             state.connection_type = ConnectionType::Wifi;
-                            
+
                             // Get SSID
                             if let Ok(id) = ac.id().await {
                                 state.ssid = Some(id);
@@ -245,7 +243,9 @@ impl NetworkService {
                                     }
                                 }
                             }
-                        } else if type_str == "802-3-ethernet" && state.connection_type == ConnectionType::None {
+                        } else if type_str == "802-3-ethernet"
+                            && state.connection_type == ConnectionType::None
+                        {
                             // Only set ethernet if we haven't found wifi (prefer wifi details if both active? unlikely)
                             // Actually, if ethernet is active, it's usually primary.
                             state.connection_type = ConnectionType::Ethernet;
@@ -255,7 +255,7 @@ impl NetworkService {
                 }
             }
         }
-        
+
         // If we found a connection type but connectivity is unknown/low, we might want to flag it?
         // But logic above sets `connected` based on global connectivity.
         // If we have an active connection but no internet (connectivity < 4), state.connected will be false.

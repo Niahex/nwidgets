@@ -1,6 +1,6 @@
 use gpui::prelude::*;
-use gpui::*;
 use gpui::AsyncApp;
+use gpui::*;
 use std::fs;
 use std::time::Duration;
 
@@ -37,8 +37,10 @@ impl LockMonitor {
             let mut cx = cx.clone();
             async move {
                 loop {
-                    cx.background_executor().timer(Duration::from_millis(100)).await;
-                    
+                    cx.background_executor()
+                        .timer(Duration::from_millis(100))
+                        .await;
+
                     let current_caps = Self::read_state(LockType::CapsLock);
                     let current_num = Self::read_state(LockType::NumLock);
 
@@ -61,7 +63,8 @@ impl LockMonitor {
                     });
                 }
             }
-        }).detach();
+        })
+        .detach();
 
         model
     }
@@ -91,7 +94,7 @@ impl LockMonitor {
                 return trimmed == "1" || trimmed.parse::<u8>().unwrap_or(0) > 0;
             }
         }
-        
+
         false
     }
 }

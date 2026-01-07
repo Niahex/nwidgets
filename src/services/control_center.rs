@@ -1,5 +1,5 @@
+use gpui::layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions};
 use gpui::*;
-use gpui::layer_shell::{Anchor, KeyboardInteractivity, LayerShellOptions, Layer};
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -12,10 +12,7 @@ pub enum ControlCenterSection {
 }
 
 #[derive(Clone)]
-pub struct ControlCenterStateChanged {
-    pub visible: bool,
-    pub expanded_section: Option<ControlCenterSection>,
-}
+pub struct ControlCenterStateChanged;
 
 #[derive(Clone)]
 pub struct ControlCenterService {
@@ -39,12 +36,9 @@ impl ControlCenterService {
         let mut visible = self.visible.write();
         if *visible {
             *visible = false;
-            // Fermer la fenêtre
             self.close_window(cx);
         } else {
             *visible = true;
-            // Ouvrir la fenêtre
-            // On utilise le même pattern que pour l'OSD pour éviter les blocages
             let service = self.clone();
             cx.spawn(|_, cx: &mut AsyncApp| {
                 let cx = cx.clone();
@@ -57,11 +51,8 @@ impl ControlCenterService {
             })
             .detach();
         }
-        
-        cx.emit(ControlCenterStateChanged {
-            visible: *visible,
-            expanded_section: *self.expanded_section.read(),
-        });
+
+        cx.emit(ControlCenterStateChanged);
         cx.notify();
     }
 
@@ -72,25 +63,9 @@ impl ControlCenterService {
         } else {
             *current = Some(section);
         }
-        
-        cx.emit(ControlCenterStateChanged {
-            visible: *self.visible.read(),
-            expanded_section: *current,
-        });
-        cx.notify();
-    }
 
-    pub fn set_expanded_section(&self, section: Option<ControlCenterSection>, cx: &mut Context<Self>) {
-        *self.expanded_section.write() = section;
-        cx.emit(ControlCenterStateChanged {
-            visible: *self.visible.read(),
-            expanded_section: section,
-        });
+        cx.emit(ControlCenterStateChanged);
         cx.notify();
-    }
-
-    pub fn is_visible(&self) -> bool {
-        *self.visible.read()
     }
 
     pub fn expanded_section(&self) -> Option<ControlCenterSection> {
@@ -99,7 +74,7 @@ impl ControlCenterService {
 
     fn open_window(&self, cx: &mut App) {
         if self.window_handle.read().is_some() {
-            return; 
+            return;
         }
 
         let handle = cx.open_window(

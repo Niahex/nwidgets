@@ -32,9 +32,7 @@ impl ActiveWindowModule {
         // Log seulement si l'icône n'existe pas
         let icon_path = format!("assets/{icon_name}.svg");
         if !std::path::Path::new(&icon_path).exists() {
-            eprintln!(
-                "[ActiveWindow] Icon not found for class '{class}' -> '{icon_path}'"
-            );
+            eprintln!("[ActiveWindow] Icon not found for class '{class}' -> '{icon_path}'");
         }
 
         icon_name

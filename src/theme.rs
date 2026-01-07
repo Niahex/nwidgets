@@ -4,27 +4,27 @@ use gpui::*;
 #[derive(Clone)]
 pub struct Theme {
     // Backgrounds
-    pub bg: Hsla,           // polar0 - 0x2e3440
-    pub surface: Hsla,      // polar1 - 0x3b4252
-    pub overlay: Hsla,      // polar2 - 0x434c5e
-    pub hover: Hsla,        // polar3 - 0x4c566a
-    
+    pub bg: Hsla,      // polar0 - 0x2e3440
+    pub surface: Hsla, // polar1 - 0x3b4252
+    pub overlay: Hsla, // polar2 - 0x434c5e
+    pub hover: Hsla,   // polar3 - 0x4c566a
+
     // Text
-    pub text: Hsla,         // snow3 - 0xeceff4
-    pub text_muted: Hsla,   // snow2 - 0xd8dee9
-    pub text_bright: Hsla,  // snow1 - 0xe5e9f0
-    
+    pub text: Hsla,        // snow3 - 0xeceff4
+    pub text_muted: Hsla,  // snow2 - 0xd8dee9
+    pub text_bright: Hsla, // snow1 - 0xe5e9f0
+
     // Accents
-    pub accent: Hsla,       // frost1 - 0x88c0d0
-    pub accent_alt: Hsla,   // frost3 - 0x8fbcbb
-    
+    pub accent: Hsla,     // frost1 - 0x88c0d0
+    pub accent_alt: Hsla, // frost3 - 0x8fbcbb
+
     // Status colors
-    pub error: Hsla,        // red - 0xbf616a
-    pub success: Hsla,      // green - 0xa3be8c
-    pub warning: Hsla,      // yellow - 0xebcb8b
-    
+    pub error: Hsla,   // red - 0xbf616a
+    pub success: Hsla, // green - 0xa3be8c
+    pub warning: Hsla, // yellow - 0xebcb8b
+
     // Special
-    pub white: Hsla,        // 0xFFFFFF
+    pub white: Hsla,         // 0xFFFFFF
     pub systray_hover: Hsla, // 0x313244 (catppuccin)
 }
 

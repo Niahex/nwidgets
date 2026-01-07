@@ -11,11 +11,8 @@ pub struct BluetoothState {
     pub connected_devices: usize,
 }
 
-
 #[derive(Clone)]
-pub struct BluetoothStateChanged {
-    pub state: BluetoothState,
-}
+pub struct BluetoothStateChanged;
 
 pub struct BluetoothService {
     state: Arc<RwLock<BluetoothState>>,
@@ -28,10 +25,8 @@ impl BluetoothService {
         let state = Arc::new(RwLock::new(Self::fetch_bluetooth_state()));
         let state_clone = Arc::clone(&state);
 
-        cx.spawn(async move |this, cx| {
-            Self::monitor_bluetooth(this, state_clone, cx).await
-        })
-        .detach();
+        cx.spawn(async move |this, cx| Self::monitor_bluetooth(this, state_clone, cx).await)
+            .detach();
 
         Self { state }
     }
@@ -61,7 +56,7 @@ impl BluetoothService {
 
             if state_changed {
                 let _ = this.update(cx, |_, cx| {
-                    cx.emit(BluetoothStateChanged { state: new_state });
+                    cx.emit(BluetoothStateChanged);
                     cx.notify();
                 });
             }

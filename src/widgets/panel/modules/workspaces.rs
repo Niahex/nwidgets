@@ -66,8 +66,7 @@ impl Render for WorkspacesModule {
                         FontWeight::MEDIUM
                     })
                     .when(is_active, |this| {
-                        this.bg(theme.accent.opacity(0.2))
-                            .text_color(theme.accent)
+                        this.bg(theme.accent.opacity(0.2)).text_color(theme.accent)
                     })
                     .when(!is_active, |this| {
                         this.text_color(theme.text_muted.opacity(0.5))

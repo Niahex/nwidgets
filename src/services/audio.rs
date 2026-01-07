@@ -1,11 +1,11 @@
+use futures::StreamExt;
 use gpui::prelude::*;
 use gpui::{App, Context, Entity, EventEmitter, Global, SharedString};
 use parking_lot::RwLock;
-use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-use std::collections::HashMap;
 use pipewire as pw;
-use futures::StreamExt;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::Arc;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AudioState {
@@ -62,8 +62,6 @@ pub struct AudioService {
     sources: Arc<RwLock<Vec<AudioDevice>>>,
     sink_inputs: Arc<RwLock<Vec<AudioStream>>>,
     source_outputs: Arc<RwLock<Vec<AudioStream>>>,
-    default_sink_name: Arc<RwLock<Option<String>>>,
-    default_source_name: Arc<RwLock<Option<String>>>,
 }
 
 impl EventEmitter<AudioStateChanged> for AudioService {}
@@ -75,26 +73,34 @@ impl AudioService {
         let sources = Arc::new(RwLock::new(Vec::new()));
         let sink_inputs = Arc::new(RwLock::new(Vec::new()));
         let source_outputs = Arc::new(RwLock::new(Vec::new()));
-        let default_sink_name = Arc::new(RwLock::new(None));
-        let default_source_name = Arc::new(RwLock::new(None));
-        
+
         let state_clone = Arc::clone(&state);
         let sinks_clone = Arc::clone(&sinks);
         let sources_clone = Arc::clone(&sources);
         let sink_inputs_clone = Arc::clone(&sink_inputs);
         let source_outputs_clone = Arc::clone(&source_outputs);
-        let default_sink_clone = Arc::clone(&default_sink_name);
-        let default_source_clone = Arc::clone(&default_source_name);
-        
+
         cx.spawn(async move |this, cx| {
             Self::monitor_pipewire(
-                this, state_clone, sinks_clone, sources_clone, 
-                sink_inputs_clone, source_outputs_clone,
-                default_sink_clone, default_source_clone, cx
-            ).await
-        }).detach();
+                this,
+                state_clone,
+                sinks_clone,
+                sources_clone,
+                sink_inputs_clone,
+                source_outputs_clone,
+                cx,
+            )
+            .await
+        })
+        .detach();
 
-        Self { state, sinks, sources, sink_inputs, source_outputs, default_sink_name, default_source_name }
+        Self {
+            state,
+            sinks,
+            sources,
+            sink_inputs,
+            source_outputs,
+        }
     }
 
     fn get_volume_wpctl(device: &str) -> (u8, bool) {
@@ -114,6 +120,7 @@ impl AudioService {
         (50, false)
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn monitor_pipewire(
         this: gpui::WeakEntity<Self>,
         state: Arc<RwLock<AudioState>>,
@@ -121,20 +128,19 @@ impl AudioService {
         sources: Arc<RwLock<Vec<AudioDevice>>>,
         sink_inputs: Arc<RwLock<Vec<AudioStream>>>,
         source_outputs: Arc<RwLock<Vec<AudioStream>>>,
-        default_sink_name: Arc<RwLock<Option<String>>>,
-        default_source_name: Arc<RwLock<Option<String>>>,
         cx: &mut gpui::AsyncApp,
     ) {
         loop {
             let (tx, mut rx) = futures::channel::mpsc::unbounded::<PwEvent>();
-            let nodes_data: Arc<RwLock<HashMap<u32, PwNodeInfo>>> = Arc::new(RwLock::new(HashMap::new()));
+            let nodes_data: Arc<RwLock<HashMap<u32, PwNodeInfo>>> =
+                Arc::new(RwLock::new(HashMap::new()));
             let nodes_data_thread = Arc::clone(&nodes_data);
-            
+
             std::thread::spawn({
                 let tx = tx;
                 move || {
                     pw::init();
-                    
+
                     let mainloop = match pw::main_loop::MainLoopRc::new(None) {
                         Ok(ml) => ml,
                         Err(e) => {
@@ -142,7 +148,7 @@ impl AudioService {
                             return;
                         }
                     };
-                    
+
                     let context = match pw::context::ContextRc::new(&mainloop, None) {
                         Ok(ctx) => ctx,
                         Err(e) => {
@@ -150,7 +156,7 @@ impl AudioService {
                             return;
                         }
                     };
-                    
+
                     let core = match context.connect_rc(None) {
                         Ok(c) => c,
                         Err(e) => {
@@ -158,7 +164,7 @@ impl AudioService {
                             return;
                         }
                     };
-                    
+
                     let registry = match core.get_registry_rc() {
                         Ok(r) => r,
                         Err(e) => {
@@ -166,18 +172,18 @@ impl AudioService {
                             return;
                         }
                     };
-                    
-                    let nodes: std::rc::Rc<std::cell::RefCell<Vec<pw::node::Node>>> = 
+
+                    let nodes: std::rc::Rc<std::cell::RefCell<Vec<pw::node::Node>>> =
                         std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
-                    let listeners: std::rc::Rc<std::cell::RefCell<Vec<pw::node::NodeListener>>> = 
+                    let listeners: std::rc::Rc<std::cell::RefCell<Vec<pw::node::NodeListener>>> =
                         std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
-                    
+
                     let nodes_clone = nodes.clone();
                     let listeners_clone = listeners.clone();
                     let registry_clone = registry.clone();
                     let nodes_data_clone = nodes_data_thread.clone();
                     let tx_remove = tx.clone();
-                    
+
                     let _registry_listener = registry
                         .add_listener_local()
                         .global(move |global| {
@@ -185,14 +191,15 @@ impl AudioService {
                                 if let Some(props) = &global.props {
                                     let media_class = props.get("media.class").unwrap_or("");
                                     let node_name = props.get("node.name").unwrap_or("");
-                                    let node_desc = props.get("node.description")
+                                    let node_desc = props
+                                        .get("node.description")
                                         .or_else(|| props.get("node.nick"))
                                         .unwrap_or(node_name);
-                                    
-                                    let dominated = media_class.contains("Audio/Sink") 
+
+                                    let dominated = media_class.contains("Audio/Sink")
                                         || media_class.contains("Audio/Source")
                                         || media_class.contains("Stream/");
-                                    
+
                                     if dominated {
                                         let info = PwNodeInfo {
                                             id: global.id,
@@ -201,20 +208,25 @@ impl AudioService {
                                             media_class: media_class.to_string().into(),
                                         };
                                         nodes_data_clone.write().insert(global.id, info);
-                                        let _ = tx.unbounded_send(PwEvent::NodeAdded(global.id));
-                                        
-                                        if let Ok(node) = registry_clone.bind::<pw::node::Node, _>(global) {
+                                        let _ = tx.unbounded_send(PwEvent::NodeAdded);
+
+                                        if let Ok(node) =
+                                            registry_clone.bind::<pw::node::Node, _>(global)
+                                        {
                                             let tx_param = tx.clone();
-                                            
+
                                             let node_listener = node
                                                 .add_listener_local()
                                                 .param(move |_, _, _, _, _| {
-                                                    let _ = tx_param.unbounded_send(PwEvent::ParamChanged);
+                                                    let _ = tx_param
+                                                        .unbounded_send(PwEvent::ParamChanged);
                                                 })
                                                 .register();
-                                            
-                                            node.subscribe_params(&[pw::spa::param::ParamType::Props]);
-                                            
+
+                                            node.subscribe_params(&[
+                                                pw::spa::param::ParamType::Props,
+                                            ]);
+
                                             nodes_clone.borrow_mut().push(node);
                                             listeners_clone.borrow_mut().push(node_listener);
                                         }
@@ -226,11 +238,11 @@ impl AudioService {
                             let _ = tx_remove.unbounded_send(PwEvent::NodeRemoved(id));
                         })
                         .register();
-                    
+
                     mainloop.run();
                 }
             });
-            
+
             // Initial state fetch
             let (sink_vol, sink_muted) = Self::get_volume_wpctl("@DEFAULT_AUDIO_SINK@");
             let (source_vol, source_muted) = Self::get_volume_wpctl("@DEFAULT_AUDIO_SOURCE@");
@@ -241,53 +253,52 @@ impl AudioService {
                 s.source_volume = source_vol;
                 s.source_muted = source_muted;
             }
-            
+
             let mut last_update = std::time::Instant::now();
             let debounce = std::time::Duration::from_millis(50);
-            
+
             while let Some(event) = rx.next().await {
-                match event {
-                    PwEvent::NodeRemoved(id) => {
-                        nodes_data.write().remove(&id);
-                    }
-                    _ => {}
+                if let PwEvent::NodeRemoved(id) = event {
+                    nodes_data.write().remove(&id);
                 }
-                
+
                 let now = std::time::Instant::now();
                 if now.duration_since(last_update) < debounce {
                     while rx.try_next().is_ok() {}
                     cx.background_executor().timer(debounce).await;
                 }
                 last_update = std::time::Instant::now();
-                
+
                 // Update volumes
                 let (sink_vol, sink_muted) = Self::get_volume_wpctl("@DEFAULT_AUDIO_SINK@");
                 let (source_vol, source_muted) = Self::get_volume_wpctl("@DEFAULT_AUDIO_SOURCE@");
-                
+
                 // Build device lists from collected nodes
                 let nodes_snapshot = nodes_data.read();
-                let default_sink = default_sink_name.read();
-                let default_source = default_source_name.read();
-                
+
                 let mut new_sinks = Vec::new();
                 let mut new_sources = Vec::new();
                 let mut new_sink_inputs = Vec::new();
                 let mut new_source_outputs = Vec::new();
-                
+
                 for info in nodes_snapshot.values() {
-                    if info.media_class.contains("Audio/Sink") && !info.media_class.contains("Stream") {
+                    if info.media_class.contains("Audio/Sink")
+                        && !info.media_class.contains("Stream")
+                    {
                         new_sinks.push(AudioDevice {
                             id: info.id,
                             name: info.name.clone(),
                             description: info.description.clone(),
-                            is_default: default_sink.as_deref() == Some(info.name.as_ref()),
+                            is_default: false,
                         });
-                    } else if info.media_class.contains("Audio/Source") && !info.media_class.contains("Stream") {
+                    } else if info.media_class.contains("Audio/Source")
+                        && !info.media_class.contains("Stream")
+                    {
                         new_sources.push(AudioDevice {
                             id: info.id,
                             name: info.name.clone(),
                             description: info.description.clone(),
-                            is_default: default_source.as_deref() == Some(info.name.as_ref()),
+                            is_default: false,
                         });
                     } else if info.media_class.contains("Stream/Output/Audio") {
                         new_sink_inputs.push(AudioStream {
@@ -308,21 +319,19 @@ impl AudioService {
                     }
                 }
                 drop(nodes_snapshot);
-                drop(default_sink);
-                drop(default_source);
-                
+
                 *sinks.write() = new_sinks;
                 *sources.write() = new_sources;
                 *sink_inputs.write() = new_sink_inputs;
                 *source_outputs.write() = new_source_outputs;
-                
+
                 let new_state = AudioState {
                     sink_volume: sink_vol,
                     sink_muted,
                     source_volume: source_vol,
                     source_muted,
                 };
-                
+
                 let changed = {
                     let mut current = state.write();
                     let changed = *current != new_state;
@@ -331,7 +340,7 @@ impl AudioService {
                     }
                     changed
                 };
-                
+
                 let _ = this.update(cx, |_, cx| {
                     if changed {
                         cx.emit(AudioStateChanged { state: new_state });
@@ -339,9 +348,11 @@ impl AudioService {
                     cx.notify();
                 });
             }
-            
+
             eprintln!("[AudioService] PipeWire connection lost, reconnecting...");
-            cx.background_executor().timer(std::time::Duration::from_secs(2)).await;
+            cx.background_executor()
+                .timer(std::time::Duration::from_secs(2))
+                .await;
         }
     }
 
@@ -356,26 +367,34 @@ impl AudioService {
                 .args(["set-volume", "@DEFAULT_AUDIO_SINK@", &format!("{volume}%")])
                 .output()
                 .await;
-        }).detach();
+        })
+        .detach();
     }
 
+    #[allow(dead_code)]
     pub fn toggle_sink_mute(&self, cx: &mut Context<Self>) {
         gpui_tokio::Tokio::spawn(cx, async move {
             let _ = tokio::process::Command::new("wpctl")
                 .args(["set-mute", "@DEFAULT_AUDIO_SINK@", "toggle"])
                 .output()
                 .await;
-        }).detach();
+        })
+        .detach();
     }
 
     pub fn set_source_volume(&self, volume: u8, cx: &mut Context<Self>) {
         let volume = volume.min(100);
         gpui_tokio::Tokio::spawn(cx, async move {
             let _ = tokio::process::Command::new("wpctl")
-                .args(["set-volume", "@DEFAULT_AUDIO_SOURCE@", &format!("{volume}%")])
+                .args([
+                    "set-volume",
+                    "@DEFAULT_AUDIO_SOURCE@",
+                    &format!("{volume}%"),
+                ])
                 .output()
                 .await;
-        }).detach();
+        })
+        .detach();
     }
 
     pub fn set_default_sink(&self, id: u32, cx: &mut Context<Self>) {
@@ -384,7 +403,8 @@ impl AudioService {
                 .args(["set-default", &id.to_string()])
                 .output()
                 .await;
-        }).detach();
+        })
+        .detach();
     }
 
     pub fn set_default_source(&self, id: u32, cx: &mut Context<Self>) {
@@ -393,7 +413,8 @@ impl AudioService {
                 .args(["set-default", &id.to_string()])
                 .output()
                 .await;
-        }).detach();
+        })
+        .detach();
     }
 
     pub fn sinks(&self) -> Vec<AudioDevice> {
@@ -415,7 +436,7 @@ impl AudioService {
 
 #[derive(Debug)]
 enum PwEvent {
-    NodeAdded(u32),
+    NodeAdded,
     NodeRemoved(u32),
     ParamChanged,
 }

@@ -11,9 +11,7 @@ pub struct SystrayItem {
 }
 
 #[derive(Clone)]
-pub struct SystrayChanged {
-    pub items: Vec<SystrayItem>,
-}
+pub struct SystrayChanged;
 
 pub struct SystrayService {
     items: Arc<RwLock<Vec<SystrayItem>>>,
@@ -23,7 +21,6 @@ impl EventEmitter<SystrayChanged> for SystrayService {}
 
 impl SystrayService {
     pub fn new(_cx: &mut Context<Self>) -> Self {
-        // For now, just a stub. Real implementation would use StatusNotifierWatcher DBus
         Self {
             items: Arc::new(RwLock::new(Vec::new())),
         }
@@ -33,19 +30,17 @@ impl SystrayService {
         self.items.read().clone()
     }
 
+    #[allow(dead_code)]
     pub fn add_item(&self, item: SystrayItem, cx: &mut Context<Self>) {
-        self.items.write().push(item.clone());
-        cx.emit(SystrayChanged {
-            items: self.items(),
-        });
+        self.items.write().push(item);
+        cx.emit(SystrayChanged);
         cx.notify();
     }
 
+    #[allow(dead_code)]
     pub fn remove_item(&self, id: &str, cx: &mut Context<Self>) {
         self.items.write().retain(|item| item.id != id);
-        cx.emit(SystrayChanged {
-            items: self.items(),
-        });
+        cx.emit(SystrayChanged);
         cx.notify();
     }
 }
