@@ -1,3 +1,4 @@
+use futures_util::StreamExt;
 use gpui::prelude::*;
 use gpui::{App, AsyncApp, Context, Entity, EventEmitter, Global, WeakEntity};
 use parking_lot::RwLock;
@@ -164,6 +165,16 @@ impl NetworkService {
             }
         };
 
+        // Subscribe to properties changes on the main NM object
+        let mut properties_stream = Some(nm_proxy.receive_connectivity_changed().await);
+        // Also listen for ActiveConnections changes if possible, but Connectivity is the main trigger.
+        // Or simply wake up on any property change on the interface.
+        // Actually, let's try to get a general stream if we can, or just loop with a select.
+        // For simplicity and robustness, let's use the Connectivity stream + a fallback timer.
+
+        // Initial fetch
+        let mut _last_update = std::time::Instant::now();
+
         loop {
             // Fetch state via DBus
             let new_state = Self::fetch_network_state_dbus(&conn, &nm_proxy).await;
@@ -186,7 +197,26 @@ impl NetworkService {
                 });
             }
 
-            cx.background_executor().timer(Duration::from_secs(5)).await;
+            // Wait for next event or timeout
+            // We use a shorter timeout (e.g. 5s) to also catch signal strength changes which might not trigger global connectivity changes
+            // (Signal strength is on the AccessPoint object, which we are not monitoring directly here).
+            // To properly monitor signal strength, we'd need to monitor the specific AP object.
+            // For now, 5s polling for signal strength is acceptable, but immediate reaction for Connectivity is good.
+
+            if let Some(stream) = &mut properties_stream {
+                tokio::select! {
+                    _ = stream.next() => {
+                        // Connectivity changed, loop immediately to fetch new state
+                        continue;
+                    }
+                    _ = cx.background_executor().timer(Duration::from_secs(5)) => {
+                        // Timeout, loop to refresh (e.g. signal strength)
+                        continue;
+                    }
+                }
+            } else {
+                 cx.background_executor().timer(Duration::from_secs(5)).await;
+            }
         }
     }
 
@@ -197,11 +227,7 @@ impl NetworkService {
         let mut state = NetworkState::default();
 
         // 1. Check Connectivity
-        // 4 = Full (Internet access), similar to ping success
-        // We consider "connected" if connectivity >= 4.
-        // If just local (3), we might show it but maybe with a warning?
-        // For now, let's match original ping behavior: ping success = connected.
-        // NM Connectivity 4 is "Full".
+        // 4 = Full (Internet access)
         if let Ok(connectivity) = nm.connectivity().await {
             state.connected = connectivity >= 4;
         }
@@ -216,7 +242,6 @@ impl NetworkService {
                             state.vpn_active = true;
                         }
                     } else if let Ok(type_str) = ac.type_().await {
-                        // Fallback check by type string
                         if type_str == "vpn" || type_str == "wireguard" {
                             state.vpn_active = true;
                         }
@@ -234,7 +259,6 @@ impl NetworkService {
 
                             // Get Signal Strength from AccessPoint
                             if let Ok(ap_path) = ac.specific_object().await {
-                                // Specific object might be "/" if not associated yet
                                 if ap_path.as_str() != "/" {
                                     if let Ok(ap) = AccessPointProxy::new(conn, ap_path).await {
                                         if let Ok(strength) = ap.strength().await {
@@ -246,8 +270,6 @@ impl NetworkService {
                         } else if type_str == "802-3-ethernet"
                             && state.connection_type == ConnectionType::None
                         {
-                            // Only set ethernet if we haven't found wifi (prefer wifi details if both active? unlikely)
-                            // Actually, if ethernet is active, it's usually primary.
                             state.connection_type = ConnectionType::Ethernet;
                             state.signal_strength = 100;
                         }
@@ -255,11 +277,6 @@ impl NetworkService {
                 }
             }
         }
-
-        // If we found a connection type but connectivity is unknown/low, we might want to flag it?
-        // But logic above sets `connected` based on global connectivity.
-        // If we have an active connection but no internet (connectivity < 4), state.connected will be false.
-        // This matches "ping failed" behavior.
 
         state
     }
