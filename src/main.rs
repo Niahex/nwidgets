@@ -32,7 +32,7 @@ use widgets::{
 
 struct Assets {
     base: PathBuf,
-    cache: parking_lot::RwLock<HashMap<String, Vec<u8>>>,
+    cache: parking_lot::RwLock<HashMap<String, &'static [u8]>>,
 }
 
 impl AssetSource for Assets {
@@ -40,15 +40,16 @@ impl AssetSource for Assets {
         {
             let cache = self.cache.read();
             if let Some(data) = cache.get(path) {
-                return Ok(Some(std::borrow::Cow::Owned(data.clone())));
+                return Ok(Some(std::borrow::Cow::Borrowed(data)));
             }
         }
 
         match std::fs::read(self.base.join(path)) {
             Ok(data) => {
+                let leaked_data: &'static [u8] = Box::leak(data.into_boxed_slice());
                 let mut cache = self.cache.write();
-                cache.insert(path.to_string(), data.clone());
-                Ok(Some(std::borrow::Cow::Owned(data)))
+                cache.insert(path.to_string(), leaked_data);
+                Ok(Some(std::borrow::Cow::Borrowed(leaked_data)))
             }
             Err(e) => {
                 // If file not found or other error, return None or propagate error
