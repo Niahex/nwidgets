@@ -1,7 +1,6 @@
-use crate::services::audio::{AudioService, AudioStateChanged};
 use crate::services::clipboard::{ClipboardEvent, ClipboardMonitor};
-use crate::services::control_center::ControlCenterService;
 use crate::services::lock_state::{LockMonitor, LockStateChanged, LockType};
+use crate::services::audio::{AudioService, AudioStateChanged};
 use gpui::*;
 use gpui::layer_shell::{Anchor, KeyboardInteractivity, LayerShellOptions, Layer};
 use std::time::Duration;
@@ -35,12 +34,8 @@ impl OsdService {
         let lock_monitor = LockMonitor::init(cx);
         let clipboard_monitor = ClipboardMonitor::init(cx);
 
+        // Écouter les changements audio
         cx.subscribe(&audio, move |this, _audio, event: &AudioStateChanged, cx| {
-            let control_center = ControlCenterService::global(cx);
-            if control_center.read(cx).is_visible() {
-                return;
-            }
-
             let state = &event.state;
             let icon_name = if state.sink_muted {
                 "sink-muted".to_string()

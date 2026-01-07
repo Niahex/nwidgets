@@ -7,46 +7,35 @@ use std::time::Duration;
 pub struct OsdWidget {
     current_event: Option<OsdEvent>,
     visible: bool,
-    displayed_volume: f32, // Volume affiché (animé)
-    target_volume: f32,    // Volume cible (local)
-    last_system_volume: u8, // Dernier volume reçu du système
+    displayed_volume: f32,
+    target_volume: f32,
 }
 
 impl OsdWidget {
     pub fn new(cx: &mut Context<Self>, initial_event: Option<OsdEvent>, initial_visible: bool) -> Self {
         let osd = OsdService::global(cx);
-        
-        // Récupérer le volume initial une seule fois
         let initial_volume = Self::get_initial_volume();
         
         cx.subscribe(&osd, move |this, _osd, event: &OsdStateChanged, cx| {
             this.current_event = event.event.clone();
             this.visible = event.visible;
             
-            // Calculer le delta et incrémenter/décrémenter localement
-            if let Some(OsdEvent::Volume(_, new_vol, _)) = &event.event {
-                let delta = (*new_vol as i16) - (this.last_system_volume as i16);
-                this.target_volume = (this.target_volume + delta as f32).clamp(0.0, 100.0);
-                this.last_system_volume = *new_vol;
-                
-                // Snap immédiatement si la différence est grande
-                if (this.displayed_volume - this.target_volume).abs() > 10.0 {
-                    this.displayed_volume = this.target_volume;
-                }
+            // Mettre à jour target_volume depuis l'événement
+            if let Some(OsdEvent::Volume(_, vol, _)) = &event.event {
+                this.target_volume = *vol as f32;
             }
             
             cx.notify();
         })
         .detach();
 
-        // Animation loop pour interpoler le volume
+        // Animation loop
         cx.spawn(async move |this, cx| loop {
-            cx.background_executor().timer(Duration::from_millis(16)).await; // ~60fps
+            cx.background_executor().timer(Duration::from_millis(8)).await;
             
             let _ = this.update(cx, |widget, cx| {
                 if (widget.displayed_volume - widget.target_volume).abs() > 0.1 {
-                    // Interpolation très rapide
-                    widget.displayed_volume += (widget.target_volume - widget.displayed_volume) * 0.5;
+                    widget.displayed_volume += (widget.target_volume - widget.displayed_volume) * 0.7;
                     cx.notify();
                 }
             });
@@ -58,18 +47,15 @@ impl OsdWidget {
             visible: initial_visible,
             displayed_volume: initial_volume,
             target_volume: initial_volume,
-            last_system_volume: initial_volume as u8,
         }
     }
     
     fn get_initial_volume() -> f32 {
-        // Récupérer le volume une seule fois au démarrage
         if let Ok(output) = std::process::Command::new("wpctl")
             .args(["get-volume", "@DEFAULT_AUDIO_SINK@"])
             .output()
         {
             if let Ok(text) = String::from_utf8(output.stdout) {
-                // Format: "Volume: 0.50" -> 50%
                 if let Some(vol_str) = text.split_whitespace().nth(1) {
                     if let Ok(vol) = vol_str.parse::<f32>() {
                         return (vol * 100.0).clamp(0.0, 100.0);
@@ -77,7 +63,7 @@ impl OsdWidget {
                 }
             }
         }
-        50.0 // Fallback
+        50.0
     }
 }
 
@@ -206,7 +192,6 @@ impl Render for OsdWidget {
             .rounded(px(12.))
             .px_4()
             .py_3()
-            // Initial opacity matches target state to avoid flash if animation doesn't run or finishes
             .opacity(if is_visible { 1.0 } else { 0.0 })
             .child(content)
             .with_animation(

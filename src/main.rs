@@ -20,7 +20,7 @@ use services::{
     osd::OsdService,
     pomodoro::PomodoroService,
     systray::SystrayService,
-    control_center::ControlCenterService,
+    // control_center::ControlCenterService, // Désactivé temporairement
 };
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -110,7 +110,7 @@ fn main() {
             SystrayService::init(cx);
             let notif_service = NotificationService::init(cx);
             let osd_service = OsdService::init(cx);
-            ControlCenterService::init(cx);
+            // ControlCenterService::init(cx); // Désactivé temporairement
 
             // Create panel window with LayerShell - full width (3440px), 50px height
             cx.open_window(

@@ -63,6 +63,7 @@
           libnotify
           alsa-lib
           udev
+          pipewire
         ];
 
         # Dependencies needed only at runtime
@@ -75,10 +76,12 @@
           pkg-config
           makeWrapper
           autoPatchelfHook
+          clang
         ];
 
         envVars = {
           RUST_BACKTRACE = "full";
+          LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
         };
 
         # Build artifacts

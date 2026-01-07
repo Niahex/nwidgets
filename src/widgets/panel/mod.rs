@@ -5,7 +5,7 @@ pub use modules::{
     PomodoroModule, SinkModule, SourceModule, SystrayModule, WorkspacesModule,
 };
 
-use crate::services::control_center::ControlCenterService;
+// use crate::services::control_center::ControlCenterService; // Désactivé temporairement
 use gpui::*;
 
 pub struct Panel {
@@ -19,7 +19,7 @@ pub struct Panel {
     sink: Entity<SinkModule>,
     source: Entity<SourceModule>,
     datetime: Entity<DateTimeModule>,
-    control_center: Entity<ControlCenterService>,
+    // control_center: Entity<ControlCenterService>, // Désactivé temporairement
 }
 
 impl Panel {
@@ -35,7 +35,7 @@ impl Panel {
             sink: cx.new(SinkModule::new),
             source: cx.new(SourceModule::new),
             datetime: cx.new(DateTimeModule::new),
-            control_center: ControlCenterService::global(cx),
+            // control_center: ControlCenterService::global(cx), // Désactivé temporairement
         }
     }
 }
@@ -83,7 +83,7 @@ impl Render for Panel {
                     .items_center()
                     .h_full()
                     .child(div().flex().items_center().child(self.systray.clone()))
-                    // Group interactive modules for Control Center toggle
+                    // Group interactive modules (Control Center désactivé temporairement)
                     .child(
                         div()
                             .id("control-center-trigger")
@@ -91,14 +91,14 @@ impl Render for Panel {
                             .gap_0()
                             .items_center()
                             .h_full()
-                            .hover(|s| s.bg(theme.hover))
-                            .rounded_md()
-                            .cursor_pointer()
-                            .on_click(cx.listener(|this, _, _window, cx| {
-                                this.control_center.update(cx, |cc, cx| {
-                                    cc.toggle(cx);
-                                });
-                            }))
+                            // .hover(|s| s.bg(theme.hover))
+                            // .rounded_md()
+                            // .cursor_pointer()
+                            // .on_click(cx.listener(|this, _, _window, cx| {
+                            //     this.control_center.update(cx, |cc, cx| {
+                            //         cc.toggle(cx);
+                            //     });
+                            // }))
                             .child(
                                 div()
                                     .flex()
