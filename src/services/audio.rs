@@ -121,6 +121,26 @@ impl AudioService {
         (50, false)
     }
 
+    // Get default sink/source ID via wpctl inspect
+    fn get_default_device_id(device: &str) -> Option<u32> {
+        if let Ok(output) = std::process::Command::new("wpctl")
+            .args(["inspect", device])
+            .output()
+        {
+            if let Ok(text) = String::from_utf8(output.stdout) {
+                // First line: "id 76, type PipeWire:Interface:Node"
+                if let Some(first_line) = text.lines().next() {
+                    if let Some(id_part) = first_line.strip_prefix("id ") {
+                        if let Some(id_str) = id_part.split(',').next() {
+                            return id_str.trim().parse().ok();
+                        }
+                    }
+                }
+            }
+        }
+        None
+    }
+
     #[allow(clippy::too_many_arguments)]
     async fn monitor_pipewire(
         this: gpui::WeakEntity<Self>,
@@ -285,6 +305,15 @@ impl AudioService {
                     Self::get_volume_wpctl_sync("@DEFAULT_AUDIO_SOURCE@")
                 }).await;
 
+                // Get default device IDs
+                let default_sink_id = cx.background_executor().spawn(async {
+                    Self::get_default_device_id("@DEFAULT_AUDIO_SINK@")
+                }).await;
+                
+                let default_source_id = cx.background_executor().spawn(async {
+                    Self::get_default_device_id("@DEFAULT_AUDIO_SOURCE@")
+                }).await;
+
                 // Build device lists from collected nodes
                 let nodes_snapshot = nodes_data.read();
 
@@ -301,7 +330,7 @@ impl AudioService {
                             id: info.id,
                             name: info.name.clone(),
                             description: info.description.clone(),
-                            is_default: false,
+                            is_default: default_sink_id == Some(info.id),
                         });
                     } else if info.media_class.contains("Audio/Source")
                         && !info.media_class.contains("Stream")
@@ -310,7 +339,7 @@ impl AudioService {
                             id: info.id,
                             name: info.name.clone(),
                             description: info.description.clone(),
-                            is_default: false,
+                            is_default: default_source_id == Some(info.id),
                         });
                     } else if info.media_class.contains("Stream/Output/Audio") {
                         new_sink_inputs.push(AudioStream {

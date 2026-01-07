@@ -74,7 +74,12 @@ impl<T: Clone + PartialEq + 'static> RenderOnce for Dropdown<T> {
         let label: SharedString = self
             .selected
             .as_ref()
-            .map(|s| (self.label_fn)(s))
+            .and_then(|sel| {
+                self.options
+                    .iter()
+                    .find(|o| &o.value == sel)
+                    .map(|o| o.label.clone())
+            })
             .unwrap_or_else(|| self.placeholder.clone());
 
         let trigger = div()

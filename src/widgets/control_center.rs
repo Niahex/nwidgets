@@ -363,13 +363,6 @@ impl ControlCenterWidget {
             .child(
                 Dropdown::new("sink-dropdown", options)
                     .selected(default_sink.map(|s| s.id))
-                    .label_fn(move |id| {
-                        sinks
-                            .iter()
-                            .find(|s| s.id == *id)
-                            .map(|s| s.description.clone())
-                            .unwrap_or_else(|| "No device".into())
-                    })
                     .placeholder("No device")
                     .open(is_open)
                     .on_toggle(cx.listener(|this, _: &ClickEvent, _, cx| {
@@ -515,13 +508,6 @@ impl ControlCenterWidget {
             .child(
                 Dropdown::new("source-dropdown", options)
                     .selected(default_source.map(|s| s.id))
-                    .label_fn(move |id| {
-                        sources
-                            .iter()
-                            .find(|s| s.id == *id)
-                            .map(|s| s.description.clone())
-                            .unwrap_or_else(|| "No device".into())
-                    })
                     .placeholder("No device")
                     .open(is_open)
                     .on_toggle(cx.listener(|this, _: &ClickEvent, _, cx| {
