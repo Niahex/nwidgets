@@ -7,23 +7,56 @@ use std::time::Duration;
 pub struct OsdWidget {
     current_event: Option<OsdEvent>,
     visible: bool,
+    displayed_volume: f32, // Volume affiché (animé)
+    target_volume: f32,    // Volume cible
 }
 
 impl OsdWidget {
     pub fn new(cx: &mut Context<Self>, initial_event: Option<OsdEvent>, initial_visible: bool) -> Self {
         let osd = OsdService::global(cx);
         
+        let initial_volume = if let Some(OsdEvent::Volume(_, vol, _)) = &initial_event {
+            *vol as f32
+        } else {
+            0.0
+        };
+        
         cx.subscribe(&osd, move |this, _osd, event: &OsdStateChanged, cx| {
-            // Avoid reading the service here to prevent RefCell panic
             this.current_event = event.event.clone();
             this.visible = event.visible;
+            
+            // Mettre à jour le volume cible directement sans arrondir
+            if let Some(OsdEvent::Volume(_, vol, _)) = &event.event {
+                this.target_volume = *vol as f32;
+                // Snap immédiatement si la différence est grande
+                if (this.displayed_volume - this.target_volume).abs() > 10.0 {
+                    this.displayed_volume = this.target_volume;
+                }
+            }
+            
             cx.notify();
+        })
+        .detach();
+
+        // Animation loop pour interpoler le volume
+        cx.spawn(async move |this, cx| loop {
+            cx.background_executor().timer(Duration::from_millis(16)).await; // ~60fps
+            
+            let _ = this.update(cx, |widget, cx| {
+                if (widget.displayed_volume - widget.target_volume).abs() > 0.1 {
+                    // Interpolation très rapide
+                    widget.displayed_volume += (widget.target_volume - widget.displayed_volume) * 0.5;
+                    cx.notify();
+                }
+            });
         })
         .detach();
 
         Self { 
             current_event: initial_event, 
-            visible: initial_visible 
+            visible: initial_visible,
+            displayed_volume: initial_volume,
+            target_volume: initial_volume,
         }
     }
 }
@@ -43,7 +76,10 @@ impl Render for OsdWidget {
         let _opacity = if self.visible { 1.0 } else { 0.0 };
 
         let content = match event {
-            OsdEvent::Volume(icon_name, level, _muted) => {
+            OsdEvent::Volume(icon_name, _level, _muted) => {
+                // Arrondir à 5 uniquement pour l'affichage du chiffre
+                let display_val = ((self.displayed_volume / 5.0).round() * 5.0) as u8;
+                
                 div()
                     .flex()
                     .gap_3()
@@ -67,12 +103,12 @@ impl Render for OsdWidget {
                                     .rounded(px(3.)),
                             )
                             .child(
-                                // Foreground (filled)
+                                // Foreground (filled) - animé avec valeur exacte
                                 div()
                                     .absolute()
                                     .top_0()
                                     .left_0()
-                                    .w(relative(*level as f32 / 100.0))
+                                    .w(relative(self.displayed_volume / 100.0))
                                     .h_full()
                                     .bg(theme.accent_alt)
                                     .rounded(px(3.)),
@@ -83,7 +119,7 @@ impl Render for OsdWidget {
                             .text_size(px(18.))
                             .font_weight(FontWeight::SEMIBOLD)
                             .text_color(theme.text)
-                            .child(format!("{level}")),
+                            .child(format!("{display_val}")),
                     )
             }
             OsdEvent::Microphone(muted) => {
