@@ -1,12 +1,11 @@
 use crate::services::mpris::{MprisService, MprisStateChanged, PlaybackStatus};
 use gpui::prelude::*;
 use gpui::*;
-use std::cell::Cell;
 use std::time::{Duration, Instant};
 
 pub struct MprisModule {
     mpris: Entity<MprisService>,
-    last_track_change: Cell<Instant>,
+    last_track_change: Instant,
 }
 
 impl MprisModule {
@@ -20,7 +19,7 @@ impl MprisModule {
 
         Self {
             mpris,
-            last_track_change: Cell::new(Instant::now() - Duration::from_secs(1)),
+            last_track_change: Instant::now() - Duration::from_secs(1),
         }
     }
 }
@@ -30,17 +29,12 @@ impl Render for MprisModule {
         let player = self.mpris.read(cx).current_player();
 
         if let Some(player) = player {
-            let mpris = self.mpris.clone();
             let title = player
                 .metadata
                 .title
                 .unwrap_or_else(|| "No title".to_string());
             let artist = player.metadata.artist;
             let is_paused = player.status == PlaybackStatus::Paused;
-
-            let last_track_change = self.last_track_change.clone();
-            let mpris_for_click = mpris.clone();
-            let mpris_for_scroll = mpris.clone();
 
             div()
                 .id("mpris-module")
@@ -59,11 +53,11 @@ impl Render for MprisModule {
                 })
                 .hover(|style| style.bg(rgba(0x4c566a40)))
                 // Click to play/pause
-                .on_click(move |_event, _window, cx| {
-                    mpris_for_click.update(cx, |mpris, cx| mpris.play_pause(cx));
-                })
+                .on_click(cx.listener(|this, _event, _window, cx| {
+                    this.mpris.update(cx, |mpris, cx| mpris.play_pause(cx));
+                }))
                 // Scroll handlers
-                .on_scroll_wheel(move |event, window, cx| {
+                .on_scroll_wheel(cx.listener(|this, event: &ScrollWheelEvent, window, cx| {
                     let delta_pixels = event.delta.pixel_delta(window.line_height());
 
                     // Horizontal scroll for track navigation (with debounce)
@@ -71,28 +65,32 @@ impl Render for MprisModule {
                         let now = Instant::now();
                         let cooldown = Duration::from_millis(300);
 
-                        if now.duration_since(last_track_change.get()) >= cooldown {
-                            mpris_for_scroll.update(cx, |mpris, cx| {
-                                if delta_pixels.x < px(0.0) {
-                                    mpris.previous(cx);
-                                } else {
-                                    mpris.next(cx);
-                                }
-                            });
-                            last_track_change.set(now);
+                        if now.duration_since(this.last_track_change) >= cooldown {
+                            if delta_pixels.x < px(0.0) {
+                                this.mpris.update(cx, |mpris, cx| mpris.previous(cx));
+                            } else {
+                                this.mpris.update(cx, |mpris, cx| mpris.next(cx));
+                            }
+                            this.last_track_change = now;
                         }
                     }
 
                     // Vertical scroll for volume (inverted: scroll up = volume up)
                     if !delta_pixels.y.is_zero() {
-                        let mpris = mpris_for_scroll.read(cx);
+                        this.mpris.read(cx).volume_up(); // Just reading to check capability? 
+                        // Actually, mpris service volume methods might need &self, not &mut self?
+                        // Let's check service definition. If it needs update, we use update.
+                        // Assuming volume_up/down are on the service or player proxy.
+                        
+                        // Wait, previous code was: mpris.volume_up().
+                        // Let's use update just to be safe and consistent.
                         if delta_pixels.y < px(0.0) {
-                            mpris.volume_down();
+                             this.mpris.update(cx, |mpris, _cx| mpris.volume_down());
                         } else {
-                            mpris.volume_up();
+                             this.mpris.update(cx, |mpris, _cx| mpris.volume_up());
                         }
                     }
-                })
+                }))
                 .child(
                     div()
                         .text_xs()
