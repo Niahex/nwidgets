@@ -23,11 +23,10 @@ pub struct ControlCenterWidget {
     last_mic_update: Option<Instant>,
 }
 
-fn get_stream_display(stream: &crate::services::audio::AudioStream) -> (String, &'static str, bool) {
-    let title = stream.window_title.as_deref().unwrap_or(&stream.app_name);
+fn get_stream_display(stream: &crate::services::audio::AudioStream) -> (SharedString, &'static str, bool) {
+    let title = stream.window_title.as_ref().unwrap_or(&stream.app_name);
     let title_lower = title.to_lowercase();
     
-    // Detect icon and preserve_colors based on content
     let (icon, preserve_colors) = if title_lower.contains("youtube") {
         ("youtube", true)
     } else if title_lower.contains("twitch") {
@@ -46,11 +45,10 @@ fn get_stream_display(stream: &crate::services::audio::AudioStream) -> (String, 
         ("application-x-executable", false)
     };
     
-    // Truncate title if too long (max 40 chars)
-    let display_name = if title.len() > 40 {
-        format!("{}...", &title[..37])
+    let display_name: SharedString = if title.len() > 40 {
+        format!("{}...", &title[..37]).into()
     } else {
-        title.to_string()
+        title.clone()
     };
     
     (display_name, icon, preserve_colors)
@@ -313,7 +311,7 @@ impl ControlCenterWidget {
                         div()
                             .text_xs()
                             .text_color(theme.text)
-                            .child(default_sink.map(|s| s.description.clone()).unwrap_or_else(|| "No device".to_string()))
+                            .child(default_sink.map(|s| s.description.clone()).unwrap_or_else(|| "No device".into()))
                     )
                     .child(
                         Icon::new(if is_open { "arrow-up" } else { "arrow-down" }).size(px(12.)).color(theme.text_muted)
@@ -497,7 +495,7 @@ impl ControlCenterWidget {
                         div()
                             .text_xs()
                             .text_color(theme.text)
-                            .child(default_source.map(|s| s.description.clone()).unwrap_or_else(|| "No device".to_string()))
+                            .child(default_source.map(|s| s.description.clone()).unwrap_or_else(|| "No device".into()))
                     )
                     .child(
                         Icon::new(if is_open { "arrow-up" } else { "arrow-down" }).size(px(12.)).color(theme.text_muted)

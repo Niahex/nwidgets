@@ -1,5 +1,5 @@
 use gpui::prelude::*;
-use gpui::{App, Context, Entity, EventEmitter, Global};
+use gpui::{App, Context, Entity, EventEmitter, Global, SharedString};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -29,16 +29,16 @@ impl Default for AudioState {
 #[derive(Debug, Clone, PartialEq)]
 pub struct AudioDevice {
     pub id: u32,
-    pub name: String,
-    pub description: String,
+    pub name: SharedString,
+    pub description: SharedString,
     pub is_default: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AudioStream {
     pub id: u32,
-    pub app_name: String,
-    pub window_title: Option<String>,
+    pub app_name: SharedString,
+    pub window_title: Option<SharedString>,
     pub volume: u8,
     pub muted: bool,
 }
@@ -51,9 +51,9 @@ pub struct AudioStateChanged {
 #[derive(Debug, Clone)]
 struct PwNodeInfo {
     id: u32,
-    name: String,
-    description: String,
-    media_class: String,
+    name: SharedString,
+    description: SharedString,
+    media_class: SharedString,
 }
 
 pub struct AudioService {
@@ -184,10 +184,10 @@ impl AudioService {
                             if global.type_ == pw::types::ObjectType::Node {
                                 if let Some(props) = &global.props {
                                     let media_class = props.get("media.class").unwrap_or("");
-                                    let node_name = props.get("node.name").unwrap_or("").to_string();
+                                    let node_name = props.get("node.name").unwrap_or("");
                                     let node_desc = props.get("node.description")
                                         .or_else(|| props.get("node.nick"))
-                                        .unwrap_or(&node_name).to_string();
+                                        .unwrap_or(node_name);
                                     
                                     let dominated = media_class.contains("Audio/Sink") 
                                         || media_class.contains("Audio/Source")
@@ -196,9 +196,9 @@ impl AudioService {
                                     if dominated {
                                         let info = PwNodeInfo {
                                             id: global.id,
-                                            name: node_name,
-                                            description: node_desc,
-                                            media_class: media_class.to_string(),
+                                            name: node_name.to_string().into(),
+                                            description: node_desc.to_string().into(),
+                                            media_class: media_class.to_string().into(),
                                         };
                                         nodes_data_clone.write().insert(global.id, info);
                                         let _ = tx.unbounded_send(PwEvent::NodeAdded(global.id));
@@ -265,9 +265,9 @@ impl AudioService {
                 let (source_vol, source_muted) = Self::get_volume_wpctl("@DEFAULT_AUDIO_SOURCE@");
                 
                 // Build device lists from collected nodes
-                let nodes_snapshot = nodes_data.read().clone();
-                let default_sink = default_sink_name.read().clone();
-                let default_source = default_source_name.read().clone();
+                let nodes_snapshot = nodes_data.read();
+                let default_sink = default_sink_name.read();
+                let default_source = default_source_name.read();
                 
                 let mut new_sinks = Vec::new();
                 let mut new_sources = Vec::new();
@@ -280,14 +280,14 @@ impl AudioService {
                             id: info.id,
                             name: info.name.clone(),
                             description: info.description.clone(),
-                            is_default: default_sink.as_ref() == Some(&info.name),
+                            is_default: default_sink.as_deref() == Some(info.name.as_ref()),
                         });
                     } else if info.media_class.contains("Audio/Source") && !info.media_class.contains("Stream") {
                         new_sources.push(AudioDevice {
                             id: info.id,
                             name: info.name.clone(),
                             description: info.description.clone(),
-                            is_default: default_source.as_ref() == Some(&info.name),
+                            is_default: default_source.as_deref() == Some(info.name.as_ref()),
                         });
                     } else if info.media_class.contains("Stream/Output/Audio") {
                         new_sink_inputs.push(AudioStream {
@@ -307,6 +307,9 @@ impl AudioService {
                         });
                     }
                 }
+                drop(nodes_snapshot);
+                drop(default_sink);
+                drop(default_source);
                 
                 *sinks.write() = new_sinks;
                 *sources.write() = new_sources;
