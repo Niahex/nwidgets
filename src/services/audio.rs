@@ -25,6 +25,23 @@ impl Default for AudioState {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct AudioDevice {
+    pub id: u32,
+    pub name: String,
+    pub description: String,
+    pub is_default: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AudioStream {
+    pub id: u32,
+    pub app_name: String,
+    pub window_title: Option<String>,
+    pub volume: u8,
+    pub muted: bool,
+}
+
 #[derive(Clone)]
 pub struct AudioStateChanged {
     pub state: AudioState,
@@ -32,6 +49,10 @@ pub struct AudioStateChanged {
 
 pub struct AudioService {
     state: Arc<RwLock<AudioState>>,
+    sinks: Arc<RwLock<Vec<AudioDevice>>>,
+    sources: Arc<RwLock<Vec<AudioDevice>>>,
+    sink_inputs: Arc<RwLock<Vec<AudioStream>>>,
+    source_outputs: Arc<RwLock<Vec<AudioStream>>>,
 }
 
 impl EventEmitter<AudioStateChanged> for AudioService {}
@@ -40,15 +61,22 @@ impl AudioService {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let initial_state = Self::get_initial_state();
         let state = Arc::new(RwLock::new(initial_state));
+        let sinks = Arc::new(RwLock::new(Self::get_sinks_wpctl()));
+        let sources = Arc::new(RwLock::new(Self::get_sources_wpctl()));
+        let sink_inputs = Arc::new(RwLock::new(Self::get_sink_inputs_wpctl()));
+        let source_outputs = Arc::new(RwLock::new(Self::get_source_outputs_wpctl()));
         
         let state_clone = Arc::clone(&state);
+        let sinks_clone = Arc::clone(&sinks);
+        let sources_clone = Arc::clone(&sources);
+        let sink_inputs_clone = Arc::clone(&sink_inputs);
+        let source_outputs_clone = Arc::clone(&source_outputs);
         
-        // Monitor PipeWire events
         cx.spawn(async move |this, cx| {
-            Self::monitor_pipewire(this, state_clone, cx).await
+            Self::monitor_pipewire(this, state_clone, sinks_clone, sources_clone, sink_inputs_clone, source_outputs_clone, cx).await
         }).detach();
 
-        Self { state }
+        Self { state, sinks, sources, sink_inputs, source_outputs }
     }
 
     fn get_initial_state() -> AudioState {
@@ -76,9 +104,105 @@ impl AudioService {
         50
     }
 
+    fn get_sinks_wpctl() -> Vec<AudioDevice> {
+        Self::parse_wpctl_status("Audio/Sink")
+    }
+
+    fn get_sources_wpctl() -> Vec<AudioDevice> {
+        Self::parse_wpctl_status("Audio/Source")
+    }
+
+    fn parse_wpctl_status(device_type: &str) -> Vec<AudioDevice> {
+        let output = std::process::Command::new("wpctl")
+            .args(["status"])
+            .output()
+            .ok();
+        
+        let Some(output) = output else { return vec![] };
+        let Ok(text) = String::from_utf8(output.stdout) else { return vec![] };
+        
+        let mut devices = vec![];
+        let mut in_section = false;
+        let section_marker = if device_type == "Audio/Sink" { "Sinks:" } else { "Sources:" };
+        
+        for line in text.lines() {
+            if line.contains(section_marker) {
+                in_section = true;
+                continue;
+            }
+            if in_section && (line.contains("Sink endpoints:") || line.contains("Source endpoints:") || line.contains("Streams:") || (line.starts_with(" ") && line.trim().is_empty())) {
+                break;
+            }
+            if in_section && line.contains(". ") {
+                let is_default = line.contains("*");
+                let line = line.replace("*", "").trim().to_string();
+                if let Some((id_part, rest)) = line.split_once(". ") {
+                    if let Ok(id) = id_part.trim().parse::<u32>() {
+                        let name = rest.trim().to_string();
+                        let description = name.split('[').next().unwrap_or(&name).trim().to_string();
+                        devices.push(AudioDevice { id, name: name.clone(), description, is_default });
+                    }
+                }
+            }
+        }
+        devices
+    }
+
+    fn get_sink_inputs_wpctl() -> Vec<AudioStream> {
+        Self::parse_wpctl_streams(true)
+    }
+
+    fn get_source_outputs_wpctl() -> Vec<AudioStream> {
+        Self::parse_wpctl_streams(false)
+    }
+
+    fn parse_wpctl_streams(is_playback: bool) -> Vec<AudioStream> {
+        let output = std::process::Command::new("wpctl")
+            .args(["status"])
+            .output()
+            .ok();
+        
+        let Some(output) = output else { return vec![] };
+        let Ok(text) = String::from_utf8(output.stdout) else { return vec![] };
+        
+        let mut streams = vec![];
+        let mut in_section = false;
+        let section_marker = if is_playback { "Streams:" } else { "Capture:" };
+        
+        for line in text.lines() {
+            if line.contains(section_marker) {
+                in_section = true;
+                continue;
+            }
+            if in_section && !line.starts_with(" ") && !line.trim().is_empty() {
+                break;
+            }
+            if in_section && line.contains(". ") {
+                let line = line.replace("*", "").trim().to_string();
+                if let Some((id_part, rest)) = line.split_once(". ") {
+                    if let Ok(id) = id_part.trim().parse::<u32>() {
+                        let app_name = rest.trim().to_string();
+                        streams.push(AudioStream {
+                            id,
+                            app_name,
+                            window_title: None,
+                            volume: 100,
+                            muted: false,
+                        });
+                    }
+                }
+            }
+        }
+        streams
+    }
+
     async fn monitor_pipewire(
         this: gpui::WeakEntity<Self>,
         state: Arc<RwLock<AudioState>>,
+        sinks: Arc<RwLock<Vec<AudioDevice>>>,
+        sources: Arc<RwLock<Vec<AudioDevice>>>,
+        sink_inputs: Arc<RwLock<Vec<AudioStream>>>,
+        source_outputs: Arc<RwLock<Vec<AudioStream>>>,
         cx: &mut gpui::AsyncApp,
     ) {
         loop {
@@ -183,6 +307,10 @@ impl AudioService {
                 last_update = std::time::Instant::now();
                 
                 let new_state = Self::get_initial_state();
+                *sinks.write() = Self::get_sinks_wpctl();
+                *sources.write() = Self::get_sources_wpctl();
+                *sink_inputs.write() = Self::get_sink_inputs_wpctl();
+                *source_outputs.write() = Self::get_source_outputs_wpctl();
                 
                 let changed = {
                     let mut current = state.write();
@@ -193,12 +321,13 @@ impl AudioService {
                     changed
                 };
                 
-                if changed {
-                    let _ = this.update(cx, |_, cx| {
+                // Always notify to update streams list
+                let _ = this.update(cx, |_, cx| {
+                    if changed {
                         cx.emit(AudioStateChanged { state: new_state });
-                        cx.notify();
-                    });
-                }
+                    }
+                    cx.notify();
+                });
             }
             
             eprintln!("[AudioService] PipeWire connection lost, reconnecting...");
@@ -227,6 +356,50 @@ impl AudioService {
                 .output()
                 .await;
         }).detach();
+    }
+
+    pub fn set_source_volume(&self, volume: u8, cx: &mut Context<Self>) {
+        let volume = volume.min(100);
+        gpui_tokio::Tokio::spawn(cx, async move {
+            let _ = tokio::process::Command::new("wpctl")
+                .args(["set-volume", "@DEFAULT_AUDIO_SOURCE@", &format!("{volume}%")])
+                .output()
+                .await;
+        }).detach();
+    }
+
+    pub fn set_default_sink(&self, id: u32, cx: &mut Context<Self>) {
+        gpui_tokio::Tokio::spawn(cx, async move {
+            let _ = tokio::process::Command::new("wpctl")
+                .args(["set-default", &id.to_string()])
+                .output()
+                .await;
+        }).detach();
+    }
+
+    pub fn set_default_source(&self, id: u32, cx: &mut Context<Self>) {
+        gpui_tokio::Tokio::spawn(cx, async move {
+            let _ = tokio::process::Command::new("wpctl")
+                .args(["set-default", &id.to_string()])
+                .output()
+                .await;
+        }).detach();
+    }
+
+    pub fn sinks(&self) -> Vec<AudioDevice> {
+        self.sinks.read().clone()
+    }
+
+    pub fn sources(&self) -> Vec<AudioDevice> {
+        self.sources.read().clone()
+    }
+
+    pub fn sink_inputs(&self) -> Vec<AudioStream> {
+        self.sink_inputs.read().clone()
+    }
+
+    pub fn source_outputs(&self) -> Vec<AudioStream> {
+        self.source_outputs.read().clone()
     }
 }
 
