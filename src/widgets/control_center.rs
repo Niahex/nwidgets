@@ -1,3 +1,4 @@
+use crate::components::{Dropdown, DropdownOption};
 use crate::services::audio::AudioService;
 use crate::services::bluetooth::BluetoothService;
 use crate::services::control_center::{ControlCenterSection, ControlCenterService};
@@ -332,8 +333,18 @@ impl ControlCenterWidget {
     fn render_volume_details(&mut self, cx: &mut Context<Self>) -> AnyElement {
         let theme = cx.global::<crate::theme::Theme>().clone();
         let sinks = self.audio.read(cx).sinks();
-        let default_sink = sinks.iter().find(|s| s.is_default);
+        let default_sink = sinks.iter().find(|s| s.is_default).cloned();
         let is_open = self.sink_dropdown_open;
+        let audio = self.audio.clone();
+        let sinks_empty = sinks.is_empty();
+
+        let options: Vec<_> = sinks
+            .iter()
+            .map(|s| DropdownOption {
+                value: s.id,
+                label: s.description.clone(),
+            })
+            .collect();
 
         div()
             .bg(theme.bg)
@@ -350,76 +361,30 @@ impl ControlCenterWidget {
                     .child("Output Device"),
             )
             .child(
-                // Dropdown header
-                div()
-                    .id("sink-dropdown-header")
-                    .bg(theme.surface)
-                    .rounded_md()
-                    .p_2()
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .cursor_pointer()
-                    .on_click(cx.listener(|this, _, _window, cx| {
+                Dropdown::new("sink-dropdown", options)
+                    .selected(default_sink.map(|s| s.id))
+                    .label_fn(move |id| {
+                        sinks
+                            .iter()
+                            .find(|s| s.id == *id)
+                            .map(|s| s.description.clone())
+                            .unwrap_or_else(|| "No device".into())
+                    })
+                    .placeholder("No device")
+                    .open(is_open)
+                    .on_toggle(cx.listener(|this, _: &ClickEvent, _, cx| {
                         this.sink_dropdown_open = !this.sink_dropdown_open;
                         cx.notify();
                     }))
-                    .child(
-                        div().text_xs().text_color(theme.text).child(
-                            default_sink
-                                .map(|s| s.description.clone())
-                                .unwrap_or_else(|| "No device".into()),
-                        ),
-                    )
-                    .child(
-                        Icon::new(if is_open { "arrow-up" } else { "arrow-down" })
-                            .size(px(12.))
-                            .color(theme.text_muted),
-                    ),
+                    .on_select(cx.listener(move |this, id: &u32, _, cx| {
+                        audio.update(cx, |audio, cx| {
+                            audio.set_default_sink(*id, cx);
+                        });
+                        this.sink_dropdown_open = false;
+                        cx.notify();
+                    })),
             )
-            .when(is_open, |this| {
-                this.child(
-                    // Device list
-                    div()
-                        .flex()
-                        .flex_col()
-                        .gap_1()
-                        .mt_2()
-                        .children(sinks.iter().enumerate().map(|(idx, sink)| {
-                            let sink_id = sink.id;
-                            let audio = self.audio.clone();
-
-                            div()
-                                .id(("sink-device", idx))
-                                .flex()
-                                .items_center()
-                                .gap_2()
-                                .p_2()
-                                .rounded_md()
-                                .cursor_pointer()
-                                .hover(|s| s.bg(theme.hover))
-                                .when(sink.is_default, |this| this.bg(theme.surface))
-                                .on_click(cx.listener(move |this, _, _window, cx| {
-                                    audio.update(cx, |audio, cx| {
-                                        audio.set_default_sink(sink_id, cx);
-                                    });
-                                    this.sink_dropdown_open = false;
-                                    cx.notify();
-                                }))
-                                .child(
-                                    div()
-                                        .flex_1()
-                                        .text_xs()
-                                        .text_color(theme.text)
-                                        .child(sink.description.clone()),
-                                )
-                                .when(sink.is_default, |this| {
-                                    this.child(div().text_xs().text_color(theme.accent).child("✓"))
-                                })
-                        })),
-                )
-            })
-            .when(sinks.is_empty(), |this| {
+            .when(sinks_empty, |this| {
                 this.child(
                     div()
                         .text_xs()
@@ -520,8 +485,18 @@ impl ControlCenterWidget {
     fn render_mic_details(&mut self, cx: &mut Context<Self>) -> AnyElement {
         let theme = cx.global::<crate::theme::Theme>().clone();
         let sources = self.audio.read(cx).sources();
-        let default_source = sources.iter().find(|s| s.is_default);
+        let default_source = sources.iter().find(|s| s.is_default).cloned();
         let is_open = self.source_dropdown_open;
+        let audio = self.audio.clone();
+        let sources_empty = sources.is_empty();
+
+        let options: Vec<_> = sources
+            .iter()
+            .map(|s| DropdownOption {
+                value: s.id,
+                label: s.description.clone(),
+            })
+            .collect();
 
         div()
             .bg(theme.bg)
@@ -538,73 +513,30 @@ impl ControlCenterWidget {
                     .child("Input Device"),
             )
             .child(
-                // Dropdown header
-                div()
-                    .id("source-dropdown-header")
-                    .bg(theme.surface)
-                    .rounded_md()
-                    .p_2()
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .cursor_pointer()
-                    .on_click(cx.listener(|this, _, _window, cx| {
+                Dropdown::new("source-dropdown", options)
+                    .selected(default_source.map(|s| s.id))
+                    .label_fn(move |id| {
+                        sources
+                            .iter()
+                            .find(|s| s.id == *id)
+                            .map(|s| s.description.clone())
+                            .unwrap_or_else(|| "No device".into())
+                    })
+                    .placeholder("No device")
+                    .open(is_open)
+                    .on_toggle(cx.listener(|this, _: &ClickEvent, _, cx| {
                         this.source_dropdown_open = !this.source_dropdown_open;
                         cx.notify();
                     }))
-                    .child(
-                        div().text_xs().text_color(theme.text).child(
-                            default_source
-                                .map(|s| s.description.clone())
-                                .unwrap_or_else(|| "No device".into()),
-                        ),
-                    )
-                    .child(
-                        Icon::new(if is_open { "arrow-up" } else { "arrow-down" })
-                            .size(px(12.))
-                            .color(theme.text_muted),
-                    ),
+                    .on_select(cx.listener(move |this, id: &u32, _, cx| {
+                        audio.update(cx, |audio, cx| {
+                            audio.set_default_source(*id, cx);
+                        });
+                        this.source_dropdown_open = false;
+                        cx.notify();
+                    })),
             )
-            .when(is_open, |this| {
-                this.child(
-                    // Device list
-                    div().flex().flex_col().gap_1().mt_2().children(
-                        sources.iter().enumerate().map(|(idx, source)| {
-                            let source_id = source.id;
-                            let audio = self.audio.clone();
-
-                            div()
-                                .id(("source-device", idx))
-                                .flex()
-                                .items_center()
-                                .gap_2()
-                                .p_2()
-                                .rounded_md()
-                                .cursor_pointer()
-                                .hover(|s| s.bg(theme.hover))
-                                .when(source.is_default, |this| this.bg(theme.surface))
-                                .on_click(cx.listener(move |this, _, _window, cx| {
-                                    audio.update(cx, |audio, cx| {
-                                        audio.set_default_source(source_id, cx);
-                                    });
-                                    this.source_dropdown_open = false;
-                                    cx.notify();
-                                }))
-                                .child(
-                                    div()
-                                        .flex_1()
-                                        .text_xs()
-                                        .text_color(theme.text)
-                                        .child(source.description.clone()),
-                                )
-                                .when(source.is_default, |this| {
-                                    this.child(div().text_xs().text_color(theme.accent).child("✓"))
-                                })
-                        }),
-                    ),
-                )
-            })
-            .when(sources.is_empty(), |this| {
+            .when(sources_empty, |this| {
                 this.child(
                     div()
                         .text_xs()
