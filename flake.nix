@@ -99,8 +99,8 @@
           pname = "nwidgets";
           version = "0.1.0";
 
-          postInstall = ''
-            # Copy assets to the output
+          postFixup = ''
+            # Copy assets to the output (after all fixup phases)
             mkdir -p $out/share/nwidgets
             cp -r ${src}/assets $out/share/nwidgets/
             
