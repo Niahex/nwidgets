@@ -68,8 +68,10 @@
 
         # Dependencies needed only at runtime
         runtimeDependencies = with pkgs; [
+          wayland
           vulkan-loader
           mesa
+          libxkbcommon
         ];
 
         nativeBuildInputs = with pkgs; [
@@ -84,29 +86,23 @@
           LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
         };
 
-        # Vendor cargo deps with fix for Zed's broken candle-book
-        cargoVendorDir = craneLib.vendorCargoDeps {
-          inherit src;
-          overrideVendorGitCheckout = crates: drv:
-            drv.overrideAttrs (old: {
-              postBuild = (old.postBuild or "") + ''
-                rm -rf $out/git/*/candle-book/ || true
-              '';
-            });
-        };
-
         # Build artifacts
         cargoArtifacts = craneLib.buildDepsOnly {
-          inherit src buildInputs nativeBuildInputs cargoVendorDir;
+          inherit src buildInputs nativeBuildInputs;
           env = envVars;
         };
 
         # Application package definition
         nwidgets = craneLib.buildPackage {
-          inherit src cargoArtifacts buildInputs nativeBuildInputs runtimeDependencies cargoVendorDir;
+          inherit src cargoArtifacts buildInputs nativeBuildInputs runtimeDependencies;
           env = envVars;
           pname = "nwidgets";
           version = "0.1.0";
+
+          postInstall = ''
+            wrapProgram $out/bin/nwidgets \
+              --prefix LD_LIBRARY_PATH : ${pkgs.lib.makeLibraryPath runtimeDependencies}
+          '';
         };
 
         # Development shell tools
