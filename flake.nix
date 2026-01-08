@@ -100,8 +100,13 @@
           version = "0.1.0";
 
           postInstall = ''
+            # Copy assets to the output
+            mkdir -p $out/share/nwidgets
+            cp -r ${src}/assets $out/share/nwidgets/
+            
             wrapProgram $out/bin/nwidgets \
-              --prefix LD_LIBRARY_PATH : ${pkgs.lib.makeLibraryPath runtimeDependencies}
+              --prefix LD_LIBRARY_PATH : ${pkgs.lib.makeLibraryPath runtimeDependencies} \
+              --set NWIDGETS_ASSETS_DIR $out/share/nwidgets/assets
           '';
         };
 
