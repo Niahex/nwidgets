@@ -84,15 +84,26 @@
           LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
         };
 
+        # Vendor cargo deps with fix for Zed's broken candle-book
+        cargoVendorDir = craneLib.vendorCargoDeps {
+          inherit src;
+          overrideVendorGitCheckout = crates: drv:
+            drv.overrideAttrs (old: {
+              postBuild = (old.postBuild or "") + ''
+                rm -rf $out/git/*/candle-book/ || true
+              '';
+            });
+        };
+
         # Build artifacts
         cargoArtifacts = craneLib.buildDepsOnly {
-          inherit src buildInputs nativeBuildInputs;
+          inherit src buildInputs nativeBuildInputs cargoVendorDir;
           env = envVars;
         };
 
         # Application package definition
         nwidgets = craneLib.buildPackage {
-          inherit src cargoArtifacts buildInputs nativeBuildInputs runtimeDependencies;
+          inherit src cargoArtifacts buildInputs nativeBuildInputs runtimeDependencies cargoVendorDir;
           env = envVars;
           pname = "nwidgets";
           version = "0.1.0";
