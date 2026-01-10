@@ -5,6 +5,7 @@ pub use modules::{
     PomodoroModule, SinkModule, SourceModule, SystrayModule, WorkspacesModule,
 };
 
+use crate::services::chat::ChatService;
 use crate::services::control_center::ControlCenterService;
 use gpui::*;
 
@@ -20,6 +21,7 @@ pub struct Panel {
     source: Entity<SourceModule>,
     datetime: Entity<DateTimeModule>,
     control_center: Entity<ControlCenterService>,
+    chat_service: Entity<ChatService>,
 }
 
 impl Panel {
@@ -36,6 +38,7 @@ impl Panel {
             source: cx.new(SourceModule::new),
             datetime: cx.new(DateTimeModule::new),
             control_center: ControlCenterService::global(cx),
+            chat_service: ChatService::global(cx),
         }
     }
 }
@@ -60,6 +63,24 @@ impl Render for Panel {
                     .gap_2()
                     .items_center()
                     .h_full()
+                    .child(
+                        div()
+                            .id("chat-toggle")
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .w(px(32.))
+                            .h(px(32.))
+                            .rounded(px(4.))
+                            .cursor_pointer()
+                            .hover(|s| s.bg(theme.hover))
+                            .on_click(cx.listener(|this, _, _window, cx| {
+                                this.chat_service.update(cx, |chat, cx| {
+                                    chat.toggle(cx);
+                                });
+                            }))
+                            .child("💬"),
+                    )
                     .child(self.active_window.clone()),
             )
             // Center section - takes remaining space

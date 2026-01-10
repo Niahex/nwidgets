@@ -14,6 +14,7 @@ use services::{
     audio::AudioService,
     bluetooth::BluetoothService,
     cef::CefService,
+    chat::{ChatService, ChatToggled},
     control_center::ControlCenterService,
     hyprland::HyprlandService,
     mpris::MprisService,
@@ -24,10 +25,12 @@ use services::{
     systray::SystrayService,
 };
 use std::collections::HashMap;
+use std::io::{Read, Write};
+use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::PathBuf;
 use std::sync::Arc;
 use widgets::{
-    gemini_chat::GeminiChatWidget,
+    chat::ChatWidget,
     notifications::{NotificationsStateChanged, NotificationsWindowManager},
     panel::Panel,
 };
@@ -83,8 +86,50 @@ fn init_cef() {
     eprintln!("CEF initialized successfully!");
 }
 
+const SOCKET_PATH: &str = "/tmp/nwidgets.sock";
+
+fn send_command(cmd: &str) -> bool {
+    match UnixStream::connect(SOCKET_PATH) {
+        Ok(mut stream) => {
+            let _ = stream.write_all(cmd.as_bytes());
+            true
+        }
+        Err(e) => {
+            eprintln!("Failed to connect to socket: {}", e);
+            false
+        }
+    }
+}
+
 fn main() {
-    // Initialize CEF BEFORE anything else
+    let args: Vec<String> = std::env::args().collect();
+
+    // CEF subprocess - let CEF handle it
+    if args.iter().any(|a| a.starts_with("--type=")) {
+        init_cef();
+        return;
+    }
+
+    // CLI command: nwidgets chat
+    if args.len() > 1 {
+        match args[1].as_str() {
+            "chat" => {
+                if send_command("toggle_chat") {
+                    std::process::exit(0);
+                } else {
+                    eprintln!("nwidgets is not running. Start it first with: nwidgets");
+                    std::process::exit(1);
+                }
+            }
+            _ => {
+                eprintln!("Unknown command: {}", args[1]);
+                eprintln!("Usage: nwidgets [chat]");
+                std::process::exit(1);
+            }
+        }
+    }
+
+    // No args - start the full app
     init_cef();
 
     // Determine assets path
@@ -115,6 +160,7 @@ fn main() {
             PomodoroService::init(cx);
             SystrayService::init(cx);
             CefService::init(cx);
+            let chat_service = ChatService::init(cx);
             let notif_service = NotificationService::init(cx);
             let osd_service = OsdService::init(cx);
             ControlCenterService::init(cx);
@@ -145,29 +191,98 @@ fn main() {
                 |_window, cx| cx.new(Panel::new),
             ).unwrap();
 
-            // Chat Window (GEMINI)
-            cx.open_window(
-                WindowOptions {
-                    window_bounds: Some(WindowBounds::Windowed(Bounds {
-                        origin: Point { x: px(0.0), y: px(0.0) },
-                        size: Size { width: px(600.0), height: px(1440.0) },
-                    })),
-                    titlebar: None,
-                    window_background: WindowBackgroundAppearance::Transparent,
-                    kind: WindowKind::LayerShell(LayerShellOptions {
-                        namespace: "gemini-chat".to_string(),
-                        layer: Layer::Overlay,
-                        anchor: Anchor::TOP | Anchor::BOTTOM | Anchor::LEFT,
-                        exclusive_zone: None,
-                        margin: None,
-                        keyboard_interactivity: KeyboardInteractivity::OnDemand,
-                        ..Default::default()
-                    }),
-                    app_id: Some("gemini-chat".to_string()),
-                    ..Default::default()
-                },
-                |_window, cx| cx.new(GeminiChatWidget::new),
-            ).unwrap();
+            // Chat window state - open at startup
+            // Chat window - NOT opened at startup
+            let chat_window: Arc<Mutex<Option<WindowHandle<ChatWidget>>>> = Arc::new(Mutex::new(None));
+            let chat_window_clone = Arc::clone(&chat_window);
+            let chat_window_clone2 = Arc::clone(&chat_window);
+
+            // Subscribe to chat toggle events
+            cx.subscribe(&chat_service, move |_service, _event: &ChatToggled, cx| {
+                let mut window = chat_window_clone.lock();
+                if let Some(handle) = window.take() {
+                    let _ = handle.update(cx, |_, window, _| window.remove_window());
+                } else {
+                    let handle = cx.open_window(
+                        WindowOptions {
+                            window_bounds: Some(WindowBounds::Windowed(Bounds {
+                                origin: Point { x: px(0.0), y: px(0.0) },
+                                size: Size { width: px(600.0), height: px(1370.0) },
+                            })),
+                            titlebar: None,
+                            window_background: WindowBackgroundAppearance::Transparent,
+                            kind: WindowKind::LayerShell(LayerShellOptions {
+                                namespace: "nwidgets-chat".to_string(),
+                                layer: Layer::Overlay,
+                                anchor: Anchor::TOP | Anchor::BOTTOM | Anchor::LEFT,
+                                exclusive_zone: None,
+                                margin: Some((px(50.0), px(0.0), px(0.0), px(0.0))),
+                                keyboard_interactivity: KeyboardInteractivity::OnDemand,
+                                ..Default::default()
+                            }),
+                            app_id: Some("nwidgets-chat".to_string()),
+                            ..Default::default()
+                        },
+                        |_window, cx| cx.new(ChatWidget::new),
+                    ).ok();
+                    *window = handle;
+                }
+            }).detach();
+
+            // Socket server for IPC
+            let _ = std::fs::remove_file(SOCKET_PATH);
+            if let Ok(listener) = UnixListener::bind(SOCKET_PATH) {
+                listener.set_nonblocking(true).ok();
+
+                cx.spawn(|cx: &mut AsyncApp| {
+                    let chat_window = chat_window_clone2;
+                    let mut cx = cx.clone();
+                    async move {
+                        loop {
+                            cx.background_executor().timer(std::time::Duration::from_millis(100)).await;
+
+                            if let Ok((mut stream, _)) = listener.accept() {
+                                let mut buf = [0u8; 64];
+                                if let Ok(n) = stream.read(&mut buf) {
+                                    let cmd = String::from_utf8_lossy(&buf[..n]);
+                                    if cmd.trim() == "toggle_chat" {
+                                        let _ = cx.update(|cx: &mut App| {
+                                            let mut window = chat_window.lock();
+                                            if let Some(handle) = window.take() {
+                                                let _ = handle.update(cx, |_, window, _| window.remove_window());
+                                            } else {
+                                                let handle = cx.open_window(
+                                                    WindowOptions {
+                                                        window_bounds: Some(WindowBounds::Windowed(Bounds {
+                                                            origin: Point { x: px(0.0), y: px(0.0) },
+                                                            size: Size { width: px(600.0), height: px(1370.0) },
+                                                        })),
+                                                        titlebar: None,
+                                                        window_background: WindowBackgroundAppearance::Transparent,
+                                                        kind: WindowKind::LayerShell(LayerShellOptions {
+                                                            namespace: "nwidgets-chat".to_string(),
+                                                            layer: Layer::Overlay,
+                                                            anchor: Anchor::TOP | Anchor::BOTTOM | Anchor::LEFT,
+                                                            exclusive_zone: None,
+                                                            margin: Some((px(50.0), px(0.0), px(0.0), px(0.0))),
+                                                            keyboard_interactivity: KeyboardInteractivity::OnDemand,
+                                                            ..Default::default()
+                                                        }),
+                                                        app_id: Some("nwidgets-chat".to_string()),
+                                                        ..Default::default()
+                                                    },
+                                                    |_window, cx| cx.new(ChatWidget::new),
+                                                ).ok();
+                                                *window = handle;
+                                            }
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }).detach();
+            }
 
             let _osd_service = osd_service;
             let notif_manager = Arc::new(Mutex::new(NotificationsWindowManager::new()));

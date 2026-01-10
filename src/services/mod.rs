@@ -1,6 +1,7 @@
 pub mod audio;
 pub mod bluetooth;
 pub mod cef;
+pub mod chat;
 pub mod clipboard;
 pub mod control_center;
 pub mod hyprland;
