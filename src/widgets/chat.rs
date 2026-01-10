@@ -143,6 +143,17 @@ const CSS: &str = r#"
 }
 ::selection { background: rgba(143, 188, 187, 0.5); }
 ::-webkit-scrollbar { display: none; }
+
+/* Find in page highlight colors */
+::target-text {
+    background-color: #ebcb8b !important; /* Yellow - all matches */
+    color: #2e3440 !important;
+}
+
+::target-text:current {
+    background-color: #d08770 !important; /* Orange - current match */
+    color: #2e3440 !important;
+}
 "#;
 
 pub struct ChatWidget {

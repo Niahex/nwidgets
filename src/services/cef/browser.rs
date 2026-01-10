@@ -6,6 +6,7 @@ use crate::services::cef::handlers::{
 use crate::services::cef::input::{
     key_to_windows_code, modifiers_to_cef, send_char_event, send_key_event, SCROLL_MULTIPLIER,
 };
+use crate::services::cef::find::FindBar;
 use cef::{
     rc::Rc, Browser, BrowserSettings, CefString, Client, DisplayHandler, ImplBrowser,
     ImplBrowserHost, ImplClient, ImplFrame, LoadHandler, PermissionHandler, RenderHandler,
@@ -112,6 +113,7 @@ pub struct BrowserView {
     selected_text: Arc<Mutex<String>>,
     last_version: u64,
     cached_image: Option<Arc<RenderImage>>,
+    find_bar: FindBar,
 }
 
 impl BrowserView {
@@ -172,6 +174,7 @@ impl BrowserView {
             selected_text,
             last_version: 0,
             cached_image: None,
+            find_bar: FindBar::new(),
         }
     }
 
@@ -262,13 +265,25 @@ impl gpui::Render for BrowserView {
                 let browser = self.browser.clone();
                 let mouse_pressed = self.mouse_pressed.clone();
 
-                return div()
+                let mut main_div = div()
                     .size_full()
                     .cursor(cursor_style)
                     .track_focus(&self.focus_handle)
                     .on_key_down(cx.listener(|this, event: &KeyDownEvent, _window, _cx| {
                         let ks = &event.keystroke;
                         let mods = modifiers_to_cef(&ks.modifiers);
+
+                        // Handle find bar input
+                        if this.find_bar.visible {
+                            if let Some(b) = &this.browser {
+                                if let Some(host) = b.host() {
+                                    if this.find_bar.handle_key(&ks.key, ks.key_char.as_deref(), &ks.modifiers, &host) {
+                                        _cx.notify();
+                                        return;
+                                    }
+                                }
+                            }
+                        }
 
                         // F5 for reload
                         if ks.key == "f5" {
@@ -289,16 +304,52 @@ impl gpui::Render for BrowserView {
                         if ks.modifiers.control {
                             match ks.key.as_str() {
                                 "v" => {
-                                    // Paste from system clipboard
+                                    if ks.modifiers.shift {
+                                        // Ctrl+Shift+V: Paste without formatting
+                                        if let Some(b) = &this.browser {
+                                            if let Some(f) = b.main_frame() {
+                                                f.paste_and_match_style();
+                                            }
+                                        }
+                                    } else {
+                                        // Ctrl+V: Paste from system clipboard
+                                        if let Some(b) = &this.browser {
+                                            if let Some(f) = b.main_frame() {
+                                                if let Some(text) = _cx.read_from_clipboard().and_then(|c| c.text()) {
+                                                    let escaped = text.replace('\\', "\\\\").replace('`', "\\`").replace("${", "\\${");
+                                                    let script = format!(
+                                                        "document.execCommand('insertText', false, `{escaped}`);"
+                                                    );
+                                                    f.execute_java_script(Some(&CefString::from(script.as_str())), None, 0);
+                                                }
+                                            }
+                                        }
+                                    }
+                                    return;
+                                }
+                                "z" => {
+                                    if ks.modifiers.shift {
+                                        // Ctrl+Shift+Z: Redo
+                                        if let Some(b) = &this.browser {
+                                            if let Some(f) = b.main_frame() {
+                                                f.redo();
+                                            }
+                                        }
+                                    } else {
+                                        // Ctrl+Z: Undo
+                                        if let Some(b) = &this.browser {
+                                            if let Some(f) = b.main_frame() {
+                                                f.undo();
+                                            }
+                                        }
+                                    }
+                                    return;
+                                }
+                                "y" => {
+                                    // Ctrl+Y: Redo (alternative)
                                     if let Some(b) = &this.browser {
                                         if let Some(f) = b.main_frame() {
-                                            if let Some(text) = _cx.read_from_clipboard().and_then(|c| c.text()) {
-                                                let escaped = text.replace('\\', "\\\\").replace('`', "\\`").replace("${", "\\${");
-                                                let script = format!(
-                                                    "document.execCommand('insertText', false, `{escaped}`);"
-                                                );
-                                                f.execute_java_script(Some(&CefString::from(script.as_str())), None, 0);
-                                            }
+                                            f.redo();
                                         }
                                     }
                                     return;
@@ -325,7 +376,18 @@ impl gpui::Render for BrowserView {
                                     return;
                                 }
                                 "a" => { if let Some(b) = &this.browser { if let Some(f) = b.main_frame() { f.select_all(); } } return; }
-                                "f" => { this.send_key(70, mods, true); this.send_key(70, mods, false); return; }
+                                "f" => { 
+                                    this.find_bar.toggle();
+                                    if !this.find_bar.visible {
+                                        if let Some(b) = &this.browser {
+                                            if let Some(host) = b.host() {
+                                                host.stop_finding(1);
+                                            }
+                                        }
+                                    }
+                                    _cx.notify();
+                                    return; 
+                                }
                                 _ => {}
                             }
                         }
@@ -441,8 +503,42 @@ impl gpui::Render for BrowserView {
                             }
                         }
                     }))
-                    .child(img(render_image.clone()).w_full().h_full())
-                    .into_any_element();
+                    .child(img(render_image.clone()).w_full().h_full());
+                
+                if self.find_bar.visible {
+                    let browser = self.browser.clone();
+                    let browser2 = self.browser.clone();
+                    let browser3 = self.browser.clone();
+                    let query = self.find_bar.query.clone();
+                    let query2 = self.find_bar.query.clone();
+                    
+                    main_div = main_div.child(self.find_bar.render(
+                        move |_, _, _| {
+                            if let Some(b) = &browser {
+                                if let Some(host) = b.host() {
+                                    host.find(Some(&CefString::from(query.as_str())), 0, 0, 1);
+                                }
+                            }
+                        },
+                        move |_, _, _| {
+                            if let Some(b) = &browser2 {
+                                if let Some(host) = b.host() {
+                                    host.find(Some(&CefString::from(query2.as_str())), 1, 0, 1);
+                                }
+                            }
+                        },
+                        move |_, window, _| {
+                            if let Some(b) = &browser3 {
+                                if let Some(host) = b.host() {
+                                    host.stop_finding(1);
+                                }
+                            }
+                            window.refresh();
+                        },
+                    ));
+                }
+                
+                return main_div.into_any_element();
             }
         }
 
