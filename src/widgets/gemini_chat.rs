@@ -1,204 +1,190 @@
-use crate::services::cef::{CefNavigated, CefReady, CefService};
-use gpui::prelude::*;
-use gpui::*;
-
-const GEMINI_URL: &str = "https://gemini.google.com/app";
+use crate::services::cef::create_browser;
+use cef::{Browser, ImplBrowser, ImplBrowserHost};
+use cef_dll_sys::cef_mouse_button_type_t;
+use gpui::{
+    div, img, px, rgb, AsyncApp, Context, InteractiveElement, IntoElement, MouseButton,
+    MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParentElement, RenderImage, ScrollWheelEvent,
+    Styled, WeakEntity, Window,
+};
+use image::{Frame, ImageBuffer, Rgba};
+use parking_lot::Mutex;
+use smallvec::SmallVec;
+use std::sync::Arc;
 
 pub struct GeminiChatWidget {
-    pub focus_handle: FocusHandle,
-    cef: Entity<CefService>,
-    is_loading: bool,
+    browser: Option<Browser>,
+    pixels: Arc<Mutex<Vec<u8>>>,
+    width: Arc<Mutex<u32>>,
+    height: Arc<Mutex<u32>>,
 }
 
 impl GeminiChatWidget {
     pub fn new(cx: &mut Context<Self>) -> Self {
-        let cef = CefService::global(cx);
+        eprintln!("GeminiChatWidget::new() called!");
+        
+        let pixels = Arc::new(Mutex::new(Vec::new()));
+        let width = Arc::new(Mutex::new(600));
+        let height = Arc::new(Mutex::new(1440));
 
-        // Initialize CEF
-        cef.update(cx, |service, cx| service.initialize(cx));
+        let pixels_clone = pixels.clone();
+        let width_clone = width.clone();
+        let height_clone = height.clone();
 
-        cx.subscribe(&cef, |this, _, _event: &CefReady, cx| {
-            this.is_loading = false;
-            // Auto-load Gemini when ready
-            this.load_gemini(cx);
-            cx.notify();
-        })
-        .detach();
+        let repaint_callback = Arc::new(move || {
+            // Repaint callback - the refresh loop handles redraws
+        });
 
-        cx.subscribe(&cef, |_this, _, _event: &CefNavigated, cx| {
-            cx.notify();
-        })
-        .detach();
+        eprintln!("Creating CEF browser...");
+        let browser = create_browser(
+            "https://gemini.google.com/app".to_string(),
+            pixels_clone,
+            width_clone,
+            height_clone,
+            repaint_callback,
+        );
+        eprintln!("CEF browser created!");
 
-        Self {
-            focus_handle: cx.focus_handle(),
-            cef,
-            is_loading: true,
+        // Tell CEF to start rendering
+        if let Some(host) = browser.host() {
+            eprintln!("Calling was_resized() to trigger initial render...");
+            host.was_resized();
         }
-    }
 
-    pub fn load_gemini(&mut self, cx: &mut Context<Self>) {
-        self.is_loading = true;
-        self.cef
-            .update(cx, |cef, cx| cef.navigate(GEMINI_URL.to_string(), cx));
-        cx.notify();
+        // Refresh loop at 60 FPS
+        cx.spawn(|view: WeakEntity<GeminiChatWidget>, cx: &mut AsyncApp| {
+            let mut cx = cx.clone();
+            let view = view.clone();
+            async move {
+                loop {
+                    cx.background_executor()
+                        .timer(std::time::Duration::from_millis(16))
+                        .await;
+                    let _ = view.update(&mut cx, |_, cx| cx.notify());
+                }
+            }
+        })
+        .detach();
+
+        GeminiChatWidget {
+            browser: Some(browser),
+            pixels,
+            width,
+            height,
+        }
     }
 }
 
-impl Render for GeminiChatWidget {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let is_ready = self.cef.read(cx).is_ready();
-        let current_url = self.cef.read(cx).current_url();
+impl gpui::Render for GeminiChatWidget {
+    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+        let w = *self.width.lock();
+        let h = *self.height.lock();
+        let pixels = self.pixels.lock();
+
+        let browser = self.browser.clone();
+
+        if w > 0 && h > 0 && !pixels.is_empty() {
+            if let Some(buffer) = ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(w, h, pixels.clone())
+            {
+                let frame = Frame::new(buffer);
+                let render_image = RenderImage::new(SmallVec::from_elem(frame, 1));
+
+                let browser_move = browser.clone();
+                let browser_down = browser.clone();
+                let browser_up = browser.clone();
+                let browser_scroll = browser.clone();
+
+                return div()
+                    .size_full()
+                    .on_mouse_move(move |event: &MouseMoveEvent, _window, _cx| {
+                        if let Some(browser) = &browser_move {
+                            if let Some(host) = browser.host() {
+                                let pos = event.position;
+                                let mouse_event = cef::MouseEvent {
+                                    x: Into::<f32>::into(pos.x) as i32,
+                                    y: Into::<f32>::into(pos.y) as i32,
+                                    modifiers: 0,
+                                };
+                                host.send_mouse_move_event(Some(&mouse_event), 0);
+                            }
+                        }
+                    })
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        move |event: &MouseDownEvent, _window, _cx| {
+                            if let Some(browser) = &browser_down {
+                                if let Some(host) = browser.host() {
+                                    let pos = event.position;
+                                    let mouse_event = cef::MouseEvent {
+                                        x: Into::<f32>::into(pos.x) as i32,
+                                        y: Into::<f32>::into(pos.y) as i32,
+                                        modifiers: 0,
+                                    };
+                                    host.send_mouse_click_event(
+                                        Some(&mouse_event),
+                                        cef_mouse_button_type_t::MBT_LEFT.into(),
+                                        0,
+                                        1,
+                                    );
+                                }
+                            }
+                        },
+                    )
+                    .on_mouse_up(
+                        MouseButton::Left,
+                        move |event: &MouseUpEvent, _window, _cx| {
+                            if let Some(browser) = &browser_up {
+                                if let Some(host) = browser.host() {
+                                    let pos = event.position;
+                                    let mouse_event = cef::MouseEvent {
+                                        x: Into::<f32>::into(pos.x) as i32,
+                                        y: Into::<f32>::into(pos.y) as i32,
+                                        modifiers: 0,
+                                    };
+                                    host.send_mouse_click_event(
+                                        Some(&mouse_event),
+                                        cef_mouse_button_type_t::MBT_LEFT.into(),
+                                        1,
+                                        1,
+                                    );
+                                }
+                            }
+                        },
+                    )
+                    .on_scroll_wheel(move |event: &ScrollWheelEvent, _window, _cx| {
+                        if let Some(browser) = &browser_scroll {
+                            if let Some(host) = browser.host() {
+                                let pos = event.position;
+                                let mouse_event = cef::MouseEvent {
+                                    x: Into::<f32>::into(pos.x) as i32,
+                                    y: Into::<f32>::into(pos.y) as i32,
+                                    modifiers: 0,
+                                };
+                                let delta = event.delta.pixel_delta(px(1.0));
+                                host.send_mouse_wheel_event(
+                                    Some(&mouse_event),
+                                    Into::<f32>::into(delta.x) as i32,
+                                    Into::<f32>::into(delta.y) as i32,
+                                );
+                            }
+                        }
+                    })
+                    .child(
+                        img(Arc::new(render_image))
+                            .w_full()
+                            .h_full(),
+                    )
+                    .into_any_element();
+            }
+        }
 
         div()
-            .id("gemini-chat-widget")
-            .track_focus(&self.focus_handle)
-            .size_full()
             .flex()
-            .flex_col()
-            .bg(rgb(0x1e1e1e))
-            .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .px_4()
-                    .py_3()
-                    .bg(rgb(0x2d2d2d))
-                    .border_b_1()
-                    .border_color(rgb(0x3e3e3e))
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap_2()
-                            .child(
-                                div()
-                                    .w_3()
-                                    .h_3()
-                                    .rounded_full()
-                                    .bg(if is_ready {
-                                        rgb(0x4ade80)
-                                    } else {
-                                        rgb(0xfbbf24)
-                                    }),
-                            )
-                            .child(
-                                div()
-                                    .text_sm()
-                                    .font_weight(FontWeight::SEMIBOLD)
-                                    .text_color(rgb(0xffffff))
-                                    .child("Gemini Chat"),
-                            ),
-                    )
-                    .child(
-                        div()
-                            .px_3()
-                            .py_1()
-                            .rounded_md()
-                            .bg(rgb(0x3b82f6))
-                            .text_xs()
-                            .text_color(rgb(0xffffff))
-                            .cursor_pointer()
-                            .hover(|style| style.bg(rgb(0x2563eb)))
-                            .child("Reload"),
-                    ),
-            )
-            .child(
-                div()
-                    .flex_1()
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .child(if self.is_loading {
-                        div()
-                            .flex()
-                            .flex_col()
-                            .items_center()
-                            .gap_4()
-                            .child(
-                                div()
-                                    .w_12()
-                                    .h_12()
-                                    .rounded_full()
-                                    .border_4()
-                                    .border_color(rgb(0x3b82f6)),
-                            )
-                            .child(
-                                div()
-                                    .text_sm()
-                                    .text_color(rgb(0x9ca3af))
-                                    .child("Loading Gemini..."),
-                            )
-                    } else if is_ready {
-                        div()
-                            .size_full()
-                            .flex()
-                            .flex_col()
-                            .items_center()
-                            .justify_center()
-                            .gap_4()
-                            .child(
-                                div()
-                                    .text_lg()
-                                    .font_weight(FontWeight::SEMIBOLD)
-                                    .text_color(rgb(0xffffff))
-                                    .child("Gemini Chat Ready"),
-                            )
-                            .child(
-                                div()
-                                    .text_sm()
-                                    .text_color(rgb(0x9ca3af))
-                                    .child(format!(
-                                        "URL: {}",
-                                        current_url.unwrap_or_else(|| "None".to_string())
-                                    )),
-                            )
-                            .child(
-                                div()
-                                    .mt_4()
-                                    .px_4()
-                                    .py_2()
-                                    .rounded_lg()
-                                    .bg(rgb(0x374151))
-                                    .text_sm()
-                                    .text_color(rgb(0xd1d5db))
-                                    .child("WebView integration coming soon..."),
-                            )
-                    } else {
-                        div()
-                            .flex()
-                            .flex_col()
-                            .items_center()
-                            .gap_4()
-                            .child(
-                                div()
-                                    .text_lg()
-                                    .font_weight(FontWeight::SEMIBOLD)
-                                    .text_color(rgb(0xef4444))
-                                    .child("Not Ready"),
-                            )
-                            .child(
-                                div()
-                                    .text_sm()
-                                    .text_color(rgb(0x9ca3af))
-                                    .child("Click Reload to start"),
-                            )
-                    }),
-            )
-            .child(
-                div()
-                    .px_4()
-                    .py_2()
-                    .bg(rgb(0x2d2d2d))
-                    .border_t_1()
-                    .border_color(rgb(0x3e3e3e))
-                    .child(
-                        div()
-                            .text_xs()
-                            .text_color(rgb(0x6b7280))
-                            .child("Gemini Chat Widget - Powered by CEF WebView"),
-                    ),
-            )
+            .size_full()
+            .bg(rgb(0x2e3440))
+            .text_color(rgb(0xd8dee9))
+            .items_center()
+            .justify_center()
+            .child(format!("Gemini Chat ({}x{}) - Loading...", w, h))
+            .into_any_element()
     }
 }

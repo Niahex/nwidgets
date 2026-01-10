@@ -913,8 +913,8 @@ dependencies = [
 
 [[package]]
 name = "cef"
-version = "143.5.0+143.0.13"
-source = "git+https://github.com/Stremio/cef-rs#c338cad2700a56178cc346fd127a40815eef359a"
+version = "143.7.0+143.0.14"
+source = "git+https://github.com/tauri-apps/cef-rs?tag=export-cef-dir-v143.7.0%2B143.0.14#da671f48a5b50afd5552cf0fd2bab5287243f18d"
 dependencies = [
  "anyhow",
  "cargo_metadata",
@@ -932,8 +932,8 @@ dependencies = [
 
 [[package]]
 name = "cef-dll-sys"
-version = "143.5.0+143.0.13"
-source = "git+https://github.com/Stremio/cef-rs#c338cad2700a56178cc346fd127a40815eef359a"
+version = "143.7.0+143.0.14"
+source = "git+https://github.com/tauri-apps/cef-rs?tag=export-cef-dir-v143.7.0%2B143.0.14#da671f48a5b50afd5552cf0fd2bab5287243f18d"
 dependencies = [
  "anyhow",
  "cmake",
@@ -1706,7 +1706,7 @@ checksum = "75b325c5dbd37f80359721ad39aca5a29fb04c89279657cffdda8736d0c0b9d2"
 [[package]]
 name = "download-cef"
 version = "2.3.0"
-source = "git+https://github.com/Stremio/cef-rs#c338cad2700a56178cc346fd127a40815eef359a"
+source = "git+https://github.com/tauri-apps/cef-rs?tag=export-cef-dir-v143.7.0%2B143.0.14#da671f48a5b50afd5552cf0fd2bab5287243f18d"
 dependencies = [
  "bzip2",
  "clap",

@@ -24,8 +24,8 @@ wl-clipboard-rs = "0.9.3"
 inotify = "0.11"
 image = "0.25"
 smallvec = "1"
-cef = { version = "143.5.0", git = "https://github.com/Stremio/cef-rs" }
-cef-dll-sys = { version = "143.5.0", git = "https://github.com/Stremio/cef-rs" }
+cef = { git = "https://github.com/tauri-apps/cef-rs", tag = "export-cef-dir-v143.7.0+143.0.14" }
+cef-dll-sys = { git = "https://github.com/tauri-apps/cef-rs", tag = "export-cef-dir-v143.7.0+143.0.14" }
 dirs = "6.0"
 
 [workspace]
