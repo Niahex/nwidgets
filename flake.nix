@@ -57,6 +57,23 @@
           alsa-lib
           udev
           pipewire
+          # CEF dependencies
+          gtk3
+          glib
+          nspr
+          nss
+          at-spi2-atk
+          cups
+          libdrm
+          xorg.libXcomposite
+          xorg.libXdamage
+          xorg.libXrandr
+          xorg.libXfixes
+          xorg.libXext
+          pango
+          cairo
+          gdk-pixbuf
+          atk
         ];
 
         # Dependencies needed only at runtime
@@ -135,8 +152,10 @@
           nativeBuildInputs = devTools;
           env = envVars;
 
-          LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath (buildInputs ++ runtimeDependencies)}:/run/opengl/driver/lib:/run/opengl/lib";
+          LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath (buildInputs ++ runtimeDependencies)}:/run/opengl/driver/lib:/run/opengl/lib:${pkgs.mesa}/lib:/nix/store/kij99q5dsm360pvcknzp3k5q8pkj666r-system-path/lib";
           FONTCONFIG_FILE = pkgs.makeFontsConf {fontDirectories = buildInputs;};
+          VK_ICD_FILENAMES = "/run/opengl-driver/share/vulkan/icd.d/nvidia_icd.x86_64.json:/run/opengl-driver/share/vulkan/icd.d/radeon_icd.x86_64.json";
+          LIBRARY_PATH = "${pkgs.mesa}/lib";
 
           shellHook = ''
             echo "[🦀 Rust $(rustc --version)] - Ready to develop nwidgets!"

@@ -13,6 +13,7 @@ use parking_lot::Mutex;
 use services::{
     audio::AudioService,
     bluetooth::BluetoothService,
+    cef::CefService,
     control_center::ControlCenterService,
     hyprland::HyprlandService,
     mpris::MprisService,
@@ -26,6 +27,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use widgets::{
+    gemini_chat::GeminiChatWidget,
     notifications::{NotificationsStateChanged, NotificationsWindowManager},
     panel::Panel,
 };
@@ -101,6 +103,7 @@ fn main() {
             MprisService::init(cx);
             PomodoroService::init(cx);
             SystrayService::init(cx);
+            CefService::init(cx);
             let notif_service = NotificationService::init(cx);
             let osd_service = OsdService::init(cx);
             ControlCenterService::init(cx);
@@ -128,8 +131,7 @@ fn main() {
                 |_window, cx| cx.new(Panel::new),
             ).unwrap();
 
-            // Chat Window (GEMINI) disabled for now
-            /*
+            // Chat Window (GEMINI)
             cx.open_window(
                 WindowOptions {
                     window_bounds: Some(WindowBounds::Windowed(Bounds {
@@ -139,7 +141,7 @@ fn main() {
                     titlebar: None,
                     window_background: WindowBackgroundAppearance::Transparent,
                     kind: WindowKind::LayerShell(LayerShellOptions {
-                        namespace: "gemini".to_string(),
+                        namespace: "gemini-chat".to_string(),
                         layer: Layer::Overlay,
                         anchor: Anchor::TOP | Anchor::BOTTOM | Anchor::LEFT,
                         exclusive_zone: None,
@@ -147,12 +149,11 @@ fn main() {
                         keyboard_interactivity: KeyboardInteractivity::OnDemand,
                         ..Default::default()
                     }),
-                    app_id: Some("gemini".to_string()),
+                    app_id: Some("gemini-chat".to_string()),
                     ..Default::default()
                 },
-                |_window, cx| widgets::chat::Chat::new(cx),
+                |_window, cx| cx.new(GeminiChatWidget::new),
             ).unwrap();
-            */
 
             let _osd_service = osd_service;
             let notif_manager = Arc::new(Mutex::new(NotificationsWindowManager::new()));
