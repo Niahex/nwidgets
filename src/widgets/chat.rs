@@ -1,5 +1,5 @@
 use crate::services::cef::BrowserView;
-use gpui::{AppContext, Context, Entity, IntoElement, ParentElement, Styled, Window, div};
+use gpui::{div, AppContext, Context, Entity, IntoElement, ParentElement, Styled, Window};
 
 const URL: &str = "https://gemini.google.com/app";
 const CSS: &str = r#"

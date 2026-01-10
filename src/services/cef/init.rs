@@ -1,5 +1,7 @@
 use anyhow::Result;
-use cef::{api_hash, args::Args, rc::Rc, App, CefString, ImplApp, ImplCommandLine, Settings, WrapApp};
+use cef::{
+    api_hash, args::Args, rc::Rc, App, CefString, ImplApp, ImplCommandLine, Settings, WrapApp,
+};
 use gpui::{App as GpuiApp, AsyncApp};
 use std::time::Duration;
 
@@ -76,17 +78,27 @@ pub fn initialize_cef() -> Result<()> {
         ..Default::default()
     };
     let mut app = AppWrapper::new(CefAppStruct);
-    let code = cef::execute_process(Some(args.as_main_args()), Some(&mut app), std::ptr::null_mut());
+    let code = cef::execute_process(
+        Some(args.as_main_args()),
+        Some(&mut app),
+        std::ptr::null_mut(),
+    );
     if code >= 0 {
         std::process::exit(code);
     }
-    let result = cef::initialize(Some(args.as_main_args()), Some(&settings), Some(&mut app), std::ptr::null_mut());
+    let result = cef::initialize(
+        Some(args.as_main_args()),
+        Some(&settings),
+        Some(&mut app),
+        std::ptr::null_mut(),
+    );
     if result != 1 {
         return Err(anyhow::anyhow!("Failed to initialize CEF"));
     }
     Ok(())
 }
 
+#[allow(dead_code)]
 pub fn shutdown_cef() {
     cef::shutdown();
 }

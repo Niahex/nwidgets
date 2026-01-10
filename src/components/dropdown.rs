@@ -3,16 +3,19 @@ use gpui::prelude::*;
 use gpui::*;
 use std::rc::Rc;
 
+type ClickHandler = Rc<dyn Fn(&ClickEvent, &mut Window, &mut App)>;
+type SelectHandler<T> = Rc<dyn Fn(&T, &mut Window, &mut App)>;
+
 #[derive(IntoElement)]
+#[allow(dead_code)]
 pub struct Dropdown<T: Clone + PartialEq + 'static> {
     id: ElementId,
     selected: Option<T>,
     options: Vec<DropdownOption<T>>,
     is_open: bool,
-    label_fn: Rc<dyn Fn(&T) -> SharedString>,
     placeholder: SharedString,
-    on_toggle: Option<Rc<dyn Fn(&ClickEvent, &mut Window, &mut App)>>,
-    on_select: Option<Rc<dyn Fn(&T, &mut Window, &mut App)>>,
+    on_toggle: Option<ClickHandler>,
+    on_select: Option<SelectHandler<T>>,
 }
 
 #[derive(Clone)]
@@ -28,7 +31,6 @@ impl<T: Clone + PartialEq + 'static> Dropdown<T> {
             selected: None,
             options,
             is_open: false,
-            label_fn: Rc::new(|_| "".into()),
             placeholder: "Select...".into(),
             on_toggle: None,
             on_select: None,
@@ -37,11 +39,6 @@ impl<T: Clone + PartialEq + 'static> Dropdown<T> {
 
     pub fn selected(mut self, value: Option<T>) -> Self {
         self.selected = value;
-        self
-    }
-
-    pub fn label_fn(mut self, f: impl Fn(&T) -> SharedString + 'static) -> Self {
-        self.label_fn = Rc::new(f);
         self
     }
 

@@ -265,14 +265,16 @@ impl AudioService {
             });
 
             // Initial state fetch - Offload blocking call to background executor
-            let (sink_vol, sink_muted) = cx.background_executor().spawn(async move {
-                Self::get_volume_wpctl_sync("@DEFAULT_AUDIO_SINK@")
-            }).await;
-            
-            let (source_vol, source_muted) = cx.background_executor().spawn(async move {
-                Self::get_volume_wpctl_sync("@DEFAULT_AUDIO_SOURCE@")
-            }).await;
-            
+            let (sink_vol, sink_muted) = cx
+                .background_executor()
+                .spawn(async move { Self::get_volume_wpctl_sync("@DEFAULT_AUDIO_SINK@") })
+                .await;
+
+            let (source_vol, source_muted) = cx
+                .background_executor()
+                .spawn(async move { Self::get_volume_wpctl_sync("@DEFAULT_AUDIO_SOURCE@") })
+                .await;
+
             {
                 let mut s = state.write();
                 s.sink_volume = sink_vol;
@@ -297,22 +299,26 @@ impl AudioService {
                 last_update = std::time::Instant::now();
 
                 // Update volumes asynchronously by offloading blocking calls
-                let (sink_vol, sink_muted) = cx.background_executor().spawn(async move {
-                    Self::get_volume_wpctl_sync("@DEFAULT_AUDIO_SINK@")
-                }).await;
-                
-                let (source_vol, source_muted) = cx.background_executor().spawn(async move {
-                    Self::get_volume_wpctl_sync("@DEFAULT_AUDIO_SOURCE@")
-                }).await;
+                let (sink_vol, sink_muted) = cx
+                    .background_executor()
+                    .spawn(async move { Self::get_volume_wpctl_sync("@DEFAULT_AUDIO_SINK@") })
+                    .await;
+
+                let (source_vol, source_muted) = cx
+                    .background_executor()
+                    .spawn(async move { Self::get_volume_wpctl_sync("@DEFAULT_AUDIO_SOURCE@") })
+                    .await;
 
                 // Get default device IDs
-                let default_sink_id = cx.background_executor().spawn(async {
-                    Self::get_default_device_id("@DEFAULT_AUDIO_SINK@")
-                }).await;
-                
-                let default_source_id = cx.background_executor().spawn(async {
-                    Self::get_default_device_id("@DEFAULT_AUDIO_SOURCE@")
-                }).await;
+                let default_sink_id = cx
+                    .background_executor()
+                    .spawn(async { Self::get_default_device_id("@DEFAULT_AUDIO_SINK@") })
+                    .await;
+
+                let default_source_id = cx
+                    .background_executor()
+                    .spawn(async { Self::get_default_device_id("@DEFAULT_AUDIO_SOURCE@") })
+                    .await;
 
                 // Build device lists from collected nodes
                 let nodes_snapshot = nodes_data.read();

@@ -215,7 +215,7 @@ impl NetworkService {
                     }
                 }
             } else {
-                 cx.background_executor().timer(Duration::from_secs(5)).await;
+                cx.background_executor().timer(Duration::from_secs(5)).await;
             }
         }
     }

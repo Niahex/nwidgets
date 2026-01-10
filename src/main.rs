@@ -14,7 +14,7 @@ use services::{
     audio::AudioService,
     bluetooth::BluetoothService,
     cef::CefService,
-    chat::{ChatService, ChatToggled, ChatPinToggled},
+    chat::{ChatPinToggled, ChatService, ChatToggled},
     control_center::ControlCenterService,
     dbus::DbusService,
     hyprland::HyprlandService,
@@ -55,9 +55,7 @@ impl AssetSource for Assets {
                 cache.insert(path.to_string(), leaked_data);
                 Ok(Some(std::borrow::Cow::Borrowed(leaked_data)))
             }
-            Err(e) => {
-                Err(e.into())
-            }
+            Err(e) => Err(e.into()),
         }
     }
 
@@ -79,7 +77,7 @@ impl AssetSource for Assets {
 
 fn init_cef() {
     if let Err(e) = services::cef::initialize_cef() {
-        eprintln!("Failed to initialize CEF: {:?}", e);
+        eprintln!("Failed to initialize CEF: {e:?}");
         std::process::exit(1);
     }
     eprintln!("CEF initialized successfully!");
@@ -92,7 +90,7 @@ fn send_dbus_command(method: &str) -> bool {
             "--type=method_call",
             "--dest=org.nwidgets.App",
             "/org/nwidgets/App",
-            &format!("org.nwidgets.App.{}", method),
+            &format!("org.nwidgets.App.{method}"),
         ])
         .status()
         .map(|s| s.success())
@@ -171,8 +169,14 @@ fn main() {
             cx.open_window(
                 WindowOptions {
                     window_bounds: Some(WindowBounds::Windowed(Bounds {
-                        origin: Point { x: px(0.0), y: px(0.0) },
-                        size: Size { width: px(3440.0), height: px(50.0) },
+                        origin: Point {
+                            x: px(0.0),
+                            y: px(0.0),
+                        },
+                        size: Size {
+                            width: px(3440.0),
+                            height: px(50.0),
+                        },
                     })),
                     titlebar: None,
                     window_background: WindowBackgroundAppearance::Transparent,
@@ -188,45 +192,55 @@ fn main() {
                     ..Default::default()
                 },
                 |_window, cx| cx.new(Panel::new),
-            ).unwrap();
+            )
+            .unwrap();
 
             // Chat window - NOT opened at startup
             let chat_pinned: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
-            let chat_window: Arc<Mutex<Option<WindowHandle<ChatWidget>>>> = Arc::new(Mutex::new(None));
+            let chat_window: Arc<Mutex<Option<WindowHandle<ChatWidget>>>> =
+                Arc::new(Mutex::new(None));
             let chat_window_clone = Arc::clone(&chat_window);
             let chat_window_pin = Arc::clone(&chat_window);
             let chat_pinned_toggle = Arc::clone(&chat_pinned);
             let chat_pinned_pin = Arc::clone(&chat_pinned);
 
-            let open_chat_window = |cx: &mut App, pinned: bool| -> Option<WindowHandle<ChatWidget>> {
-                let (layer, exclusive_zone) = if pinned {
-                    (Layer::Top, Some(px(600.0)))
-                } else {
-                    (Layer::Overlay, None)
-                };
-                cx.open_window(
-                    WindowOptions {
-                        window_bounds: Some(WindowBounds::Windowed(Bounds {
-                            origin: Point { x: px(0.0), y: px(0.0) },
-                            size: Size { width: px(600.0), height: px(1370.0) },
-                        })),
-                        titlebar: None,
-                        window_background: WindowBackgroundAppearance::Transparent,
-                        kind: WindowKind::LayerShell(LayerShellOptions {
-                            namespace: "nwidgets-chat".to_string(),
-                            layer,
-                            anchor: Anchor::TOP | Anchor::BOTTOM | Anchor::LEFT,
-                            exclusive_zone,
-                            margin: Some((px(50.0), px(0.0), px(0.0), px(0.0))),
-                            keyboard_interactivity: KeyboardInteractivity::OnDemand,
+            let open_chat_window =
+                |cx: &mut App, pinned: bool| -> Option<WindowHandle<ChatWidget>> {
+                    let (layer, exclusive_zone) = if pinned {
+                        (Layer::Top, Some(px(600.0)))
+                    } else {
+                        (Layer::Overlay, None)
+                    };
+                    cx.open_window(
+                        WindowOptions {
+                            window_bounds: Some(WindowBounds::Windowed(Bounds {
+                                origin: Point {
+                                    x: px(0.0),
+                                    y: px(0.0),
+                                },
+                                size: Size {
+                                    width: px(600.0),
+                                    height: px(1370.0),
+                                },
+                            })),
+                            titlebar: None,
+                            window_background: WindowBackgroundAppearance::Transparent,
+                            kind: WindowKind::LayerShell(LayerShellOptions {
+                                namespace: "nwidgets-chat".to_string(),
+                                layer,
+                                anchor: Anchor::TOP | Anchor::BOTTOM | Anchor::LEFT,
+                                exclusive_zone,
+                                margin: Some((px(50.0), px(0.0), px(0.0), px(0.0))),
+                                keyboard_interactivity: KeyboardInteractivity::OnDemand,
+                                ..Default::default()
+                            }),
+                            app_id: Some("nwidgets-chat".to_string()),
                             ..Default::default()
-                        }),
-                        app_id: Some("nwidgets-chat".to_string()),
-                        ..Default::default()
-                    },
-                    |_window, cx| cx.new(ChatWidget::new),
-                ).ok()
-            };
+                        },
+                        |_window, cx| cx.new(ChatWidget::new),
+                    )
+                    .ok()
+                };
 
             // Subscribe to chat toggle events
             cx.subscribe(&chat_service, move |_service, _event: &ChatToggled, cx| {
@@ -237,21 +251,28 @@ fn main() {
                 } else {
                     *window = open_chat_window(cx, pinned);
                 }
-            }).detach();
+            })
+            .detach();
 
             // Subscribe to chat pin events - only if window is open and focused
-            cx.subscribe(&chat_service, move |_service, event: &ChatPinToggled, cx| {
-                let mut window = chat_window_pin.lock();
-                if let Some(handle) = window.as_ref() {
-                    let is_focused = handle.update(cx, |_, window, cx| window.focused(cx).is_some()).unwrap_or(false);
-                    if is_focused {
-                        *chat_pinned_pin.lock() = event.pinned;
-                        let handle = window.take().unwrap();
-                        let _ = handle.update(cx, |_, window, _| window.remove_window());
-                        *window = open_chat_window(cx, event.pinned);
+            cx.subscribe(
+                &chat_service,
+                move |_service, event: &ChatPinToggled, cx| {
+                    let mut window = chat_window_pin.lock();
+                    if let Some(handle) = window.as_ref() {
+                        let is_focused = handle
+                            .update(cx, |_, window, cx| window.focused(cx).is_some())
+                            .unwrap_or(false);
+                        if is_focused {
+                            *chat_pinned_pin.lock() = event.pinned;
+                            let handle = window.take().unwrap();
+                            let _ = handle.update(cx, |_, window, _| window.remove_window());
+                            *window = open_chat_window(cx, event.pinned);
+                        }
                     }
-                }
-            }).detach();
+                },
+            )
+            .detach();
 
             let _osd_service = osd_service;
             let notif_manager = Arc::new(Mutex::new(NotificationsWindowManager::new()));
@@ -271,10 +292,12 @@ fn main() {
                                     manager.close_window(cx);
                                 }
                             },
-                        ).detach();
+                        )
+                        .detach();
                     }
                 },
-            ).detach();
+            )
+            .detach();
 
             cx.activate(true);
         });

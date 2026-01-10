@@ -4,7 +4,11 @@ use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
-use zbus::{proxy, zvariant::{OwnedObjectPath, OwnedValue}, Connection, Result};
+use zbus::{
+    proxy,
+    zvariant::{OwnedObjectPath, OwnedValue},
+    Connection, Result,
+};
 
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct BluetoothState {
@@ -108,7 +112,7 @@ impl BluetoothService {
                 if let Some(adapter) = interfaces.get("org.bluez.Adapter1") {
                     if let Some(value) = adapter.get("Powered") {
                         if let Ok(p) = bool::try_from(value) {
-                             if p {
+                            if p {
                                 powered = true;
                             }
                         }
@@ -118,7 +122,7 @@ impl BluetoothService {
                 // Check Device interface for Connected state
                 if let Some(device) = interfaces.get("org.bluez.Device1") {
                     if let Some(value) = device.get("Connected") {
-                         if let Ok(connected) = bool::try_from(value) {
+                        if let Ok(connected) = bool::try_from(value) {
                             if connected {
                                 connected_devices += 1;
                             }

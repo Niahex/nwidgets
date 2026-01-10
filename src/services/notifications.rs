@@ -176,13 +176,11 @@ impl NotificationService {
                     "[NOTIF_GPUI] 📢 Processing notification: {} - {}",
                     notification.summary, notification.body
                 );
-                
+
                 notifications_clone.write().push(notification.clone());
-                
+
                 let _ = this.update(cx, |_this, cx| {
-                    cx.emit(NotificationAdded {
-                        notification,
-                    });
+                    cx.emit(NotificationAdded { notification });
                     cx.notify();
                 });
             }
@@ -205,7 +203,7 @@ impl NotificationService {
                     .enable_all()
                     .build()
                     .expect("Failed to create tokio runtime for notifications");
-                
+
                 rt.block_on(async {
                     if let Err(e) = Self::run_dbus_server(state_ref).await {
                         eprintln!("[NOTIF] ❌ D-Bus Error: {e}");

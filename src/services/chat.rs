@@ -18,7 +18,10 @@ impl Global for GlobalChatService {}
 
 impl ChatService {
     pub fn new(_cx: &mut Context<Self>) -> Self {
-        Self { visible: true, pinned: false }
+        Self {
+            visible: true,
+            pinned: false,
+        }
     }
 
     pub fn global(cx: &App) -> Entity<Self> {
@@ -39,7 +42,9 @@ impl ChatService {
 
     pub fn toggle_pin(&mut self, cx: &mut Context<Self>) {
         self.pinned = !self.pinned;
-        cx.emit(ChatPinToggled { pinned: self.pinned });
+        cx.emit(ChatPinToggled {
+            pinned: self.pinned,
+        });
         cx.notify();
     }
 }

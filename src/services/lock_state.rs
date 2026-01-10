@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use gpui::*;
 use std::process::Command;
 
@@ -28,9 +29,10 @@ impl LockMonitor {
     pub fn init(cx: &mut App) -> Entity<Self> {
         let is_locked = Self::check_lock_state();
         let model = cx.new(|_| Self { is_locked });
-        
+
         let weak_model = model.downgrade();
-        cx.spawn(move |cx: &mut AsyncApp| { // Added move
+        cx.spawn(move |cx: &mut AsyncApp| {
+            // Added move
             let mut cx = cx.clone();
             let mut last_state = is_locked;
             async move {
@@ -40,27 +42,27 @@ impl LockMonitor {
                         last_state = current_state;
                         let _ = weak_model.update(&mut cx, |this, cx| {
                             this.is_locked = current_state;
-                            cx.emit(LockStateChanged { 
+                            cx.emit(LockStateChanged {
                                 is_locked: current_state,
                                 lock_type: LockType::Screen,
-                                enabled: current_state 
+                                enabled: current_state,
                             });
                         });
                     }
-                    cx.background_executor().timer(std::time::Duration::from_secs(1)).await;
+                    cx.background_executor()
+                        .timer(std::time::Duration::from_secs(1))
+                        .await;
                 }
             }
-        }).detach();
+        })
+        .detach();
 
         model
     }
 
     fn check_lock_state() -> bool {
-        let output = Command::new("pgrep")
-            .arg("-x")
-            .arg("hyprlock")
-            .output();
-        
+        let output = Command::new("pgrep").arg("-x").arg("hyprlock").output();
+
         match output {
             Ok(out) => out.status.success(),
             Err(_) => false,
@@ -77,7 +79,8 @@ impl LockStateService {
         cx.set_global(LockStateService { is_locked });
 
         let weak_model = model.downgrade();
-        cx.spawn(move |cx: &mut AsyncApp| { // Added move
+        cx.spawn(move |cx: &mut AsyncApp| {
+            // Added move
             let mut cx = cx.clone();
             let mut last_state = is_locked;
             async move {
@@ -92,10 +95,13 @@ impl LockStateService {
                             });
                         });
                     }
-                    cx.background_executor().timer(std::time::Duration::from_secs(1)).await;
+                    cx.background_executor()
+                        .timer(std::time::Duration::from_secs(1))
+                        .await;
                 }
             }
-        }).detach();
+        })
+        .detach();
 
         model
     }

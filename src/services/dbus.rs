@@ -58,7 +58,7 @@ impl DbusService {
 
         // Command handler
         cx.spawn(|cx: &mut AsyncApp| {
-            let mut cx = cx.clone();
+            let cx = cx.clone();
             async move {
                 loop {
                     cx.background_executor()

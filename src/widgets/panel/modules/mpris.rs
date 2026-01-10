@@ -63,7 +63,7 @@ impl Render for MprisModule {
                 // Scroll handlers
                 .on_scroll_wheel(cx.listener(|this, event: &ScrollWheelEvent, window, cx| {
                     let delta_pixels = event.delta.pixel_delta(window.line_height());
-                    
+
                     // Accumulate deltas
                     this.scroll_acc_x += delta_pixels.x;
                     this.scroll_acc_y += delta_pixels.y;
@@ -74,7 +74,8 @@ impl Render for MprisModule {
                     // Horizontal scroll for track navigation
                     if this.scroll_acc_x >= x_threshold || this.scroll_acc_x <= -x_threshold {
                         let now = Instant::now();
-                        if now.duration_since(this.last_track_change) >= Duration::from_millis(500) {
+                        if now.duration_since(this.last_track_change) >= Duration::from_millis(500)
+                        {
                             if this.scroll_acc_x < px(0.0) {
                                 this.mpris.update(cx, |mpris, cx| mpris.previous(cx));
                             } else {
@@ -89,11 +90,11 @@ impl Render for MprisModule {
                     // Vertical scroll for volume
                     while this.scroll_acc_y >= y_threshold || this.scroll_acc_y <= -y_threshold {
                         if this.scroll_acc_y < px(0.0) {
-                             this.mpris.update(cx, |mpris, _cx| mpris.volume_down());
-                             this.scroll_acc_y += y_threshold;
+                            this.mpris.update(cx, |mpris, _cx| mpris.volume_down());
+                            this.scroll_acc_y += y_threshold;
                         } else {
-                             this.mpris.update(cx, |mpris, _cx| mpris.volume_up());
-                             this.scroll_acc_y -= y_threshold;
+                            this.mpris.update(cx, |mpris, _cx| mpris.volume_up());
+                            this.scroll_acc_y -= y_threshold;
                         }
                     }
                 }))

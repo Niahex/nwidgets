@@ -1,8 +1,8 @@
 use cef::{
-    rc::Rc, Browser, CefString, DisplayHandler, Frame, ImplDisplayHandler, ImplFrame, ImplLoadHandler,
-    ImplMediaAccessCallback, ImplPermissionHandler, ImplRenderHandler, LoadHandler,
-    MediaAccessCallback, PermissionHandler, RenderHandler, ScreenInfo, WrapDisplayHandler,
-    WrapLoadHandler, WrapPermissionHandler, WrapRenderHandler,
+    rc::Rc, Browser, CefString, DisplayHandler, Frame, ImplDisplayHandler, ImplFrame,
+    ImplLoadHandler, ImplMediaAccessCallback, ImplPermissionHandler, ImplRenderHandler,
+    LoadHandler, MediaAccessCallback, PermissionHandler, RenderHandler, ScreenInfo,
+    WrapDisplayHandler, WrapLoadHandler, WrapPermissionHandler, WrapRenderHandler,
 };
 use cef_dll_sys::cef_cursor_type_t;
 use parking_lot::Mutex;
@@ -107,10 +107,10 @@ cef::wrap_render_handler! {
             height: i32,
         ) {
             if buffer.is_null() || width <= 0 || height <= 0 { return; }
-            
+
             let total_len = (width * height * 4) as usize;
             let src = unsafe { std::slice::from_raw_parts(buffer, total_len) };
-            
+
             // Check if we can do partial update
             if let Some(rects) = dirty_rects {
                 if rects.len() == 1 && rects[0].width == width && rects[0].height == height {
@@ -121,20 +121,20 @@ cef::wrap_render_handler! {
                     let front = self.handler.buffer.read();
                     if front.len() == total_len {
                         drop(front); // Release read lock
-                        
+
                         // Get back buffer for writing
                         let back_idx = 1 - self.handler.buffer.active.load(Ordering::Acquire);
                         let mut back = self.handler.buffer.buffers[back_idx].lock();
-                        
+
                         if back.len() != total_len {
                             back.resize(total_len, 0);
                         }
-                        
+
                         // Copy from front to back first (preserve unchanged areas)
                         let front = self.handler.buffer.buffers[self.handler.buffer.active.load(Ordering::Acquire)].lock();
                         back.copy_from_slice(&front);
                         drop(front);
-                        
+
                         // Apply dirty rects
                         let stride = (width * 4) as usize;
                         for rect in rects {
@@ -142,7 +142,7 @@ cef::wrap_render_handler! {
                             let ry = rect.y.max(0) as usize;
                             let rw = rect.width.min(width - rect.x) as usize;
                             let rh = rect.height.min(height - rect.y) as usize;
-                            
+
                             for row in 0..rh {
                                 let src_offset = (ry + row) * stride + rx * 4;
                                 let dst_offset = src_offset;
@@ -154,7 +154,7 @@ cef::wrap_render_handler! {
                             }
                         }
                         drop(back);
-                        
+
                         // Swap buffers
                         self.handler.buffer.active.store(back_idx, Ordering::Release);
                         self.handler.buffer.version.fetch_add(1, Ordering::Release);

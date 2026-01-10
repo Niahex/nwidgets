@@ -2,13 +2,16 @@ use gpui::prelude::*;
 use gpui::*;
 use std::rc::Rc;
 
+type ContentFn = Rc<dyn Fn(&mut Window, &mut App) -> AnyElement>;
+type CloseFn = Rc<dyn Fn(&mut Window, &mut App)>;
+
 #[derive(IntoElement)]
 pub struct PopoverMenu {
     id: ElementId,
     trigger: AnyElement,
-    content: Rc<dyn Fn(&mut Window, &mut App) -> AnyElement>,
+    content: ContentFn,
     is_open: bool,
-    on_close: Option<Rc<dyn Fn(&mut Window, &mut App)>>,
+    on_close: Option<CloseFn>,
 }
 
 impl PopoverMenu {

@@ -3,14 +3,17 @@ use crate::services::cef::handlers::{
     GpuiPermissionHandler, GpuiRenderHandler, LoadHandlerWrapper, PermissionHandlerWrapper,
     RenderHandlerWrapper,
 };
-use crate::services::cef::input::{key_to_windows_code, modifiers_to_cef, send_char_event, send_key_event, SCROLL_MULTIPLIER};
+use crate::services::cef::input::{
+    key_to_windows_code, modifiers_to_cef, send_char_event, send_key_event, SCROLL_MULTIPLIER,
+};
 use cef::{
-    rc::Rc, Browser, BrowserSettings, CefString, Client, DisplayHandler, ImplBrowser, ImplBrowserHost,
-    ImplClient, ImplFrame, LoadHandler, PermissionHandler, RenderHandler, WindowInfo, WrapClient,
+    rc::Rc, Browser, BrowserSettings, CefString, Client, DisplayHandler, ImplBrowser,
+    ImplBrowserHost, ImplClient, ImplFrame, LoadHandler, PermissionHandler, RenderHandler,
+    WindowInfo, WrapClient,
 };
 use cef_dll_sys::cef_mouse_button_type_t;
 use gpui::{
-    div, img, px, rgb, AsyncApp, Context, CursorStyle, ExternalPaths, Focusable, FocusHandle,
+    div, img, px, rgb, AsyncApp, Context, CursorStyle, ExternalPaths, FocusHandle, Focusable,
     InteractiveElement, IntoElement, KeyDownEvent, KeyUpEvent, MouseButton, MouseDownEvent,
     MouseMoveEvent, MouseUpEvent, ParentElement, RenderImage, ScrollWheelEvent, Styled, WeakEntity,
     Window,
@@ -49,8 +52,7 @@ cef::wrap_client! {
     }
 }
 
-fn create_browser(
-    url: &str,
+struct BrowserConfig {
     buffer: Arc<DoubleBuffer>,
     width: Arc<Mutex<u32>>,
     height: Arc<Mutex<u32>>,
@@ -58,11 +60,21 @@ fn create_browser(
     selected_text: Arc<Mutex<String>>,
     css: Arc<Mutex<Option<String>>>,
     scale_factor: f32,
-) -> Browser {
-    let render_handler = RenderHandlerWrapper::new(GpuiRenderHandler { buffer, width, height, scale_factor, selected_text });
-    let display_handler = DisplayHandlerWrapper::new(GpuiDisplayHandler { cursor });
+}
+
+fn create_browser(url: &str, config: BrowserConfig) -> Browser {
+    let render_handler = RenderHandlerWrapper::new(GpuiRenderHandler {
+        buffer: config.buffer,
+        width: config.width,
+        height: config.height,
+        scale_factor: config.scale_factor,
+        selected_text: config.selected_text,
+    });
+    let display_handler = DisplayHandlerWrapper::new(GpuiDisplayHandler {
+        cursor: config.cursor,
+    });
     let permission_handler = PermissionHandlerWrapper::new(GpuiPermissionHandler);
-    let load_handler = LoadHandlerWrapper::new(GpuiLoadHandler { css });
+    let load_handler = LoadHandlerWrapper::new(GpuiLoadHandler { css: config.css });
 
     let mut client = ClientWrapper::new(BrowserClient {
         render_handler,
@@ -72,7 +84,10 @@ fn create_browser(
     });
 
     cef::browser_host_create_browser_sync(
-        Some(&WindowInfo { windowless_rendering_enabled: true as _, ..Default::default() }),
+        Some(&WindowInfo {
+            windowless_rendering_enabled: true as _,
+            ..Default::default()
+        }),
         Some(&mut client),
         Some(&CefString::from(url)),
         Some(&BrowserSettings {
@@ -100,7 +115,13 @@ pub struct BrowserView {
 }
 
 impl BrowserView {
-    pub fn new(url: &str, width: u32, height: u32, css: Option<&str>, cx: &mut Context<Self>) -> Self {
+    pub fn new(
+        url: &str,
+        width: u32,
+        height: u32,
+        css: Option<&str>,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let buffer = Arc::new(DoubleBuffer::new((width * height * 4) as usize));
         let w = Arc::new(Mutex::new(width));
         let h = Arc::new(Mutex::new(height));
@@ -109,7 +130,18 @@ impl BrowserView {
         let selected_text = Arc::new(Mutex::new(String::new()));
         let css_arc = Arc::new(Mutex::new(css.map(String::from)));
 
-        let browser = create_browser(url, buffer.clone(), w.clone(), h.clone(), cursor.clone(), selected_text.clone(), css_arc, 1.0);
+        let browser = create_browser(
+            url,
+            BrowserConfig {
+                buffer: buffer.clone(),
+                width: w.clone(),
+                height: h.clone(),
+                cursor: cursor.clone(),
+                selected_text: selected_text.clone(),
+                css: css_arc,
+                scale_factor: 1.0,
+            },
+        );
 
         if let Some(host) = browser.host() {
             host.was_resized();
@@ -120,7 +152,9 @@ impl BrowserView {
             let mut cx = cx.clone();
             async move {
                 loop {
-                    cx.background_executor().timer(std::time::Duration::from_millis(16)).await;
+                    cx.background_executor()
+                        .timer(std::time::Duration::from_millis(16))
+                        .await;
                     let _ = view.update(&mut cx, |_, cx| cx.notify());
                 }
             }
@@ -171,7 +205,7 @@ impl gpui::Render for BrowserView {
         let w = *self.width.lock();
         let h = *self.height.lock();
         let current_version = self.buffer.version();
-        
+
         let cursor_style = match *self.cursor.lock() {
             CefCursor::Default => CursorStyle::Arrow,
             CefCursor::Pointer => CursorStyle::PointingHand,
@@ -185,12 +219,17 @@ impl gpui::Render for BrowserView {
             if current_version != self.last_version || self.cached_image.is_none() {
                 let pixels = self.buffer.read();
                 if pixels.len() == (w * h * 4) as usize {
-                    if let Some(buffer) = ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(w, h, pixels.clone()) {
+                    if let Some(buffer) =
+                        ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(w, h, pixels.clone())
+                    {
                         // Drop old image from atlas before creating new one
                         if let Some(old_image) = self.cached_image.take() {
                             cx.drop_image(old_image, Some(window));
                         }
-                        self.cached_image = Some(Arc::new(RenderImage::new(SmallVec::from_elem(Frame::new(buffer), 1))));
+                        self.cached_image = Some(Arc::new(RenderImage::new(SmallVec::from_elem(
+                            Frame::new(buffer),
+                            1,
+                        ))));
                         self.last_version = current_version;
                     }
                 }
@@ -227,8 +266,7 @@ impl gpui::Render for BrowserView {
                                             if let Some(text) = _cx.read_from_clipboard().and_then(|c| c.text()) {
                                                 let escaped = text.replace('\\', "\\\\").replace('`', "\\`").replace("${", "\\${");
                                                 let script = format!(
-                                                    "document.execCommand('insertText', false, `{}`);",
-                                                    escaped
+                                                    "document.execCommand('insertText', false, `{escaped}`);"
                                                 );
                                                 f.execute_java_script(Some(&CefString::from(script.as_str())), None, 0);
                                             }
@@ -394,7 +432,7 @@ impl gpui::Render for BrowserView {
             .text_color(rgb(0xd8dee9))
             .items_center()
             .justify_center()
-            .child(format!("Loading... ({}x{})", w, h))
+            .child(format!("Loading... ({w}x{h})"))
             .into_any_element()
     }
 }

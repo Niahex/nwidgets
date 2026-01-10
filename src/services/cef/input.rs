@@ -33,9 +33,15 @@ pub fn key_to_windows_code(key: &str) -> Option<i32> {
 
 pub fn modifiers_to_cef(modifiers: &gpui::Modifiers) -> u32 {
     let mut flags = 0u32;
-    if modifiers.control { flags |= 0x0004; }
-    if modifiers.shift { flags |= 0x0008; }
-    if modifiers.alt { flags |= 0x0010; }
+    if modifiers.control {
+        flags |= 0x0004;
+    }
+    if modifiers.shift {
+        flags |= 0x0008;
+    }
+    if modifiers.alt {
+        flags |= 0x0010;
+    }
     flags
 }
 
