@@ -8,14 +8,7 @@
     rust-overlay.url = "github:oxalica/rust-overlay";
   };
 
-  outputs = {
-    self,
-    nixpkgs,
-    flake-utils,
-    crane,
-    rust-overlay,
-    ...
-  }:
+  outputs = { self, nixpkgs, flake-utils, crane, rust-overlay, ... }:
     flake-utils.lib.eachDefaultSystem (
       system: let
         # Overlays and package set
@@ -92,13 +85,26 @@
             buildInputs = cefDeps;
           } ''
             mkdir -p $out
-            tar -xf ${cefSrc} --strip-components=1 -C $out
+            mkdir temp
+            tar -xf ${cefSrc} --strip-components=1 -C temp
+
+            # Mimic extract_target_archive from download-cef/src/lib.rs
+            # 1. Move everything from Release to $out
+            cp -r temp/Release/* $out/
+            
+            # 2. Move everything from Resources to $out
+            cp -r temp/Resources/* $out/
+            
+            # 3. Move include and cmake and libcef_dll to $out (needed for build)
+            cp -r temp/include $out/
+            cp -r temp/cmake $out/
+            cp -r temp/libcef_dll $out/
+            cp temp/CMakeLists.txt $out/
 
             # Generate archive.json which is required by cef-rs
-            # The name field is used by cef-rs to extract the version
             echo '{"type":"minimal","name":"cef_binary_${cefVersion}_${cefPlatform}_minimal.tar.bz2","sha1":""}' > $out/archive.json
 
-            # Patch binaries
+            # Patch binaries in $out
             autoPatchelf $out
           '';
 
@@ -145,7 +151,8 @@
           RUST_BACKTRACE = "full";
           LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
           CEF_PATH = cefAssets;
-          RUSTFLAGS = "-C link-arg=-Wl,-rpath,${cefAssets} -C link-arg=-L${cefAssets} -C link-arg=-Wl,-rpath,${cefAssets}/Release";
+          # Point search and rpath directly to cefAssets since we flattened it
+          RUSTFLAGS = "-C link-arg=-Wl,-rpath,${cefAssets} -C link-arg=-L${cefAssets}";
         };
 
         # Build artifacts
@@ -162,19 +169,19 @@
           version = "0.1.0";
 
           postFixup = ''
-            # Copy assets to the output (after all fixup phases)
+            # Copy assets to the output
             mkdir -p $out/share/nwidgets
             cp -r ${src}/assets $out/share/nwidgets/
             
-            # Copy CEF assets
-            # We copy specific files to avoid cluttering bin
-            cp -r ${cefAssets}/Resources/* $out/bin/
-            cp -r ${cefAssets}/Release/*.so $out/bin/
-            cp -r ${cefAssets}/Release/*.bin $out/bin/
+            # Copy CEF runtime assets to bin (where the executable is)
+            # We copy everything from cefAssets except include/cmake/libcef_dll
+            find ${cefAssets} -maxdepth 1 -type f -exec cp {} $out/bin/ \;
+            cp -r ${cefAssets}/locales $out/bin/ || true
 
             wrapProgram $out/bin/nwidgets \
-              --prefix LD_LIBRARY_PATH : ${pkgs.lib.makeLibraryPath runtimeDependencies}:${cefAssets}/Release \
+              --prefix LD_LIBRARY_PATH : ${pkgs.lib.makeLibraryPath runtimeDependencies}:${cefAssets} \
               --set NWIDGETS_ASSETS_DIR $out/share/nwidgets/assets \
+              --set CEF_PATH ${cefAssets} \
               --add-flags "--ozone-platform-hint=auto"
           '';
         };
@@ -210,7 +217,7 @@
           nativeBuildInputs = devTools;
           env = envVars;
 
-          LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath (buildInputs ++ runtimeDependencies)}:/run/opengl/driver/lib:/run/opengl/lib:${cefAssets}/Release";
+          LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath (buildInputs ++ runtimeDependencies)}:/run/opengl/driver/lib:/run/opengl/lib:${cefAssets}";
           FONTCONFIG_FILE = pkgs.makeFontsConf {fontDirectories = buildInputs;};
 
           shellHook = ''
@@ -218,6 +225,7 @@
             echo "Vulkan ICD: $VK_ICD_FILENAMES"
             echo "Available Vulkan devices:"
             vulkaninfo --summary 2>/dev/null | grep -A 2 "GPU" || echo "  Run 'vulkaninfo' for details"
+            export CEF_PATH="${cefAssets}"
           '';
         };
 

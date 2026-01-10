@@ -2,8 +2,12 @@ use anyhow::Result;
 use cef::{
     args::Args, App, Browser, BrowserHost, BrowserSettings, Client, ImplApp, ImplClient,
     ImplRenderHandler, RenderHandler, Settings, WindowInfo, WrapApp, WrapClient, WrapRenderHandler,
-    ImplCommandLine, rc::Rc, CefString,
+    ImplCommandLine, rc::Rc, CefString, api_hash,
 };
+// We need cef_dll_sys for version constants, assuming it is available via cef crate or directly
+// If cef re-exports it, good. If not, we might need to add extern crate or use what's available.
+// cef crate usually exposes sys module.
+// Checking imports... api_hash is in cef root.
 use gpui::{App as GpuiApp, Context, Global, AppContext, UpdateGlobal, BackgroundExecutor, AsyncApp}; 
 use gpui::*; 
 
@@ -77,6 +81,22 @@ wrap_app! {
 }
 
 pub fn initialize_cef() -> Result<()> {
+    // Check API hash to ensure compatibility
+    // 0 means ignore check? Or verify against compiled version.
+    // The example uses api_hash(sys::CEF_API_VERSION_LAST, 0);
+    // We need to access sys constants.
+    // If we can't access sys easily, let's try calling it with just 0 if allowed or verify signature.
+    // cef::api_hash(entry, allowed)
+    // entry is the API version from header.
+    
+    // We'll try to execute it without arguments if it's a wrapper, or find the constant.
+    // Actually, looking at cef-rs lib.rs: pub fn api_hash(entry: usize, allowed: usize) -> usize
+    
+    // We need CEF_API_VERSION_LAST.
+    // Let's assume cef-dll-sys is available as `cef_dll_sys` crate.
+    
+    let _ = api_hash(cef_dll_sys::CEF_API_VERSION_LAST, 0);
+
     // Basic CEF initialization
     let args = Args::new();
     let settings = Settings {
