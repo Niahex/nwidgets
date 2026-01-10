@@ -1,11 +1,12 @@
 use crate::services::cef::handlers::{
-    CefCursor, DisplayHandlerWrapper, GpuiDisplayHandler, GpuiPermissionHandler,
-    GpuiRenderHandler, PermissionHandlerWrapper, RenderHandlerWrapper,
+    CefCursor, DisplayHandlerWrapper, DoubleBuffer, GpuiDisplayHandler, GpuiLoadHandler,
+    GpuiPermissionHandler, GpuiRenderHandler, LoadHandlerWrapper, PermissionHandlerWrapper,
+    RenderHandlerWrapper,
 };
 use crate::services::cef::input::{key_to_windows_code, modifiers_to_cef, send_char_event, send_key_event, SCROLL_MULTIPLIER};
 use cef::{
     rc::Rc, Browser, BrowserSettings, CefString, Client, DisplayHandler, ImplBrowser, ImplBrowserHost,
-    ImplClient, ImplFrame, PermissionHandler, RenderHandler, WindowInfo, WrapClient,
+    ImplClient, ImplFrame, LoadHandler, PermissionHandler, RenderHandler, WindowInfo, WrapClient,
 };
 use cef_dll_sys::cef_mouse_button_type_t;
 use gpui::{
@@ -17,8 +18,6 @@ use gpui::{
 use image::{Frame, ImageBuffer, Rgba};
 use parking_lot::Mutex;
 use smallvec::SmallVec;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -26,6 +25,7 @@ struct BrowserClient {
     render_handler: RenderHandler,
     display_handler: DisplayHandler,
     permission_handler: PermissionHandler,
+    load_handler: LoadHandler,
 }
 
 cef::wrap_client! {
@@ -43,42 +43,42 @@ cef::wrap_client! {
         fn permission_handler(&self) -> Option<PermissionHandler> {
             Some(self.client.permission_handler.clone())
         }
+        fn load_handler(&self) -> Option<LoadHandler> {
+            Some(self.client.load_handler.clone())
+        }
     }
 }
 
-pub fn create_browser(
-    url: String,
-    pixels: Arc<Mutex<Vec<u8>>>,
+fn create_browser(
+    url: &str,
+    buffer: Arc<DoubleBuffer>,
     width: Arc<Mutex<u32>>,
     height: Arc<Mutex<u32>>,
     cursor: Arc<Mutex<CefCursor>>,
+    css: Arc<Mutex<Option<String>>>,
+    scale_factor: f32,
 ) -> Browser {
-    let render_handler = RenderHandlerWrapper::new(GpuiRenderHandler { pixels, width, height });
+    let render_handler = RenderHandlerWrapper::new(GpuiRenderHandler { buffer, width, height, scale_factor });
     let display_handler = DisplayHandlerWrapper::new(GpuiDisplayHandler { cursor });
     let permission_handler = PermissionHandlerWrapper::new(GpuiPermissionHandler);
+    let load_handler = LoadHandlerWrapper::new(GpuiLoadHandler { css });
 
     let mut client = ClientWrapper::new(BrowserClient {
         render_handler,
         display_handler,
         permission_handler,
+        load_handler,
     });
 
-    let window_info = WindowInfo {
-        windowless_rendering_enabled: true as _,
-        ..Default::default()
-    };
-
-    let browser_settings = BrowserSettings {
-        windowless_frame_rate: 60,
-        javascript_access_clipboard: cef::State::ENABLED,
-        ..Default::default()
-    };
-
     cef::browser_host_create_browser_sync(
-        Some(&window_info),
+        Some(&WindowInfo { windowless_rendering_enabled: true as _, ..Default::default() }),
         Some(&mut client),
-        Some(&CefString::from(url.as_str())),
-        Some(&browser_settings),
+        Some(&CefString::from(url)),
+        Some(&BrowserSettings {
+            windowless_frame_rate: 60,
+            javascript_access_clipboard: cef::State::ENABLED,
+            ..Default::default()
+        }),
         None,
         None,
     )
@@ -87,25 +87,26 @@ pub fn create_browser(
 
 pub struct BrowserView {
     browser: Option<Browser>,
-    pixels: Arc<Mutex<Vec<u8>>>,
+    buffer: Arc<DoubleBuffer>,
     width: Arc<Mutex<u32>>,
     height: Arc<Mutex<u32>>,
     focus_handle: FocusHandle,
     mouse_pressed: Arc<Mutex<bool>>,
     cursor: Arc<Mutex<CefCursor>>,
-    cached_image: Arc<Mutex<Option<Arc<RenderImage>>>>,
-    last_hash: Arc<Mutex<u64>>,
+    last_version: u64,
+    cached_image: Option<Arc<RenderImage>>,
 }
 
 impl BrowserView {
-    pub fn new(url: &str, width: u32, height: u32, cx: &mut Context<Self>) -> Self {
-        let pixels = Arc::new(Mutex::new(Vec::new()));
+    pub fn new(url: &str, width: u32, height: u32, css: Option<&str>, cx: &mut Context<Self>) -> Self {
+        let buffer = Arc::new(DoubleBuffer::new((width * height * 4) as usize));
         let w = Arc::new(Mutex::new(width));
         let h = Arc::new(Mutex::new(height));
         let mouse_pressed = Arc::new(Mutex::new(false));
         let cursor = Arc::new(Mutex::new(CefCursor::Default));
+        let css_arc = Arc::new(Mutex::new(css.map(String::from)));
 
-        let browser = create_browser(url.to_string(), pixels.clone(), w.clone(), h.clone(), cursor.clone());
+        let browser = create_browser(url, buffer.clone(), w.clone(), h.clone(), cursor.clone(), css_arc, 1.0);
 
         if let Some(host) = browser.host() {
             host.was_resized();
@@ -125,17 +126,18 @@ impl BrowserView {
 
         Self {
             browser: Some(browser),
-            pixels,
+            buffer,
             width: w,
             height: h,
             focus_handle: cx.focus_handle(),
             mouse_pressed,
             cursor,
-            cached_image: Arc::new(Mutex::new(None)),
-            last_hash: Arc::new(Mutex::new(0)),
+            last_version: 0,
+            cached_image: None,
         }
     }
 
+    #[inline]
     fn send_key(&self, key_code: i32, modifiers: u32, down: bool) {
         if let Some(browser) = &self.browser {
             if let Some(host) = browser.host() {
@@ -144,6 +146,7 @@ impl BrowserView {
         }
     }
 
+    #[inline]
     fn send_char(&self, ch: char, modifiers: u32) {
         if let Some(browser) = &self.browser {
             if let Some(host) = browser.host() {
@@ -160,13 +163,11 @@ impl Focusable for BrowserView {
 }
 
 impl gpui::Render for BrowserView {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let w = *self.width.lock();
         let h = *self.height.lock();
-        let pixels = self.pixels.lock();
-        let browser = self.browser.clone();
-        let mouse_pressed = self.mouse_pressed.clone();
-
+        let current_version = self.buffer.version();
+        
         let cursor_style = match *self.cursor.lock() {
             CefCursor::Default => CursorStyle::Arrow,
             CefCursor::Pointer => CursorStyle::PointingHand,
@@ -175,214 +176,224 @@ impl gpui::Render for BrowserView {
             CefCursor::Wait | CefCursor::None => CursorStyle::Arrow,
         };
 
-        if w > 0 && h > 0 && !pixels.is_empty() {
-            let mut hasher = DefaultHasher::new();
-            pixels.hash(&mut hasher);
-            let current_hash = hasher.finish();
-
-            let render_image = {
-                let mut last = self.last_hash.lock();
-                let mut cached = self.cached_image.lock();
-
-                if *last != current_hash || cached.is_none() {
+        if w > 0 && h > 0 {
+            // Only rebuild image if version changed
+            if current_version != self.last_version || self.cached_image.is_none() {
+                let pixels = self.buffer.read();
+                if pixels.len() == (w * h * 4) as usize {
                     if let Some(buffer) = ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(w, h, pixels.clone()) {
-                        let frame = Frame::new(buffer);
-                        let img = Arc::new(RenderImage::new(SmallVec::from_elem(frame, 1)));
-                        *cached = Some(img.clone());
-                        *last = current_hash;
-                        img
-                    } else {
-                        return loading_view(w, h);
-                    }
-                } else {
-                    cached.as_ref().unwrap().clone()
-                }
-            };
-
-            let browser_move = browser.clone();
-            let browser_down = browser.clone();
-            let browser_up = browser.clone();
-            let browser_scroll = browser.clone();
-            let mouse_pressed_move = mouse_pressed.clone();
-            let mouse_pressed_down = mouse_pressed.clone();
-            let mouse_pressed_up = mouse_pressed.clone();
-
-            return div()
-                .size_full()
-                .cursor(cursor_style)
-                .track_focus(&self.focus_handle)
-                .on_key_down(cx.listener(|this, event: &KeyDownEvent, _window, _cx| {
-                    let keystroke = &event.keystroke;
-                    let modifiers = modifiers_to_cef(&keystroke.modifiers);
-
-                    if keystroke.modifiers.control && keystroke.key == "v" {
-                        if let Some(browser) = &this.browser {
-                            if let Some(frame) = browser.main_frame() { frame.paste(); }
+                        // Drop old image from atlas before creating new one
+                        if let Some(old_image) = self.cached_image.take() {
+                            cx.drop_image(old_image, Some(window));
                         }
-                        return;
+                        self.cached_image = Some(Arc::new(RenderImage::new(SmallVec::from_elem(Frame::new(buffer), 1))));
+                        self.last_version = current_version;
                     }
+                }
+            }
 
-                    if keystroke.modifiers.control && keystroke.key == "f" {
-                        this.send_key(70, modifiers, true);
-                        this.send_key(70, modifiers, false);
-                        return;
-                    }
+            if let Some(ref render_image) = self.cached_image {
+                let browser = self.browser.clone();
+                let mouse_pressed = self.mouse_pressed.clone();
 
-                    if keystroke.modifiers.control && matches!(keystroke.key.as_str(), "c" | "a" | "x") {
-                        if let Some(browser) = &this.browser {
-                            if let Some(frame) = browser.main_frame() {
-                                match keystroke.key.as_str() {
-                                    "c" => frame.copy(),
-                                    "x" => frame.cut(),
-                                    "a" => frame.select_all(),
-                                    _ => {}
+                return div()
+                    .size_full()
+                    .cursor(cursor_style)
+                    .track_focus(&self.focus_handle)
+                    .on_key_down(cx.listener(|this, event: &KeyDownEvent, _window, _cx| {
+                        let ks = &event.keystroke;
+                        let mods = modifiers_to_cef(&ks.modifiers);
+
+                        // Ctrl+Shift+I for DevTools
+                        if ks.modifiers.control && ks.modifiers.shift && ks.key == "i" {
+                            if let Some(b) = &this.browser {
+                                if let Some(host) = b.host() {
+                                    host.show_dev_tools(None, None, None, None);
+                                }
+                            }
+                            return;
+                        }
+
+                        if ks.modifiers.control {
+                            match ks.key.as_str() {
+                                "v" => {
+                                    // Paste from system clipboard
+                                    if let Some(b) = &this.browser {
+                                        if let Some(f) = b.main_frame() {
+                                            if let Some(text) = _cx.read_from_clipboard().and_then(|c| c.text()) {
+                                                let escaped = text.replace('\\', "\\\\").replace('`', "\\`").replace("${", "\\${");
+                                                let script = format!(
+                                                    "document.execCommand('insertText', false, `{}`);",
+                                                    escaped
+                                                );
+                                                f.execute_java_script(Some(&CefString::from(script.as_str())), None, 0);
+                                            }
+                                        }
+                                    }
+                                    return;
+                                }
+                                "c" => {
+                                    // Copy to system clipboard via JS
+                                    if let Some(b) = &this.browser {
+                                        if let Some(f) = b.main_frame() {
+                                            f.execute_java_script(
+                                                Some(&CefString::from("navigator.clipboard.writeText(window.getSelection().toString());")),
+                                                None, 0
+                                            );
+                                        }
+                                    }
+                                    return;
+                                }
+                                "x" => {
+                                    // Cut: copy then delete
+                                    if let Some(b) = &this.browser {
+                                        if let Some(f) = b.main_frame() {
+                                            f.execute_java_script(
+                                                Some(&CefString::from("navigator.clipboard.writeText(window.getSelection().toString());document.execCommand('delete');")),
+                                                None, 0
+                                            );
+                                        }
+                                    }
+                                    return;
+                                }
+                                "a" => { if let Some(b) = &this.browser { if let Some(f) = b.main_frame() { f.select_all(); } } return; }
+                                "f" => { this.send_key(70, mods, true); this.send_key(70, mods, false); return; }
+                                _ => {}
+                            }
+                        }
+
+                        if let Some(code) = key_to_windows_code(&ks.key) {
+                            this.send_key(code, mods, true);
+                        }
+
+                        if !ks.modifiers.control && !ks.modifiers.alt {
+                            if let Some(ch) = ks.key_char.as_ref().and_then(|s| s.chars().next()) {
+                                this.send_char(ch, mods);
+                            } else if ks.key.len() == 1 {
+                                let ch = ks.key.chars().next().unwrap();
+                                this.send_char(if ks.modifiers.shift && ch.is_ascii_alphabetic() { ch.to_ascii_uppercase() } else { ch }, mods);
+                            }
+                        }
+                    }))
+                    .on_key_up(cx.listener(|this, event: &KeyUpEvent, _window, _cx| {
+                        if let Some(code) = key_to_windows_code(&event.keystroke.key) {
+                            this.send_key(code, modifiers_to_cef(&event.keystroke.modifiers), false);
+                        }
+                    }))
+                    .on_mouse_move({
+                        let browser = browser.clone();
+                        let mouse_pressed = mouse_pressed.clone();
+                        move |event: &MouseMoveEvent, _window, _cx| {
+                            if let Some(browser) = &browser {
+                                if let Some(host) = browser.host() {
+                                    let (x, y) = (Into::<f32>::into(event.position.x) as i32, Into::<f32>::into(event.position.y) as i32);
+                                    host.send_mouse_move_event(Some(&cef::MouseEvent {
+                                        x, y, modifiers: if *mouse_pressed.lock() { 16 } else { 0 },
+                                    }), 0);
                                 }
                             }
                         }
-                        return;
-                    }
-
-                    if let Some(code) = key_to_windows_code(&keystroke.key) {
-                        this.send_key(code, modifiers, true);
-                    }
-
-                    if !keystroke.modifiers.control && !keystroke.modifiers.alt {
-                        if let Some(ch) = keystroke.key_char.as_ref().and_then(|s| s.chars().next()) {
-                            this.send_char(ch, modifiers);
-                        } else if keystroke.key.len() == 1 {
-                            let ch = keystroke.key.chars().next().unwrap();
-                            let ch = if keystroke.modifiers.shift && ch.is_ascii_alphabetic() {
-                                ch.to_ascii_uppercase()
-                            } else { ch };
-                            this.send_char(ch, modifiers);
-                        }
-                    }
-                }))
-                .on_key_up(cx.listener(|this, event: &KeyUpEvent, _window, _cx| {
-                    let keystroke = &event.keystroke;
-                    if let Some(code) = key_to_windows_code(&keystroke.key) {
-                        this.send_key(code, modifiers_to_cef(&keystroke.modifiers), false);
-                    }
-                }))
-                .on_mouse_move(move |event: &MouseMoveEvent, _window, _cx| {
-                    if let Some(browser) = &browser_move {
-                        if let Some(host) = browser.host() {
-                            let pos = event.position;
-                            host.send_mouse_move_event(Some(&cef::MouseEvent {
-                                x: Into::<f32>::into(pos.x) as i32,
-                                y: Into::<f32>::into(pos.y) as i32,
-                                modifiers: if *mouse_pressed_move.lock() { 16 } else { 0 },
-                            }), 0);
-                        }
-                    }
-                })
-                .on_mouse_down(MouseButton::Left, move |event: &MouseDownEvent, _window, _cx| {
-                    *mouse_pressed_down.lock() = true;
-                    if let Some(browser) = &browser_down {
-                        if let Some(host) = browser.host() {
-                            let pos = event.position;
-                            host.send_mouse_click_event(Some(&cef::MouseEvent {
-                                x: Into::<f32>::into(pos.x) as i32,
-                                y: Into::<f32>::into(pos.y) as i32,
-                                modifiers: 16,
-                            }), cef_mouse_button_type_t::MBT_LEFT.into(), 0, event.click_count as i32);
-                        }
-                    }
-                })
-                .on_mouse_up(MouseButton::Left, move |event: &MouseUpEvent, _window, _cx| {
-                    *mouse_pressed_up.lock() = false;
-                    if let Some(browser) = &browser_up {
-                        if let Some(host) = browser.host() {
-                            let pos = event.position;
-                            host.send_mouse_click_event(Some(&cef::MouseEvent {
-                                x: Into::<f32>::into(pos.x) as i32,
-                                y: Into::<f32>::into(pos.y) as i32,
-                                modifiers: 0,
-                            }), cef_mouse_button_type_t::MBT_LEFT.into(), 1, event.click_count as i32);
-                        }
-                    }
-                })
-                .on_mouse_down(MouseButton::Right, {
-                    let browser = browser.clone();
-                    move |event: &MouseDownEvent, _window, _cx| {
-                        if let Some(browser) = &browser {
-                            if let Some(host) = browser.host() {
-                                let pos = event.position;
-                                host.send_mouse_click_event(Some(&cef::MouseEvent {
-                                    x: Into::<f32>::into(pos.x) as i32,
-                                    y: Into::<f32>::into(pos.y) as i32,
-                                    modifiers: 32,
-                                }), cef_mouse_button_type_t::MBT_RIGHT.into(), 0, 1);
+                    })
+                    .on_mouse_down(MouseButton::Left, {
+                        let browser = browser.clone();
+                        let mouse_pressed = mouse_pressed.clone();
+                        move |event: &MouseDownEvent, _window, _cx| {
+                            *mouse_pressed.lock() = true;
+                            if let Some(browser) = &browser {
+                                if let Some(host) = browser.host() {
+                                    let (x, y) = (Into::<f32>::into(event.position.x) as i32, Into::<f32>::into(event.position.y) as i32);
+                                    host.send_mouse_click_event(Some(&cef::MouseEvent { x, y, modifiers: 16 }),
+                                        cef_mouse_button_type_t::MBT_LEFT.into(), 0, event.click_count as i32);
+                                }
                             }
                         }
-                    }
-                })
-                .on_mouse_up(MouseButton::Right, {
-                    let browser = browser.clone();
-                    move |event: &MouseUpEvent, _window, _cx| {
-                        if let Some(browser) = &browser {
-                            if let Some(host) = browser.host() {
-                                let pos = event.position;
-                                host.send_mouse_click_event(Some(&cef::MouseEvent {
-                                    x: Into::<f32>::into(pos.x) as i32,
-                                    y: Into::<f32>::into(pos.y) as i32,
-                                    modifiers: 0,
-                                }), cef_mouse_button_type_t::MBT_RIGHT.into(), 1, 1);
+                    })
+                    .on_mouse_up(MouseButton::Left, {
+                        let browser = browser.clone();
+                        let mouse_pressed = mouse_pressed.clone();
+                        move |event: &MouseUpEvent, _window, _cx| {
+                            *mouse_pressed.lock() = false;
+                            if let Some(browser) = &browser {
+                                if let Some(host) = browser.host() {
+                                    let (x, y) = (Into::<f32>::into(event.position.x) as i32, Into::<f32>::into(event.position.y) as i32);
+                                    host.send_mouse_click_event(Some(&cef::MouseEvent { x, y, modifiers: 0 }),
+                                        cef_mouse_button_type_t::MBT_LEFT.into(), 1, event.click_count as i32);
+                                }
                             }
                         }
-                    }
-                })
-                .on_scroll_wheel(move |event: &ScrollWheelEvent, _window, _cx| {
-                    if let Some(browser) = &browser_scroll {
-                        if let Some(host) = browser.host() {
-                            let pos = event.position;
-                            let delta = event.delta.pixel_delta(px(1.0));
-                            host.send_mouse_wheel_event(Some(&cef::MouseEvent {
-                                x: Into::<f32>::into(pos.x) as i32,
-                                y: Into::<f32>::into(pos.y) as i32,
-                                modifiers: 0,
-                            }), (Into::<f32>::into(delta.x) as i32) * SCROLL_MULTIPLIER,
-                               (Into::<f32>::into(delta.y) as i32) * SCROLL_MULTIPLIER);
-                        }
-                    }
-                })
-                .on_mouse_down(MouseButton::Navigate(gpui::NavigationDirection::Back), {
-                    let browser = browser.clone();
-                    move |_, _, _| { if let Some(b) = &browser { b.go_back(); } }
-                })
-                .on_mouse_down(MouseButton::Navigate(gpui::NavigationDirection::Forward), {
-                    let browser = browser.clone();
-                    move |_, _, _| { if let Some(b) = &browser { b.go_forward(); } }
-                })
-                .on_drop(cx.listener(|this, paths: &ExternalPaths, _window, _cx| {
-                    if let Some(browser) = &this.browser {
-                        if let Some(frame) = browser.main_frame() {
-                            if let Some(path) = paths.paths().first() {
-                                let script = format!(
-                                    "window.dispatchEvent(new CustomEvent('filedrop', {{detail: '{}'}}));",
-                                    path.to_string_lossy().replace('\'', "\\'")
-                                );
-                                frame.execute_java_script(Some(&CefString::from(script.as_str())), None, 0);
+                    })
+                    .on_mouse_down(MouseButton::Right, {
+                        let browser = browser.clone();
+                        move |event: &MouseDownEvent, _window, _cx| {
+                            if let Some(browser) = &browser {
+                                if let Some(host) = browser.host() {
+                                    let (x, y) = (Into::<f32>::into(event.position.x) as i32, Into::<f32>::into(event.position.y) as i32);
+                                    host.send_mouse_click_event(Some(&cef::MouseEvent { x, y, modifiers: 32 }),
+                                        cef_mouse_button_type_t::MBT_RIGHT.into(), 0, 1);
+                                }
                             }
                         }
-                    }
-                }))
-                .child(img(render_image).w_full().h_full())
-                .into_any_element();
+                    })
+                    .on_mouse_up(MouseButton::Right, {
+                        let browser = browser.clone();
+                        move |event: &MouseUpEvent, _window, _cx| {
+                            if let Some(browser) = &browser {
+                                if let Some(host) = browser.host() {
+                                    let (x, y) = (Into::<f32>::into(event.position.x) as i32, Into::<f32>::into(event.position.y) as i32);
+                                    host.send_mouse_click_event(Some(&cef::MouseEvent { x, y, modifiers: 0 }),
+                                        cef_mouse_button_type_t::MBT_RIGHT.into(), 1, 1);
+                                }
+                            }
+                        }
+                    })
+                    .on_scroll_wheel({
+                        let browser = browser.clone();
+                        move |event: &ScrollWheelEvent, _window, _cx| {
+                            if let Some(browser) = &browser {
+                                if let Some(host) = browser.host() {
+                                    let (x, y) = (Into::<f32>::into(event.position.x) as i32, Into::<f32>::into(event.position.y) as i32);
+                                    let delta = event.delta.pixel_delta(px(1.0));
+                                    host.send_mouse_wheel_event(Some(&cef::MouseEvent { x, y, modifiers: 0 }),
+                                        (Into::<f32>::into(delta.x) as i32) * SCROLL_MULTIPLIER,
+                                        (Into::<f32>::into(delta.y) as i32) * SCROLL_MULTIPLIER);
+                                }
+                            }
+                        }
+                    })
+                    .on_mouse_down(MouseButton::Navigate(gpui::NavigationDirection::Back), {
+                        let browser = browser.clone();
+                        move |_, _, _| { if let Some(b) = &browser { b.go_back(); } }
+                    })
+                    .on_mouse_down(MouseButton::Navigate(gpui::NavigationDirection::Forward), {
+                        let browser = browser.clone();
+                        move |_, _, _| { if let Some(b) = &browser { b.go_forward(); } }
+                    })
+                    .on_drop(cx.listener(|this, paths: &ExternalPaths, _window, _cx| {
+                        if let Some(browser) = &this.browser {
+                            if let Some(frame) = browser.main_frame() {
+                                if let Some(path) = paths.paths().first() {
+                                    let script = format!(
+                                        "window.dispatchEvent(new CustomEvent('filedrop', {{detail: '{}'}}));",
+                                        path.to_string_lossy().replace('\'', "\\'")
+                                    );
+                                    frame.execute_java_script(Some(&CefString::from(script.as_str())), None, 0);
+                                }
+                            }
+                        }
+                    }))
+                    .child(img(render_image.clone()).w_full().h_full())
+                    .into_any_element();
+            }
         }
 
-        loading_view(w, h)
+        div()
+            .flex()
+            .size_full()
+            .bg(rgb(0x2e3440))
+            .text_color(rgb(0xd8dee9))
+            .items_center()
+            .justify_center()
+            .child(format!("Loading... ({}x{})", w, h))
+            .into_any_element()
     }
-}
-
-fn loading_view(w: u32, h: u32) -> gpui::AnyElement {
-    div()
-        .flex()
-        .size_full()
-        .bg(rgb(0x2e3440))
-        .text_color(rgb(0xd8dee9))
-        .items_center()
-        .justify_center()
-        .child(format!("Loading... ({}x{})", w, h))
-        .into_any_element()
 }
