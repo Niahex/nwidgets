@@ -1,7 +1,8 @@
 use crate::services::cef::BrowserView;
 use gpui::{div, AppContext, Context, Entity, IntoElement, ParentElement, Styled, Window};
+use std::path::PathBuf;
 
-const URL: &str = "https://gemini.google.com/app";
+const DEFAULT_URL: &str = "https://gemini.google.com/app";
 const CSS: &str = r#"
 
 :root .dark-theme {
@@ -148,10 +149,37 @@ pub struct ChatWidget {
     browser: Entity<BrowserView>,
 }
 
+fn state_file() -> PathBuf {
+    dirs::state_dir()
+        .unwrap_or_else(|| PathBuf::from("/tmp"))
+        .join("nwidgets")
+        .join("chat_url")
+}
+
+fn load_url() -> String {
+    std::fs::read_to_string(state_file()).unwrap_or_else(|_| DEFAULT_URL.to_string())
+}
+
+pub fn save_url(url: &str) {
+    if let Some(parent) = state_file().parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let _ = std::fs::write(state_file(), url);
+}
+
 impl ChatWidget {
     pub fn new(cx: &mut Context<Self>) -> Self {
-        let browser = cx.new(|cx| BrowserView::new(URL, 600, 1440, Some(CSS), cx));
+        let url = load_url();
+        let browser = cx.new(|cx| BrowserView::new(&url, 600, 1440, Some(CSS), cx));
         Self { browser }
+    }
+
+    pub fn current_url(&self, cx: &gpui::App) -> Option<String> {
+        self.browser.read(cx).current_url()
+    }
+
+    pub fn navigate(&self, url: &str, cx: &mut gpui::App) {
+        self.browser.read(cx).navigate(url);
     }
 }
 

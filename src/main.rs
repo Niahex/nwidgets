@@ -14,7 +14,7 @@ use services::{
     audio::AudioService,
     bluetooth::BluetoothService,
     cef::CefService,
-    chat::{ChatPinToggled, ChatService, ChatToggled},
+    chat::{ChatNavigate, ChatPinToggled, ChatService, ChatToggled},
     control_center::ControlCenterService,
     dbus::DbusService,
     hyprland::HyprlandService,
@@ -247,6 +247,12 @@ fn main() {
                 let mut window = chat_window_clone.lock();
                 let pinned = *chat_pinned_toggle.lock();
                 if let Some(handle) = window.take() {
+                    // Save URL before closing
+                    let _ = handle.update(cx, |chat, _window, cx| {
+                        if let Some(url) = chat.current_url(cx) {
+                            widgets::chat::save_url(&url);
+                        }
+                    });
                     let _ = handle.update(cx, |_, window, _| window.remove_window());
                 } else {
                     *window = open_chat_window(cx, pinned);
@@ -265,10 +271,31 @@ fn main() {
                             .unwrap_or(false);
                         if is_focused {
                             *chat_pinned_pin.lock() = event.pinned;
+                            // Save current URL before closing
+                            let _ = handle.update(cx, |chat, _window, cx| {
+                                if let Some(url) = chat.current_url(cx) {
+                                    widgets::chat::save_url(&url);
+                                }
+                            });
                             let handle = window.take().unwrap();
                             let _ = handle.update(cx, |_, window, _| window.remove_window());
                             *window = open_chat_window(cx, event.pinned);
                         }
+                    }
+                },
+            )
+            .detach();
+
+            // Subscribe to chat navigate events
+            let chat_window_nav = Arc::clone(&chat_window);
+            cx.subscribe(
+                &chat_service,
+                move |_service, event: &ChatNavigate, cx| {
+                    let window = chat_window_nav.lock();
+                    if let Some(handle) = window.as_ref() {
+                        let _ = handle.update(cx, |chat, _window, cx| {
+                            chat.navigate(&event.url, cx);
+                        });
                     }
                 },
             )

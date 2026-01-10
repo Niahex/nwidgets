@@ -192,6 +192,23 @@ impl BrowserView {
             }
         }
     }
+
+    pub fn current_url(&self) -> Option<String> {
+        self.browser.as_ref()
+            .and_then(|b| b.main_frame())
+            .map(|f| {
+                let cef_str: cef::CefStringUtf16 = (&f.url()).into();
+                format!("{cef_str}")
+            })
+    }
+
+    pub fn navigate(&self, url: &str) {
+        if let Some(browser) = &self.browser {
+            if let Some(frame) = browser.main_frame() {
+                frame.load_url(Some(&CefString::from(url)));
+            }
+        }
+    }
 }
 
 impl Focusable for BrowserView {

@@ -6,6 +6,125 @@ fn main() {
     divan::main();
 }
 
+// ============== AUDIO STATE SIMULATION ==============
+
+#[derive(Debug, Clone, PartialEq)]
+struct AudioState {
+    sink_volume: u8,
+    sink_muted: bool,
+    source_volume: u8,
+    source_muted: bool,
+}
+
+#[derive(Debug, Clone)]
+struct AudioDevice {
+    id: u32,
+    name: Arc<str>,
+    description: Arc<str>,
+    is_default: bool,
+}
+
+#[derive(Debug, Clone)]
+struct AudioStream {
+    id: u32,
+    app_name: Arc<str>,
+    volume: u8,
+    muted: bool,
+}
+
+static AUDIO_STATE: once_cell::sync::Lazy<RwLock<AudioState>> = once_cell::sync::Lazy::new(|| {
+    RwLock::new(AudioState {
+        sink_volume: 50,
+        sink_muted: false,
+        source_volume: 50,
+        source_muted: false,
+    })
+});
+
+static AUDIO_DEVICES: once_cell::sync::Lazy<RwLock<Vec<AudioDevice>>> = once_cell::sync::Lazy::new(|| {
+    RwLock::new(vec![
+        AudioDevice { id: 1, name: "alsa_output.pci".into(), description: "Built-in Audio".into(), is_default: true },
+        AudioDevice { id: 2, name: "alsa_output.usb".into(), description: "USB Headset".into(), is_default: false },
+        AudioDevice { id: 3, name: "bluez_sink".into(), description: "Bluetooth Speaker".into(), is_default: false },
+    ])
+});
+
+static AUDIO_STREAMS: once_cell::sync::Lazy<RwLock<Vec<AudioStream>>> = once_cell::sync::Lazy::new(|| {
+    RwLock::new(vec![
+        AudioStream { id: 100, app_name: "Firefox".into(), volume: 100, muted: false },
+        AudioStream { id: 101, app_name: "Spotify".into(), volume: 80, muted: false },
+        AudioStream { id: 102, app_name: "Discord".into(), volume: 100, muted: true },
+    ])
+});
+
+#[divan::bench]
+fn audio_state_read() -> AudioState {
+    AUDIO_STATE.read().clone()
+}
+
+#[divan::bench]
+fn audio_state_write() {
+    let mut state = AUDIO_STATE.write();
+    state.sink_volume = (state.sink_volume + 1) % 101;
+}
+
+#[divan::bench]
+fn audio_devices_read() -> Vec<AudioDevice> {
+    AUDIO_DEVICES.read().clone()
+}
+
+#[divan::bench]
+fn audio_devices_find_default() -> Option<AudioDevice> {
+    AUDIO_DEVICES.read().iter().find(|d| d.is_default).cloned()
+}
+
+#[divan::bench]
+fn audio_streams_read() -> Vec<AudioStream> {
+    AUDIO_STREAMS.read().clone()
+}
+
+#[divan::bench]
+fn audio_streams_filter_unmuted() -> Vec<AudioStream> {
+    AUDIO_STREAMS.read().iter().filter(|s| !s.muted).cloned().collect()
+}
+
+#[divan::bench]
+fn audio_volume_clamp() -> u8 {
+    let vol: i32 = 150;
+    vol.clamp(0, 100) as u8
+}
+
+#[divan::bench]
+fn audio_volume_percent_format() -> String {
+    let vol: u8 = 75;
+    format!("{vol}%")
+}
+
+#[divan::bench]
+fn audio_parse_wpctl_output() -> (u8, bool) {
+    // Simule le parsing de "Volume: 0.75 [MUTED]"
+    let text = "Volume: 0.75";
+    let muted = text.contains("[MUTED]");
+    let vol = text.split_whitespace()
+        .nth(1)
+        .and_then(|s| s.parse::<f32>().ok())
+        .map(|v| (v * 100.0) as u8)
+        .unwrap_or(50);
+    (vol, muted)
+}
+
+#[divan::bench]
+fn audio_parse_wpctl_muted() -> (u8, bool) {
+    let text = "Volume: 0.50 [MUTED]";
+    let muted = text.contains("[MUTED]");
+    let vol = text.split_whitespace()
+        .nth(1)
+        .and_then(|s| s.parse::<f32>().ok())
+        .map(|v| (v * 100.0) as u8)
+        .unwrap_or(50);
+    (vol, muted)
+}
+
 // ============== CACHE OPERATIONS ==============
 
 static ICON_CACHE: once_cell::sync::Lazy<RwLock<HashMap<String, Arc<str>>>> =

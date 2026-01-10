@@ -4,6 +4,9 @@ pub struct ChatToggled;
 pub struct ChatPinToggled {
     pub pinned: bool,
 }
+pub struct ChatNavigate {
+    pub url: String,
+}
 
 pub struct ChatService {
     pub visible: bool,
@@ -12,6 +15,7 @@ pub struct ChatService {
 
 impl EventEmitter<ChatToggled> for ChatService {}
 impl EventEmitter<ChatPinToggled> for ChatService {}
+impl EventEmitter<ChatNavigate> for ChatService {}
 
 struct GlobalChatService(Entity<ChatService>);
 impl Global for GlobalChatService {}
@@ -19,7 +23,7 @@ impl Global for GlobalChatService {}
 impl ChatService {
     pub fn new(_cx: &mut Context<Self>) -> Self {
         Self {
-            visible: true,
+            visible: false,
             pinned: false,
         }
     }
@@ -46,5 +50,9 @@ impl ChatService {
             pinned: self.pinned,
         });
         cx.notify();
+    }
+
+    pub fn navigate(&mut self, url: String, cx: &mut Context<Self>) {
+        cx.emit(ChatNavigate { url });
     }
 }
