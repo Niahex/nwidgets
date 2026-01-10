@@ -64,6 +64,7 @@ impl OsdService {
             &lock_monitor,
             |this, _monitor, event: &LockStateChanged, cx| {
                 if let LockType::CapsLock = event.lock_type {
+                    eprintln!("[OsdService] Événement CapsLock reçu: enabled={}", event.enabled);
                     this.show_event(OsdEvent::CapsLock(event.enabled), cx);
                 }
             },
