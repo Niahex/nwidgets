@@ -4,18 +4,11 @@ use cef::{
     ImplRenderHandler, RenderHandler, Settings, WindowInfo, WrapApp, WrapClient, WrapRenderHandler,
     ImplCommandLine, rc::Rc, CefString, api_hash,
 };
-// We need cef_dll_sys for version constants, assuming it is available via cef crate or directly
-// If cef re-exports it, good. If not, we might need to add extern crate or use what's available.
-// cef crate usually exposes sys module.
-// Checking imports... api_hash is in cef root.
 use gpui::{App as GpuiApp, Context, Global, AppContext, UpdateGlobal, BackgroundExecutor, AsyncApp}; 
 use gpui::*; 
 
 use parking_lot::Mutex;
 use std::{ffi::c_void, sync::Arc, time::Duration};
-
-// Global singleton to hold the CEF app instance if needed, or just state.
-// CEF initialize is global.
 
 pub struct CefService {
 }
@@ -23,11 +16,10 @@ pub struct CefService {
 impl Global for CefService {}
 
 impl CefService {
-    // Specify GpuiApp explicitely
     pub fn init(cx: &mut GpuiApp) {
+        println!("[CEF] Initializing CefService globally...");
         cx.set_global(CefService {});
 
-        // Schedule CEF message loop work
         cx.spawn(|cx: &mut AsyncApp| {
             let mut cx = cx.clone();
             async move {
@@ -36,6 +28,7 @@ impl CefService {
                         .timer(Duration::from_millis(16))
                         .await;
                     
+                    // Re-enabled message loop!
                     let _ = cx.update(|_| {
                         cef::do_message_loop_work();
                     });
@@ -46,7 +39,6 @@ impl CefService {
     }
 }
 
-// Minimal App implementation for CEF initialization
 #[derive(Clone)]
 struct CefAppStruct {}
 
@@ -56,7 +48,6 @@ impl CefAppStruct {
     }
 }
 
-// Macros from cef-rs to wrap the structs
 use cef::wrap_app;
 
 wrap_app! {
@@ -71,44 +62,41 @@ wrap_app! {
             command_line: Option<&mut cef::CommandLine>,
         ) {
             if let Some(command_line) = command_line {
+                // println!("[CEF] Configuring command line switches...");
                 command_line.append_switch(Some(&"disable-gpu".into())); 
                 command_line.append_switch(Some(&"disable-gpu-compositing".into()));
                 command_line.append_switch(Some(&"enable-begin-frame-scheduling".into()));
                 command_line.append_switch(Some(&"no-sandbox".into())); 
+                command_line.append_switch(Some(&"disable-setuid-sandbox".into()));
+                command_line.append_switch(Some(&"ozone-platform=wayland".into()));
             }
         }
     }
 }
 
 pub fn initialize_cef() -> Result<()> {
-    // Check API hash to ensure compatibility
-    // 0 means ignore check? Or verify against compiled version.
-    // The example uses api_hash(sys::CEF_API_VERSION_LAST, 0);
-    // We need to access sys constants.
-    // If we can't access sys easily, let's try calling it with just 0 if allowed or verify signature.
-    // cef::api_hash(entry, allowed)
-    // entry is the API version from header.
-    
-    // We'll try to execute it without arguments if it's a wrapper, or find the constant.
-    // Actually, looking at cef-rs lib.rs: pub fn api_hash(entry: usize, allowed: usize) -> usize
-    
-    // We need CEF_API_VERSION_LAST.
-    // Let's assume cef-dll-sys is available as `cef_dll_sys` crate.
+    // println!("[CEF] Starting CEF initialization sequence...");
     
     let _ = api_hash(cef_dll_sys::CEF_API_VERSION_LAST, 0);
 
-    // Basic CEF initialization
     let args = Args::new();
+    
+    let cef_path = std::env::var("CEF_PATH").unwrap_or_else(|_| ".".to_string());
+    // println!("[CEF] Using CEF_PATH: {}", cef_path);
+
     let settings = Settings {
         windowless_rendering_enabled: true as _,
         external_message_pump: true as _,
+        resources_dir_path: CefString::from(cef_path.as_str()),
+        locales_dir_path: CefString::from(format!("{}/locales", cef_path).as_str()),
+        no_sandbox: true as _,
         ..Default::default()
     };
 
     let mut app = AppWrapper::new(CefAppStruct::new());
 
     unsafe {
-        // Execute process handles subprocess logic (renderer, gpu, etc.)
+        // println!("[CEF] Calling execute_process...");
         let code = cef::execute_process(
             Some(args.as_main_args()),
             Some(&mut app),
@@ -116,11 +104,11 @@ pub fn initialize_cef() -> Result<()> {
         );
 
         if code >= 0 {
-            // This was a subprocess, exit with the code
+            // println!("[CEF] Subprocess finished with code {}", code);
             std::process::exit(code);
         }
 
-        // This is the browser process, continue initialization
+        // println!("[CEF] Calling initialize...");
         let result = cef::initialize(
             Some(args.as_main_args()),
             Some(&settings),
@@ -129,10 +117,12 @@ pub fn initialize_cef() -> Result<()> {
         );
 
         if result != 1 {
+            println!("[CEF] Error: initialize returned {}", result);
             return Err(anyhow::anyhow!("Failed to initialize CEF"));
         }
     }
 
+    println!("[CEF] CEF initialization successful!");
     Ok(())
 }
 
@@ -140,10 +130,8 @@ pub fn shutdown_cef() {
     cef::shutdown();
 }
 
-// We need a RenderHandler to capture pixels
 #[derive(Clone)]
 pub struct GpuiRenderHandler {
-    // Shared buffer to put pixels into
     pub pixels: Arc<Mutex<Vec<u8>>>,
     pub width: Arc<Mutex<u32>>,
     pub height: Arc<Mutex<u32>>,
@@ -187,13 +175,11 @@ wrap_render_handler! {
             }
             pixels.copy_from_slice(src);
 
-            // Notify GPUI to redraw
             (self.handler.repaint_callback)();
         }
     }
 }
 
-// Needs Clone
 #[derive(Clone)]
 pub struct BrowserClient {
     render_handler: RenderHandler,
@@ -241,15 +227,13 @@ pub fn create_browser(
         ..Default::default()
     };
 
-    // Create browser sync for simplicity now, but might block?
-    // Usually fine for initial creation.
     let browser = cef::browser_host_create_browser_sync(
         Some(&window_info),
         Some(&mut client_wrapper),
         Some(&CefString::from(url.as_str())),
         Some(&browser_settings),
         None,
-        None, // RequestContext
+        None,
     );
 
     browser.expect("Failed to create browser")

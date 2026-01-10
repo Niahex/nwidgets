@@ -52,10 +52,6 @@ impl AssetSource for Assets {
                 Ok(Some(std::borrow::Cow::Borrowed(leaked_data)))
             }
             Err(e) => {
-                // If file not found or other error, return None or propagate error
-                // GPUI expects Ok(None) for "not found" usually, or just error.
-                // Original code: .map_err(|err| err.into())
-                // fs::read returns io::Error.
                 Err(e.into())
             }
         }
@@ -78,22 +74,17 @@ impl AssetSource for Assets {
 }
 
 fn main() {
-    // Initialize CEF immediately
-    // If this is a subprocess (renderer, gpu, etc.), this will block until exit.
+    // CEF Initialization disabled for now
+    /*
     if let Err(e) = services::cef::initialize_cef() {
         eprintln!("Failed to initialize CEF (or subprocess executed): {:?}", e);
-        // If it was a subprocess, we should probably exit here.
-        // initialize_cef should handle execute_process and return logic.
-        // But our initialize_cef currently just calls initialize.
-        // We need to verify if execute_process is needed.
-        // For now, assume we continue if it returns Ok (browser process) or error.
     }
+    */
 
-    // Determine assets path - in development it's relative to the project root
+    // Determine assets path
     let assets_path = if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
         PathBuf::from(manifest_dir)
     } else {
-        // In production, assets should be alongside the binary
         std::env::current_exe()
             .ok()
             .and_then(|path| path.parent().map(|p| p.to_path_buf()))
@@ -106,10 +97,7 @@ fn main() {
             cache: parking_lot::RwLock::new(HashMap::new()),
         })
         .run(|cx: &mut App| {
-            // Initialize gpui_tokio
             gpui_tokio::init(cx);
-
-            // Initialize theme
             cx.set_global(theme::Theme::nord_dark());
 
             // Initialize global services
@@ -123,22 +111,15 @@ fn main() {
             let notif_service = NotificationService::init(cx);
             let osd_service = OsdService::init(cx);
             ControlCenterService::init(cx);
+            
+            // services::cef::CefService::init(cx); // Disabled
 
-            // Initialize CEF Service
-            services::cef::CefService::init(cx);
-
-            // Create panel window with LayerShell - full width (3440px), 50px height
+            // 1. Panel Window
             cx.open_window(
                 WindowOptions {
                     window_bounds: Some(WindowBounds::Windowed(Bounds {
-                        origin: Point {
-                            x: px(0.0),
-                            y: px(0.0),
-                        },
-                        size: Size {
-                            width: px(3440.0),
-                            height: px(50.0),
-                        },
+                        origin: Point { x: px(0.0), y: px(0.0) },
+                        size: Size { width: px(3440.0), height: px(50.0) },
                     })),
                     titlebar: None,
                     window_background: WindowBackgroundAppearance::Transparent,
@@ -154,38 +135,42 @@ fn main() {
                     ..Default::default()
                 },
                 |_window, cx| cx.new(Panel::new),
-            )
-            .unwrap();
+            ).unwrap();
 
-            // Open Chat Window for testing
+            // Chat Window (GEMINI) disabled for now
+            /*
             cx.open_window(
                 WindowOptions {
                     window_bounds: Some(WindowBounds::Windowed(Bounds {
-                        origin: Point { x: px(100.0), y: px(100.0) },
-                        size: Size { width: px(800.0), height: px(600.0) },
+                        origin: Point { x: px(0.0), y: px(0.0) },
+                        size: Size { width: px(600.0), height: px(1440.0) },
                     })),
-                    titlebar: Some(TitlebarOptions {
-                        title: Some("Chat".into()),
+                    titlebar: None,
+                    window_background: WindowBackgroundAppearance::Transparent,
+                    kind: WindowKind::LayerShell(LayerShellOptions {
+                        namespace: "gemini".to_string(),
+                        layer: Layer::Overlay,
+                        anchor: Anchor::TOP | Anchor::BOTTOM | Anchor::LEFT,
+                        exclusive_zone: None,
+                        margin: None,
+                        keyboard_interactivity: KeyboardInteractivity::OnDemand,
                         ..Default::default()
                     }),
+                    app_id: Some("gemini".to_string()),
                     ..Default::default()
                 },
                 |_window, cx| widgets::chat::Chat::new(cx),
             ).unwrap();
+            */
 
-            // Le service OSD gère maintenant sa propre fenêtre
             let _osd_service = osd_service;
-
-            // Gestionnaire de fenêtre notifications
             let notif_manager = Arc::new(Mutex::new(NotificationsWindowManager::new()));
             let notif_manager_clone = Arc::clone(&notif_manager);
 
-            // Ouvrir la fenêtre à la première notification
             cx.subscribe(
                 &notif_service,
                 move |_service, _event: &NotificationAdded, cx| {
                     let mut manager = notif_manager_clone.lock();
-
                     if let Some(widget) = manager.open_window(cx) {
                         let notif_manager_clone2 = Arc::clone(&notif_manager_clone);
                         cx.subscribe(
@@ -196,12 +181,10 @@ fn main() {
                                     manager.close_window(cx);
                                 }
                             },
-                        )
-                        .detach();
+                        ).detach();
                     }
                 },
-            )
-            .detach();
+            ).detach();
 
             cx.activate(true);
         });
