@@ -10,4 +10,3 @@ pub mod notifications;
 pub mod osd;
 pub mod pomodoro;
 pub mod systray;
-pub mod cef;

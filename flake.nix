@@ -38,76 +38,6 @@
           ];
         };
 
-        # CEF Configuration
-        cefVersion = "143.0.14+gdd46a37+chromium-143.0.7499.193";
-        cefPlatform = "linux64";
-        cefSrc = pkgs.fetchurl {
-          url = "https://cef-builds.spotifycdn.com/cef_binary_${pkgs.lib.strings.escapeURL cefVersion}_${cefPlatform}_minimal.tar.bz2";
-          name = "cef_binary_${pkgs.lib.strings.escapeURL cefVersion}_${cefPlatform}_minimal.tar.bz2";
-          hash = "sha256-BPlAGOHOxIkgpX+yMHUDxy+xk2FXgyXf1Ex9Uibn7cM=";
-        };
-
-        cefDeps = with pkgs; [
-          glib
-          nss
-          nspr
-          at-spi2-atk
-          libdrm
-          expat
-          mesa
-          alsa-lib
-          dbus
-          cups
-          libxkbcommon
-          pango
-          cairo
-          udev
-          xorg.libX11
-          xorg.libXcomposite
-          xorg.libXdamage
-          xorg.libXext
-          xorg.libXfixes
-          xorg.libXrandr
-          xorg.libXcursor
-          xorg.libXrender
-          xorg.libXScrnSaver
-          xorg.libXtst
-          xorg.libxcb
-          libglvnd
-          vulkan-loader
-          libayatana-appindicator
-          gtk3
-        ];
-
-        cefAssets =
-          pkgs.runCommand "cef-assets" {
-            nativeBuildInputs = [pkgs.autoPatchelfHook];
-            buildInputs = cefDeps;
-          } ''
-            mkdir -p $out
-            mkdir temp
-            tar -xf ${cefSrc} --strip-components=1 -C temp
-
-            # Mimic extract_target_archive from download-cef/src/lib.rs
-            # 1. Move everything from Release to $out
-            cp -r temp/Release/* $out/
-            
-            # 2. Move everything from Resources to $out
-            cp -r temp/Resources/* $out/
-            
-            # 3. Move include and cmake and libcef_dll to $out (needed for build)
-            cp -r temp/include $out/
-            cp -r temp/cmake $out/
-            cp -r temp/libcef_dll $out/
-            cp temp/CMakeLists.txt $out/
-
-            # Generate archive.json which is required by cef-rs
-            echo '{"type":"minimal","name":"cef_binary_${cefVersion}_${cefPlatform}_minimal.tar.bz2","sha1":""}' > $out/archive.json
-
-            # Patch binaries in $out
-            autoPatchelf $out
-          '';
-
         # Dependencies for building the application
         buildInputs = with pkgs; [
           wayland
@@ -127,7 +57,7 @@
           alsa-lib
           udev
           pipewire
-        ] ++ cefDeps;
+        ];
 
         # Dependencies needed only at runtime
         runtimeDependencies = with pkgs; [
@@ -135,24 +65,18 @@
           vulkan-loader
           mesa
           libxkbcommon
-        ] ++ cefDeps;
+        ];
 
         nativeBuildInputs = with pkgs; [
           pkg-config
           makeWrapper
-          autoPatchelfHook
           clang
-          cmake
-          ninja
           rustPlatform.bindgenHook
         ];
 
         envVars = {
           RUST_BACKTRACE = "full";
           LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
-          CEF_PATH = cefAssets;
-          # Point search and rpath directly to cefAssets since we flattened it
-          RUSTFLAGS = "-C link-arg=-Wl,-rpath,${cefAssets} -C link-arg=-L${cefAssets}";
         };
 
         # Build artifacts
@@ -172,16 +96,10 @@
             # Copy assets to the output
             mkdir -p $out/share/nwidgets
             cp -r ${src}/assets $out/share/nwidgets/
-            
-            # Copy CEF runtime assets to bin (where the executable is)
-            # We copy everything from cefAssets except include/cmake/libcef_dll
-            find ${cefAssets} -maxdepth 1 -type f -exec cp {} $out/bin/ \;
-            cp -r ${cefAssets}/locales $out/bin/ || true
 
             wrapProgram $out/bin/nwidgets \
-              --prefix LD_LIBRARY_PATH : ${pkgs.lib.makeLibraryPath runtimeDependencies}:${cefAssets} \
+              --prefix LD_LIBRARY_PATH : ${pkgs.lib.makeLibraryPath runtimeDependencies} \
               --set NWIDGETS_ASSETS_DIR $out/share/nwidgets/assets \
-              --set CEF_PATH ${cefAssets} \
               --add-flags "--ozone-platform-hint=auto"
           '';
         };
@@ -217,7 +135,7 @@
           nativeBuildInputs = devTools;
           env = envVars;
 
-          LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath (buildInputs ++ runtimeDependencies)}:/run/opengl/driver/lib:/run/opengl/lib:${cefAssets}";
+          LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath (buildInputs ++ runtimeDependencies)}:/run/opengl/driver/lib:/run/opengl/lib";
           FONTCONFIG_FILE = pkgs.makeFontsConf {fontDirectories = buildInputs;};
 
           shellHook = ''
@@ -225,7 +143,6 @@
             echo "Vulkan ICD: $VK_ICD_FILENAMES"
             echo "Available Vulkan devices:"
             vulkaninfo --summary 2>/dev/null | grep -A 2 "GPU" || echo "  Run 'vulkaninfo' for details"
-            export CEF_PATH="${cefAssets}"
           '';
         };
 

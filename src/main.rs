@@ -74,13 +74,6 @@ impl AssetSource for Assets {
 }
 
 fn main() {
-    // CEF Initialization disabled for now
-    /*
-    if let Err(e) = services::cef::initialize_cef() {
-        eprintln!("Failed to initialize CEF (or subprocess executed): {:?}", e);
-    }
-    */
-
     // Determine assets path
     let assets_path = if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
         PathBuf::from(manifest_dir)
@@ -111,8 +104,6 @@ fn main() {
             let notif_service = NotificationService::init(cx);
             let osd_service = OsdService::init(cx);
             ControlCenterService::init(cx);
-            
-            // services::cef::CefService::init(cx); // Disabled
 
             // 1. Panel Window
             cx.open_window(
