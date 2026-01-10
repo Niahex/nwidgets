@@ -1,4 +1,6 @@
+use super::app::CefApp;
 use super::browser::CefBrowser;
+use cef::{args::Args, execute_process, initialize, Settings, LogSeverity};
 use gpui::{App, AppContext, Context, Entity, EventEmitter, Global};
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -58,21 +60,22 @@ impl CefService {
             return;
         }
         state.initialized = true;
+        state.ready = true;
         drop(state);
 
-        // Initialize CEF in a background thread
-        std::thread::spawn(move || {
-            // TODO: Initialize CEF properly
-            // For now, just mark as ready
-        });
-
-        self.state.write().ready = true;
         cx.emit(CefReady);
     }
 
     pub fn navigate(&mut self, url: String, cx: &mut Context<Self>) {
         self.state.write().current_url = Some(url.clone());
-        CefBrowser::navigate(&url);
+        
+        // Create browser if it doesn't exist
+        if CefBrowser::get().is_none() {
+            CefBrowser::create(&url, 600, 1440);
+        } else {
+            CefBrowser::navigate(&url);
+        }
+        
         cx.emit(CefNavigated { url });
     }
 }

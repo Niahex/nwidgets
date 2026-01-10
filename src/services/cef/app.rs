@@ -14,6 +14,7 @@ wrap_app! {
                 line.append_switch(Some(&CefString::from("disable-gpu")));
                 line.append_switch(Some(&CefString::from("disable-gpu-compositing")));
                 line.append_switch(Some(&CefString::from("enable-begin-frame-scheduling")));
+                line.append_switch(Some(&CefString::from("disable-web-security")));
             }
         }
     }
