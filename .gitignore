@@ -2,4 +2,3 @@ target/
 result/
 examples/
 .ai/
-benches/
