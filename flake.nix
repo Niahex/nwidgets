@@ -192,6 +192,10 @@
           rustToolchain
           cargo-watch
           cargo-edit
+          cargo-audit
+          cargo-machete
+          cargo-bloat
+          cargo-flamegraph
           bacon
         ];
       in {
