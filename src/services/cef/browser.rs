@@ -209,6 +209,12 @@ impl BrowserView {
             }
         }
     }
+
+    pub fn reload(&self) {
+        if let Some(browser) = &self.browser {
+            browser.reload();
+        }
+    }
 }
 
 impl Focusable for BrowserView {
@@ -263,6 +269,12 @@ impl gpui::Render for BrowserView {
                     .on_key_down(cx.listener(|this, event: &KeyDownEvent, _window, _cx| {
                         let ks = &event.keystroke;
                         let mods = modifiers_to_cef(&ks.modifiers);
+
+                        // F5 for reload
+                        if ks.key == "f5" {
+                            this.reload();
+                            return;
+                        }
 
                         // Ctrl+Shift+I for DevTools
                         if ks.modifiers.control && ks.modifiers.shift && ks.key == "i" {
@@ -415,14 +427,6 @@ impl gpui::Render for BrowserView {
                                 }
                             }
                         }
-                    })
-                    .on_mouse_down(MouseButton::Navigate(gpui::NavigationDirection::Back), {
-                        let browser = browser.clone();
-                        move |_, _, _| { if let Some(b) = &browser { b.go_back(); } }
-                    })
-                    .on_mouse_down(MouseButton::Navigate(gpui::NavigationDirection::Forward), {
-                        let browser = browser.clone();
-                        move |_, _, _| { if let Some(b) = &browser { b.go_forward(); } }
                     })
                     .on_drop(cx.listener(|this, paths: &ExternalPaths, _window, _cx| {
                         if let Some(browser) = &this.browser {
