@@ -21,7 +21,13 @@ impl FindBar {
         }
     }
 
-    pub fn handle_key(&mut self, key: &str, key_char: Option<&str>, modifiers: &Modifiers, host: &cef::BrowserHost) -> bool {
+    pub fn handle_key(
+        &mut self,
+        key: &str,
+        key_char: Option<&str>,
+        modifiers: &Modifiers,
+        host: &cef::BrowserHost,
+    ) -> bool {
         if !self.visible {
             return false;
         }
@@ -76,13 +82,12 @@ impl FindBar {
         host.find(Some(&CefString::from(self.query.as_str())), 0, 0, 1);
     }
 
-    pub fn close(&mut self, host: &cef::BrowserHost) {
-        self.visible = false;
-        self.query.clear();
-        host.stop_finding(1);
-    }
-
-    pub fn render(&self, on_prev: impl Fn(&MouseDownEvent, &mut Window, &mut App) + 'static, on_next: impl Fn(&MouseDownEvent, &mut Window, &mut App) + 'static, on_close: impl Fn(&MouseDownEvent, &mut Window, &mut App) + 'static) -> impl IntoElement {
+    pub fn render(
+        &self,
+        on_prev: impl Fn(&MouseDownEvent, &mut Window, &mut App) + 'static,
+        on_next: impl Fn(&MouseDownEvent, &mut Window, &mut App) + 'static,
+        on_close: impl Fn(&MouseDownEvent, &mut Window, &mut App) + 'static,
+    ) -> impl IntoElement {
         let query = if self.query.is_empty() {
             "Type to search...".to_string()
         } else {

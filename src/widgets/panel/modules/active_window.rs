@@ -22,11 +22,19 @@ impl ActiveWindowModule {
         let hyprland = HyprlandService::global(cx);
         let chat = ChatService::global(cx);
 
-        cx.subscribe(&hyprland, |_this, _hyprland, _event: &ActiveWindowChanged, cx| {
-            cx.notify();
-        }).detach();
+        cx.subscribe(
+            &hyprland,
+            |_this, _hyprland, _event: &ActiveWindowChanged, cx| {
+                cx.notify();
+            },
+        )
+        .detach();
 
-        Self { hyprland, chat, site_index: 0 }
+        Self {
+            hyprland,
+            chat,
+            site_index: 0,
+        }
     }
 
     fn get_icon_name(class: &str) -> String {
@@ -34,9 +42,17 @@ impl ActiveWindowModule {
     }
 
     fn extract_short_title(title: &str, max_chars: usize) -> String {
-        let short_title = title.split(" - ").next().unwrap_or(title).trim().to_string();
+        let short_title = title
+            .split(" - ")
+            .next()
+            .unwrap_or(title)
+            .trim()
+            .to_string();
         if short_title.chars().count() > max_chars {
-            format!("{}...", short_title.chars().take(max_chars - 3).collect::<String>())
+            format!(
+                "{}...",
+                short_title.chars().take(max_chars - 3).collect::<String>()
+            )
         } else {
             short_title
         }
@@ -64,7 +80,11 @@ impl Render for ActiveWindowModule {
 
         let (icon_name, class_text, title_text) = if chat_visible {
             let site_name = self.current_site_name();
-            (site_name.to_lowercase(), "AI Chat".to_string(), site_name.to_string())
+            (
+                site_name.to_lowercase(),
+                "AI Chat".to_string(),
+                site_name.to_string(),
+            )
         } else if let Some(window) = active_window {
             (
                 Self::get_icon_name(&window.class),
@@ -88,12 +108,16 @@ impl Render for ActiveWindowModule {
             .on_click(cx.listener(|this, _, _window, cx| {
                 if this.chat.read(cx).visible {
                     let url = this.next_site();
-                    this.chat.update(cx, |chat, cx| chat.navigate(url.to_string(), cx));
+                    this.chat
+                        .update(cx, |chat, cx| chat.navigate(url.to_string(), cx));
                 }
             }))
-            .child(div().size(px(32.)).flex_shrink_0().child(
-                Icon::new(icon_name).size(px(32.)).preserve_colors(true),
-            ))
+            .child(
+                div()
+                    .size(px(32.))
+                    .flex_shrink_0()
+                    .child(Icon::new(icon_name).size(px(32.)).preserve_colors(true)),
+            )
             .child(
                 div()
                     .flex()

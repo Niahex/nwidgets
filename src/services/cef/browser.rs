@@ -1,3 +1,4 @@
+use crate::services::cef::find::FindBar;
 use crate::services::cef::handlers::{
     CefCursor, DisplayHandlerWrapper, DoubleBuffer, GpuiDisplayHandler, GpuiLoadHandler,
     GpuiPermissionHandler, GpuiRenderHandler, LoadHandlerWrapper, PermissionHandlerWrapper,
@@ -6,7 +7,6 @@ use crate::services::cef::handlers::{
 use crate::services::cef::input::{
     key_to_windows_code, modifiers_to_cef, send_char_event, send_key_event, SCROLL_MULTIPLIER,
 };
-use crate::services::cef::find::FindBar;
 use cef::{
     rc::Rc, Browser, BrowserSettings, CefString, Client, DisplayHandler, ImplBrowser,
     ImplBrowserHost, ImplClient, ImplFrame, LoadHandler, PermissionHandler, RenderHandler,
@@ -197,12 +197,10 @@ impl BrowserView {
     }
 
     pub fn current_url(&self) -> Option<String> {
-        self.browser.as_ref()
-            .and_then(|b| b.main_frame())
-            .map(|f| {
-                let cef_str: cef::CefStringUtf16 = (&f.url()).into();
-                format!("{cef_str}")
-            })
+        self.browser.as_ref().and_then(|b| b.main_frame()).map(|f| {
+            let cef_str: cef::CefStringUtf16 = (&f.url()).into();
+            format!("{cef_str}")
+        })
     }
 
     pub fn navigate(&self, url: &str) {
@@ -386,7 +384,7 @@ impl gpui::Render for BrowserView {
                                         }
                                     }
                                     _cx.notify();
-                                    return; 
+                                    return;
                                 }
                                 _ => {}
                             }
@@ -504,14 +502,14 @@ impl gpui::Render for BrowserView {
                         }
                     }))
                     .child(img(render_image.clone()).w_full().h_full());
-                
+
                 if self.find_bar.visible {
                     let browser = self.browser.clone();
                     let browser2 = self.browser.clone();
                     let browser3 = self.browser.clone();
                     let query = self.find_bar.query.clone();
                     let query2 = self.find_bar.query.clone();
-                    
+
                     main_div = main_div.child(self.find_bar.render(
                         move |_, _, _| {
                             if let Some(b) = &browser {
@@ -537,7 +535,7 @@ impl gpui::Render for BrowserView {
                         },
                     ));
                 }
-                
+
                 return main_div.into_any_element();
             }
         }

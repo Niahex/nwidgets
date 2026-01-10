@@ -1,6 +1,6 @@
-use std::collections::{HashMap, VecDeque, BTreeMap, HashSet};
+use parking_lot::{Mutex, RwLock};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::sync::Arc;
-use parking_lot::{RwLock, Mutex};
 
 fn main() {
     divan::main();
@@ -41,21 +41,53 @@ static AUDIO_STATE: once_cell::sync::Lazy<RwLock<AudioState>> = once_cell::sync:
     })
 });
 
-static AUDIO_DEVICES: once_cell::sync::Lazy<RwLock<Vec<AudioDevice>>> = once_cell::sync::Lazy::new(|| {
-    RwLock::new(vec![
-        AudioDevice { id: 1, name: "alsa_output.pci".into(), description: "Built-in Audio".into(), is_default: true },
-        AudioDevice { id: 2, name: "alsa_output.usb".into(), description: "USB Headset".into(), is_default: false },
-        AudioDevice { id: 3, name: "bluez_sink".into(), description: "Bluetooth Speaker".into(), is_default: false },
-    ])
-});
+static AUDIO_DEVICES: once_cell::sync::Lazy<RwLock<Vec<AudioDevice>>> =
+    once_cell::sync::Lazy::new(|| {
+        RwLock::new(vec![
+            AudioDevice {
+                id: 1,
+                name: "alsa_output.pci".into(),
+                description: "Built-in Audio".into(),
+                is_default: true,
+            },
+            AudioDevice {
+                id: 2,
+                name: "alsa_output.usb".into(),
+                description: "USB Headset".into(),
+                is_default: false,
+            },
+            AudioDevice {
+                id: 3,
+                name: "bluez_sink".into(),
+                description: "Bluetooth Speaker".into(),
+                is_default: false,
+            },
+        ])
+    });
 
-static AUDIO_STREAMS: once_cell::sync::Lazy<RwLock<Vec<AudioStream>>> = once_cell::sync::Lazy::new(|| {
-    RwLock::new(vec![
-        AudioStream { id: 100, app_name: "Firefox".into(), volume: 100, muted: false },
-        AudioStream { id: 101, app_name: "Spotify".into(), volume: 80, muted: false },
-        AudioStream { id: 102, app_name: "Discord".into(), volume: 100, muted: true },
-    ])
-});
+static AUDIO_STREAMS: once_cell::sync::Lazy<RwLock<Vec<AudioStream>>> =
+    once_cell::sync::Lazy::new(|| {
+        RwLock::new(vec![
+            AudioStream {
+                id: 100,
+                app_name: "Firefox".into(),
+                volume: 100,
+                muted: false,
+            },
+            AudioStream {
+                id: 101,
+                app_name: "Spotify".into(),
+                volume: 80,
+                muted: false,
+            },
+            AudioStream {
+                id: 102,
+                app_name: "Discord".into(),
+                volume: 100,
+                muted: true,
+            },
+        ])
+    });
 
 #[divan::bench]
 fn audio_state_read() -> AudioState {
@@ -85,7 +117,12 @@ fn audio_streams_read() -> Vec<AudioStream> {
 
 #[divan::bench]
 fn audio_streams_filter_unmuted() -> Vec<AudioStream> {
-    AUDIO_STREAMS.read().iter().filter(|s| !s.muted).cloned().collect()
+    AUDIO_STREAMS
+        .read()
+        .iter()
+        .filter(|s| !s.muted)
+        .cloned()
+        .collect()
 }
 
 #[divan::bench]
@@ -105,7 +142,8 @@ fn audio_parse_wpctl_output() -> (u8, bool) {
     // Simule le parsing de "Volume: 0.75 [MUTED]"
     let text = "Volume: 0.75";
     let muted = text.contains("[MUTED]");
-    let vol = text.split_whitespace()
+    let vol = text
+        .split_whitespace()
         .nth(1)
         .and_then(|s| s.parse::<f32>().ok())
         .map(|v| (v * 100.0) as u8)
@@ -117,7 +155,8 @@ fn audio_parse_wpctl_output() -> (u8, bool) {
 fn audio_parse_wpctl_muted() -> (u8, bool) {
     let text = "Volume: 0.50 [MUTED]";
     let muted = text.contains("[MUTED]");
-    let vol = text.split_whitespace()
+    let vol = text
+        .split_whitespace()
         .nth(1)
         .and_then(|s| s.parse::<f32>().ok())
         .map(|v| (v * 100.0) as u8)
@@ -131,7 +170,10 @@ static ICON_CACHE: once_cell::sync::Lazy<RwLock<HashMap<String, Arc<str>>>> =
     once_cell::sync::Lazy::new(|| {
         let mut map = HashMap::new();
         for i in 0..100 {
-            map.insert(format!("icon-{i}"), Arc::from(format!("assets/icon-{i}.svg")));
+            map.insert(
+                format!("icon-{i}"),
+                Arc::from(format!("assets/icon-{i}.svg")),
+            );
         }
         RwLock::new(map)
     });
@@ -155,7 +197,10 @@ fn json_parse_small() -> serde_json::Value {
 
 #[divan::bench]
 fn json_parse_notification() -> serde_json::Value {
-    serde_json::from_str(r#"{"app_name":"Discord","summary":"New message","body":"Hello world","urgency":1}"#).unwrap()
+    serde_json::from_str(
+        r#"{"app_name":"Discord","summary":"New message","body":"Hello world","urgency":1}"#,
+    )
+    .unwrap()
 }
 
 #[divan::bench]
@@ -196,18 +241,28 @@ fn string_concat_push() -> String {
 #[divan::bench]
 fn string_truncate_short() -> String {
     let text = "Short";
-    if text.len() > 50 { format!("{}...", &text[..50]) } else { text.to_string() }
+    if text.len() > 50 {
+        format!("{}...", &text[..50])
+    } else {
+        text.to_string()
+    }
 }
 
 #[divan::bench]
 fn string_truncate_long() -> String {
     let text = "This is a very long notification body that definitely needs truncation";
-    if text.len() > 50 { format!("{}...", &text[..50]) } else { text.to_string() }
+    if text.len() > 50 {
+        format!("{}...", &text[..50])
+    } else {
+        text.to_string()
+    }
 }
 
 #[divan::bench]
 fn string_replace() -> String {
-    "Hello <name>, welcome to <app>".replace("<name>", "User").replace("<app>", "NWidgets")
+    "Hello <name>, welcome to <app>"
+        .replace("<name>", "User")
+        .replace("<app>", "NWidgets")
 }
 
 #[divan::bench]
@@ -230,36 +285,43 @@ fn string_starts_with() -> bool {
 #[divan::bench]
 fn hashmap_insert_10() -> HashMap<i32, i32> {
     let mut m = HashMap::new();
-    for i in 0..10 { m.insert(i, i * 2); }
+    for i in 0..10 {
+        m.insert(i, i * 2);
+    }
     m
 }
 
 #[divan::bench]
 fn hashmap_lookup() -> Option<i32> {
-    static MAP: once_cell::sync::Lazy<HashMap<i32, i32>> = once_cell::sync::Lazy::new(|| {
-        (0..100).map(|i| (i, i * 2)).collect()
-    });
+    static MAP: once_cell::sync::Lazy<HashMap<i32, i32>> =
+        once_cell::sync::Lazy::new(|| (0..100).map(|i| (i, i * 2)).collect());
     MAP.get(&50).copied()
 }
 
 #[divan::bench]
 fn btreemap_insert_10() -> BTreeMap<i32, i32> {
     let mut m = BTreeMap::new();
-    for i in 0..10 { m.insert(i, i * 2); }
+    for i in 0..10 {
+        m.insert(i, i * 2);
+    }
     m
 }
 
 #[divan::bench]
 fn hashset_insert_contains() -> bool {
     let mut s = HashSet::new();
-    for i in 0..10 { s.insert(i); }
+    for i in 0..10 {
+        s.insert(i);
+    }
     s.contains(&5)
 }
 
 #[divan::bench]
 fn vec_push_100() -> Vec<i32> {
     let mut v = Vec::with_capacity(100);
-    for i in 0..100 { v.push(i); }
+    for i in 0..100 {
+        v.push(i);
+    }
     v
 }
 
@@ -276,8 +338,12 @@ fn vec_filter_map() -> Vec<i32> {
 #[divan::bench]
 fn vecdeque_push_pop_50() -> usize {
     let mut q = VecDeque::with_capacity(50);
-    for i in 0..50 { q.push_back(i); }
-    while q.len() > 10 { q.pop_front(); }
+    for i in 0..50 {
+        q.push_back(i);
+    }
+    while q.len() > 10 {
+        q.pop_front();
+    }
     q.len()
 }
 
@@ -290,8 +356,10 @@ fn vecdeque_rotate() -> i32 {
 
 // ============== SYNC PRIMITIVES ==============
 
-static MUTEX_COUNTER: once_cell::sync::Lazy<Mutex<i32>> = once_cell::sync::Lazy::new(|| Mutex::new(0));
-static RWLOCK_DATA: once_cell::sync::Lazy<RwLock<i32>> = once_cell::sync::Lazy::new(|| RwLock::new(42));
+static MUTEX_COUNTER: once_cell::sync::Lazy<Mutex<i32>> =
+    once_cell::sync::Lazy::new(|| Mutex::new(0));
+static RWLOCK_DATA: once_cell::sync::Lazy<RwLock<i32>> =
+    once_cell::sync::Lazy::new(|| RwLock::new(42));
 
 #[divan::bench]
 fn mutex_lock() -> i32 {
@@ -376,18 +444,28 @@ fn time_now() -> std::time::Instant {
 
 #[divan::bench]
 fn time_duration_since() -> std::time::Duration {
-    static START: once_cell::sync::Lazy<std::time::Instant> = once_cell::sync::Lazy::new(std::time::Instant::now);
+    static START: once_cell::sync::Lazy<std::time::Instant> =
+        once_cell::sync::Lazy::new(std::time::Instant::now);
     START.elapsed()
 }
 
 #[divan::bench]
 fn timestamp_unix() -> u64 {
-    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs()
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
 }
 
 #[divan::bench]
 fn timestamp_format() -> String {
-    format!("{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs())
+    format!(
+        "{}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+    )
 }
 
 // ============== OPTION/RESULT ==============

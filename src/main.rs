@@ -288,17 +288,14 @@ fn main() {
 
             // Subscribe to chat navigate events
             let chat_window_nav = Arc::clone(&chat_window);
-            cx.subscribe(
-                &chat_service,
-                move |_service, event: &ChatNavigate, cx| {
-                    let window = chat_window_nav.lock();
-                    if let Some(handle) = window.as_ref() {
-                        let _ = handle.update(cx, |chat, _window, cx| {
-                            chat.navigate(&event.url, cx);
-                        });
-                    }
-                },
-            )
+            cx.subscribe(&chat_service, move |_service, event: &ChatNavigate, cx| {
+                let window = chat_window_nav.lock();
+                if let Some(handle) = window.as_ref() {
+                    let _ = handle.update(cx, |chat, _window, cx| {
+                        chat.navigate(&event.url, cx);
+                    });
+                }
+            })
             .detach();
 
             let _osd_service = osd_service;
