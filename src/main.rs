@@ -78,6 +78,17 @@ impl AssetSource for Assets {
 }
 
 fn main() {
+    // Initialize CEF immediately
+    // If this is a subprocess (renderer, gpu, etc.), this will block until exit.
+    if let Err(e) = services::cef::initialize_cef() {
+        eprintln!("Failed to initialize CEF (or subprocess executed): {:?}", e);
+        // If it was a subprocess, we should probably exit here.
+        // initialize_cef should handle execute_process and return logic.
+        // But our initialize_cef currently just calls initialize.
+        // We need to verify if execute_process is needed.
+        // For now, assume we continue if it returns Ok (browser process) or error.
+    }
+
     // Determine assets path - in development it's relative to the project root
     let assets_path = if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
         PathBuf::from(manifest_dir)
@@ -113,6 +124,9 @@ fn main() {
             let osd_service = OsdService::init(cx);
             ControlCenterService::init(cx);
 
+            // Initialize CEF Service
+            services::cef::CefService::init(cx);
+
             // Create panel window with LayerShell - full width (3440px), 50px height
             cx.open_window(
                 WindowOptions {
@@ -142,6 +156,22 @@ fn main() {
                 |_window, cx| cx.new(Panel::new),
             )
             .unwrap();
+
+            // Open Chat Window for testing
+            cx.open_window(
+                WindowOptions {
+                    window_bounds: Some(WindowBounds::Windowed(Bounds {
+                        origin: Point { x: px(100.0), y: px(100.0) },
+                        size: Size { width: px(800.0), height: px(600.0) },
+                    })),
+                    titlebar: Some(TitlebarOptions {
+                        title: Some("Chat".into()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                |_window, cx| widgets::chat::Chat::new(cx),
+            ).unwrap();
 
             // Le service OSD gère maintenant sa propre fenêtre
             let _osd_service = osd_service;

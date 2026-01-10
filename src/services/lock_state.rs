@@ -1,131 +1,110 @@
-use gpui::prelude::*;
 use gpui::*;
-use inotify::{Inotify, WatchMask};
-use tokio::io::unix::AsyncFd;
-use std::path::PathBuf;
+use std::process::Command;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LockType {
-    CapsLock,
-    NumLock,
+pub struct LockStateService {
+    is_locked: bool,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct LockStateChanged {
+    pub is_locked: bool,
     pub lock_type: LockType,
     pub enabled: bool,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LockType {
+    CapsLock,
+    Screen,
+}
+
 pub struct LockMonitor {
-    caps_lock: bool,
-    num_lock: bool,
+    is_locked: bool,
 }
 
 impl EventEmitter<LockStateChanged> for LockMonitor {}
 
 impl LockMonitor {
     pub fn init(cx: &mut App) -> Entity<Self> {
-        let model = cx.new(|cx| {
-            let this = Self {
-                caps_lock: Self::read_state(LockType::CapsLock),
-                num_lock: Self::read_state(LockType::NumLock),
-            };
-
-            cx.spawn(|weak_model: WeakEntity<Self>, mut cx| async move {
-                eprintln!("[LockMonitor] Démarrage du monitoring inotify");
-                
-                let Ok(inotify) = Inotify::init() else {
-                    eprintln!("[LockMonitor] Erreur: impossible d'initialiser inotify");
-                    return;
-                };
-
-                let caps_path = Self::find_led_path(LockType::CapsLock);
-                let num_path = Self::find_led_path(LockType::NumLock);
-
-                if let Some(path) = &caps_path {
-                    if inotify.watches().add(path, WatchMask::MODIFY).is_ok() {
-                        eprintln!("[LockMonitor] Surveillance CapsLock: {:?}", path);
-                    }
-                }
-
-                if let Some(path) = &num_path {
-                    if inotify.watches().add(path, WatchMask::MODIFY).is_ok() {
-                        eprintln!("[LockMonitor] Surveillance NumLock: {:?}", path);
-                    }
-                }
-
-                let Ok(mut async_inotify) = AsyncFd::new(inotify) else {
-                    eprintln!("[LockMonitor] Erreur: impossible de créer AsyncFd");
-                    return;
-                };
-
-                let mut buffer = [0u8; 4096];
+        let is_locked = Self::check_lock_state();
+        let model = cx.new(|_| Self { is_locked });
+        
+        let weak_model = model.downgrade();
+        cx.spawn(move |cx: &mut AsyncApp| { // Added move
+            let mut cx = cx.clone();
+            let mut last_state = is_locked;
+            async move {
                 loop {
-                    let mut guard = match async_inotify.readable_mut().await {
-                        Ok(g) => g,
-                        Err(_) => break,
-                    };
-
-                    match guard.try_io(|inner| inner.get_mut().read_events(&mut buffer)) {
-                        Ok(Ok(_events)) => {
-                            eprintln!("[LockMonitor] Événement inotify détecté");
-                            
-                            let current_caps = Self::read_state(LockType::CapsLock);
-                            let current_num = Self::read_state(LockType::NumLock);
-
-                            eprintln!("[LockMonitor] État: CapsLock={}, NumLock={}", current_caps, current_num);
-
-                            let _ = weak_model.update(&mut cx, |this, cx| {
-                                if this.caps_lock != current_caps {
-                                    eprintln!("[LockMonitor] CapsLock changé: {} -> {}", this.caps_lock, current_caps);
-                                    this.caps_lock = current_caps;
-                                    cx.emit(LockStateChanged {
-                                        lock_type: LockType::CapsLock,
-                                        enabled: current_caps,
-                                    });
-                                }
-
-                                if this.num_lock != current_num {
-                                    eprintln!("[LockMonitor] NumLock changé: {} -> {}", this.num_lock, current_num);
-                                    this.num_lock = current_num;
-                                    cx.emit(LockStateChanged {
-                                        lock_type: LockType::NumLock,
-                                        enabled: current_num,
-                                    });
-                                }
+                    let current_state = Self::check_lock_state();
+                    if current_state != last_state {
+                        last_state = current_state;
+                        let _ = weak_model.update(&mut cx, |this, cx| {
+                            this.is_locked = current_state;
+                            cx.emit(LockStateChanged { 
+                                is_locked: current_state,
+                                lock_type: LockType::Screen,
+                                enabled: current_state 
                             });
-                        }
-                        _ => {}
+                        });
                     }
-
-                    guard.clear_ready();
+                    cx.background_executor().timer(std::time::Duration::from_secs(1)).await;
                 }
-            })
-            .detach();
-
-            this
-        });
+            }
+        }).detach();
 
         model
     }
 
-    fn find_led_path(lock_type: LockType) -> Option<PathBuf> {
-        let pattern = match lock_type {
-            LockType::CapsLock => "capslock",
-            LockType::NumLock => "numlock",
-        };
+    fn check_lock_state() -> bool {
+        let output = Command::new("pgrep")
+            .arg("-x")
+            .arg("hyprlock")
+            .output();
+        
+        match output {
+            Ok(out) => out.status.success(),
+            Err(_) => false,
+        }
+    }
+}
 
-        std::fs::read_dir("/sys/class/leds")
-            .ok()?
-            .flatten()
-            .find(|e| e.file_name().to_string_lossy().contains(pattern))
-            .map(|e| e.path().join("brightness"))
+impl Global for LockStateService {}
+
+impl LockStateService {
+    pub fn init(cx: &mut App) -> Entity<Self> {
+        let is_locked = Self::check_lock_state();
+        let model = cx.new(|_| Self { is_locked });
+        cx.set_global(LockStateService { is_locked });
+
+        let weak_model = model.downgrade();
+        cx.spawn(move |cx: &mut AsyncApp| { // Added move
+            let mut cx = cx.clone();
+            let mut last_state = is_locked;
+            async move {
+                loop {
+                    let current_state = Self::check_lock_state();
+                    if current_state != last_state {
+                        last_state = current_state;
+                        let _ = weak_model.update(&mut cx, |this, cx| {
+                            this.is_locked = current_state;
+                            cx.update_global::<LockStateService, _>(|service, _| {
+                                service.is_locked = current_state;
+                            });
+                        });
+                    }
+                    cx.background_executor().timer(std::time::Duration::from_secs(1)).await;
+                }
+            }
+        }).detach();
+
+        model
     }
 
-    fn read_state(lock_type: LockType) -> bool {
-        Self::find_led_path(lock_type)
-            .and_then(|path| std::fs::read_to_string(path).ok())
-            .map(|c| c.trim() == "1")
-            .unwrap_or(false)
+    fn check_lock_state() -> bool {
+        LockMonitor::check_lock_state()
+    }
+
+    pub fn is_locked(&self) -> bool {
+        self.is_locked
     }
 }
