@@ -1,19 +1,24 @@
 use gpui::{App, AppContext, Context, Entity, EventEmitter, Global};
 
 pub struct ChatToggled;
+pub struct ChatPinToggled {
+    pub pinned: bool,
+}
 
 pub struct ChatService {
     pub visible: bool,
+    pub pinned: bool,
 }
 
 impl EventEmitter<ChatToggled> for ChatService {}
+impl EventEmitter<ChatPinToggled> for ChatService {}
 
 struct GlobalChatService(Entity<ChatService>);
 impl Global for GlobalChatService {}
 
 impl ChatService {
     pub fn new(_cx: &mut Context<Self>) -> Self {
-        Self { visible: true }
+        Self { visible: true, pinned: false }
     }
 
     pub fn global(cx: &App) -> Entity<Self> {
@@ -29,6 +34,12 @@ impl ChatService {
     pub fn toggle(&mut self, cx: &mut Context<Self>) {
         self.visible = !self.visible;
         cx.emit(ChatToggled);
+        cx.notify();
+    }
+
+    pub fn toggle_pin(&mut self, cx: &mut Context<Self>) {
+        self.pinned = !self.pinned;
+        cx.emit(ChatPinToggled { pinned: self.pinned });
         cx.notify();
     }
 }
