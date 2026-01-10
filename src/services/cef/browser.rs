@@ -55,10 +55,11 @@ fn create_browser(
     width: Arc<Mutex<u32>>,
     height: Arc<Mutex<u32>>,
     cursor: Arc<Mutex<CefCursor>>,
+    selected_text: Arc<Mutex<String>>,
     css: Arc<Mutex<Option<String>>>,
     scale_factor: f32,
 ) -> Browser {
-    let render_handler = RenderHandlerWrapper::new(GpuiRenderHandler { buffer, width, height, scale_factor });
+    let render_handler = RenderHandlerWrapper::new(GpuiRenderHandler { buffer, width, height, scale_factor, selected_text });
     let display_handler = DisplayHandlerWrapper::new(GpuiDisplayHandler { cursor });
     let permission_handler = PermissionHandlerWrapper::new(GpuiPermissionHandler);
     let load_handler = LoadHandlerWrapper::new(GpuiLoadHandler { css });
@@ -93,6 +94,7 @@ pub struct BrowserView {
     focus_handle: FocusHandle,
     mouse_pressed: Arc<Mutex<bool>>,
     cursor: Arc<Mutex<CefCursor>>,
+    selected_text: Arc<Mutex<String>>,
     last_version: u64,
     cached_image: Option<Arc<RenderImage>>,
 }
@@ -104,9 +106,10 @@ impl BrowserView {
         let h = Arc::new(Mutex::new(height));
         let mouse_pressed = Arc::new(Mutex::new(false));
         let cursor = Arc::new(Mutex::new(CefCursor::Default));
+        let selected_text = Arc::new(Mutex::new(String::new()));
         let css_arc = Arc::new(Mutex::new(css.map(String::from)));
 
-        let browser = create_browser(url, buffer.clone(), w.clone(), h.clone(), cursor.clone(), css_arc, 1.0);
+        let browser = create_browser(url, buffer.clone(), w.clone(), h.clone(), cursor.clone(), selected_text.clone(), css_arc, 1.0);
 
         if let Some(host) = browser.host() {
             host.was_resized();
@@ -132,6 +135,7 @@ impl BrowserView {
             focus_handle: cx.focus_handle(),
             mouse_pressed,
             cursor,
+            selected_text,
             last_version: 0,
             cached_image: None,
         }
@@ -233,25 +237,22 @@ impl gpui::Render for BrowserView {
                                     return;
                                 }
                                 "c" => {
-                                    // Copy to system clipboard via JS
-                                    if let Some(b) = &this.browser {
-                                        if let Some(f) = b.main_frame() {
-                                            f.execute_java_script(
-                                                Some(&CefString::from("navigator.clipboard.writeText(window.getSelection().toString());")),
-                                                None, 0
-                                            );
-                                        }
+                                    // Copy selected text to system clipboard
+                                    let text = this.selected_text.lock().clone();
+                                    if !text.is_empty() {
+                                        _cx.write_to_clipboard(gpui::ClipboardItem::new_string(text));
                                     }
                                     return;
                                 }
                                 "x" => {
-                                    // Cut: copy then delete
-                                    if let Some(b) = &this.browser {
-                                        if let Some(f) = b.main_frame() {
-                                            f.execute_java_script(
-                                                Some(&CefString::from("navigator.clipboard.writeText(window.getSelection().toString());document.execCommand('delete');")),
-                                                None, 0
-                                            );
+                                    // Cut: copy to clipboard then delete
+                                    let text = this.selected_text.lock().clone();
+                                    if !text.is_empty() {
+                                        _cx.write_to_clipboard(gpui::ClipboardItem::new_string(text));
+                                        if let Some(b) = &this.browser {
+                                            if let Some(f) = b.main_frame() {
+                                                f.del();
+                                            }
                                         }
                                     }
                                     return;

@@ -69,6 +69,7 @@ pub struct GpuiRenderHandler {
     pub width: Arc<Mutex<u32>>,
     pub height: Arc<Mutex<u32>>,
     pub scale_factor: f32,
+    pub selected_text: Arc<Mutex<String>>,
 }
 
 cef::wrap_render_handler! {
@@ -166,6 +167,19 @@ cef::wrap_render_handler! {
             } else {
                 // No dirty rects info, full copy
                 self.handler.buffer.write(src);
+            }
+        }
+
+        fn on_text_selection_changed(
+            &self,
+            _browser: Option<&mut Browser>,
+            selected_text: Option<&CefString>,
+            _selected_range: Option<&cef::Range>,
+        ) {
+            if let Some(text) = selected_text {
+                *self.handler.selected_text.lock() = text.to_string();
+            } else {
+                self.handler.selected_text.lock().clear();
             }
         }
     }
