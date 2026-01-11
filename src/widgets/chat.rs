@@ -203,6 +203,9 @@ impl gpui::Render for ChatWidget {
             .bg(theme.bg)
             .rounded(gpui::px(18.))
             .overflow_hidden()
+            .border_1()
+            .border_color(theme.accent_alt.opacity(0.25))
+            .shadow_lg()
             .child(self.browser.clone())
     }
 }

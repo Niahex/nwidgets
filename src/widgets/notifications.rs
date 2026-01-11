@@ -110,6 +110,9 @@ impl Render for NotificationsWidget {
                     .p_3()
                     .bg(urgency_class)
                     .rounded(px(12.0))
+                    .border_1()
+                    .border_color(theme.accent_alt.opacity(0.25))
+                    .shadow_lg()
                     .child(
                         div()
                             .flex()
