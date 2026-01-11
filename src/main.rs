@@ -14,7 +14,7 @@ use services::{
     audio::AudioService,
     bluetooth::BluetoothService,
     cef::CefService,
-    chat::{ChatNavigate, ChatPinToggled, ChatService, ChatToggled},
+    chat::{ChatNavigate, ChatService, ChatToggled},
     control_center::ControlCenterService,
     dbus::DbusService,
     hyprland::HyprlandService,
@@ -246,107 +246,61 @@ fn main() {
             )
             .unwrap();
 
-            // Chat window - NOT opened at startup
-            let chat_pinned: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
-            let chat_window: Arc<Mutex<Option<WindowHandle<ChatWidget>>>> =
-                Arc::new(Mutex::new(None));
-            let chat_window_clone = Arc::clone(&chat_window);
-            let chat_window_pin = Arc::clone(&chat_window);
-            let chat_pinned_toggle = Arc::clone(&chat_pinned);
-            let chat_pinned_pin = Arc::clone(&chat_pinned);
-
-            let open_chat_window =
-                |cx: &mut App, pinned: bool| -> Option<WindowHandle<ChatWidget>> {
-                    let (layer, exclusive_zone) = if pinned {
-                        (Layer::Top, Some(px(600.0)))
-                    } else {
-                        (Layer::Top, None)
-                    };
-                    cx.open_window(
-                        WindowOptions {
-                            window_bounds: Some(WindowBounds::Windowed(Bounds {
-                                origin: Point {
-                                    x: px(0.0),
-                                    y: px(0.0),
-                                },
-                                size: Size {
-                                    width: px(600.0),
-                                    height: px(1370.0),
-                                },
-                            })),
-                            titlebar: None,
-                            window_background: WindowBackgroundAppearance::Transparent,
-                            window_decorations: Some(WindowDecorations::Client),
-                            kind: WindowKind::LayerShell(LayerShellOptions {
-                                namespace: "nwidgets-chat".to_string(),
-                                layer,
-                                anchor: Anchor::TOP | Anchor::BOTTOM | Anchor::LEFT,
-                                exclusive_zone,
-                                margin: Some((px(40.0), px(0.0), px(20.0), px(10.0))),
-                                keyboard_interactivity: KeyboardInteractivity::OnDemand,
-                                ..Default::default()
-                            }),
-                            app_id: Some("nwidgets-chat".to_string()),
-                            ..Default::default()
+            // Chat window - created at startup, always visible but widget manages display
+            let chat_window = cx.open_window(
+                WindowOptions {
+                    window_bounds: Some(WindowBounds::Windowed(Bounds {
+                        origin: Point {
+                            x: px(0.0),
+                            y: px(0.0),
                         },
-                        |_window, cx| cx.new(ChatWidget::new),
-                    )
-                    .ok()
-                };
+                        size: Size {
+                            width: px(600.0),
+                            height: px(1370.0),
+                        },
+                    })),
+                    titlebar: None,
+                    window_background: WindowBackgroundAppearance::Transparent,
+                    window_decorations: Some(WindowDecorations::Client),
+                    kind: WindowKind::LayerShell(LayerShellOptions {
+                        namespace: "nwidgets-chat".to_string(),
+                        layer: Layer::Top,
+                        anchor: Anchor::TOP | Anchor::BOTTOM | Anchor::LEFT,
+                        exclusive_zone: None,
+                        margin: Some((px(40.0), px(0.0), px(20.0), px(10.0))),
+                        keyboard_interactivity: KeyboardInteractivity::OnDemand,
+                        ..Default::default()
+                    }),
+                    app_id: Some("nwidgets-chat".to_string()),
+                    is_movable: false,
+                    ..Default::default()
+                },
+                |_window, cx| cx.new(ChatWidget::new),
+            )
+            .unwrap();
+
+            let chat_window_arc: Arc<Mutex<WindowHandle<ChatWidget>>> = Arc::new(Mutex::new(chat_window));
+            let chat_window_toggle = Arc::clone(&chat_window_arc);
 
             // Subscribe to chat toggle events
             cx.subscribe(&chat_service, move |_service, _event: &ChatToggled, cx| {
-                let mut window = chat_window_clone.lock();
-                let pinned = *chat_pinned_toggle.lock();
-                if let Some(handle) = window.take() {
-                    // Save URL before closing
-                    let _ = handle.update(cx, |chat, _window, cx| {
-                        if let Some(url) = chat.current_url(cx) {
-                            widgets::chat::save_url(&url);
-                        }
-                    });
-                    let _ = handle.update(cx, |_, window, _| window.remove_window());
-                } else {
-                    *window = open_chat_window(cx, pinned);
-                }
+                let window = chat_window_toggle.lock();
+                let _ = window.update(cx, |chat, _window, cx| {
+                    if let Some(url) = chat.current_url(cx) {
+                        widgets::chat::save_url(&url);
+                    }
+                    cx.notify();
+                });
             })
             .detach();
 
-            // Subscribe to chat pin events - only if window is open and focused
-            cx.subscribe(
-                &chat_service,
-                move |_service, event: &ChatPinToggled, cx| {
-                    let mut window = chat_window_pin.lock();
-                    if let Some(handle) = window.as_ref() {
-                        let is_focused = handle
-                            .update(cx, |_, window, cx| window.focused(cx).is_some())
-                            .unwrap_or(false);
-                        if is_focused {
-                            *chat_pinned_pin.lock() = event.pinned;
-                            // Save current URL before closing
-                            let _ = handle.update(cx, |chat, _window, cx| {
-                                if let Some(url) = chat.current_url(cx) {
-                                    widgets::chat::save_url(&url);
-                                }
-                            });
-                            let handle = window.take().unwrap();
-                            let _ = handle.update(cx, |_, window, _| window.remove_window());
-                            *window = open_chat_window(cx, event.pinned);
-                        }
-                    }
-                },
-            )
-            .detach();
-
             // Subscribe to chat navigate events
-            let chat_window_nav = Arc::clone(&chat_window);
+            let chat_window_nav = Arc::clone(&chat_window_arc);
             cx.subscribe(&chat_service, move |_service, event: &ChatNavigate, cx| {
                 let window = chat_window_nav.lock();
-                if let Some(handle) = window.as_ref() {
-                    let _ = handle.update(cx, |chat, _window, cx| {
-                        chat.navigate(&event.url, cx);
-                    });
-                }
+                let _ = window.update(cx, |chat, _window, cx| {
+                    chat.navigate(&event.url, cx);
+                });
             })
             .detach();
 

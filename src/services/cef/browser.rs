@@ -19,6 +19,7 @@ use gpui::{
     MouseMoveEvent, MouseUpEvent, ParentElement, RenderImage, ScrollWheelEvent, Styled, WeakEntity,
     Window,
 };
+use gpui::prelude::FluentBuilder;
 use image::{Frame, ImageBuffer, Rgba};
 use parking_lot::Mutex;
 use smallvec::SmallVec;
@@ -60,6 +61,7 @@ struct BrowserConfig {
     cursor: Arc<Mutex<CefCursor>>,
     selected_text: Arc<Mutex<String>>,
     css: Arc<Mutex<Option<String>>>,
+    loaded: Arc<Mutex<bool>>,
     scale_factor: f32,
 }
 
@@ -75,7 +77,10 @@ fn create_browser(url: &str, config: BrowserConfig) -> Browser {
         cursor: config.cursor,
     });
     let permission_handler = PermissionHandlerWrapper::new(GpuiPermissionHandler);
-    let load_handler = LoadHandlerWrapper::new(GpuiLoadHandler { css: config.css });
+    let load_handler = LoadHandlerWrapper::new(GpuiLoadHandler { 
+        css: config.css,
+        loaded: config.loaded,
+    });
 
     let mut client = ClientWrapper::new(BrowserClient {
         render_handler,
@@ -111,6 +116,7 @@ pub struct BrowserView {
     mouse_pressed: Arc<Mutex<bool>>,
     cursor: Arc<Mutex<CefCursor>>,
     selected_text: Arc<Mutex<String>>,
+    loaded: Arc<Mutex<bool>>,
     last_version: u64,
     cached_image: Option<Arc<RenderImage>>,
     find_bar: FindBar,
@@ -131,6 +137,7 @@ impl BrowserView {
         let cursor = Arc::new(Mutex::new(CefCursor::Default));
         let selected_text = Arc::new(Mutex::new(String::new()));
         let css_arc = Arc::new(Mutex::new(css.map(String::from)));
+        let loaded = Arc::new(Mutex::new(false));
 
         let browser = create_browser(
             url,
@@ -141,6 +148,7 @@ impl BrowserView {
                 cursor: cursor.clone(),
                 selected_text: selected_text.clone(),
                 css: css_arc,
+                loaded: loaded.clone(),
                 scale_factor: 1.0,
             },
         );
@@ -172,6 +180,7 @@ impl BrowserView {
             mouse_pressed,
             cursor,
             selected_text,
+            loaded,
             last_version: 0,
             cached_image: None,
             find_bar: FindBar::new(),
@@ -229,6 +238,7 @@ impl gpui::Render for BrowserView {
         let w = *self.width.lock();
         let h = *self.height.lock();
         let current_version = self.buffer.version();
+        let is_loaded = *self.loaded.lock();
 
         let cursor_style = match *self.cursor.lock() {
             CefCursor::Default => CursorStyle::Arrow,
@@ -504,7 +514,20 @@ impl gpui::Render for BrowserView {
                     .child(
                         div()
                             .size_full()
+                            .relative()
                             .child(img(render_image.clone()).w_full().h_full().rounded(gpui::px(18.)))
+                            .when(!is_loaded, |el| {
+                                el.child(
+                                    div()
+                                        .absolute()
+                                        .inset_0()
+                                        .flex()
+                                        .items_center()
+                                        .justify_center()
+                                        .bg(rgb(0x2e3440))
+                                        .child("Loading...")
+                                )
+                            })
                     );
 
                 if self.find_bar.visible {

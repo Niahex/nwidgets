@@ -246,6 +246,7 @@ cef::wrap_permission_handler! {
 #[derive(Clone)]
 pub struct GpuiLoadHandler {
     pub css: Arc<Mutex<Option<String>>>,
+    pub loaded: Arc<Mutex<bool>>,
 }
 
 cef::wrap_load_handler! {
@@ -269,6 +270,7 @@ cef::wrap_load_handler! {
                         );
                         frame.execute_java_script(Some(&CefString::from(script.as_str())), None, 0);
                     }
+                    *self.handler.loaded.lock() = true;
                 }
             }
         }

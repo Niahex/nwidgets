@@ -1,4 +1,5 @@
 use crate::services::cef::BrowserView;
+use crate::services::chat::{ChatService, ChatToggled};
 use gpui::{div, AppContext, Context, Entity, IntoElement, ParentElement, Styled, Window};
 use std::path::PathBuf;
 
@@ -158,6 +159,7 @@ const CSS: &str = r#"
 
 pub struct ChatWidget {
     browser: Entity<BrowserView>,
+    chat_service: Entity<ChatService>,
 }
 
 fn state_file() -> PathBuf {
@@ -182,7 +184,13 @@ impl ChatWidget {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let url = load_url();
         let browser = cx.new(|cx| BrowserView::new(&url, 600, 1370, Some(CSS), cx));
-        Self { browser }
+        let chat_service = ChatService::global(cx);
+        
+        cx.subscribe(&chat_service, |_this, _service, _event: &ChatToggled, cx| {
+            cx.notify();
+        }).detach();
+        
+        Self { browser, chat_service }
     }
 
     pub fn current_url(&self, cx: &gpui::App) -> Option<String> {
@@ -197,6 +205,11 @@ impl ChatWidget {
 impl gpui::Render for ChatWidget {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.global::<crate::theme::Theme>();
+        let visible = self.chat_service.read(cx).visible;
+        
+        if !visible {
+            return div().size_0().into_any_element();
+        }
         
         div()
             .size_full()
@@ -207,5 +220,6 @@ impl gpui::Render for ChatWidget {
             .border_color(theme.accent_alt.opacity(0.25))
             .shadow_lg()
             .child(self.browser.clone())
+            .into_any_element()
     }
 }
