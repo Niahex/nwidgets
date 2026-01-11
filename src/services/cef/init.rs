@@ -45,16 +45,14 @@ cef::wrap_app! {
             command_line: Option<&mut cef::CommandLine>,
         ) {
             if let Some(cmd) = command_line {
-                cmd.append_switch(Some(&"disable-gpu".into()));
-                cmd.append_switch(Some(&"disable-gpu-compositing".into()));
                 cmd.append_switch(Some(&"enable-begin-frame-scheduling".into()));
                 cmd.append_switch(Some(&"no-sandbox".into()));
-                cmd.append_switch(Some(&"use-fake-ui-for-media-stream".into()));
+                cmd.append_switch(Some(&"enable-media-stream".into()));
                 cmd.append_switch_with_value(
                     Some(&"ozone-platform".into()),
                     Some(&"wayland".into()),
                 );
-                // Use PipeWire for audio instead of ALSA/PulseAudio
+                // Use PipeWire for screen capture and audio
                 cmd.append_switch(Some(&"enable-features=WebRTCPipeWireCapturer".into()));
                 cmd.append_switch_with_value(
                     Some(&"alsa-output-device".into()),
