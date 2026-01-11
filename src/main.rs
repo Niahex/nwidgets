@@ -5,6 +5,7 @@ mod utils;
 mod widgets;
 
 use anyhow::Result;
+use components::{Corner, CornerPosition};
 use gpui::layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions};
 use gpui::prelude::*;
 use gpui::*;
@@ -33,7 +34,6 @@ use widgets::{
     notifications::{NotificationsStateChanged, NotificationsWindowManager},
     panel::Panel,
 };
-use components::{Corner, CornerPosition};
 
 struct Assets {
     base: PathBuf,
@@ -202,8 +202,14 @@ fn main() {
             cx.open_window(
                 WindowOptions {
                     window_bounds: Some(WindowBounds::Windowed(Bounds {
-                        origin: Point { x: px(0.0), y: px(0.0) },
-                        size: Size { width: corner_radius, height: corner_radius },
+                        origin: Point {
+                            x: px(0.0),
+                            y: px(0.0),
+                        },
+                        size: Size {
+                            width: corner_radius,
+                            height: corner_radius,
+                        },
                     })),
                     titlebar: None,
                     window_background: WindowBackgroundAppearance::Transparent,
@@ -226,8 +232,14 @@ fn main() {
             cx.open_window(
                 WindowOptions {
                     window_bounds: Some(WindowBounds::Windowed(Bounds {
-                        origin: Point { x: px(0.0), y: px(0.0) },
-                        size: Size { width: corner_radius, height: corner_radius },
+                        origin: Point {
+                            x: px(0.0),
+                            y: px(0.0),
+                        },
+                        size: Size {
+                            width: corner_radius,
+                            height: corner_radius,
+                        },
                     })),
                     titlebar: None,
                     window_background: WindowBackgroundAppearance::Transparent,
@@ -247,39 +259,41 @@ fn main() {
             .unwrap();
 
             // Chat window - created at startup, starts hidden (1x1)
-            let chat_window = cx.open_window(
-                WindowOptions {
-                    window_bounds: Some(WindowBounds::Windowed(Bounds {
-                        origin: Point {
-                            x: px(0.0),
-                            y: px(0.0),
-                        },
-                        size: Size {
-                            width: px(1.0),
-                            height: px(1.0),
-                        },
-                    })),
-                    titlebar: None,
-                    window_background: WindowBackgroundAppearance::Transparent,
-                    window_decorations: Some(WindowDecorations::Client),
-                    kind: WindowKind::LayerShell(LayerShellOptions {
-                        namespace: "nwidgets-chat".to_string(),
-                        layer: Layer::Top,
-                        anchor: Anchor::TOP | Anchor::BOTTOM | Anchor::LEFT,
-                        exclusive_zone: None,
-                        margin: Some((px(40.0), px(0.0), px(20.0), px(10.0))),
-                        keyboard_interactivity: KeyboardInteractivity::None,
+            let chat_window = cx
+                .open_window(
+                    WindowOptions {
+                        window_bounds: Some(WindowBounds::Windowed(Bounds {
+                            origin: Point {
+                                x: px(0.0),
+                                y: px(0.0),
+                            },
+                            size: Size {
+                                width: px(1.0),
+                                height: px(1.0),
+                            },
+                        })),
+                        titlebar: None,
+                        window_background: WindowBackgroundAppearance::Transparent,
+                        window_decorations: Some(WindowDecorations::Client),
+                        kind: WindowKind::LayerShell(LayerShellOptions {
+                            namespace: "nwidgets-chat".to_string(),
+                            layer: Layer::Top,
+                            anchor: Anchor::TOP | Anchor::BOTTOM | Anchor::LEFT,
+                            exclusive_zone: None,
+                            margin: Some((px(40.0), px(0.0), px(20.0), px(10.0))),
+                            keyboard_interactivity: KeyboardInteractivity::None,
+                            ..Default::default()
+                        }),
+                        app_id: Some("nwidgets-chat".to_string()),
+                        is_movable: false,
                         ..Default::default()
-                    }),
-                    app_id: Some("nwidgets-chat".to_string()),
-                    is_movable: false,
-                    ..Default::default()
-                },
-                |_window, cx| cx.new(ChatWidget::new),
-            )
-            .unwrap();
+                    },
+                    |_window, cx| cx.new(ChatWidget::new),
+                )
+                .unwrap();
 
-            let chat_window_arc: Arc<Mutex<WindowHandle<ChatWidget>>> = Arc::new(Mutex::new(chat_window));
+            let chat_window_arc: Arc<Mutex<WindowHandle<ChatWidget>>> =
+                Arc::new(Mutex::new(chat_window));
             let chat_window_toggle = Arc::clone(&chat_window_arc);
 
             // Subscribe to chat toggle events

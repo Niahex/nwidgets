@@ -56,9 +56,7 @@ impl PomodoroService {
         // Update timer every second
         cx.spawn(move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
             let mut cx = cx.clone();
-            async move {
-                Self::monitor_timer(this, status_clone, start_time_clone, &mut cx).await
-            }
+            async move { Self::monitor_timer(this, status_clone, start_time_clone, &mut cx).await }
         })
         .detach();
 

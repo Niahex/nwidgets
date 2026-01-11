@@ -134,10 +134,7 @@ impl NetworkService {
         let (ui_tx, mut ui_rx) = futures::channel::mpsc::unbounded::<NetworkState>();
 
         // 1. Worker Task (Tokio)
-        gpui_tokio::Tokio::spawn(cx, async move {
-            Self::network_worker(ui_tx).await
-        })
-        .detach();
+        gpui_tokio::Tokio::spawn(cx, async move { Self::network_worker(ui_tx).await }).detach();
 
         // 2. UI Task (GPUI)
         cx.spawn(move |this: WeakEntity<Self>, cx: &mut AsyncApp| {

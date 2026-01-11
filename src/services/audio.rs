@@ -87,10 +87,7 @@ impl AudioService {
         let (ui_tx, mut ui_rx) = futures::channel::mpsc::unbounded::<AudioUpdate>();
 
         // 1. Worker Task (Tokio)
-        gpui_tokio::Tokio::spawn(cx, async move {
-            Self::audio_worker(ui_tx).await
-        })
-        .detach();
+        gpui_tokio::Tokio::spawn(cx, async move { Self::audio_worker(ui_tx).await }).detach();
 
         // 2. UI Task (GPUI)
         let state_clone = Arc::clone(&state);
@@ -98,7 +95,7 @@ impl AudioService {
         let sources_clone = Arc::clone(&sources);
         let sink_inputs_clone = Arc::clone(&sink_inputs);
         let source_outputs_clone = Arc::clone(&source_outputs);
-        
+
         cx.spawn(move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
             let mut cx = cx.clone();
             async move {
@@ -120,12 +117,17 @@ impl AudioService {
                                 });
                             }
                         }
-                        AudioUpdate::Devices { sinks, sources, sink_inputs, source_outputs } => {
+                        AudioUpdate::Devices {
+                            sinks,
+                            sources,
+                            sink_inputs,
+                            source_outputs,
+                        } => {
                             *sinks_clone.write() = sinks;
                             *sources_clone.write() = sources;
                             *sink_inputs_clone.write() = sink_inputs;
                             *source_outputs_clone.write() = source_outputs;
-                            
+
                             let _ = this.update(&mut cx, |_, cx| {
                                 cx.notify();
                             });
@@ -302,8 +304,9 @@ impl AudioService {
 
             // Initial fetch
             let (sink_vol, sink_muted) = Self::get_volume_wpctl_async("@DEFAULT_AUDIO_SINK@").await;
-            let (source_vol, source_muted) = Self::get_volume_wpctl_async("@DEFAULT_AUDIO_SOURCE@").await;
-            
+            let (source_vol, source_muted) =
+                Self::get_volume_wpctl_async("@DEFAULT_AUDIO_SOURCE@").await;
+
             let _ = ui_tx.unbounded_send(AudioUpdate::State(AudioState {
                 sink_volume: sink_vol,
                 sink_muted,
@@ -327,9 +330,11 @@ impl AudioService {
                 last_update = std::time::Instant::now();
 
                 // Update volumes
-                let (sink_vol, sink_muted) = Self::get_volume_wpctl_async("@DEFAULT_AUDIO_SINK@").await;
-                let (source_vol, source_muted) = Self::get_volume_wpctl_async("@DEFAULT_AUDIO_SOURCE@").await;
-                
+                let (sink_vol, sink_muted) =
+                    Self::get_volume_wpctl_async("@DEFAULT_AUDIO_SINK@").await;
+                let (source_vol, source_muted) =
+                    Self::get_volume_wpctl_async("@DEFAULT_AUDIO_SOURCE@").await;
+
                 let _ = ui_tx.unbounded_send(AudioUpdate::State(AudioState {
                     sink_volume: sink_vol,
                     sink_muted,
@@ -338,8 +343,10 @@ impl AudioService {
                 }));
 
                 // Get default device IDs
-                let default_sink_id = Self::get_default_device_id_async("@DEFAULT_AUDIO_SINK@").await;
-                let default_source_id = Self::get_default_device_id_async("@DEFAULT_AUDIO_SOURCE@").await;
+                let default_sink_id =
+                    Self::get_default_device_id_async("@DEFAULT_AUDIO_SINK@").await;
+                let default_source_id =
+                    Self::get_default_device_id_async("@DEFAULT_AUDIO_SOURCE@").await;
 
                 // Build device lists
                 let nodes_snapshot = nodes_data.read();
@@ -349,14 +356,18 @@ impl AudioService {
                 let mut new_source_outputs = Vec::new();
 
                 for info in nodes_snapshot.values() {
-                    if info.media_class.contains("Audio/Sink") && !info.media_class.contains("Stream") {
+                    if info.media_class.contains("Audio/Sink")
+                        && !info.media_class.contains("Stream")
+                    {
                         new_sinks.push(AudioDevice {
                             id: info.id,
                             name: info.name.clone(),
                             description: info.description.clone(),
                             is_default: default_sink_id == Some(info.id),
                         });
-                    } else if info.media_class.contains("Audio/Source") && !info.media_class.contains("Stream") {
+                    } else if info.media_class.contains("Audio/Source")
+                        && !info.media_class.contains("Stream")
+                    {
                         new_sources.push(AudioDevice {
                             id: info.id,
                             name: info.name.clone(),

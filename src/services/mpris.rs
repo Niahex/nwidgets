@@ -74,10 +74,7 @@ impl MprisService {
         let (ui_tx, mut ui_rx) = futures::channel::mpsc::unbounded::<Option<MprisPlayer>>();
 
         // 1. Worker Task (Tokio)
-        gpui_tokio::Tokio::spawn(cx, async move {
-            Self::mpris_worker(ui_tx).await
-        })
-        .detach();
+        gpui_tokio::Tokio::spawn(cx, async move { Self::mpris_worker(ui_tx).await }).detach();
 
         // 2. UI Task (GPUI)
         cx.spawn(move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
@@ -215,9 +212,7 @@ impl MprisService {
         }
     }
 
-    async fn fetch_player_state(
-        proxy: &MediaPlayer2PlayerProxy<'_>,
-    ) -> zbus::Result<MprisPlayer> {
+    async fn fetch_player_state(proxy: &MediaPlayer2PlayerProxy<'_>) -> zbus::Result<MprisPlayer> {
         let status_str = proxy.playback_status().await?;
         let status = PlaybackStatus::from(status_str);
 

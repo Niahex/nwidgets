@@ -56,16 +56,13 @@ impl HyprlandService {
         let (ui_tx, mut ui_rx) = futures::channel::mpsc::unbounded::<HyprlandUpdate>();
 
         // 1. Worker Task (Tokio Runtime): Handles I/O and process execution
-        gpui_tokio::Tokio::spawn(cx, async move {
-            Self::hyprland_worker(ui_tx).await
-        })
-        .detach();
+        gpui_tokio::Tokio::spawn(cx, async move { Self::hyprland_worker(ui_tx).await }).detach();
 
         // 2. UI Task (GPUI Executor): Receives updates and mutates state
         let workspaces_clone = Arc::clone(&workspaces);
         let active_workspace_id_clone = Arc::clone(&active_workspace_id);
         let active_window_clone = Arc::clone(&active_window);
-        
+
         cx.spawn(move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
             let mut cx = cx.clone();
             async move {
@@ -183,10 +180,15 @@ impl HyprlandService {
             let mut more_ws = false;
             let mut more_win = false;
             while let Ok(Some(ev)) = socket_rx.try_next() {
-                if ev { more_ws = true; } else { more_win = true; }
+                if ev {
+                    more_ws = true;
+                } else {
+                    more_win = true;
+                }
             }
 
-            let do_ws = is_ws || more_ws;            let do_win = !is_ws || more_win;
+            let do_ws = is_ws || more_ws;
+            let do_win = !is_ws || more_win;
 
             if do_ws {
                 let (ws, id) = Self::fetch_hyprland_data().await;

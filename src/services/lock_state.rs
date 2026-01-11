@@ -44,16 +44,13 @@ trait Session {
 
 impl LockMonitor {
     pub fn init(cx: &mut App) -> Entity<Self> {
-        let is_locked = false; 
+        let is_locked = false;
         let service = cx.new(|_| Self { is_locked });
 
         let (tx, mut rx) = futures::channel::mpsc::unbounded::<bool>();
 
         // 1. Worker Task (Tokio)
-        gpui_tokio::Tokio::spawn(cx, async move {
-            Self::lock_monitor_worker(tx).await
-        })
-        .detach();
+        gpui_tokio::Tokio::spawn(cx, async move { Self::lock_monitor_worker(tx).await }).detach();
 
         // 2. UI Task (GPUI)
         let weak_service = service.downgrade();
@@ -65,7 +62,7 @@ impl LockMonitor {
                     let _ = weak_service.update(&mut cx, |this, cx| {
                         if this.is_locked != locked {
                             this.is_locked = locked;
-                            
+
                             if cx.has_global::<LockStateService>() {
                                 cx.update_global::<LockStateService, _>(|service, _| {
                                     service.is_locked = locked;

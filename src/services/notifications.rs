@@ -186,13 +186,14 @@ impl NotificationService {
         INIT.call_once(|| {
             println!("[NOTIF] 🚀 Starting D-Bus server");
             let state_ref = Arc::clone(&STATE);
-            
+
             // On utilise gpui_tokio pour réutiliser le runtime global
             gpui_tokio::Tokio::spawn(cx, async move {
                 if let Err(e) = Self::run_dbus_server(state_ref).await {
                     eprintln!("[NOTIF] ❌ D-Bus Error: {e}");
                 }
-            }).detach();
+            })
+            .detach();
         });
     }
 

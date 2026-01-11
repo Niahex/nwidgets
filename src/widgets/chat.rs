@@ -35,7 +35,7 @@ pub fn save_url(url: &str) {
 impl ChatWidget {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let url = load_url();
-        
+
         // Pre-calculate the full injection script to avoid repeated string formatting and escaping
         let injection_script = format!(
             "const s=document.createElement('style');s.textContent=`{}`;document.head.appendChild(s);",
@@ -44,17 +44,24 @@ impl ChatWidget {
 
         let browser = cx.new(|cx| BrowserView::new(&url, 600, 1370, Some(&injection_script), cx));
         let chat_service = ChatService::global(cx);
-        
+
         browser.read(cx).set_hidden(true);
-        
+
         let browser_clone = browser.clone();
-        cx.subscribe(&chat_service, move |_this, service, _event: &ChatToggled, cx| {
-            let visible = service.read(cx).visible;
-            browser_clone.read(cx).set_hidden(!visible);
-            cx.notify();
-        }).detach();
-        
-        Self { browser, chat_service }
+        cx.subscribe(
+            &chat_service,
+            move |_this, service, _event: &ChatToggled, cx| {
+                let visible = service.read(cx).visible;
+                browser_clone.read(cx).set_hidden(!visible);
+                cx.notify();
+            },
+        )
+        .detach();
+
+        Self {
+            browser,
+            chat_service,
+        }
     }
 
     pub fn current_url(&self, cx: &gpui::App) -> Option<String> {
@@ -69,13 +76,13 @@ impl ChatWidget {
 impl gpui::Render for ChatWidget {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let visible = self.chat_service.read(cx).visible;
-        
+
         if !visible {
             return gpui::Empty.into_any_element();
         }
-        
+
         let theme = cx.global::<crate::theme::Theme>();
-        
+
         div()
             .id("chat-root")
             .size_full()

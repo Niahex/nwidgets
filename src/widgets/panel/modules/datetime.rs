@@ -1,7 +1,7 @@
+use chrono::Timelike;
 use gpui::prelude::*;
 use gpui::*;
 use std::time::Duration;
-use chrono::Timelike;
 
 pub struct DateTimeModule {
     time: SharedString,
@@ -20,7 +20,9 @@ impl DateTimeModule {
                 // Calculate delay until next minute to sync with system clock
                 let now = chrono::Local::now();
                 let seconds_until_next_minute = 60 - now.second() as u64;
-                cx.background_executor().timer(Duration::from_secs(seconds_until_next_minute)).await;
+                cx.background_executor()
+                    .timer(Duration::from_secs(seconds_until_next_minute))
+                    .await;
 
                 // Initial update after sync
                 if let Ok(()) = this.update(&mut cx, |this, cx| {

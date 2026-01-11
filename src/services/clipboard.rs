@@ -1,8 +1,8 @@
 use futures::StreamExt;
 use gpui::prelude::*;
 use gpui::{App, AsyncApp, Entity, EventEmitter};
-use tokio::io::{AsyncBufReadExt, BufReader};
 use std::process::Stdio;
+use tokio::io::{AsyncBufReadExt, BufReader};
 
 #[derive(Clone)]
 pub struct ClipboardEvent;
@@ -41,7 +41,8 @@ impl ClipboardMonitor {
                     eprintln!("[Clipboard] Failed to start wl-paste watcher: {e}");
                 }
             }
-        }).detach();
+        })
+        .detach();
 
         // 2. UI Task (GPUI): Réception des événements
         cx.spawn(move |cx: &mut AsyncApp| {

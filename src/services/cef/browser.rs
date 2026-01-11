@@ -13,18 +13,18 @@ use cef::{
     WindowInfo, WrapClient,
 };
 use cef_dll_sys::cef_mouse_button_type_t;
+use futures::StreamExt;
+use gpui::prelude::FluentBuilder;
 use gpui::{
     div, img, px, rgb, AsyncApp, Context, CursorStyle, ExternalPaths, FocusHandle, Focusable,
     InteractiveElement, IntoElement, KeyDownEvent, KeyUpEvent, MouseButton, MouseDownEvent,
     MouseMoveEvent, MouseUpEvent, ParentElement, RenderImage, ScrollWheelEvent, Styled, WeakEntity,
     Window,
 };
-use gpui::prelude::FluentBuilder;
 use image::{Frame, ImageBuffer, Rgba};
 use parking_lot::Mutex;
 use smallvec::SmallVec;
 use std::sync::Arc;
-use futures::StreamExt;
 
 #[derive(Clone)]
 struct BrowserClient {
@@ -64,7 +64,7 @@ struct BrowserConfig {
     injection_script: Arc<Mutex<Option<String>>>,
     loaded: Arc<Mutex<bool>>,
     scale_factor: f32,
-    repaint_tx: futures::channel::mpsc::UnboundedSender<()>
+    repaint_tx: futures::channel::mpsc::UnboundedSender<()>,
 }
 
 fn create_browser(url: &str, config: BrowserConfig) -> Browser {
@@ -80,7 +80,7 @@ fn create_browser(url: &str, config: BrowserConfig) -> Browser {
         cursor: config.cursor,
     });
     let permission_handler = PermissionHandlerWrapper::new(GpuiPermissionHandler);
-    let load_handler = LoadHandlerWrapper::new(GpuiLoadHandler { 
+    let load_handler = LoadHandlerWrapper::new(GpuiLoadHandler {
         injection_script: config.injection_script,
         loaded: config.loaded,
     });
@@ -93,8 +93,8 @@ fn create_browser(url: &str, config: BrowserConfig) -> Browser {
     });
 
     cef::browser_host_create_browser_sync(
-        Some(&WindowInfo { 
-            windowless_rendering_enabled: 1, // Correct way to pass true for C int
+        Some(&WindowInfo {
+            windowless_rendering_enabled: 1,
             ..Default::default()
         }),
         Some(&mut client),
@@ -252,11 +252,11 @@ impl Focusable for BrowserView {
 impl gpui::Render for BrowserView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let is_hidden = *self.hidden.lock();
-        
+
         if is_hidden {
             return div().id("browser-hidden").size_0().into_any_element();
         }
-        
+
         let w = *self.width.lock();
         let h = *self.height.lock();
         let current_version = self.buffer.version();
@@ -447,7 +447,7 @@ impl gpui::Render for BrowserView {
                             if let Some(browser) = &browser {
                                 if let Some(host) = browser.host() {
                                     let (x, y) = (Into::<f32>::into(event.position.x) as i32, Into::<f32>::into(event.position.y) as i32);
-                                    host.send_mouse_move_event(Some(&cef::MouseEvent { 
+                                    host.send_mouse_move_event(Some(&cef::MouseEvent {
                                         x, y, modifiers: if *mouse_pressed.lock() { 16 } else { 0 },
                                     }), 0);
                                 }

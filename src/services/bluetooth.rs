@@ -1,3 +1,4 @@
+use futures::StreamExt;
 use gpui::prelude::*;
 use gpui::{App, AsyncApp, Context, Entity, EventEmitter, Global, WeakEntity};
 use parking_lot::RwLock;
@@ -9,7 +10,6 @@ use zbus::{
     zvariant::{OwnedObjectPath, OwnedValue},
     Connection, Result,
 };
-use futures::StreamExt;
 
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct BluetoothState {
@@ -64,10 +64,7 @@ impl BluetoothService {
         let (ui_tx, mut ui_rx) = futures::channel::mpsc::unbounded::<BluetoothState>();
 
         // 1. Worker Task (Tokio)
-        gpui_tokio::Tokio::spawn(cx, async move {
-            Self::bluetooth_worker(ui_tx).await
-        })
-        .detach();
+        gpui_tokio::Tokio::spawn(cx, async move { Self::bluetooth_worker(ui_tx).await }).detach();
 
         // 2. UI Task (GPUI)
         cx.spawn(move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
@@ -142,8 +139,8 @@ impl BluetoothService {
 
         loop {
             tokio::select! {
-                Some(_) = async { 
-                    if let Some(s) = &mut added_stream { s.next().await } else { std::future::pending().await } 
+                Some(_) = async {
+                    if let Some(s) = &mut added_stream { s.next().await } else { std::future::pending().await }
                 } => {
                     let new_state = Self::fetch_bluetooth_state_dbus(&object_manager).await;
                     let _ = ui_tx.unbounded_send(new_state);
