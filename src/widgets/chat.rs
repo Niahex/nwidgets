@@ -181,7 +181,7 @@ pub fn save_url(url: &str) {
 impl ChatWidget {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let url = load_url();
-        let browser = cx.new(|cx| BrowserView::new(&url, 600, 1440, Some(CSS), cx));
+        let browser = cx.new(|cx| BrowserView::new(&url, 600, 1370, Some(CSS), cx));
         Self { browser }
     }
 
@@ -195,7 +195,14 @@ impl ChatWidget {
 }
 
 impl gpui::Render for ChatWidget {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-        div().size_full().child(self.browser.clone())
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme = cx.global::<crate::theme::Theme>();
+        
+        div()
+            .size_full()
+            .bg(theme.bg)
+            .rounded(gpui::px(18.))
+            .overflow_hidden()
+            .child(self.browser.clone())
     }
 }

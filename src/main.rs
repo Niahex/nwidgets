@@ -8,7 +8,7 @@ use anyhow::Result;
 use gpui::layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions};
 use gpui::prelude::*;
 use gpui::*;
-use gpui::{Bounds, Point, Size, WindowBounds};
+use gpui::{Bounds, Point, Size, WindowBounds, WindowDecorations};
 use parking_lot::Mutex;
 use services::{
     audio::AudioService,
@@ -260,7 +260,7 @@ fn main() {
                     let (layer, exclusive_zone) = if pinned {
                         (Layer::Top, Some(px(600.0)))
                     } else {
-                        (Layer::Overlay, None)
+                        (Layer::Top, None)
                     };
                     cx.open_window(
                         WindowOptions {
@@ -276,12 +276,13 @@ fn main() {
                             })),
                             titlebar: None,
                             window_background: WindowBackgroundAppearance::Transparent,
+                            window_decorations: Some(WindowDecorations::Client),
                             kind: WindowKind::LayerShell(LayerShellOptions {
                                 namespace: "nwidgets-chat".to_string(),
                                 layer,
                                 anchor: Anchor::TOP | Anchor::BOTTOM | Anchor::LEFT,
                                 exclusive_zone,
-                                margin: Some((px(50.0), px(0.0), px(0.0), px(0.0))),
+                                margin: Some((px(40.0), px(0.0), px(20.0), px(10.0))),
                                 keyboard_interactivity: KeyboardInteractivity::OnDemand,
                                 ..Default::default()
                             }),

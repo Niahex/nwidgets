@@ -501,7 +501,11 @@ impl gpui::Render for BrowserView {
                             }
                         }
                     }))
-                    .child(img(render_image.clone()).w_full().h_full());
+                    .child(
+                        div()
+                            .size_full()
+                            .child(img(render_image.clone()).w_full().h_full().rounded(gpui::px(18.)))
+                    );
 
                 if self.find_bar.visible {
                     let browser = self.browser.clone();
