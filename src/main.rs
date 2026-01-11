@@ -33,6 +33,7 @@ use widgets::{
     notifications::{NotificationsStateChanged, NotificationsWindowManager},
     panel::Panel,
 };
+use components::{Corner, CornerPosition};
 
 struct Assets {
     base: PathBuf,
@@ -165,7 +166,9 @@ fn main() {
             // Initialize CEF Service
             services::cef::CefService::init(cx);
 
-            // Gestionnaire de fenêtre notifications
+            let corner_radius = px(18.);
+
+            // Panel window
             cx.open_window(
                 WindowOptions {
                     window_bounds: Some(WindowBounds::Windowed(Bounds {
@@ -192,6 +195,54 @@ fn main() {
                     ..Default::default()
                 },
                 |_window, cx| cx.new(Panel::new),
+            )
+            .unwrap();
+
+            // Left corner window - positioned just below the panel's exclusive zone
+            cx.open_window(
+                WindowOptions {
+                    window_bounds: Some(WindowBounds::Windowed(Bounds {
+                        origin: Point { x: px(0.0), y: px(0.0) },
+                        size: Size { width: corner_radius, height: corner_radius },
+                    })),
+                    titlebar: None,
+                    window_background: WindowBackgroundAppearance::Transparent,
+                    kind: WindowKind::LayerShell(LayerShellOptions {
+                        namespace: "nwidgets-corner-left".to_string(),
+                        layer: Layer::Background,
+                        anchor: Anchor::TOP | Anchor::LEFT,
+                        exclusive_zone: None,
+                        margin: None,
+                        keyboard_interactivity: KeyboardInteractivity::None,
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                move |_window, cx| cx.new(|_| Corner::new(CornerPosition::TopLeft, corner_radius)),
+            )
+            .unwrap();
+
+            // Right corner window
+            cx.open_window(
+                WindowOptions {
+                    window_bounds: Some(WindowBounds::Windowed(Bounds {
+                        origin: Point { x: px(0.0), y: px(0.0) },
+                        size: Size { width: corner_radius, height: corner_radius },
+                    })),
+                    titlebar: None,
+                    window_background: WindowBackgroundAppearance::Transparent,
+                    kind: WindowKind::LayerShell(LayerShellOptions {
+                        namespace: "nwidgets-corner-right".to_string(),
+                        layer: Layer::Background,
+                        anchor: Anchor::TOP | Anchor::RIGHT,
+                        exclusive_zone: None,
+                        margin: None,
+                        keyboard_interactivity: KeyboardInteractivity::None,
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                move |_window, cx| cx.new(|_| Corner::new(CornerPosition::TopRight, corner_radius)),
             )
             .unwrap();
 

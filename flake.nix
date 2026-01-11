@@ -8,7 +8,14 @@
     rust-overlay.url = "github:oxalica/rust-overlay";
   };
 
-  outputs = { self, nixpkgs, flake-utils, crane, rust-overlay, ... }:
+  outputs = {
+    self,
+    nixpkgs,
+    flake-utils,
+    crane,
+    rust-overlay,
+    ...
+  }:
     flake-utils.lib.eachDefaultSystem (
       system: let
         # Overlays and package set
@@ -91,10 +98,10 @@
             # Mimic extract_target_archive from download-cef/src/lib.rs
             # 1. Move everything from Release to $out
             cp -r temp/Release/* $out/
-            
+
             # 2. Move everything from Resources to $out
             cp -r temp/Resources/* $out/
-            
+
             # 3. Move include and cmake and libcef_dll to $out (needed for build)
             cp -r temp/include $out/
             cp -r temp/cmake $out/
@@ -109,33 +116,37 @@
           '';
 
         # Dependencies for building the application
-        buildInputs = with pkgs; [
-          wayland
-          vulkan-loader
-          vulkan-validation-layers
-          vulkan-tools
-          mesa
-          xorg.libxcb
-          xorg.libX11
-          libxkbcommon
-          fontconfig
-          dbus
-          openssl
-          freetype
-          expat
-          libnotify
-          alsa-lib
-          udev
-          pipewire
-        ] ++ cefDeps;
+        buildInputs = with pkgs;
+          [
+            wayland
+            vulkan-loader
+            vulkan-validation-layers
+            vulkan-tools
+            mesa
+            xorg.libxcb
+            xorg.libX11
+            libxkbcommon
+            fontconfig
+            dbus
+            openssl
+            freetype
+            expat
+            libnotify
+            alsa-lib
+            udev
+            pipewire
+          ]
+          ++ cefDeps;
 
         # Dependencies needed only at runtime
-        runtimeDependencies = with pkgs; [
-          wayland
-          vulkan-loader
-          mesa
-          libxkbcommon
-        ] ++ cefDeps;
+        runtimeDependencies = with pkgs;
+          [
+            wayland
+            vulkan-loader
+            mesa
+            libxkbcommon
+          ]
+          ++ cefDeps;
 
         nativeBuildInputs = with pkgs; [
           pkg-config
@@ -172,7 +183,7 @@
             # Copy assets to the output
             mkdir -p $out/share/nwidgets
             cp -r ${src}/assets $out/share/nwidgets/
-            
+
             # Copy CEF runtime assets to bin (where the executable is)
             # We copy everything from cefAssets except include/cmake/libcef_dll
             find ${cefAssets} -maxdepth 1 -type f -exec cp {} $out/bin/ \;
