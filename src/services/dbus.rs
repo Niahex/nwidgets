@@ -9,6 +9,7 @@ pub struct DbusService;
 pub enum DbusCommand {
     ToggleChat,
     PinChat,
+    ToggleDiscord,
 }
 
 struct NWidgets {
@@ -23,6 +24,10 @@ impl NWidgets {
 
     async fn pin_chat(&self) {
         let _ = self.tx.unbounded_send(DbusCommand::PinChat);
+    }
+
+    async fn toggle_discord(&self) {
+        let _ = self.tx.unbounded_send(DbusCommand::ToggleDiscord);
     }
 }
 
@@ -73,6 +78,12 @@ impl DbusService {
                             let _ = cx.update(|cx| {
                                 let chat = super::chat::ChatService::global(cx);
                                 chat.update(cx, |chat, mcx| chat.toggle_pin(mcx));
+                            });
+                        }
+                        DbusCommand::ToggleDiscord => {
+                            let _ = cx.update(|cx| {
+                                let discord = super::discord::DiscordService::global(cx);
+                                discord.update(cx, |discord, mcx| discord.toggle(mcx));
                             });
                         }
                     }

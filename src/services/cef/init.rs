@@ -18,7 +18,7 @@ impl CefService {
             async move {
                 loop {
                     cx.background_executor()
-                        .timer(Duration::from_millis(16))
+                        .timer(Duration::from_millis(33)) // ~30fps message loop
                         .await;
                     let _ = cx.update(|_| {
                         cef::do_message_loop_work();
@@ -52,8 +52,8 @@ cef::wrap_app! {
                     Some(&"ozone-platform".into()),
                     Some(&"wayland".into()),
                 );
-                // Use PipeWire for screen capture and audio
-                cmd.append_switch(Some(&"enable-features=WebRTCPipeWireCapturer".into()));
+                // PipeWire for screen capture and audio
+                cmd.append_switch(Some(&"enable-features=WebRTCPipeWireCapturer,SmoothScrolling".into()));
                 cmd.append_switch_with_value(
                     Some(&"alsa-output-device".into()),
                     Some(&"pipewire".into()),
@@ -61,6 +61,27 @@ cef::wrap_app! {
                 cmd.append_switch_with_value(
                     Some(&"alsa-input-device".into()),
                     Some(&"pipewire".into()),
+                );
+                // Memory/CPU optimizations
+                cmd.append_switch(Some(&"disable-extensions".into()));
+                cmd.append_switch(Some(&"disable-background-networking".into()));
+                cmd.append_switch(Some(&"disable-sync".into()));
+                cmd.append_switch(Some(&"disable-translate".into()));
+                cmd.append_switch(Some(&"disable-default-apps".into()));
+                cmd.append_switch(Some(&"disable-component-update".into()));
+                cmd.append_switch(Some(&"disable-domain-reliability".into()));
+                cmd.append_switch(Some(&"disable-client-side-phishing-detection".into()));
+                cmd.append_switch(Some(&"disable-hang-monitor".into()));
+                cmd.append_switch(Some(&"disable-popup-blocking".into()));
+                cmd.append_switch(Some(&"disable-prompt-on-repost".into()));
+                cmd.append_switch(Some(&"disable-breakpad".into()));
+                cmd.append_switch(Some(&"metrics-recording-only".into()));
+                cmd.append_switch(Some(&"no-first-run".into()));
+                // GPU memory optimization
+                cmd.append_switch(Some(&"disable-gpu-shader-disk-cache".into()));
+                cmd.append_switch_with_value(
+                    Some(&"renderer-process-limit".into()),
+                    Some(&"1".into()),
                 );
             }
         }
@@ -70,9 +91,21 @@ cef::wrap_app! {
 pub fn initialize_cef() -> Result<()> {
     let _ = api_hash(cef_dll_sys::CEF_API_VERSION_LAST, 0);
     let args = Args::new();
+    
+    // Setup cache directory
+    let cache_dir = dirs::cache_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("/tmp"))
+        .join("nwidgets")
+        .join("cef");
+    let _ = std::fs::create_dir_all(&cache_dir);
+    
     let settings = Settings {
         windowless_rendering_enabled: true as _,
         external_message_pump: true as _,
+        background_color: 0x00000000,
+        uncaught_exception_stack_size: 0,
+        root_cache_path: CefString::from(cache_dir.to_string_lossy().as_ref()),
+        cache_path: CefString::from(cache_dir.to_string_lossy().as_ref()),
         ..Default::default()
     };
     let mut app = AppWrapper::new(CefAppStruct);

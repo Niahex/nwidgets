@@ -75,4 +75,4 @@ pub fn send_char_event(host: &cef::BrowserHost, ch: char, modifiers: u32) {
     host.send_key_event(Some(&event));
 }
 
-pub const SCROLL_MULTIPLIER: i32 = 53;
+pub const SCROLL_MULTIPLIER: i32 = 40;

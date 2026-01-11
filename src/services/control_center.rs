@@ -55,6 +55,10 @@ impl ControlCenterService {
         cx.notify();
     }
 
+    pub fn is_visible(&self) -> bool {
+        *self.visible.read()
+    }
+
     pub fn toggle_section(&self, section: ControlCenterSection, cx: &mut Context<Self>) {
         let mut current = self.expanded_section.write();
         if *current == Some(section) {

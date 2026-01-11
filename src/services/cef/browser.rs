@@ -126,6 +126,7 @@ pub struct BrowserView {
     hidden: Arc<Mutex<bool>>,
     last_version: u64,
     cached_image: Option<Arc<RenderImage>>,
+    reuse_buffer: Vec<u8>,
     find_bar: FindBar,
 }
 
@@ -205,6 +206,7 @@ impl BrowserView {
             hidden,
             last_version: 0,
             cached_image: None,
+            reuse_buffer: Vec::new(),
             find_bar: FindBar::new(),
         }
     }
@@ -289,11 +291,16 @@ impl gpui::Render for BrowserView {
             // Only rebuild image if version changed
             if current_version != self.last_version || self.cached_image.is_none() {
                 let pixels = self.buffer.read();
-                if pixels.len() == (w * h * 4) as usize {
-                    if let Some(buffer) =
-                        ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(w, h, pixels.clone())
-                    {
-                        // Drop old image from atlas before creating new one
+                let expected_len = (w * h * 4) as usize;
+                if pixels.len() == expected_len {
+                    // Reuse buffer allocation
+                    self.reuse_buffer.clear();
+                    self.reuse_buffer.extend_from_slice(&pixels);
+                    drop(pixels);
+                    
+                    if let Some(buffer) = ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(
+                        w, h, std::mem::take(&mut self.reuse_buffer)
+                    ) {
                         if let Some(old_image) = self.cached_image.take() {
                             cx.drop_image(old_image, Some(window));
                         }
