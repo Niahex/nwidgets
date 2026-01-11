@@ -246,7 +246,7 @@ fn main() {
             )
             .unwrap();
 
-            // Chat window - created at startup, always visible but widget manages display
+            // Chat window - created at startup, starts hidden (1x1)
             let chat_window = cx.open_window(
                 WindowOptions {
                     window_bounds: Some(WindowBounds::Windowed(Bounds {
@@ -255,8 +255,8 @@ fn main() {
                             y: px(0.0),
                         },
                         size: Size {
-                            width: px(600.0),
-                            height: px(1370.0),
+                            width: px(1.0),
+                            height: px(1.0),
                         },
                     })),
                     titlebar: None,
