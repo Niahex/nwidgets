@@ -81,23 +81,23 @@ impl ControlCenterService {
             WindowOptions {
                 window_bounds: Some(WindowBounds::Windowed(Bounds {
                     origin: Point {
-                        x: px(3440.0 - 500.0 - 20.0),
-                        y: px(50.0),
+                        x: px(0.0),
+                        y: px(0.0),
                     },
                     size: Size {
-                        width: px(500.0),
-                        height: px(1390.0),
+                        width: px(600.0),
+                        height: px(1370.0),
                     },
                 })),
                 titlebar: None,
                 window_background: WindowBackgroundAppearance::Transparent,
                 kind: WindowKind::LayerShell(LayerShellOptions {
                     namespace: "nwidgets-control-center".to_string(),
-                    layer: Layer::Overlay,
+                    layer: Layer::Top,
                     anchor: Anchor::TOP | Anchor::RIGHT | Anchor::BOTTOM,
                     exclusive_zone: None,
-                    margin: Some((px(10.0), px(20.0), px(10.0), px(0.0))),
-                    keyboard_interactivity: KeyboardInteractivity::None,
+                    margin: Some((px(40.0), px(10.0), px(20.0), px(0.0))),
+                    keyboard_interactivity: KeyboardInteractivity::OnDemand,
                     ..Default::default()
                 }),
                 ..Default::default()
