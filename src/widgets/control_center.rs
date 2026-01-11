@@ -796,7 +796,7 @@ impl ControlCenterWidget {
 
 impl Render for ControlCenterWidget {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        window.focus(&self.focus_handle);
+        window.focus(&self.focus_handle, cx);
 
         let theme = cx.global::<crate::theme::Theme>().clone();
 

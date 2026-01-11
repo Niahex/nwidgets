@@ -109,7 +109,7 @@ impl ControlCenterService {
 
         if let Ok(handle) = handle {
             let _ = handle.update(cx, |view, window, cx| {
-                window.focus(&view.focus_handle);
+                window.focus(&view.focus_handle, cx);
                 cx.activate(true);
             });
             *self.window_handle.write() = Some(handle.into());

@@ -43,103 +43,167 @@ impl Panel {
 impl Render for Panel {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.global::<crate::theme::Theme>();
+        let corner_radius = px(18.);
+        let panel_height = px(50.);
 
         div()
+            .relative()
             .flex()
             .items_center()
             .justify_between()
-            .h(px(50.))
+            .h(panel_height + corner_radius)
             .w_full()
-            .px_3()
-            .bg(theme.bg)
-            .text_color(theme.text)
-            // Left section - Active window info
             .child(
                 div()
+                    .absolute()
+                    .top_0()
+                    .left_0()
+                    .right_0()
+                    .h(panel_height)
+                    .px_3()
+                    .bg(theme.bg)
+                    .text_color(theme.text)
                     .flex()
-                    .gap_2()
                     .items_center()
-                    .h_full()
-                    .child(self.active_window.clone()),
-            )
-            // Center section - takes remaining space
-            .child(
-                div()
-                    .flex()
-                    .flex_1()
-                    .gap_2()
-                    .items_center()
-                    .justify_center()
-                    .h_full()
-                    .child(self.pomodoro.clone())
-                    .child(self.workspaces.clone())
-                    .child(self.mpris.clone()),
-            )
-            // Right section
-            .child(
-                div()
-                    .flex()
-                    .gap_0()
-                    .items_center()
-                    .h_full()
-                    .child(div().flex().items_center().child(self.systray.clone()))
+                    .justify_between()
+                    // Left section - Active window info
                     .child(
                         div()
-                            .id("control-center-trigger")
+                            .flex()
+                            .gap_2()
+                            .items_center()
+                            .h_full()
+                            .child(self.active_window.clone()),
+                    )
+                    // Center section - takes remaining space
+                    .child(
+                        div()
+                            .flex()
+                            .flex_1()
+                            .gap_2()
+                            .items_center()
+                            .justify_center()
+                            .h_full()
+                            .child(self.pomodoro.clone())
+                            .child(self.workspaces.clone())
+                            .child(self.mpris.clone()),
+                    )
+                    // Right section
+                    .child(
+                        div()
                             .flex()
                             .gap_0()
                             .items_center()
                             .h_full()
-                            .cursor_pointer()
-                            .on_click(cx.listener(|this, _, _window, cx| {
-                                this.control_center.update(cx, |cc, cx| {
-                                    cc.toggle(cx);
-                                });
-                            }))
+                            .child(div().flex().items_center().child(self.systray.clone()))
                             .child(
                                 div()
+                                    .id("control-center-trigger")
                                     .flex()
+                                    .gap_0()
                                     .items_center()
-                                    .justify_center()
-                                    .w(px(32.))
-                                    .h(px(32.))
-                                    .child(self.bluetooth.clone()),
-                            )
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .w(px(32.))
-                                    .h(px(32.))
-                                    .child(self.network.clone()),
-                            )
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .w(px(32.))
-                                    .h(px(32.))
-                                    .child(self.source.clone()),
-                            )
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .w(px(32.))
-                                    .h(px(32.))
-                                    .child(self.sink.clone()),
-                            )
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .px_3()
-                                    .child(self.datetime.clone()),
+                                    .h_full()
+                                    .cursor_pointer()
+                                    .on_click(cx.listener(|this, _, _window, cx| {
+                                        this.control_center.update(cx, |cc, cx| {
+                                            cc.toggle(cx);
+                                        });
+                                    }))
+                                    .child(
+                                        div()
+                                            .flex()
+                                            .items_center()
+                                            .justify_center()
+                                            .w(px(32.))
+                                            .h(px(32.))
+                                            .child(self.bluetooth.clone()),
+                                    )
+                                    .child(
+                                        div()
+                                            .flex()
+                                            .items_center()
+                                            .justify_center()
+                                            .w(px(32.))
+                                            .h(px(32.))
+                                            .child(self.network.clone()),
+                                    )
+                                    .child(
+                                        div()
+                                            .flex()
+                                            .items_center()
+                                            .justify_center()
+                                            .w(px(32.))
+                                            .h(px(32.))
+                                            .child(self.source.clone()),
+                                    )
+                                    .child(
+                                        div()
+                                            .flex()
+                                            .items_center()
+                                            .justify_center()
+                                            .w(px(32.))
+                                            .h(px(32.))
+                                            .child(self.sink.clone()),
+                                    )
+                                    .child(
+                                        div()
+                                            .flex()
+                                            .items_center()
+                                            .px_3()
+                                            .child(self.datetime.clone()),
+                                    ),
                             ),
                     ),
+            )
+            // Left corner
+            .child(
+                canvas(
+                    move |_, _, _| {},
+                    {
+                        let color = theme.bg;
+                        move |_bounds, _, window, _| {
+                            let ox = px(0.);
+                            let oy = panel_height;
+                            let mut path = PathBuilder::fill();
+                            path.move_to(point(ox, oy + corner_radius));
+                            path.arc_to(point(corner_radius, corner_radius), px(0.), false, true, point(ox + corner_radius, oy));
+                            path.line_to(point(ox, oy));
+                            path.close();
+                            if let Ok(built_path) = path.build() {
+                                window.paint_path(built_path, color);
+                            }
+                        }
+                    },
+                )
+                .absolute()
+                .top(panel_height)
+                .left_0()
+                .size(corner_radius),
+            )
+            // Right corner
+            .child(
+                canvas(
+                    move |_, _, _| {},
+                    {
+                        let color = theme.bg;
+                        move |bounds, _, window, _| {
+                            let ox = bounds.origin.x;
+                            let oy = panel_height;
+                            let mut path = PathBuilder::fill();
+                            path.move_to(point(ox, oy));
+                            path.arc_to(point(corner_radius, corner_radius), px(0.), false, true, point(ox + corner_radius, oy + corner_radius));
+                            path.line_to(point(ox + corner_radius, oy));
+                            path.close();
+                            if let Ok(built_path) = path.build() {
+                                window.paint_path(built_path, color);
+                            }
+                        }
+                    },
+                )
+                .absolute()
+                .top(panel_height)
+                .right_0()
+                .size(corner_radius),
             )
     }
 }

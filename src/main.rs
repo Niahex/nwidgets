@@ -5,7 +5,6 @@ mod utils;
 mod widgets;
 
 use anyhow::Result;
-use components::{Corner, CornerPosition};
 use gpui::layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions};
 use gpui::prelude::*;
 use gpui::*;
@@ -166,8 +165,6 @@ fn main() {
             // Initialize CEF Service
             services::cef::CefService::init(cx);
 
-            let corner_radius = px(18.);
-
             // Panel window
             cx.open_window(
                 WindowOptions {
@@ -178,7 +175,7 @@ fn main() {
                         },
                         size: Size {
                             width: px(3440.0),
-                            height: px(50.0),
+                            height: px(68.0), // 50 + 18 for corners
                         },
                     })),
                     titlebar: None,
@@ -187,7 +184,7 @@ fn main() {
                         namespace: "nwidgets-panel".to_string(),
                         layer: Layer::Top,
                         anchor: Anchor::TOP | Anchor::LEFT | Anchor::RIGHT,
-                        exclusive_zone: Some(px(50.)),
+                        exclusive_zone: Some(px(50.)), // Only reserve 50px
                         margin: None,
                         keyboard_interactivity: KeyboardInteractivity::None,
                         ..Default::default()
@@ -195,66 +192,6 @@ fn main() {
                     ..Default::default()
                 },
                 |_window, cx| cx.new(Panel::new),
-            )
-            .unwrap();
-
-            // Left corner window - positioned just below the panel's exclusive zone
-            cx.open_window(
-                WindowOptions {
-                    window_bounds: Some(WindowBounds::Windowed(Bounds {
-                        origin: Point {
-                            x: px(0.0),
-                            y: px(0.0),
-                        },
-                        size: Size {
-                            width: corner_radius,
-                            height: corner_radius,
-                        },
-                    })),
-                    titlebar: None,
-                    window_background: WindowBackgroundAppearance::Transparent,
-                    kind: WindowKind::LayerShell(LayerShellOptions {
-                        namespace: "nwidgets-corner-left".to_string(),
-                        layer: Layer::Background,
-                        anchor: Anchor::TOP | Anchor::LEFT,
-                        exclusive_zone: None,
-                        margin: None,
-                        keyboard_interactivity: KeyboardInteractivity::None,
-                        ..Default::default()
-                    }),
-                    ..Default::default()
-                },
-                move |_window, cx| cx.new(|_| Corner::new(CornerPosition::TopLeft, corner_radius)),
-            )
-            .unwrap();
-
-            // Right corner window
-            cx.open_window(
-                WindowOptions {
-                    window_bounds: Some(WindowBounds::Windowed(Bounds {
-                        origin: Point {
-                            x: px(0.0),
-                            y: px(0.0),
-                        },
-                        size: Size {
-                            width: corner_radius,
-                            height: corner_radius,
-                        },
-                    })),
-                    titlebar: None,
-                    window_background: WindowBackgroundAppearance::Transparent,
-                    kind: WindowKind::LayerShell(LayerShellOptions {
-                        namespace: "nwidgets-corner-right".to_string(),
-                        layer: Layer::Background,
-                        anchor: Anchor::TOP | Anchor::RIGHT,
-                        exclusive_zone: None,
-                        margin: None,
-                        keyboard_interactivity: KeyboardInteractivity::None,
-                        ..Default::default()
-                    }),
-                    ..Default::default()
-                },
-                move |_window, cx| cx.new(|_| Corner::new(CornerPosition::TopRight, corner_radius)),
             )
             .unwrap();
 
@@ -281,7 +218,7 @@ fn main() {
                             anchor: Anchor::TOP | Anchor::BOTTOM | Anchor::LEFT,
                             exclusive_zone: None,
                             margin: Some((px(40.0), px(0.0), px(20.0), px(10.0))),
-                            keyboard_interactivity: KeyboardInteractivity::None,
+                            keyboard_interactivity: KeyboardInteractivity::OnDemand,
                             ..Default::default()
                         }),
                         app_id: Some("nwidgets-chat".to_string()),
@@ -303,10 +240,13 @@ fn main() {
                 let _ = window.update(cx, |chat, window, cx| {
                     if visible {
                         window.resize(size(px(600.0), px(1370.0)));
+                        window.set_exclusive_edge(Anchor::LEFT);
+                        window.set_exclusive_zone(600);
                     } else {
                         if let Some(url) = chat.current_url(cx) {
                             widgets::chat::save_url(&url);
                         }
+                        window.set_exclusive_zone(0);
                         window.resize(size(px(1.0), px(1.0)));
                     }
                     cx.notify();
