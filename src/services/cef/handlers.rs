@@ -1,8 +1,9 @@
 use cef::{
     rc::Rc, Browser, CefString, DisplayHandler, Frame, ImplDisplayHandler, ImplFrame,
-    ImplLoadHandler, ImplMediaAccessCallback, ImplPermissionHandler, ImplRenderHandler,
-    LoadHandler, MediaAccessCallback, PermissionHandler, RenderHandler, ScreenInfo,
-    WrapDisplayHandler, WrapLoadHandler, WrapPermissionHandler, WrapRenderHandler,
+    ImplLoadHandler, ImplMediaAccessCallback, ImplPermissionHandler, ImplPermissionPromptCallback,
+    ImplRenderHandler, LoadHandler, MediaAccessCallback, PermissionHandler,
+    PermissionPromptCallback, RenderHandler, ScreenInfo, WrapDisplayHandler, WrapLoadHandler,
+    WrapPermissionHandler, WrapRenderHandler,
 };
 use cef_dll_sys::cef_cursor_type_t;
 use parking_lot::Mutex;
@@ -192,6 +193,7 @@ cef::wrap_render_handler! {
 #[derive(Clone)]
 pub struct GpuiDisplayHandler {
     pub cursor: Arc<Mutex<CefCursor>>,
+    pub clipboard_tx: futures::channel::mpsc::UnboundedSender<String>,
 }
 
 cef::wrap_display_handler! {
@@ -200,6 +202,21 @@ cef::wrap_display_handler! {
     }
 
     impl DisplayHandler {
+        fn on_title_change(
+            &self,
+            _browser: Option<&mut Browser>,
+            title: Option<&CefString>,
+        ) {
+            if let Some(title_str) = title {
+                let s = title_str.to_string();
+                eprintln!("[CEF] Title changed: {}", s);
+                if let Some(text) = s.strip_prefix("__NWIDGETS_COPY__:") {
+                    eprintln!("[CEF] Clipboard copy detected: {} bytes", text.len());
+                    let _ = self.handler.clipboard_tx.unbounded_send(text.to_string());
+                }
+            }
+        }
+
         fn on_cursor_change(
             &self,
             _browser: Option<&mut Browser>,
@@ -231,6 +248,25 @@ cef::wrap_permission_handler! {
     }
 
     impl PermissionHandler {
+        fn on_show_permission_prompt(
+            &self,
+            _browser: Option<&mut Browser>,
+            _prompt_id: u64,
+            requesting_origin: Option<&CefString>,
+            requested_permissions: u32,
+            callback: Option<&mut PermissionPromptCallback>,
+        ) -> i32 {
+            eprintln!(
+                "[CEF] Permission requested: origin={:?}, permissions={}",
+                requesting_origin.map(|s| s.to_string()),
+                requested_permissions
+            );
+            if let Some(callback) = callback {
+                callback.cont(cef::PermissionRequestResult::ACCEPT);
+            }
+            1
+        }
+
         fn on_request_media_access_permission(
             &self,
             _browser: Option<&mut Browser>,

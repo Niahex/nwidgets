@@ -65,6 +65,7 @@ struct BrowserConfig {
     loaded: Arc<Mutex<bool>>,
     scale_factor: f32,
     repaint_tx: futures::channel::mpsc::UnboundedSender<()>,
+    clipboard_tx: futures::channel::mpsc::UnboundedSender<String>,
 }
 
 fn create_browser(url: &str, config: BrowserConfig) -> Browser {
@@ -78,6 +79,7 @@ fn create_browser(url: &str, config: BrowserConfig) -> Browser {
     });
     let display_handler = DisplayHandlerWrapper::new(GpuiDisplayHandler {
         cursor: config.cursor,
+        clipboard_tx: config.clipboard_tx,
     });
     let permission_handler = PermissionHandlerWrapper::new(GpuiPermissionHandler);
     let load_handler = LoadHandlerWrapper::new(GpuiLoadHandler {
@@ -102,6 +104,7 @@ fn create_browser(url: &str, config: BrowserConfig) -> Browser {
         Some(&BrowserSettings {
             windowless_frame_rate: 60,
             javascript_access_clipboard: cef::State::ENABLED,
+            javascript_dom_paste: cef::State::ENABLED,
             ..Default::default()
         }),
         None,
@@ -145,6 +148,7 @@ impl BrowserView {
         let hidden = Arc::new(Mutex::new(false));
 
         let (tx, mut rx) = futures::channel::mpsc::unbounded();
+        let (clipboard_tx, mut clipboard_rx) = futures::channel::mpsc::unbounded::<String>();
 
         let browser = create_browser(
             url,
@@ -158,6 +162,7 @@ impl BrowserView {
                 loaded: loaded.clone(),
                 scale_factor: 1.0,
                 repaint_tx: tx,
+                clipboard_tx,
             },
         );
 
@@ -165,6 +170,19 @@ impl BrowserView {
             host.was_resized();
             host.set_focus(1);
         }
+
+        // Clipboard handler
+        cx.spawn(|_, cx: &mut AsyncApp| {
+            let cx = cx.clone();
+            async move {
+                while let Some(text) = clipboard_rx.next().await {
+                    let _ = cx.update(|cx| {
+                        cx.write_to_clipboard(gpui::ClipboardItem::new_string(text));
+                    });
+                }
+            }
+        })
+        .detach();
 
         // Event-driven repaint loop (Push)
         cx.spawn(move |view: WeakEntity<BrowserView>, cx: &mut AsyncApp| {
@@ -461,6 +479,7 @@ impl gpui::Render for BrowserView {
                             *mouse_pressed.lock() = true;
                             if let Some(browser) = &browser {
                                 if let Some(host) = browser.host() {
+                                    host.set_focus(1);
                                     let (x, y) = (Into::<f32>::into(event.position.x) as i32, Into::<f32>::into(event.position.y) as i32);
                                     host.send_mouse_click_event(Some(&cef::MouseEvent { x, y, modifiers: 16 }),
                                         cef_mouse_button_type_t::MBT_LEFT.into(), 0, event.click_count as i32);
