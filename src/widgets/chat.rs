@@ -39,16 +39,16 @@ impl ChatWidget {
         // Pre-calculate the full injection script to avoid repeated string formatting and escaping
         let clipboard_script = r#"
 (function(){
-const send=t=>{if(!t)return;console.log('[CLIP] Sending:',t?.substring?.(0,50)||t);const o=document.title;document.title='__NWIDGETS_COPY__:'+t;setTimeout(()=>{if(document.title.startsWith('__NWIDGETS_COPY__'))document.title=o},500)};
-document.addEventListener('copy',e=>{console.log('[CLIP] Copy event');const t=e.clipboardData?.getData('text/plain')||window.getSelection()?.toString();if(t)send(t)});
+const send=t=>{if(!t)return;const o=document.title;document.title='__NWIDGETS_COPY__:'+t;setTimeout(()=>{if(document.title.startsWith('__NWIDGETS_COPY__'))document.title=o},500)};
+document.addEventListener('copy',e=>{const t=e.clipboardData?.getData('text/plain')||window.getSelection()?.toString();if(t)send(t)});
 if(navigator.clipboard){
 const w=navigator.clipboard.writeText?.bind(navigator.clipboard);
-if(w)navigator.clipboard.writeText=t=>{console.log('[CLIP] writeText:',t?.substring?.(0,50));send(t);return w(t).catch(()=>Promise.resolve())};
+if(w)navigator.clipboard.writeText=t=>{send(t);return w(t).catch(()=>Promise.resolve())};
 const wr=navigator.clipboard.write?.bind(navigator.clipboard);
-if(wr)navigator.clipboard.write=d=>{console.log('[CLIP] write called');return Promise.resolve(d).then(items=>{for(const item of items){item.getType?.('text/plain')?.then(b=>b?.text?.())?.then(t=>send(t))?.catch(()=>{})}return wr(items)}).catch(()=>Promise.resolve())};
+if(wr)navigator.clipboard.write=d=>{return Promise.resolve(d).then(items=>{for(const item of items){item.getType?.('text/plain')?.then(b=>b?.text?.())?.then(t=>send(t))?.catch(()=>{})}return wr(items)}).catch(()=>Promise.resolve())};
 }
 const exec=document.execCommand.bind(document);
-document.execCommand=(cmd,...args)=>{if(cmd==='copy'){console.log('[CLIP] execCommand copy');const t=window.getSelection()?.toString();if(t)send(t)}return exec(cmd,...args)};
+document.execCommand=(cmd,...args)=>{if(cmd==='copy'){const t=window.getSelection()?.toString();if(t)send(t)}return exec(cmd,...args)};
 })();
 "#;
         let injection_script = format!(
