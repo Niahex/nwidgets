@@ -111,6 +111,9 @@
             # Generate archive.json which is required by cef-rs
             echo '{"type":"minimal","name":"cef_binary_${cefVersion}_${cefPlatform}_minimal.tar.bz2","sha1":""}' > $out/archive.json
 
+            # Remove chrome-sandbox before patching (it requires setuid and can't be patched)
+            rm -f $out/chrome-sandbox
+
             # Patch binaries in $out
             autoPatchelf $out
           '';
@@ -145,6 +148,7 @@
             vulkan-loader
             mesa
             libxkbcommon
+            wayland
           ]
           ++ cefDeps;
 
@@ -190,10 +194,10 @@
             cp -r ${cefAssets}/locales $out/bin/ || true
 
             wrapProgram $out/bin/nwidgets \
-              --prefix LD_LIBRARY_PATH : ${pkgs.lib.makeLibraryPath runtimeDependencies}:${cefAssets} \
+              --prefix LD_LIBRARY_PATH : ${pkgs.lib.makeLibraryPath (buildInputs ++ runtimeDependencies)}:${cefAssets} \
+              --set VK_ICD_FILENAMES "/run/opengl-driver/share/vulkan/icd.d/nvidia_icd.x86_64.json:/run/opengl-driver/share/vulkan/icd.d/radeon_icd.x86_64.json:/run/opengl-driver/share/vulkan/icd.d/intel_icd.x86_64.json" \
               --set NWIDGETS_ASSETS_DIR $out/share/nwidgets/assets \
-              --set CEF_PATH ${cefAssets} \
-              --add-flags "--ozone-platform-hint=auto"
+              --set CEF_PATH ${cefAssets}
           '';
         };
 
@@ -233,6 +237,7 @@
           env = envVars;
 
           LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath (buildInputs ++ runtimeDependencies)}:/run/opengl/driver/lib:/run/opengl/lib:${cefAssets}";
+          VK_ICD_FILENAMES = "/run/opengl-driver/share/vulkan/icd.d/nvidia_icd.x86_64.json:/run/opengl-driver/share/vulkan/icd.d/radeon_icd.x86_64.json:/run/opengl-driver/share/vulkan/icd.d/intel_icd.x86_64.json";
           FONTCONFIG_FILE = pkgs.makeFontsConf {fontDirectories = buildInputs;};
 
           shellHook = ''
