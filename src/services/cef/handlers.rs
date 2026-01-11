@@ -70,7 +70,7 @@ pub struct GpuiRenderHandler {
     pub height: Arc<Mutex<u32>>,
     pub scale_factor: f32,
     pub selected_text: Arc<Mutex<String>>,
-    pub repaint_tx: futures::channel::mpsc::UnboundedSender<()>, 
+    pub repaint_tx: futures::channel::mpsc::UnboundedSender<()>,
 }
 
 cef::wrap_render_handler! {
@@ -249,7 +249,7 @@ cef::wrap_permission_handler! {
 
 #[derive(Clone)]
 pub struct GpuiLoadHandler {
-    pub css: Arc<Mutex<Option<String>>>,
+    pub injection_script: Arc<Mutex<Option<String>>>,
     pub loaded: Arc<Mutex<bool>>,
 }
 
@@ -267,11 +267,8 @@ cef::wrap_load_handler! {
         ) {
             if let Some(frame) = frame {
                 if frame.is_main() != 0 {
-                    if let Some(css) = self.handler.css.lock().as_ref() {
-                        let script = format!(
-                            "var s=document.createElement('style');s.textContent=`{}`;document.head.appendChild(s);",
-                            css.replace('`', "\\`")
-                        );
+                    // Directly execute the pre-calculated script
+                    if let Some(script) = self.handler.injection_script.lock().as_ref() {
                         frame.execute_java_script(Some(&CefString::from(script.as_str())), None, 0);
                     }
                     *self.handler.loaded.lock() = true;

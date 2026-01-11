@@ -61,7 +61,7 @@ struct BrowserConfig {
     height: Arc<Mutex<u32>>,
     cursor: Arc<Mutex<CefCursor>>,
     selected_text: Arc<Mutex<String>>,
-    css: Arc<Mutex<Option<String>>>,
+    injection_script: Arc<Mutex<Option<String>>>,
     loaded: Arc<Mutex<bool>>,
     scale_factor: f32,
     repaint_tx: futures::channel::mpsc::UnboundedSender<()>
@@ -80,8 +80,8 @@ fn create_browser(url: &str, config: BrowserConfig) -> Browser {
         cursor: config.cursor,
     });
     let permission_handler = PermissionHandlerWrapper::new(GpuiPermissionHandler);
-    let load_handler = LoadHandlerWrapper::new(GpuiLoadHandler {
-        css: config.css,
+    let load_handler = LoadHandlerWrapper::new(GpuiLoadHandler { 
+        injection_script: config.injection_script,
         loaded: config.loaded,
     });
 
@@ -93,8 +93,8 @@ fn create_browser(url: &str, config: BrowserConfig) -> Browser {
     });
 
     cef::browser_host_create_browser_sync(
-        Some(&WindowInfo {
-            windowless_rendering_enabled: true as _,
+        Some(&WindowInfo { 
+            windowless_rendering_enabled: 1, // Correct way to pass true for C int
             ..Default::default()
         }),
         Some(&mut client),
@@ -131,7 +131,7 @@ impl BrowserView {
         url: &str,
         width: u32,
         height: u32,
-        css: Option<&str>,
+        injection_script: Option<&str>,
         cx: &mut Context<Self>,
     ) -> Self {
         let buffer = Arc::new(DoubleBuffer::new((width * height * 4) as usize));
@@ -140,7 +140,7 @@ impl BrowserView {
         let mouse_pressed = Arc::new(Mutex::new(false));
         let cursor = Arc::new(Mutex::new(CefCursor::Default));
         let selected_text = Arc::new(Mutex::new(String::new()));
-        let css_arc = Arc::new(Mutex::new(css.map(String::from)));
+        let script_arc = Arc::new(Mutex::new(injection_script.map(String::from)));
         let loaded = Arc::new(Mutex::new(false));
         let hidden = Arc::new(Mutex::new(false));
 
@@ -154,7 +154,7 @@ impl BrowserView {
                 height: h.clone(),
                 cursor: cursor.clone(),
                 selected_text: selected_text.clone(),
-                css: css_arc,
+                injection_script: script_arc,
                 loaded: loaded.clone(),
                 scale_factor: 1.0,
                 repaint_tx: tx,
@@ -447,7 +447,9 @@ impl gpui::Render for BrowserView {
                             if let Some(browser) = &browser {
                                 if let Some(host) = browser.host() {
                                     let (x, y) = (Into::<f32>::into(event.position.x) as i32, Into::<f32>::into(event.position.y) as i32);
-                                    host.send_mouse_move_event(Some(&cef::MouseEvent { x, y, modifiers: if *mouse_pressed.lock() { 16 } else { 0 } }), 0);
+                                    host.send_mouse_move_event(Some(&cef::MouseEvent { 
+                                        x, y, modifiers: if *mouse_pressed.lock() { 16 } else { 0 },
+                                    }), 0);
                                 }
                             }
                         }
