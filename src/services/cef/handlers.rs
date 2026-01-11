@@ -70,6 +70,7 @@ pub struct GpuiRenderHandler {
     pub height: Arc<Mutex<u32>>,
     pub scale_factor: f32,
     pub selected_text: Arc<Mutex<String>>,
+    pub repaint_tx: futures::channel::mpsc::UnboundedSender<()>, 
 }
 
 cef::wrap_render_handler! {
@@ -168,6 +169,9 @@ cef::wrap_render_handler! {
                 // No dirty rects info, full copy
                 self.handler.buffer.write(src);
             }
+
+            // Notify UI thread
+            let _ = self.handler.repaint_tx.unbounded_send(());
         }
 
         fn on_text_selection_changed(

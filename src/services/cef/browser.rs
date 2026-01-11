@@ -24,6 +24,7 @@ use image::{Frame, ImageBuffer, Rgba};
 use parking_lot::Mutex;
 use smallvec::SmallVec;
 use std::sync::Arc;
+use futures::StreamExt;
 
 #[derive(Clone)]
 struct BrowserClient {
@@ -63,6 +64,7 @@ struct BrowserConfig {
     css: Arc<Mutex<Option<String>>>,
     loaded: Arc<Mutex<bool>>,
     scale_factor: f32,
+    repaint_tx: futures::channel::mpsc::UnboundedSender<()>
 }
 
 fn create_browser(url: &str, config: BrowserConfig) -> Browser {
@@ -72,12 +74,13 @@ fn create_browser(url: &str, config: BrowserConfig) -> Browser {
         height: config.height,
         scale_factor: config.scale_factor,
         selected_text: config.selected_text,
+        repaint_tx: config.repaint_tx,
     });
     let display_handler = DisplayHandlerWrapper::new(GpuiDisplayHandler {
         cursor: config.cursor,
     });
     let permission_handler = PermissionHandlerWrapper::new(GpuiPermissionHandler);
-    let load_handler = LoadHandlerWrapper::new(GpuiLoadHandler { 
+    let load_handler = LoadHandlerWrapper::new(GpuiLoadHandler {
         css: config.css,
         loaded: config.loaded,
     });
@@ -141,6 +144,8 @@ impl BrowserView {
         let loaded = Arc::new(Mutex::new(false));
         let hidden = Arc::new(Mutex::new(false));
 
+        let (tx, mut rx) = futures::channel::mpsc::unbounded();
+
         let browser = create_browser(
             url,
             BrowserConfig {
@@ -152,6 +157,7 @@ impl BrowserView {
                 css: css_arc,
                 loaded: loaded.clone(),
                 scale_factor: 1.0,
+                repaint_tx: tx,
             },
         );
 
@@ -160,13 +166,11 @@ impl BrowserView {
             host.set_focus(1);
         }
 
-        cx.spawn(|view: WeakEntity<BrowserView>, cx: &mut AsyncApp| {
+        // Event-driven repaint loop (Push)
+        cx.spawn(move |view: WeakEntity<BrowserView>, cx: &mut AsyncApp| {
             let mut cx = cx.clone();
             async move {
-                loop {
-                    cx.background_executor()
-                        .timer(std::time::Duration::from_millis(16))
-                        .await;
+                while rx.next().await.is_some() {
                     let _ = view.update(&mut cx, |_, cx| cx.notify());
                 }
             }
@@ -342,7 +346,7 @@ impl gpui::Render for BrowserView {
                                         if let Some(b) = &this.browser {
                                             if let Some(f) = b.main_frame() {
                                                 if let Some(text) = _cx.read_from_clipboard().and_then(|c| c.text()) {
-                                                    let escaped = text.replace('\\', "\\\\").replace('`', "\\`").replace("${", "\\${");
+                                                    let escaped = text.replace('\\', "\\\\").replace('`', "\\`").replace("${ ", "\\${ ");
                                                     let script = format!(
                                                         "document.execCommand('insertText', false, `{escaped}`);"
                                                     );
@@ -443,9 +447,7 @@ impl gpui::Render for BrowserView {
                             if let Some(browser) = &browser {
                                 if let Some(host) = browser.host() {
                                     let (x, y) = (Into::<f32>::into(event.position.x) as i32, Into::<f32>::into(event.position.y) as i32);
-                                    host.send_mouse_move_event(Some(&cef::MouseEvent {
-                                        x, y, modifiers: if *mouse_pressed.lock() { 16 } else { 0 },
-                                    }), 0);
+                                    host.send_mouse_move_event(Some(&cef::MouseEvent { x, y, modifiers: if *mouse_pressed.lock() { 16 } else { 0 } }), 0);
                                 }
                             }
                         }
@@ -522,7 +524,7 @@ impl gpui::Render for BrowserView {
                                 if let Some(path) = paths.paths().first() {
                                     let script = format!(
                                         "window.dispatchEvent(new CustomEvent('filedrop', {{detail: '{}'}}));",
-                                        path.to_string_lossy().replace('\'', "\\'")
+                                        path.to_string_lossy().replace('`', "\\`")
                                     );
                                     frame.execute_java_script(Some(&CefString::from(script.as_str())), None, 0);
                                 }

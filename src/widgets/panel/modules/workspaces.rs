@@ -25,12 +25,9 @@ impl WorkspacesModule {
 
 impl Render for WorkspacesModule {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let mut workspaces = self.hyprland.read(cx).workspaces();
+        let workspaces = self.hyprland.read(cx).workspaces();
         let active_id = self.hyprland.read(cx).active_workspace_id();
         let hyprland = self.hyprland.clone();
-
-        // Sort workspaces in ascending order by ID
-        workspaces.sort_by_key(|ws| ws.id);
 
         let theme = cx.global::<crate::theme::Theme>();
 

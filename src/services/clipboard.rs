@@ -1,6 +1,6 @@
 use futures::StreamExt;
 use gpui::prelude::*;
-use gpui::{App, AsyncApp, Entity, EventEmitter, WeakEntity};
+use gpui::{App, AsyncApp, Entity, EventEmitter};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use std::process::Stdio;
 

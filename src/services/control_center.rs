@@ -41,7 +41,7 @@ impl ControlCenterService {
             *visible = true;
             let service = self.clone();
             cx.spawn(move |_, cx: &mut AsyncApp| {
-                let mut cx = cx.clone();
+                let cx = cx.clone();
                 async move {
                     let _ = cx.update(|cx| {
                         service.open_window(cx);

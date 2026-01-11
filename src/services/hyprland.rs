@@ -203,8 +203,10 @@ impl HyprlandService {
         let workspaces_json = Self::hyprctl(&["workspaces", "-j"]).await;
         let active_workspace_json = Self::hyprctl(&["activeworkspace", "-j"]).await;
 
-        let workspaces: Vec<Workspace> =
+        let mut workspaces: Vec<Workspace> =
             serde_json::from_str(&workspaces_json).unwrap_or_default();
+        workspaces.sort_by_key(|w| w.id);
+
         let active_workspace_id: i32 =
             serde_json::from_str::<serde_json::Value>(&active_workspace_json)
                 .ok()

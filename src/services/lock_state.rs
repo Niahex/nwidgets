@@ -1,7 +1,6 @@
 use futures::StreamExt;
 use gpui::prelude::*;
-use gpui::{App, AsyncApp, Context, Entity, EventEmitter, Global, WeakEntity};
-use std::sync::Arc;
+use gpui::{App, AsyncApp, Entity, EventEmitter, Global};
 use zbus::{proxy, Connection, Result};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -60,13 +59,13 @@ impl LockMonitor {
         let weak_service = service.downgrade();
         cx.spawn(move |cx: &mut AsyncApp| {
             let mut cx = cx.clone();
+            let weak_service = weak_service.clone();
             async move {
                 while let Some(locked) = rx.next().await {
                     let _ = weak_service.update(&mut cx, |this, cx| {
                         if this.is_locked != locked {
                             this.is_locked = locked;
                             
-                            // Update Global state if available (decoupled)
                             if cx.has_global::<LockStateService>() {
                                 cx.update_global::<LockStateService, _>(|service, _| {
                                     service.is_locked = locked;
@@ -109,12 +108,10 @@ impl LockMonitor {
             }
         };
 
-        // Initial state
         if let Ok(locked) = session.locked_hint().await {
             let _ = tx.unbounded_send(locked);
         }
 
-        // Subscribe to signals
         let mut lock_stream = match session.receive_lock().await {
             Ok(s) => Some(s),
             Err(e) => {
@@ -165,10 +162,7 @@ impl LockStateService {
         let is_locked = false;
         let service = cx.new(|_| Self { is_locked });
         cx.set_global(LockStateService { is_locked });
-        
-        // LockMonitor handles the logic and updates this global service
         LockMonitor::init(cx);
-
         service
     }
 

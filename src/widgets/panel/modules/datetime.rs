@@ -1,6 +1,7 @@
 use gpui::prelude::*;
 use gpui::*;
 use std::time::Duration;
+use chrono::Timelike;
 
 pub struct DateTimeModule {
     time: SharedString,
@@ -13,18 +14,36 @@ impl DateTimeModule {
         let time = now.format("%H:%M").to_string().into();
         let date = now.format("%a %d %b").to_string().into();
 
-        // Update every 60 seconds
-        cx.spawn(async move |this, cx| loop {
-            cx.background_executor()
-                .timer(Duration::from_secs(60))
-                .await;
+        cx.spawn(move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
+            let mut cx = cx.clone();
+            async move {
+                // Calculate delay until next minute to sync with system clock
+                let now = chrono::Local::now();
+                let seconds_until_next_minute = 60 - now.second() as u64;
+                cx.background_executor().timer(Duration::from_secs(seconds_until_next_minute)).await;
 
-            let now = chrono::Local::now();
-            if let Ok(()) = this.update(cx, |this, cx| {
-                this.time = now.format("%H:%M").to_string().into();
-                this.date = now.format("%a %d %b").to_string().into();
-                cx.notify();
-            }) {}
+                // Initial update after sync
+                if let Ok(()) = this.update(&mut cx, |this, cx| {
+                    let now = chrono::Local::now();
+                    this.time = now.format("%H:%M").to_string().into();
+                    this.date = now.format("%a %d %b").to_string().into();
+                    cx.notify();
+                }) {}
+
+                // Loop every 60 seconds
+                loop {
+                    cx.background_executor()
+                        .timer(Duration::from_secs(60))
+                        .await;
+
+                    let now = chrono::Local::now();
+                    if let Ok(()) = this.update(&mut cx, |this, cx| {
+                        this.time = now.format("%H:%M").to_string().into();
+                        this.date = now.format("%a %d %b").to_string().into();
+                        cx.notify();
+                    }) {}
+                }
+            }
         })
         .detach();
 
