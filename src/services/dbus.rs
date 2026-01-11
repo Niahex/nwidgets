@@ -1,5 +1,6 @@
+use futures::channel::mpsc;
+use futures::StreamExt;
 use gpui::{App, AsyncApp};
-use std::sync::mpsc;
 use zbus::{connection::Builder, interface};
 
 pub struct DbusService;
@@ -11,23 +12,23 @@ pub enum DbusCommand {
 }
 
 struct NWidgets {
-    tx: mpsc::Sender<DbusCommand>,
+    tx: mpsc::UnboundedSender<DbusCommand>,
 }
 
 #[interface(name = "org.nwidgets.App")]
 impl NWidgets {
     async fn toggle_chat(&self) {
-        let _ = self.tx.send(DbusCommand::ToggleChat);
+        let _ = self.tx.unbounded_send(DbusCommand::ToggleChat);
     }
 
     async fn pin_chat(&self) {
-        let _ = self.tx.send(DbusCommand::PinChat);
+        let _ = self.tx.unbounded_send(DbusCommand::PinChat);
     }
 }
 
 impl DbusService {
     pub fn init(cx: &mut App) {
-        let (tx, rx) = mpsc::channel::<DbusCommand>();
+        let (tx, mut rx) = mpsc::unbounded::<DbusCommand>();
 
         // D-Bus server
         std::thread::spawn(move || {
@@ -60,24 +61,19 @@ impl DbusService {
         cx.spawn(|cx: &mut AsyncApp| {
             let cx = cx.clone();
             async move {
-                loop {
-                    cx.background_executor()
-                        .timer(std::time::Duration::from_millis(50))
-                        .await;
-                    while let Ok(cmd) = rx.try_recv() {
-                        match cmd {
-                            DbusCommand::ToggleChat => {
-                                let _ = cx.update(|cx| {
-                                    let chat = super::chat::ChatService::global(cx);
-                                    chat.update(cx, |chat, mcx| chat.toggle(mcx));
-                                });
-                            }
-                            DbusCommand::PinChat => {
-                                let _ = cx.update(|cx| {
-                                    let chat = super::chat::ChatService::global(cx);
-                                    chat.update(cx, |chat, mcx| chat.toggle_pin(mcx));
-                                });
-                            }
+                while let Some(cmd) = rx.next().await {
+                    match cmd {
+                        DbusCommand::ToggleChat => {
+                            let _ = cx.update(|cx| {
+                                let chat = super::chat::ChatService::global(cx);
+                                chat.update(cx, |chat, mcx| chat.toggle(mcx));
+                            });
+                        }
+                        DbusCommand::PinChat => {
+                            let _ = cx.update(|cx| {
+                                let chat = super::chat::ChatService::global(cx);
+                                chat.update(cx, |chat, mcx| chat.toggle_pin(mcx));
+                            });
                         }
                     }
                 }

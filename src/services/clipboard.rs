@@ -1,7 +1,8 @@
 use futures::StreamExt;
 use gpui::prelude::*;
-use gpui::{App, AsyncApp, Entity, EventEmitter};
-use std::io::BufRead;
+use gpui::{App, AsyncApp, Entity, EventEmitter, WeakEntity};
+use tokio::io::{AsyncBufReadExt, BufReader};
+use std::process::Stdio;
 
 #[derive(Clone)]
 pub struct ClipboardEvent;
@@ -15,40 +16,40 @@ impl ClipboardMonitor {
         let model = cx.new(|_cx| Self);
         let weak_model = model.downgrade();
 
-        // 1. Créer un channel pour communiquer entre le thread watcher et GPUI
         let (tx, mut rx) = futures::channel::mpsc::unbounded::<()>();
 
-        // 2. Lancer un thread dédié pour wl-paste --watch (bloquant)
-        std::thread::spawn(move || {
-            let child = std::process::Command::new("wl-paste")
+        // 1. Worker Task (Tokio): Watcher asynchrone
+        gpui_tokio::Tokio::spawn(cx, async move {
+            let child = tokio::process::Command::new("wl-paste")
                 .args(["--watch", "echo", "changed"])
-                .stdout(std::process::Stdio::piped())
+                .stdout(Stdio::piped())
                 .spawn();
 
             match child {
                 Ok(mut child) => {
                     if let Some(stdout) = child.stdout.take() {
-                        let reader = std::io::BufReader::new(stdout);
-                        for _line in reader.lines() {
+                        let mut reader = BufReader::new(stdout).lines();
+                        while let Ok(Some(_line)) = reader.next_line().await {
                             if tx.unbounded_send(()).is_err() {
                                 break;
                             }
                         }
                     }
-                    let _ = child.kill();
+                    let _ = child.kill().await;
                 }
                 Err(e) => {
                     eprintln!("[Clipboard] Failed to start wl-paste watcher: {e}");
                 }
             }
-        });
+        }).detach();
 
-        // 3. Consommer les événements sur le thread GPUI
-        cx.spawn(|cx: &mut AsyncApp| {
+        // 2. UI Task (GPUI): Réception des événements
+        cx.spawn(move |cx: &mut AsyncApp| {
             let mut cx = cx.clone();
+            let weak_model = weak_model.clone();
             async move {
                 while rx.next().await.is_some() {
-                    let _ = weak_model.update(&mut cx, |_this, cx| {
+                    let _ = weak_model.update(&mut cx, |_, cx| {
                         cx.emit(ClipboardEvent);
                     });
                 }

@@ -1,5 +1,5 @@
 use gpui::prelude::*;
-use gpui::{App, Context, Entity, EventEmitter, Global, SharedString};
+use gpui::{App, AsyncApp, Context, Entity, EventEmitter, Global, SharedString, WeakEntity};
 use parking_lot::Mutex;
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
@@ -94,7 +94,6 @@ impl NotificationServer {
         };
 
         // Extraction de l'urgence (default: 1/Normal)
-        // 0: Low, 1: Normal, 2: Critical
         let urgency = hints
             .get("urgency")
             .and_then(|v| v.downcast_ref::<u8>().ok())
@@ -113,16 +112,12 @@ impl NotificationServer {
             app_icon: app_icon.into(),
         };
 
-        // Mise à jour de l'historique et envoi
         let mut state = self.state.lock();
-
-        // 1. Mise à jour de l'historique
         state.history.push_front(notification.clone());
         if state.history.len() > 50 {
             state.history.pop_back();
         }
 
-        // 2. Envoi via le channel tokio
         if let Some(sender) = &state.sender {
             if let Err(e) = sender.send(notification) {
                 eprintln!("[NOTIF] ❌ Failed to send to UI: {e}");
@@ -155,13 +150,12 @@ impl NotificationServer {
 
 impl NotificationService {
     pub fn new(cx: &mut Context<Self>) -> Self {
-        // Démarrer le serveur D-Bus une seule fois
-        Self::start_dbus_server_once();
+        // Démarrer le serveur D-Bus via le runtime global de GPUI
+        Self::start_dbus_server(cx);
 
         let notifications = Arc::new(parking_lot::RwLock::new(Vec::new()));
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
 
-        // Initialiser le sender dans l'état global
         {
             let mut state = STATE.lock();
             state.sender = Some(tx);
@@ -169,20 +163,16 @@ impl NotificationService {
 
         let notifications_clone = Arc::clone(&notifications);
 
-        // Traitement réactif des notifications (sans polling !)
-        cx.spawn(async move |this, cx| {
-            while let Some(notification) = rx.recv().await {
-                println!(
-                    "[NOTIF_GPUI] 📢 Processing notification: {} - {}",
-                    notification.summary, notification.body
-                );
-
-                notifications_clone.write().push(notification.clone());
-
-                let _ = this.update(cx, |_this, cx| {
-                    cx.emit(NotificationAdded { notification });
-                    cx.notify();
-                });
+        cx.spawn(move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
+            let mut cx = cx.clone();
+            async move {
+                while let Some(notification) = rx.recv().await {
+                    notifications_clone.write().push(notification.clone());
+                    let _ = this.update(&mut cx, |_, cx| {
+                        cx.emit(NotificationAdded { notification });
+                        cx.notify();
+                    });
+                }
             }
         })
         .detach();
@@ -190,26 +180,19 @@ impl NotificationService {
         Self { notifications }
     }
 
-    fn start_dbus_server_once() {
+    fn start_dbus_server(cx: &mut Context<Self>) {
         static INIT: std::sync::Once = std::sync::Once::new();
 
         INIT.call_once(|| {
-            println!("[NOTIF] 🚀 Starting D-Bus server thread");
-
+            println!("[NOTIF] 🚀 Starting D-Bus server");
             let state_ref = Arc::clone(&STATE);
-
-            std::thread::spawn(move || {
-                let rt = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .expect("Failed to create tokio runtime for notifications");
-
-                rt.block_on(async {
-                    if let Err(e) = Self::run_dbus_server(state_ref).await {
-                        eprintln!("[NOTIF] ❌ D-Bus Error: {e}");
-                    }
-                });
-            });
+            
+            // On utilise gpui_tokio pour réutiliser le runtime global
+            gpui_tokio::Tokio::spawn(cx, async move {
+                if let Err(e) = Self::run_dbus_server(state_ref).await {
+                    eprintln!("[NOTIF] ❌ D-Bus Error: {e}");
+                }
+            }).detach();
         });
     }
 
@@ -217,7 +200,6 @@ impl NotificationService {
         state: Arc<Mutex<NotificationState>>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let connection = Connection::session().await?;
-
         let server = NotificationServer { next_id: 0, state };
 
         connection
@@ -230,8 +212,6 @@ impl NotificationService {
             .await?;
 
         println!("[NOTIF] ✅ Service ready on org.freedesktop.Notifications");
-
-        // Maintient la connexion active
         std::future::pending::<()>().await;
         Ok(())
     }
@@ -240,13 +220,11 @@ impl NotificationService {
         self.notifications.read().clone()
     }
 
-    #[allow(dead_code)]
-    pub fn clear(&self, _cx: &mut Context<Self>) {
+    pub fn clear(&self) {
         self.notifications.write().clear();
     }
 }
 
-// Global accessor
 struct GlobalNotificationService(Entity<NotificationService>);
 impl Global for GlobalNotificationService {}
 

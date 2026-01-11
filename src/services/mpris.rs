@@ -71,9 +71,36 @@ impl MprisService {
         let current_player = Arc::new(RwLock::new(None));
         let current_player_clone = Arc::clone(&current_player);
 
-        // Start event-driven D-Bus monitoring
-        cx.spawn(async move |this, cx| {
-            Self::monitor_mpris_dbus(this, current_player_clone, cx).await
+        let (ui_tx, mut ui_rx) = futures::channel::mpsc::unbounded::<Option<MprisPlayer>>();
+
+        // 1. Worker Task (Tokio)
+        gpui_tokio::Tokio::spawn(cx, async move {
+            Self::mpris_worker(ui_tx).await
+        })
+        .detach();
+
+        // 2. UI Task (GPUI)
+        cx.spawn(move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
+            let mut cx = cx.clone();
+            async move {
+                while let Some(new_player) = ui_rx.next().await {
+                    let state_changed = {
+                        let mut current = current_player_clone.write();
+                        let changed = *current != new_player;
+                        if changed {
+                            *current = new_player;
+                        }
+                        changed
+                    };
+
+                    if state_changed {
+                        let _ = this.update(&mut cx, |_, cx| {
+                            cx.emit(MprisStateChanged);
+                            cx.notify();
+                        });
+                    }
+                }
+            }
         })
         .detach();
 
@@ -118,8 +145,6 @@ impl MprisService {
     }
 
     pub fn volume_up(&self) {
-        // Volume control via D-Bus requires org.mpris.MediaPlayer2.Player.Volume property
-        // For now, fallback to playerctl for volume
         std::thread::spawn(|| {
             let _ = std::process::Command::new("playerctl")
                 .args(["-p", "spotify", "volume", "0.05+"])
@@ -135,20 +160,14 @@ impl MprisService {
         });
     }
 
-    async fn monitor_mpris_dbus(
-        this: WeakEntity<Self>,
-        current_player: Arc<RwLock<Option<MprisPlayer>>>,
-        cx: &mut AsyncApp,
-    ) {
+    async fn mpris_worker(ui_tx: futures::channel::mpsc::UnboundedSender<Option<MprisPlayer>>) {
         loop {
             // Try to connect to Spotify via D-Bus
             let connection = match Connection::session().await {
                 Ok(conn) => conn,
                 Err(_) => {
                     // Connection failed, wait and retry
-                    cx.background_executor()
-                        .timer(std::time::Duration::from_secs(2))
-                        .await;
+                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
                     continue;
                 }
             };
@@ -157,47 +176,16 @@ impl MprisService {
                 Ok(p) => p,
                 Err(_) => {
                     // Spotify not running, set state to None
-                    let state_changed = {
-                        let mut current = current_player.write();
-                        let changed = current.is_some();
-                        if changed {
-                            *current = None;
-                        }
-                        changed
-                    };
-
-                    if state_changed {
-                        let _ = this.update(cx, |_, cx| {
-                            cx.emit(MprisStateChanged);
-                            cx.notify();
-                        });
-                    }
-
+                    let _ = ui_tx.unbounded_send(None);
                     // Wait before retrying
-                    cx.background_executor()
-                        .timer(std::time::Duration::from_secs(2))
-                        .await;
+                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
                     continue;
                 }
             };
 
             // Get initial state
             if let Ok(player) = Self::fetch_player_state(&proxy).await {
-                let state_changed = {
-                    let mut current = current_player.write();
-                    let changed = *current != Some(player.clone());
-                    if changed {
-                        *current = Some(player);
-                    }
-                    changed
-                };
-
-                if state_changed {
-                    let _ = this.update(cx, |_, cx| {
-                        cx.emit(MprisStateChanged);
-                        cx.notify();
-                    });
-                }
+                let _ = ui_tx.unbounded_send(Some(player));
             }
 
             // Subscribe to property changes
@@ -208,64 +196,28 @@ impl MprisService {
             loop {
                 tokio::select! {
                     status_change = status_stream.next() => {
-                        if status_change.is_none() {
-                            break;
-                        }
-
+                        if status_change.is_none() { break; }
                         if let Ok(player) = Self::fetch_player_state(&proxy).await {
-                            let state_changed = {
-                                let mut current = current_player.write();
-                                let changed = *current != Some(player.clone());
-                                if changed {
-                                    *current = Some(player);
-                                }
-                                changed
-                            };
-
-                            if state_changed {
-                                let _ = this.update(cx, |_, cx| {
-                                    cx.emit(MprisStateChanged);
-                                    cx.notify();
-                                });
-                            }
+                            let _ = ui_tx.unbounded_send(Some(player));
                         }
                     }
                     metadata_change = metadata_stream.next() => {
-                        if metadata_change.is_none() {
-                            break;
-                        }
-
+                        if metadata_change.is_none() { break; }
                         if let Ok(player) = Self::fetch_player_state(&proxy).await {
-                            let state_changed = {
-                                let mut current = current_player.write();
-                                let changed = *current != Some(player.clone());
-                                if changed {
-                                    *current = Some(player);
-                                }
-                                changed
-                            };
-
-                            if state_changed {
-                                let _ = this.update(cx, |_, cx| {
-                                    cx.emit(MprisStateChanged);
-                                    cx.notify();
-                                });
-                            }
+                            let _ = ui_tx.unbounded_send(Some(player));
                         }
                     }
                 }
             }
 
-            // Connection lost, wait before reconnecting
-            cx.background_executor()
-                .timer(std::time::Duration::from_secs(2))
-                .await;
+            // Connection lost (streams ended), wait before reconnecting
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
         }
     }
 
     async fn fetch_player_state(
         proxy: &MediaPlayer2PlayerProxy<'_>,
-    ) -> Result<MprisPlayer, zbus::Error> {
+    ) -> zbus::Result<MprisPlayer> {
         let status_str = proxy.playback_status().await?;
         let status = PlaybackStatus::from(status_str);
 

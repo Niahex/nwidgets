@@ -54,8 +54,11 @@ impl PomodoroService {
         let start_time_clone = Arc::clone(&start_time);
 
         // Update timer every second
-        cx.spawn(async move |this, cx| {
-            Self::monitor_timer(this, status_clone, start_time_clone, cx).await
+        cx.spawn(move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
+            let mut cx = cx.clone();
+            async move {
+                Self::monitor_timer(this, status_clone, start_time_clone, &mut cx).await
+            }
         })
         .detach();
 
@@ -161,7 +164,7 @@ impl PomodoroService {
             };
 
             if should_update {
-                if let Ok(()) = this.update(cx, |service, cx| {
+                let _ = this.update(cx, |service, cx| {
                     let mut current_status = service.status.write();
 
                     if let PomodoroStatus::Running {
@@ -189,7 +192,7 @@ impl PomodoroService {
                             cx.notify();
                         }
                     }
-                }) {}
+                });
             }
         }
     }

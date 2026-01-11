@@ -40,13 +40,12 @@ impl ControlCenterService {
         } else {
             *visible = true;
             let service = self.clone();
-            cx.spawn(|_, cx: &mut AsyncApp| {
-                let cx = cx.clone();
+            cx.spawn(move |_, cx: &mut AsyncApp| {
+                let mut cx = cx.clone();
                 async move {
-                    cx.update(|cx| {
+                    let _ = cx.update(|cx| {
                         service.open_window(cx);
-                    })
-                    .ok();
+                    });
                 }
             })
             .detach();
@@ -126,7 +125,6 @@ impl ControlCenterService {
     }
 }
 
-// Global accessor
 struct GlobalControlCenterService(Entity<ControlCenterService>);
 impl Global for GlobalControlCenterService {}
 

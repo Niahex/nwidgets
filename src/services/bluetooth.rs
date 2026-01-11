@@ -9,6 +9,7 @@ use zbus::{
     zvariant::{OwnedObjectPath, OwnedValue},
     Connection, Result,
 };
+use futures::StreamExt;
 
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct BluetoothState {
@@ -36,6 +37,20 @@ type ManagedObjects = HashMap<OwnedObjectPath, HashMap<String, HashMap<String, O
 )]
 trait ObjectManager {
     fn get_managed_objects(&self) -> Result<ManagedObjects>;
+
+    #[zbus(signal)]
+    fn interfaces_added(
+        &self,
+        object_path: OwnedObjectPath,
+        interfaces_and_properties: HashMap<String, HashMap<String, OwnedValue>>,
+    ) -> Result<()>;
+
+    #[zbus(signal)]
+    fn interfaces_removed(
+        &self,
+        object_path: OwnedObjectPath,
+        interfaces: Vec<String>,
+    ) -> Result<()>;
 }
 
 // --- Service Implementation ---
@@ -46,8 +61,39 @@ impl BluetoothService {
         let state = Arc::new(RwLock::new(BluetoothState::default()));
         let state_clone = Arc::clone(&state);
 
-        cx.spawn(async move |this, cx| Self::monitor_bluetooth(this, state_clone, cx).await)
-            .detach();
+        let (ui_tx, mut ui_rx) = futures::channel::mpsc::unbounded::<BluetoothState>();
+
+        // 1. Worker Task (Tokio)
+        gpui_tokio::Tokio::spawn(cx, async move {
+            Self::bluetooth_worker(ui_tx).await
+        })
+        .detach();
+
+        // 2. UI Task (GPUI)
+        cx.spawn(move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
+            let mut cx = cx.clone();
+            async move {
+                while let Some(new_state) = ui_rx.next().await {
+                    let state_changed = {
+                        let mut current_state = state_clone.write();
+                        if *current_state != new_state {
+                            *current_state = new_state;
+                            true
+                        } else {
+                            false
+                        }
+                    };
+
+                    if state_changed {
+                        let _ = this.update(&mut cx, |_, cx| {
+                            cx.emit(BluetoothStateChanged);
+                            cx.notify();
+                        });
+                    }
+                }
+            }
+        })
+        .detach();
 
         Self { state }
     }
@@ -56,11 +102,7 @@ impl BluetoothService {
         self.state.read().clone()
     }
 
-    async fn monitor_bluetooth(
-        this: WeakEntity<Self>,
-        state: Arc<RwLock<BluetoothState>>,
-        cx: &mut AsyncApp,
-    ) {
+    async fn bluetooth_worker(ui_tx: futures::channel::mpsc::UnboundedSender<BluetoothState>) {
         let conn = match Connection::system().await {
             Ok(c) => c,
             Err(e) => {
@@ -77,28 +119,46 @@ impl BluetoothService {
             }
         };
 
-        loop {
-            let new_state = Self::fetch_bluetooth_state_dbus(&object_manager).await;
+        // Initial fetch
+        let initial_state = Self::fetch_bluetooth_state_dbus(&object_manager).await;
+        let _ = ui_tx.unbounded_send(initial_state);
 
-            let state_changed = {
-                let mut current_state = state.write();
-                if *current_state != new_state {
-                    *current_state = new_state;
-                    true
-                } else {
-                    false
-                }
-            };
-
-            if state_changed {
-                let _ = this.update(cx, |_, cx| {
-                    cx.emit(BluetoothStateChanged);
-                    cx.notify();
-                });
+        // Get event streams
+        let mut added_stream = match object_manager.receive_interfaces_added().await {
+            Ok(s) => Some(s),
+            Err(e) => {
+                eprintln!("[BluetoothService] Failed to receive InterfacesAdded signal: {e}");
+                None
             }
+        };
 
-            // Polling via DBus is cheap, 2 seconds is fine.
-            cx.background_executor().timer(Duration::from_secs(2)).await;
+        let mut removed_stream = match object_manager.receive_interfaces_removed().await {
+            Ok(s) => Some(s),
+            Err(e) => {
+                eprintln!("[BluetoothService] Failed to receive InterfacesRemoved signal: {e}");
+                None
+            }
+        };
+
+        loop {
+            tokio::select! {
+                Some(_) = async { 
+                    if let Some(s) = &mut added_stream { s.next().await } else { std::future::pending().await } 
+                } => {
+                    let new_state = Self::fetch_bluetooth_state_dbus(&object_manager).await;
+                    let _ = ui_tx.unbounded_send(new_state);
+                }
+                Some(_) = async {
+                    if let Some(s) = &mut removed_stream { s.next().await } else { std::future::pending().await }
+                } => {
+                    let new_state = Self::fetch_bluetooth_state_dbus(&object_manager).await;
+                    let _ = ui_tx.unbounded_send(new_state);
+                }
+                _ = tokio::time::sleep(Duration::from_secs(2)) => {
+                    let new_state = Self::fetch_bluetooth_state_dbus(&object_manager).await;
+                    let _ = ui_tx.unbounded_send(new_state);
+                }
+            }
         }
     }
 

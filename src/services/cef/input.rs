@@ -18,11 +18,14 @@ pub fn key_to_windows_code(key: &str) -> Option<i32> {
         "pageup" => Some(33),
         "pagedown" => Some(34),
         _ if key.len() == 1 => {
-            let c = key.chars().next().unwrap();
-            if c.is_ascii_alphabetic() {
-                Some(c.to_ascii_uppercase() as i32)
-            } else if c.is_ascii_digit() {
-                Some(c as i32)
+            if let Some(c) = key.chars().next() {
+                if c.is_ascii_alphabetic() {
+                    Some(c.to_ascii_uppercase() as i32)
+                } else if c.is_ascii_digit() {
+                    Some(c as i32)
+                } else {
+                    None
+                }
             } else {
                 None
             }

@@ -1,6 +1,6 @@
 use futures::StreamExt;
 use gpui::prelude::*;
-use gpui::{App, Context, Entity, EventEmitter, Global, SharedString};
+use gpui::{App, AsyncApp, Context, Entity, EventEmitter, Global, SharedString, WeakEntity};
 use parking_lot::RwLock;
 use pipewire as pw;
 use serde::{Deserialize, Serialize};
@@ -66,6 +66,16 @@ pub struct AudioService {
 
 impl EventEmitter<AudioStateChanged> for AudioService {}
 
+enum AudioUpdate {
+    State(AudioState),
+    Devices {
+        sinks: Vec<AudioDevice>,
+        sources: Vec<AudioDevice>,
+        sink_inputs: Vec<AudioStream>,
+        source_outputs: Vec<AudioStream>,
+    },
+}
+
 impl AudioService {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let state = Arc::new(RwLock::new(AudioState::default()));
@@ -74,23 +84,55 @@ impl AudioService {
         let sink_inputs = Arc::new(RwLock::new(Vec::new()));
         let source_outputs = Arc::new(RwLock::new(Vec::new()));
 
+        let (ui_tx, mut ui_rx) = futures::channel::mpsc::unbounded::<AudioUpdate>();
+
+        // 1. Worker Task (Tokio)
+        gpui_tokio::Tokio::spawn(cx, async move {
+            Self::audio_worker(ui_tx).await
+        })
+        .detach();
+
+        // 2. UI Task (GPUI)
         let state_clone = Arc::clone(&state);
         let sinks_clone = Arc::clone(&sinks);
         let sources_clone = Arc::clone(&sources);
         let sink_inputs_clone = Arc::clone(&sink_inputs);
         let source_outputs_clone = Arc::clone(&source_outputs);
-
-        cx.spawn(async move |this, cx| {
-            Self::monitor_pipewire(
-                this,
-                state_clone,
-                sinks_clone,
-                sources_clone,
-                sink_inputs_clone,
-                source_outputs_clone,
-                cx,
-            )
-            .await
+        
+        cx.spawn(move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
+            let mut cx = cx.clone();
+            async move {
+                while let Some(update) = ui_rx.next().await {
+                    match update {
+                        AudioUpdate::State(new_state) => {
+                            let mut changed = false;
+                            {
+                                let mut current = state_clone.write();
+                                if *current != new_state {
+                                    *current = new_state.clone();
+                                    changed = true;
+                                }
+                            }
+                            if changed {
+                                let _ = this.update(&mut cx, |_, cx| {
+                                    cx.emit(AudioStateChanged { state: new_state });
+                                    cx.notify();
+                                });
+                            }
+                        }
+                        AudioUpdate::Devices { sinks, sources, sink_inputs, source_outputs } => {
+                            *sinks_clone.write() = sinks;
+                            *sources_clone.write() = sources;
+                            *sink_inputs_clone.write() = sink_inputs;
+                            *source_outputs_clone.write() = source_outputs;
+                            
+                            let _ = this.update(&mut cx, |_, cx| {
+                                cx.notify();
+                            });
+                        }
+                    }
+                }
+            }
         })
         .detach();
 
@@ -103,11 +145,12 @@ impl AudioService {
         }
     }
 
-    // Helper synchronous function to get volume via wpctl process
-    fn get_volume_wpctl_sync(device: &str) -> (u8, bool) {
-        if let Ok(output) = std::process::Command::new("wpctl")
+    // Helper async function to get volume via wpctl process
+    async fn get_volume_wpctl_async(device: &str) -> (u8, bool) {
+        if let Ok(output) = tokio::process::Command::new("wpctl")
             .args(["get-volume", device])
             .output()
+            .await
         {
             if let Ok(text) = String::from_utf8(output.stdout) {
                 let muted = text.contains("[MUTED]");
@@ -121,11 +164,12 @@ impl AudioService {
         (50, false)
     }
 
-    // Get default sink/source ID via wpctl inspect
-    fn get_default_device_id(device: &str) -> Option<u32> {
-        if let Ok(output) = std::process::Command::new("wpctl")
+    // Get default sink/source ID via wpctl inspect asynchronously
+    async fn get_default_device_id_async(device: &str) -> Option<u32> {
+        if let Ok(output) = tokio::process::Command::new("wpctl")
             .args(["inspect", device])
             .output()
+            .await
         {
             if let Ok(text) = String::from_utf8(output.stdout) {
                 // First line: "id 76, type PipeWire:Interface:Node"
@@ -141,16 +185,8 @@ impl AudioService {
         None
     }
 
-    #[allow(clippy::too_many_arguments)]
-    async fn monitor_pipewire(
-        this: gpui::WeakEntity<Self>,
-        state: Arc<RwLock<AudioState>>,
-        sinks: Arc<RwLock<Vec<AudioDevice>>>,
-        sources: Arc<RwLock<Vec<AudioDevice>>>,
-        sink_inputs: Arc<RwLock<Vec<AudioStream>>>,
-        source_outputs: Arc<RwLock<Vec<AudioStream>>>,
-        cx: &mut gpui::AsyncApp,
-    ) {
+    // Worker running in Tokio context, Send-safe (no GPUI types)
+    async fn audio_worker(ui_tx: futures::channel::mpsc::UnboundedSender<AudioUpdate>) {
         loop {
             let (tx, mut rx) = futures::channel::mpsc::unbounded::<PwEvent>();
             let nodes_data: Arc<RwLock<HashMap<u32, PwNodeInfo>>> =
@@ -264,24 +300,16 @@ impl AudioService {
                 }
             });
 
-            // Initial state fetch - Offload blocking call to background executor
-            let (sink_vol, sink_muted) = cx
-                .background_executor()
-                .spawn(async move { Self::get_volume_wpctl_sync("@DEFAULT_AUDIO_SINK@") })
-                .await;
-
-            let (source_vol, source_muted) = cx
-                .background_executor()
-                .spawn(async move { Self::get_volume_wpctl_sync("@DEFAULT_AUDIO_SOURCE@") })
-                .await;
-
-            {
-                let mut s = state.write();
-                s.sink_volume = sink_vol;
-                s.sink_muted = sink_muted;
-                s.source_volume = source_vol;
-                s.source_muted = source_muted;
-            }
+            // Initial fetch
+            let (sink_vol, sink_muted) = Self::get_volume_wpctl_async("@DEFAULT_AUDIO_SINK@").await;
+            let (source_vol, source_muted) = Self::get_volume_wpctl_async("@DEFAULT_AUDIO_SOURCE@").await;
+            
+            let _ = ui_tx.unbounded_send(AudioUpdate::State(AudioState {
+                sink_volume: sink_vol,
+                sink_muted,
+                source_volume: source_vol,
+                source_muted,
+            }));
 
             let mut last_update = std::time::Instant::now();
             let debounce = std::time::Duration::from_millis(50);
@@ -294,53 +322,41 @@ impl AudioService {
                 let now = std::time::Instant::now();
                 if now.duration_since(last_update) < debounce {
                     while rx.try_next().is_ok() {}
-                    cx.background_executor().timer(debounce).await;
+                    tokio::time::sleep(debounce).await;
                 }
                 last_update = std::time::Instant::now();
 
-                // Update volumes asynchronously by offloading blocking calls
-                let (sink_vol, sink_muted) = cx
-                    .background_executor()
-                    .spawn(async move { Self::get_volume_wpctl_sync("@DEFAULT_AUDIO_SINK@") })
-                    .await;
-
-                let (source_vol, source_muted) = cx
-                    .background_executor()
-                    .spawn(async move { Self::get_volume_wpctl_sync("@DEFAULT_AUDIO_SOURCE@") })
-                    .await;
+                // Update volumes
+                let (sink_vol, sink_muted) = Self::get_volume_wpctl_async("@DEFAULT_AUDIO_SINK@").await;
+                let (source_vol, source_muted) = Self::get_volume_wpctl_async("@DEFAULT_AUDIO_SOURCE@").await;
+                
+                let _ = ui_tx.unbounded_send(AudioUpdate::State(AudioState {
+                    sink_volume: sink_vol,
+                    sink_muted,
+                    source_volume: source_vol,
+                    source_muted,
+                }));
 
                 // Get default device IDs
-                let default_sink_id = cx
-                    .background_executor()
-                    .spawn(async { Self::get_default_device_id("@DEFAULT_AUDIO_SINK@") })
-                    .await;
+                let default_sink_id = Self::get_default_device_id_async("@DEFAULT_AUDIO_SINK@").await;
+                let default_source_id = Self::get_default_device_id_async("@DEFAULT_AUDIO_SOURCE@").await;
 
-                let default_source_id = cx
-                    .background_executor()
-                    .spawn(async { Self::get_default_device_id("@DEFAULT_AUDIO_SOURCE@") })
-                    .await;
-
-                // Build device lists from collected nodes
+                // Build device lists
                 let nodes_snapshot = nodes_data.read();
-
                 let mut new_sinks = Vec::new();
                 let mut new_sources = Vec::new();
                 let mut new_sink_inputs = Vec::new();
                 let mut new_source_outputs = Vec::new();
 
                 for info in nodes_snapshot.values() {
-                    if info.media_class.contains("Audio/Sink")
-                        && !info.media_class.contains("Stream")
-                    {
+                    if info.media_class.contains("Audio/Sink") && !info.media_class.contains("Stream") {
                         new_sinks.push(AudioDevice {
                             id: info.id,
                             name: info.name.clone(),
                             description: info.description.clone(),
                             is_default: default_sink_id == Some(info.id),
                         });
-                    } else if info.media_class.contains("Audio/Source")
-                        && !info.media_class.contains("Stream")
-                    {
+                    } else if info.media_class.contains("Audio/Source") && !info.media_class.contains("Stream") {
                         new_sources.push(AudioDevice {
                             id: info.id,
                             name: info.name.clone(),
@@ -367,39 +383,16 @@ impl AudioService {
                 }
                 drop(nodes_snapshot);
 
-                *sinks.write() = new_sinks;
-                *sources.write() = new_sources;
-                *sink_inputs.write() = new_sink_inputs;
-                *source_outputs.write() = new_source_outputs;
-
-                let new_state = AudioState {
-                    sink_volume: sink_vol,
-                    sink_muted,
-                    source_volume: source_vol,
-                    source_muted,
-                };
-
-                let changed = {
-                    let mut current = state.write();
-                    let changed = *current != new_state;
-                    if changed {
-                        *current = new_state.clone();
-                    }
-                    changed
-                };
-
-                let _ = this.update(cx, |_, cx| {
-                    if changed {
-                        cx.emit(AudioStateChanged { state: new_state });
-                    }
-                    cx.notify();
+                let _ = ui_tx.unbounded_send(AudioUpdate::Devices {
+                    sinks: new_sinks,
+                    sources: new_sources,
+                    sink_inputs: new_sink_inputs,
+                    source_outputs: new_source_outputs,
                 });
             }
 
             eprintln!("[AudioService] PipeWire connection lost, reconnecting...");
-            cx.background_executor()
-                .timer(std::time::Duration::from_secs(2))
-                .await;
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
         }
     }
 

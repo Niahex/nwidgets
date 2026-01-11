@@ -1,9 +1,8 @@
-use futures_util::StreamExt;
+use futures::StreamExt;
 use gpui::prelude::*;
 use gpui::{App, AsyncApp, Context, Entity, EventEmitter, Global, WeakEntity};
 use parking_lot::RwLock;
 use std::sync::Arc;
-use std::time::Duration;
 use zbus::{proxy, zvariant::OwnedObjectPath, Connection};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -132,8 +131,39 @@ impl NetworkService {
         let state = Arc::new(RwLock::new(NetworkState::default()));
         let state_clone = Arc::clone(&state);
 
-        cx.spawn(async move |this, cx| Self::monitor_network(this, state_clone, cx).await)
-            .detach();
+        let (ui_tx, mut ui_rx) = futures::channel::mpsc::unbounded::<NetworkState>();
+
+        // 1. Worker Task (Tokio)
+        gpui_tokio::Tokio::spawn(cx, async move {
+            Self::network_worker(ui_tx).await
+        })
+        .detach();
+
+        // 2. UI Task (GPUI)
+        cx.spawn(move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
+            let mut cx = cx.clone();
+            async move {
+                while let Some(new_state) = ui_rx.next().await {
+                    let state_changed = {
+                        let mut current_state = state_clone.write();
+                        if *current_state != new_state {
+                            *current_state = new_state;
+                            true
+                        } else {
+                            false
+                        }
+                    };
+
+                    if state_changed {
+                        let _ = this.update(&mut cx, |_, cx| {
+                            cx.emit(NetworkStateChanged);
+                            cx.notify();
+                        });
+                    }
+                }
+            }
+        })
+        .detach();
 
         Self { state }
     }
@@ -142,11 +172,7 @@ impl NetworkService {
         self.state.read().clone()
     }
 
-    async fn monitor_network(
-        this: WeakEntity<Self>,
-        state: Arc<RwLock<NetworkState>>,
-        cx: &mut AsyncApp,
-    ) {
+    async fn network_worker(ui_tx: futures::channel::mpsc::UnboundedSender<NetworkState>) {
         // Initialize DBus connection
         let conn = match Connection::system().await {
             Ok(c) => c,
@@ -165,57 +191,30 @@ impl NetworkService {
             }
         };
 
-        // Subscribe to properties changes on the main NM object
-        let mut properties_stream = Some(nm_proxy.receive_connectivity_changed().await);
-        // Also listen for ActiveConnections changes if possible, but Connectivity is the main trigger.
-        // Or simply wake up on any property change on the interface.
-        // Actually, let's try to get a general stream if we can, or just loop with a select.
-        // For simplicity and robustness, let's use the Connectivity stream + a fallback timer.
-
         // Initial fetch
-        let mut _last_update = std::time::Instant::now();
+        let initial_state = Self::fetch_network_state_dbus(&conn, &nm_proxy).await;
+        let _ = ui_tx.unbounded_send(initial_state);
+
+        // Subscribe to properties changes
+        // receive_connectivity_changed returns PropertyStream (not Result)
+        let mut connectivity_stream = nm_proxy.receive_connectivity_changed().await;
+        let mut active_connections_stream = nm_proxy.receive_active_connections_changed().await;
 
         loop {
-            // Fetch state via DBus
-            let new_state = Self::fetch_network_state_dbus(&conn, &nm_proxy).await;
-
-            // Update state if changed
-            let state_changed = {
-                let mut current_state = state.write();
-                if *current_state != new_state {
-                    *current_state = new_state;
-                    true
-                } else {
-                    false
+            tokio::select! {
+                Some(_) = connectivity_stream.next() => {
+                    let new_state = Self::fetch_network_state_dbus(&conn, &nm_proxy).await;
+                    let _ = ui_tx.unbounded_send(new_state);
                 }
-            };
-
-            if state_changed {
-                let _ = this.update(cx, |_, cx| {
-                    cx.emit(NetworkStateChanged);
-                    cx.notify();
-                });
-            }
-
-            // Wait for next event or timeout
-            // We use a shorter timeout (e.g. 5s) to also catch signal strength changes which might not trigger global connectivity changes
-            // (Signal strength is on the AccessPoint object, which we are not monitoring directly here).
-            // To properly monitor signal strength, we'd need to monitor the specific AP object.
-            // For now, 5s polling for signal strength is acceptable, but immediate reaction for Connectivity is good.
-
-            if let Some(stream) = &mut properties_stream {
-                tokio::select! {
-                    _ = stream.next() => {
-                        // Connectivity changed, loop immediately to fetch new state
-                        continue;
-                    }
-                    _ = cx.background_executor().timer(Duration::from_secs(5)) => {
-                        // Timeout, loop to refresh (e.g. signal strength)
-                        continue;
-                    }
+                Some(_) = active_connections_stream.next() => {
+                    let new_state = Self::fetch_network_state_dbus(&conn, &nm_proxy).await;
+                    let _ = ui_tx.unbounded_send(new_state);
                 }
-            } else {
-                cx.background_executor().timer(Duration::from_secs(5)).await;
+                // Fallback polling for signal strength
+                _ = tokio::time::sleep(std::time::Duration::from_secs(5)) => {
+                     let new_state = Self::fetch_network_state_dbus(&conn, &nm_proxy).await;
+                     let _ = ui_tx.unbounded_send(new_state);
+                }
             }
         }
     }
