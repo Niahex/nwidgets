@@ -117,6 +117,7 @@ pub struct BrowserView {
     cursor: Arc<Mutex<CefCursor>>,
     selected_text: Arc<Mutex<String>>,
     loaded: Arc<Mutex<bool>>,
+    hidden: Arc<Mutex<bool>>,
     last_version: u64,
     cached_image: Option<Arc<RenderImage>>,
     find_bar: FindBar,
@@ -138,6 +139,7 @@ impl BrowserView {
         let selected_text = Arc::new(Mutex::new(String::new()));
         let css_arc = Arc::new(Mutex::new(css.map(String::from)));
         let loaded = Arc::new(Mutex::new(false));
+        let hidden = Arc::new(Mutex::new(false));
 
         let browser = create_browser(
             url,
@@ -181,6 +183,7 @@ impl BrowserView {
             cursor,
             selected_text,
             loaded,
+            hidden,
             last_version: 0,
             cached_image: None,
             find_bar: FindBar::new(),
@@ -225,6 +228,15 @@ impl BrowserView {
             browser.reload();
         }
     }
+
+    pub fn set_hidden(&self, hidden: bool) {
+        *self.hidden.lock() = hidden;
+        if let Some(browser) = &self.browser {
+            if let Some(host) = browser.host() {
+                host.was_hidden(hidden as i32);
+            }
+        }
+    }
 }
 
 impl Focusable for BrowserView {
@@ -235,6 +247,12 @@ impl Focusable for BrowserView {
 
 impl gpui::Render for BrowserView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let is_hidden = *self.hidden.lock();
+        
+        if is_hidden {
+            return div().id("browser-hidden").size_0().into_any_element();
+        }
+        
         let w = *self.width.lock();
         let h = *self.height.lock();
         let current_version = self.buffer.version();

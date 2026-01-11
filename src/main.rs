@@ -268,7 +268,7 @@ fn main() {
                         anchor: Anchor::TOP | Anchor::BOTTOM | Anchor::LEFT,
                         exclusive_zone: None,
                         margin: Some((px(40.0), px(0.0), px(20.0), px(10.0))),
-                        keyboard_interactivity: KeyboardInteractivity::OnDemand,
+                        keyboard_interactivity: KeyboardInteractivity::None,
                         ..Default::default()
                     }),
                     app_id: Some("nwidgets-chat".to_string()),
@@ -283,11 +283,17 @@ fn main() {
             let chat_window_toggle = Arc::clone(&chat_window_arc);
 
             // Subscribe to chat toggle events
-            cx.subscribe(&chat_service, move |_service, _event: &ChatToggled, cx| {
+            cx.subscribe(&chat_service, move |service, _event: &ChatToggled, cx| {
                 let window = chat_window_toggle.lock();
-                let _ = window.update(cx, |chat, _window, cx| {
-                    if let Some(url) = chat.current_url(cx) {
-                        widgets::chat::save_url(&url);
+                let visible = service.read(cx).visible;
+                let _ = window.update(cx, |chat, window, cx| {
+                    if visible {
+                        window.resize(size(px(600.0), px(1370.0)));
+                    } else {
+                        if let Some(url) = chat.current_url(cx) {
+                            widgets::chat::save_url(&url);
+                        }
+                        window.resize(size(px(1.0), px(1.0)));
                     }
                     cx.notify();
                 });

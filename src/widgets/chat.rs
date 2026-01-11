@@ -1,5 +1,6 @@
 use crate::services::cef::BrowserView;
 use crate::services::chat::{ChatService, ChatToggled};
+use gpui::prelude::*;
 use gpui::{div, AppContext, Context, Entity, IntoElement, ParentElement, Styled, Window};
 use std::path::PathBuf;
 
@@ -186,7 +187,13 @@ impl ChatWidget {
         let browser = cx.new(|cx| BrowserView::new(&url, 600, 1370, Some(CSS), cx));
         let chat_service = ChatService::global(cx);
         
-        cx.subscribe(&chat_service, |_this, _service, _event: &ChatToggled, cx| {
+        // Set initially hidden
+        browser.read(cx).set_hidden(true);
+        
+        let browser_clone = browser.clone();
+        cx.subscribe(&chat_service, move |_this, service, _event: &ChatToggled, cx| {
+            let visible = service.read(cx).visible;
+            browser_clone.read(cx).set_hidden(!visible);
             cx.notify();
         }).detach();
         
@@ -204,15 +211,18 @@ impl ChatWidget {
 
 impl gpui::Render for ChatWidget {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let theme = cx.global::<crate::theme::Theme>();
         let visible = self.chat_service.read(cx).visible;
         
         if !visible {
-            return div().size_0().into_any_element();
+            return gpui::Empty.into_any_element();
         }
         
+        let theme = cx.global::<crate::theme::Theme>();
+        
         div()
+            .id("chat-root")
             .size_full()
+            .occlude()
             .bg(theme.bg)
             .rounded(gpui::px(18.))
             .overflow_hidden()
