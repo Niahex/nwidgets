@@ -209,7 +209,7 @@ cef::wrap_display_handler! {
         ) {
             if let Some(title_str) = title {
                 let s = title_str.to_string();
-                if let Some(text) = s.strip_prefix("__NWIDGETS_COPY__:") {
+                if let Some(text) = super::clipboard::extract_clipboard_data(&s) {
                     let _ = self.handler.clipboard_tx.unbounded_send(text.to_string());
                 }
             }

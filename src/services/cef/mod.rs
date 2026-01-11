@@ -1,4 +1,5 @@
 mod browser;
+mod clipboard;
 mod find;
 mod handlers;
 mod init;

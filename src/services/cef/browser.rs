@@ -143,12 +143,19 @@ impl BrowserView {
         let mouse_pressed = Arc::new(Mutex::new(false));
         let cursor = Arc::new(Mutex::new(CefCursor::Default));
         let selected_text = Arc::new(Mutex::new(String::new()));
-        let script_arc = Arc::new(Mutex::new(injection_script.map(String::from)));
+        
+        // Combine clipboard script with user injection script
+        let full_script = match injection_script {
+            Some(script) => format!("{}{}", super::clipboard::CLIPBOARD_SCRIPT, script),
+            None => super::clipboard::CLIPBOARD_SCRIPT.to_string(),
+        };
+        let script_arc = Arc::new(Mutex::new(Some(full_script)));
+        
         let loaded = Arc::new(Mutex::new(false));
         let hidden = Arc::new(Mutex::new(false));
 
         let (tx, mut rx) = futures::channel::mpsc::unbounded();
-        let (clipboard_tx, mut clipboard_rx) = futures::channel::mpsc::unbounded::<String>();
+        let (clipboard_tx, clipboard_rx) = super::clipboard::create_clipboard_channel();
 
         let browser = create_browser(
             url,
@@ -172,17 +179,7 @@ impl BrowserView {
         }
 
         // Clipboard handler
-        cx.spawn(|_, cx: &mut AsyncApp| {
-            let cx = cx.clone();
-            async move {
-                while let Some(text) = clipboard_rx.next().await {
-                    let _ = cx.update(|cx| {
-                        cx.write_to_clipboard(gpui::ClipboardItem::new_string(text));
-                    });
-                }
-            }
-        })
-        .detach();
+        super::clipboard::spawn_clipboard_handler(cx, clipboard_rx);
 
         // Event-driven repaint loop (Push)
         cx.spawn(move |view: WeakEntity<BrowserView>, cx: &mut AsyncApp| {
