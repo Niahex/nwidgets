@@ -52,6 +52,13 @@ cef::wrap_app! {
                     Some(&"ozone-platform".into()),
                     Some(&"wayland".into()),
                 );
+                // Force software rendering to avoid EGL conflicts with GPUI
+                cmd.append_switch(Some(&"disable-gpu".into()));
+                cmd.append_switch(Some(&"disable-gpu-compositing".into()));
+                cmd.append_switch_with_value(
+                    Some(&"use-gl".into()),
+                    Some(&"swiftshader".into()),
+                );
                 // PipeWire for screen capture and audio
                 cmd.append_switch(Some(&"enable-features=WebRTCPipeWireCapturer,SmoothScrolling".into()));
                 cmd.append_switch_with_value(

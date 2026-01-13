@@ -166,8 +166,10 @@
           RUST_BACKTRACE = "full";
           LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
           CEF_PATH = cefAssets;
-          # Point search and rpath directly to cefAssets since we flattened it
-          RUSTFLAGS = "-C link-arg=-Wl,-rpath,${cefAssets} -C link-arg=-L${cefAssets}";
+          # Vulkan/Wayland rpath MUST come before CEF (like Zed does)
+          RUSTFLAGS = "-C link-arg=-Wl,-rpath,${pkgs.lib.makeLibraryPath [pkgs.vulkan-loader pkgs.wayland]} -C link-arg=-Wl,-rpath,${cefAssets} -C link-arg=-L${cefAssets}";
+          # Force blade-graphics to find Vulkan
+          NIX_LDFLAGS = "-rpath ${pkgs.lib.makeLibraryPath [pkgs.vulkan-loader pkgs.wayland]}";
         };
 
         # Build artifacts
@@ -236,9 +238,14 @@
           nativeBuildInputs = devTools;
           env = envVars;
 
-          LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath (buildInputs ++ runtimeDependencies)}:/run/opengl/driver/lib:/run/opengl/lib:${cefAssets}";
-          VK_ICD_FILENAMES = "/run/opengl-driver/share/vulkan/icd.d/nvidia_icd.x86_64.json:/run/opengl-driver/share/vulkan/icd.d/radeon_icd.x86_64.json:/run/opengl-driver/share/vulkan/icd.d/intel_icd.x86_64.json";
+          # Vulkan libs first, then system GL, then CEF
+          LD_LIBRARY_PATH = "/run/opengl-driver/lib:${pkgs.lib.makeLibraryPath (buildInputs ++ runtimeDependencies)}:${cefAssets}";
+          VK_ICD_FILENAMES = "/run/opengl-driver/share/vulkan/icd.d/radeon_icd.x86_64.json";
+          __EGL_VENDOR_LIBRARY_FILENAMES = "/run/opengl-driver/share/glvnd/egl_vendor.d/50_mesa.json";
           FONTCONFIG_FILE = pkgs.makeFontsConf {fontDirectories = buildInputs;};
+
+          # Force GPUI to use Vulkan backend instead of EGL
+          GPUI_BACKEND = "vulkan";
 
           shellHook = ''
             echo "[🦀 Rust $(rustc --version)] - Ready to develop nwidgets!"

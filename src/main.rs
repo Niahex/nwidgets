@@ -127,9 +127,6 @@ fn main() {
         }
     }
 
-    // No args - start the full app
-    init_cef();
-
     // Determine assets path
     let assets_path = if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
         PathBuf::from(manifest_dir)
@@ -140,12 +137,16 @@ fn main() {
             .unwrap_or_else(|| PathBuf::from("."))
     };
 
+    // Initialize GPUI FIRST, before CEF loads its EGL libs
     Application::new()
         .with_assets(Assets {
             base: assets_path,
             cache: parking_lot::RwLock::new(HashMap::new()),
         })
         .run(|cx: &mut App| {
+            // Initialize CEF after GPUI has initialized its GPU context
+            init_cef();
+
             gpui_tokio::init(cx);
             cx.set_global(theme::Theme::nord_dark());
 
