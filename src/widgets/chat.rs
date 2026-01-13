@@ -70,6 +70,10 @@ impl ChatWidget {
     pub fn navigate(&self, url: &str, cx: &mut gpui::App) {
         self.browser.read(cx).navigate(url);
     }
+
+    pub fn resize_browser(&self, width: u32, height: u32, cx: &gpui::App) {
+        self.browser.read(cx).resize(width, height);
+    }
 }
 
 impl gpui::Render for ChatWidget {

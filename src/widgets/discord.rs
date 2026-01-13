@@ -48,6 +48,12 @@ impl DiscordWidget {
             discord_service,
         }
     }
+
+    pub fn resize_browser(&self, width: u32, height: u32, cx: &gpui::App) {
+        if let Some(browser) = &self.browser {
+            browser.read(cx).resize(width, height);
+        }
+    }
 }
 
 impl gpui::Render for DiscordWidget {

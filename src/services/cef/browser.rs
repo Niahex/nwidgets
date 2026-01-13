@@ -258,6 +258,16 @@ impl BrowserView {
             }
         }
     }
+
+    pub fn resize(&self, width: u32, height: u32) {
+        *self.width.lock() = width;
+        *self.height.lock() = height;
+        if let Some(browser) = &self.browser {
+            if let Some(host) = browser.host() {
+                host.was_resized();
+            }
+        }
+    }
 }
 
 impl Focusable for BrowserView {

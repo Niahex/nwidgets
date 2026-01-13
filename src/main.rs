@@ -247,7 +247,10 @@ fn main() {
                 let fullscreen = HyprlandService::global(cx).read(cx).has_fullscreen();
                 let _ = window.update(cx, |chat, window, cx| {
                     if visible {
-                        window.resize(size(px(600.0), px(1370.0)));
+                        let height = if fullscreen { 1440 } else { 1370 };
+                        window.resize(size(px(600.0), px(height as f32)));
+                        chat.resize_browser(600, height, cx);
+                        window.set_margin(if fullscreen { 0 } else { 40 }, 0, if fullscreen { 0 } else { 20 }, if fullscreen { 0 } else { 10 });
                         window.set_exclusive_edge(Anchor::LEFT);
                         window.set_exclusive_zone(if fullscreen { 0 } else { 600 });
                     } else {
@@ -341,9 +344,12 @@ fn main() {
                     cc_service2.update(cx, |cc, cx| cc.toggle(cx));
                 }
                 
-                let _ = window.update(cx, |_discord, window, cx| {
+                let _ = window.update(cx, |discord, window, cx| {
                     if visible {
-                        window.resize(size(px(1500.0), px(1370.0)));
+                        let height = if fullscreen { 1440 } else { 1370 };
+                        window.resize(size(px(1500.0), px(height as f32)));
+                        discord.resize_browser(1500, height, cx);
+                        window.set_margin(if fullscreen { 0 } else { 40 }, if fullscreen { 0 } else { 10 }, if fullscreen { 0 } else { 20 }, 0);
                         window.set_exclusive_edge(Anchor::RIGHT);
                         window.set_exclusive_zone(if fullscreen { 0 } else { 1500 });
                     } else {
