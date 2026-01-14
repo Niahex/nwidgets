@@ -17,7 +17,6 @@ use services::{
     chat::{ChatNavigate, ChatService, ChatToggled},
     control_center::{ControlCenterService, ControlCenterStateChanged},
     dbus::DbusService,
-    discord::{DiscordService, DiscordToggled},
     hyprland::{FullscreenChanged, HyprlandService, WorkspaceChanged},
     mpris::MprisService,
     network::NetworkService,
@@ -31,7 +30,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use widgets::{
     chat::ChatWidget,
-    discord::DiscordWidget,
     notifications::{NotificationsStateChanged, NotificationsWindowManager},
     panel::Panel,
 };
@@ -161,7 +159,6 @@ fn main() {
             CefService::init(cx);
             DbusService::init(cx);
             let chat_service = ChatService::init(cx);
-            let discord_service = DiscordService::init(cx);
             let notif_service = NotificationService::init(cx);
             let osd_service = OsdService::init(cx);
             ControlCenterService::init(cx);
@@ -290,114 +287,6 @@ fn main() {
                 let _ = window.update(cx, |chat, _window, cx| {
                     chat.navigate(&event.url, cx);
                 });
-            })
-            .detach();
-
-            // Discord window - created at startup, starts hidden (1x1), CEF lazy-loaded on first toggle
-            let discord_window = cx
-                .open_window(
-                    WindowOptions {
-                        window_bounds: Some(WindowBounds::Windowed(Bounds {
-                            origin: Point { x: px(0.0), y: px(0.0) },
-                            size: Size { width: px(1.0), height: px(1.0) },
-                        })),
-                        titlebar: None,
-                        window_background: WindowBackgroundAppearance::Transparent,
-                        window_decorations: Some(WindowDecorations::Client),
-                        kind: WindowKind::LayerShell(LayerShellOptions {
-                            namespace: "nwidgets-discord".to_string(),
-                            layer: Layer::Overlay,
-                            anchor: Anchor::TOP | Anchor::BOTTOM | Anchor::RIGHT,
-                            exclusive_zone: None,
-                            margin: Some((px(40.0), px(10.0), px(20.0), px(0.0))),
-                            keyboard_interactivity: KeyboardInteractivity::OnDemand,
-                            ..Default::default()
-                        }),
-                        app_id: Some("nwidgets-discord".to_string()),
-                        is_movable: false,
-                        ..Default::default()
-                    },
-                    |_window, cx| cx.new(DiscordWidget::new),
-                )
-                .unwrap();
-
-            let discord_window_arc: Arc<Mutex<WindowHandle<DiscordWidget>>> =
-                Arc::new(Mutex::new(discord_window));
-
-            let discord_window_arc2 = Arc::clone(&discord_window_arc);
-            let discord_window_arc3 = Arc::clone(&discord_window_arc);
-            let discord_window_arc4 = Arc::clone(&discord_window_arc);
-            let discord_service2 = discord_service.clone();
-            let discord_service3 = discord_service.clone();
-            let discord_service4 = discord_service.clone();
-            let hyprland_service = HyprlandService::global(cx);
-            let cc_service = ControlCenterService::global(cx);
-
-            // Discord toggle handler - also close control center if open
-            let cc_service2 = cc_service.clone();
-            cx.subscribe(&discord_service, move |service, _event: &DiscordToggled, cx| {
-                let window = discord_window_arc.lock();
-                let visible = service.read(cx).visible;
-                let fullscreen = HyprlandService::global(cx).read(cx).has_fullscreen();
-                
-                // Close control center when opening Discord
-                if visible && cc_service2.read(cx).is_visible() {
-                    cc_service2.update(cx, |cc, cx| cc.toggle(cx));
-                }
-                
-                let _ = window.update(cx, |discord, window, cx| {
-                    if visible {
-                        let height = if fullscreen { 1440 } else { 1370 };
-                        window.resize(size(px(1500.0), px(height as f32)));
-                        discord.resize_browser(1500, height, cx);
-                        window.set_margin(if fullscreen { 0 } else { 40 }, if fullscreen { 0 } else { 10 }, if fullscreen { 0 } else { 20 }, 0);
-                        window.set_exclusive_edge(Anchor::RIGHT);
-                        window.set_exclusive_zone(if fullscreen { 0 } else { 1500 });
-                    } else {
-                        window.set_exclusive_zone(0);
-                        window.resize(size(px(1.0), px(1.0)));
-                    }
-                    cx.notify();
-                });
-            })
-            .detach();
-
-            // Hide Discord when control center opens
-            cx.subscribe(&cc_service, move |_cc, _event: &ControlCenterStateChanged, cx| {
-                let discord_visible = discord_service3.read(cx).visible;
-                let cc_visible = ControlCenterService::global(cx).read(cx).is_visible();
-                let window = discord_window_arc3.lock();
-                
-                if discord_visible && cc_visible {
-                    let _ = window.update(cx, |_discord, window, cx| {
-                        window.set_exclusive_zone(0);
-                        window.resize(size(px(1.0), px(1.0)));
-                        cx.notify();
-                    });
-                }
-            })
-            .detach();
-
-            // Close Discord when entering fullscreen workspace (if already open)
-            cx.subscribe(&hyprland_service, move |_hypr, event: &FullscreenChanged, cx| {
-                let discord_visible = discord_service2.read(cx).visible;
-                
-                if discord_visible && event.0 {
-                    // Fullscreen detected while Discord open → close Discord
-                    discord_service2.update(cx, |ds, cx| ds.toggle(cx));
-                }
-            })
-            .detach();
-
-            // Close Discord when switching to workspace with fullscreen
-            cx.subscribe(&HyprlandService::global(cx), move |_hypr, _event: &WorkspaceChanged, cx| {
-                let discord_visible = discord_service4.read(cx).visible;
-                let fullscreen = HyprlandService::global(cx).read(cx).has_fullscreen();
-                
-                if discord_visible && fullscreen {
-                    // Switched to fullscreen workspace → close Discord
-                    discord_service4.update(cx, |ds, cx| ds.toggle(cx));
-                }
             })
             .detach();
 
