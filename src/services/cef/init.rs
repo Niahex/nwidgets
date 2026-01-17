@@ -20,7 +20,7 @@ impl CefService {
                     cx.background_executor()
                         .timer(Duration::from_millis(33)) // ~30fps message loop
                         .await;
-                    let _ = cx.update(|_| {
+                    cx.update(|_| {
                         cef::do_message_loop_work();
                     });
                 }

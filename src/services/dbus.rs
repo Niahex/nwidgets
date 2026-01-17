@@ -64,13 +64,13 @@ impl DbusService {
                 while let Some(cmd) = rx.next().await {
                     match cmd {
                         DbusCommand::ToggleChat => {
-                            let _ = cx.update(|cx| {
+                            cx.update(|cx| {
                                 let chat = super::chat::ChatService::global(cx);
                                 chat.update(cx, |chat, mcx| chat.toggle(mcx));
                             });
                         }
                         DbusCommand::PinChat => {
-                            let _ = cx.update(|cx| {
+                            cx.update(|cx| {
                                 let chat = super::chat::ChatService::global(cx);
                                 chat.update(cx, |chat, mcx| chat.toggle_pin(mcx));
                             });

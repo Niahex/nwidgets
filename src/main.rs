@@ -15,7 +15,7 @@ use services::{
     bluetooth::BluetoothService,
     cef::CefService,
     chat::{ChatNavigate, ChatService, ChatToggled},
-    control_center::{ControlCenterService, ControlCenterStateChanged},
+    control_center::ControlCenterService,
     dbus::DbusService,
     hyprland::{FullscreenChanged, HyprlandService, WorkspaceChanged},
     mpris::MprisService,
@@ -233,8 +233,8 @@ fn main() {
             let chat_window_arc: Arc<Mutex<WindowHandle<ChatWidget>>> =
                 Arc::new(Mutex::new(chat_window));
             let chat_window_toggle = Arc::clone(&chat_window_arc);
-            let chat_window_fs = Arc::clone(&chat_window_arc);
-            let chat_window_ws = Arc::clone(&chat_window_arc);
+            let _chat_window_fs = Arc::clone(&chat_window_arc);
+            let _chat_window_ws = Arc::clone(&chat_window_arc);
             let chat_service2 = chat_service.clone();
             let chat_service3 = chat_service.clone();
 

@@ -43,7 +43,7 @@ impl ControlCenterService {
             cx.spawn(move |_, cx: &mut AsyncApp| {
                 let cx = cx.clone();
                 async move {
-                    let _ = cx.update(|cx| {
+                    cx.update(|cx| {
                         service.open_window(cx);
                     });
                 }

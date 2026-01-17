@@ -31,11 +31,11 @@ pub fn spawn_clipboard_handler<V: 'static>(
     clipboard_rx: futures::channel::mpsc::UnboundedReceiver<String>,
 ) {
     cx.spawn(|_, cx: &mut gpui::AsyncApp| {
-        let mut cx = cx.clone();
+        let cx = cx.clone();
         async move {
             let mut clipboard_rx = clipboard_rx;
             while let Some(text) = futures::StreamExt::next(&mut clipboard_rx).await {
-                let _ = cx.update(|cx| {
+                cx.update(|cx| {
                     cx.write_to_clipboard(ClipboardItem::new_string(text));
                 });
             }
