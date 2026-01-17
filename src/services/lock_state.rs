@@ -60,10 +60,6 @@ impl LockMonitor {
         service
     }
 
-    pub fn is_locked(&self) -> bool {
-        self.capslock_state
-    }
-
     fn read_capslock_state() -> bool {
         // Lire l'état CapsLock via /sys/class/leds/input*::capslock/brightness
         if let Ok(entries) = fs::read_dir("/sys/class/leds") {

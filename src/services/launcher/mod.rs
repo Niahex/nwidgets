@@ -47,7 +47,7 @@ impl LauncherService {
         
         // Scan applications in background at startup
         cx.spawn(|cx: &mut AsyncApp| {
-            let mut cx = cx.clone();
+            let cx = cx.clone();
             async move {
                 cx.background_executor().spawn(async {
                     let apps = crate::services::launcher::applications::scan_applications();
