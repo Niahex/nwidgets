@@ -3,9 +3,8 @@ use gpui::prelude::*;
 use gpui::{App, AsyncApp, BackgroundExecutor, Context, Entity, EventEmitter, Global, WeakEntity};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
-use std::io::{BufRead, BufReader};
-use std::os::unix::net::UnixStream;
 use std::sync::Arc;
+use tokio::io::AsyncBufReadExt;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Workspace {
@@ -183,11 +182,13 @@ impl HyprlandService {
 
         let (socket_tx, mut socket_rx) = futures::channel::mpsc::unbounded();
 
-        // Dedicated thread for blocking socket read
-        std::thread::spawn(move || {
-            if let Ok(stream) = UnixStream::connect(&socket_path) {
-                let reader = BufReader::new(stream);
-                for line in reader.lines().map_while(Result::ok) {
+        // Async socket reader using tokio
+        tokio::spawn(async move {
+            if let Ok(stream) = tokio::net::UnixStream::connect(&socket_path).await {
+                let reader = tokio::io::BufReader::new(stream);
+                let mut lines = reader.lines();
+                
+                while let Ok(Some(line)) = lines.next_line().await {
                     if line.starts_with("workspace>>")
                         || line.starts_with("createworkspace>>")
                         || line.starts_with("destroyworkspace>>")
