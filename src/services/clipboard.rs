@@ -49,10 +49,10 @@ impl ClipboardMonitor {
                                 .await
                             {
                                 if let Ok(content) = String::from_utf8(output.stdout) {
-                                    if !content.trim().is_empty() {
-                                        if tx.unbounded_send(content).is_err() {
-                                            break;
-                                        }
+                                    if !content.trim().is_empty()
+                                        && tx.unbounded_send(content).is_err()
+                                    {
+                                        break;
                                     }
                                 }
                             }
@@ -79,15 +79,15 @@ impl ClipboardMonitor {
                             .map(|w| w.class == "org.keepassxc.KeePassXC")
                             .unwrap_or(false);
 
-                        if !should_exclude {
-                            if this.last_content.as_ref() != Some(&content) {
-                                this.last_content = Some(content.clone());
-                                this.history.push_front(content.clone());
-                                if this.history.len() > 50 {
-                                    this.history.pop_back();
-                                }
-                                cx.emit(ClipboardEvent { content });
+                        if !should_exclude
+                            && this.last_content.as_ref() != Some(&content)
+                        {
+                            this.last_content = Some(content.clone());
+                            this.history.push_front(content.clone());
+                            if this.history.len() > 50 {
+                                this.history.pop_back();
                             }
+                            cx.emit(ClipboardEvent { content });
                         }
                     });
                 }

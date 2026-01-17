@@ -345,7 +345,7 @@ fn main() {
             cx.subscribe(&launcher_service, move |service, _event: &LauncherToggled, cx| {
                 let window = launcher_window_toggle.lock();
                 let visible = service.read(cx).visible;
-                eprintln!("[launcher] Toggle event received, visible: {}", visible);
+                eprintln!("[launcher] Toggle event received, visible: {visible}");
                 let _ = window.update(cx, |launcher, window, cx| {
                     if visible {
                         eprintln!("[launcher] Showing window");
