@@ -1,7 +1,6 @@
 use gpui::{div, img, prelude::*};
 use crate::theme::Theme;
-use crate::services::launcher::state::ApplicationInfo;
-use crate::services::process::ProcessInfo;
+use crate::services::launcher::{state::ApplicationInfo, process::ProcessInfo};
 
 #[derive(Clone)]
 pub enum SearchResult {

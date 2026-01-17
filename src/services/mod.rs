@@ -1,7 +1,5 @@
-pub mod applications;
 pub mod audio;
 pub mod bluetooth;
-pub mod calculator;
 pub mod cef;
 pub mod chat;
 pub mod clipboard;
@@ -15,5 +13,4 @@ pub mod network;
 pub mod notifications;
 pub mod osd;
 pub mod pomodoro;
-pub mod process;
 pub mod systray;

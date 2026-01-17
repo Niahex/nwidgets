@@ -1,7 +1,6 @@
 use crate::components::SearchResult;
-use crate::services::{applications, calculator, process};
-use crate::services::launcher::{fuzzy::FuzzyMatcher, state::ApplicationInfo};
-use applications::{load_from_cache, save_to_cache, scan_applications};
+use crate::services::launcher::{applications, calculator, process, fuzzy::FuzzyMatcher, state::ApplicationInfo};
+use applications::{load_from_cache};
 use calculator::{is_calculator_query, Calculator};
 use gpui::{background_executor, Task};
 use parking_lot::RwLock;

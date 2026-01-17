@@ -5,7 +5,8 @@ use gpui::{
 use std::process::Command;
 
 use crate::components::{SearchInput, SearchResults, SearchResult};
-use crate::services::{launcher::{LauncherService, LauncherCore, SearchResultType}, clipboard::ClipboardMonitor, process};
+use crate::services::launcher::{LauncherService, LauncherCore, SearchResultType, process};
+use crate::services::clipboard::ClipboardMonitor;
 use crate::theme::Theme;
 use process::{kill_process};
 

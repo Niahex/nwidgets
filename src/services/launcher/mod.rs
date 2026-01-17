@@ -1,5 +1,8 @@
+pub mod applications;
+pub mod calculator;
 pub mod core;
 pub mod fuzzy;
+pub mod process;
 pub mod state;
 
 use gpui::*;
