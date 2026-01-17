@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ApplicationInfo {
     pub name: String,

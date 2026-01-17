@@ -2,7 +2,6 @@ use crate::components::SearchResult;
 use crate::services::launcher::{applications, calculator, process, fuzzy::FuzzyMatcher, state::ApplicationInfo};
 use applications::{load_from_cache};
 use calculator::{is_calculator_query, Calculator};
-use gpui::{background_executor, Task};
 use parking_lot::RwLock;
 use process::{get_running_processes, is_process_query, ProcessInfo};
 use std::sync::Arc;
