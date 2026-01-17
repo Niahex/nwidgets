@@ -5,6 +5,7 @@ mod popover_menu;
 mod search_input;
 mod search_results;
 
+#[allow(unused_imports)]
 pub use corner::Corner;
 pub use dropdown::*;
 pub use popover_menu::*;
