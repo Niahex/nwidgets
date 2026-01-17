@@ -8,6 +8,7 @@ pub mod clipboard;
 pub mod control_center;
 pub mod dbus;
 pub mod hyprland;
+pub mod icon_cache;
 pub mod launcher;
 pub mod lock_state;
 pub mod mpris;

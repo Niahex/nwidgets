@@ -6,9 +6,11 @@ use gpui::{
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::Arc;
+use parking_lot::RwLock;
 
 use crate::components::{SearchInput, SearchResults, SearchResult};
-use crate::services::{applications, calculator, process, launcher::LauncherService, clipboard::ClipboardMonitor};
+use crate::services::{applications, calculator, process, launcher::LauncherService, clipboard::ClipboardMonitor, icon_cache::IconCache};
 use crate::theme::Theme;
 use crate::widgets::launcher::{fuzzy, state};
 use applications::{load_from_cache, save_to_cache, scan_applications};
@@ -38,7 +40,7 @@ enum SearchResultType {
 
 struct Launcher {
     focus_handle: FocusHandle,
-    applications: Vec<ApplicationInfo>,
+    applications: Arc<RwLock<Vec<ApplicationInfo>>>,
     search_input: SearchInput,
     search_results: SearchResults,
     fuzzy_matcher: FuzzyMatcher,
@@ -46,14 +48,18 @@ struct Launcher {
     internal_results: Vec<SearchResultType>,
     search_task: Option<Task<()>>,
     theme: Theme,
+    icon_cache: Arc<IconCache>,
 }
 
 impl Launcher {
     fn new(cx: &mut Context<Self>) -> Self {
         let theme = Theme::nord_dark();
+        let applications = Arc::new(RwLock::new(Vec::new()));
+        let icon_cache = Arc::new(IconCache::new());
+        
         let mut launcher = Self {
             focus_handle: cx.focus_handle(),
-            applications: Vec::new(),
+            applications: Arc::clone(&applications),
             search_input: SearchInput::new("Search for apps and commands").with_theme(theme.clone()),
             search_results: SearchResults::new().with_theme(theme.clone()),
             fuzzy_matcher: FuzzyMatcher::new(),
@@ -61,23 +67,25 @@ impl Launcher {
             internal_results: Vec::new(),
             search_task: None,
             theme,
+            icon_cache,
         };
 
         // Try to load vault from existing session in background
         if let Some(apps) = load_from_cache() {
-            launcher.applications = apps;
-            launcher.fuzzy_matcher.set_candidates(&launcher.applications);
+            *applications.write() = apps;
+            launcher.fuzzy_matcher.set_candidates(&applications.read());
             launcher.update_search_results();
         }
 
+        let apps_clone = Arc::clone(&applications);
         cx.spawn(async move |this, cx| {
             let apps = background_executor()
                 .spawn(async move { scan_applications() })
                 .await;
 
             this.update(cx, |this, cx| {
-                this.applications = apps.clone();
-                this.fuzzy_matcher.set_candidates(&this.applications);
+                *apps_clone.write() = apps.clone();
+                this.fuzzy_matcher.set_candidates(&apps_clone.read());
                 this.update_search_results();
                 cx.notify();
             })?;
@@ -97,9 +105,12 @@ impl Launcher {
 
     fn new_for_widget<T>(cx: &mut Context<T>) -> Self {
         let theme = Theme::nord_dark();
+        let applications = Arc::new(RwLock::new(Vec::new()));
+        let icon_cache = Arc::new(IconCache::new());
+        
         let mut launcher = Self {
             focus_handle: cx.focus_handle(),
-            applications: Vec::new(),
+            applications: Arc::clone(&applications),
             search_input: SearchInput::new("Search for apps and commands").with_theme(theme.clone()),
             search_results: SearchResults::new().with_theme(theme.clone()),
             fuzzy_matcher: FuzzyMatcher::new(),
@@ -107,13 +118,13 @@ impl Launcher {
             internal_results: Vec::new(),
             search_task: None,
             theme,
+            icon_cache,
         };
 
-        // Load applications synchronously for now
+        // Load from cache only, don't block on scan
         if let Some(apps) = load_from_cache() {
-            launcher.applications = apps;
-            launcher.fuzzy_matcher.set_candidates(&launcher.applications);
-            launcher.update_search_results();
+            *applications.write() = apps;
+            launcher.fuzzy_matcher.set_candidates(&applications.read());
         }
 
         launcher
@@ -167,8 +178,9 @@ impl Launcher {
                 ));
             }
         } else {
+            let apps = self.applications.read();
             let app_indices = if query_str.is_empty() {
-                (0..self.applications.len()).collect()
+                (0..apps.len()).collect()
             } else {
                 self.fuzzy_matcher.search(query_str)
             };
@@ -179,10 +191,11 @@ impl Launcher {
         }
 
         // Convert internal results to SearchResult for the component
+        let apps = self.applications.read();
         let display_results: Vec<SearchResult> = self.internal_results.iter().map(|result| {
             match result {
                 SearchResultType::Application(index) => {
-                    if let Some(app) = self.applications.get(*index) {
+                    if let Some(app) = apps.get(*index) {
                         SearchResult::Application(app.clone())
                     } else {
                         SearchResult::Application(ApplicationInfo {
