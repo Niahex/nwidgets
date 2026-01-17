@@ -1,6 +1,7 @@
 use gpui::*;
 
 /// Corner position for the rounded corner widget
+#[allow(dead_code)]
 #[derive(Clone, Copy)]
 pub enum CornerPosition {
     TopLeft,
@@ -8,11 +9,13 @@ pub enum CornerPosition {
 }
 
 /// A widget that draws a rounded corner
+#[allow(dead_code)]
 pub struct Corner {
     position: CornerPosition,
     radius: Pixels,
 }
 
+#[allow(dead_code)]
 impl Corner {
     pub fn new(position: CornerPosition, radius: Pixels) -> Self {
         Self { position, radius }
