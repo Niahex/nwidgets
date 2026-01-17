@@ -36,32 +36,30 @@ impl DbusService {
     pub fn init(cx: &mut App) {
         let (tx, mut rx) = mpsc::unbounded::<DbusCommand>();
 
-        // D-Bus server
-        std::thread::spawn(move || {
-            eprintln!("[DBUS] Starting D-Bus server thread");
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(async {
-                match Builder::session() {
-                    Ok(builder) => {
-                        match builder
-                            .name("org.nwidgets.App")
-                            .unwrap()
-                            .serve_at("/org/nwidgets/App", NWidgets { tx })
-                            .unwrap()
-                            .build()
-                            .await
-                        {
-                            Ok(_conn) => {
-                                eprintln!("[DBUS] ✅ Service ready on org.nwidgets.App");
-                                std::future::pending::<()>().await;
-                            }
-                            Err(e) => eprintln!("[DBUS] ❌ Failed to build connection: {e}"),
+        // D-Bus server using gpui_tokio runtime
+        gpui_tokio::Tokio::spawn(cx, async move {
+            eprintln!("[DBUS] Starting D-Bus server");
+            match Builder::session() {
+                Ok(builder) => {
+                    match builder
+                        .name("org.nwidgets.App")
+                        .unwrap()
+                        .serve_at("/org/nwidgets/App", NWidgets { tx })
+                        .unwrap()
+                        .build()
+                        .await
+                    {
+                        Ok(_conn) => {
+                            eprintln!("[DBUS] ✅ Service ready on org.nwidgets.App");
+                            std::future::pending::<()>().await;
                         }
+                        Err(e) => eprintln!("[DBUS] ❌ Failed to build connection: {e}"),
                     }
-                    Err(e) => eprintln!("[DBUS] ❌ Failed to create builder: {e}"),
                 }
-            });
-        });
+                Err(e) => eprintln!("[DBUS] ❌ Failed to create builder: {e}"),
+            }
+        })
+        .detach();
 
         // Command handler
         cx.spawn(|cx: &mut AsyncApp| {
