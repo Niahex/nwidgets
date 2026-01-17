@@ -39,7 +39,7 @@ impl LockMonitor {
             let weak_service = weak_service.clone();
             async move {
                 while let Some(caps_on) = caps_rx.next().await {
-                    let _ = weak_service.update(&mut cx, |this, cx| {
+                    match weak_service.update(&mut cx, |this, cx| {
                         if this.capslock_state != caps_on {
                             this.capslock_state = caps_on;
                             cx.emit(LockStateChanged {
@@ -48,7 +48,10 @@ impl LockMonitor {
                                 enabled: caps_on,
                             });
                         }
-                    });
+                    }) {
+                        Ok(_) => {},
+                        Err(_) => break,
+                    }
                 }
             }
         })

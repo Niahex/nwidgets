@@ -25,6 +25,7 @@ pub struct OsdService {
     visible: bool,
     window_handle: Option<AnyWindowHandle>,
     hide_task: Option<Task<()>>,
+    _lock_monitor: Entity<LockMonitor>, // Garder le LockMonitor en vie
 }
 
 impl EventEmitter<OsdStateChanged> for OsdService {}
@@ -63,10 +64,6 @@ impl OsdService {
         cx.subscribe(
             &lock_monitor,
             |this, _monitor, event: &LockStateChanged, cx| {
-                eprintln!(
-                    "[OsdService] Événement CapsLock reçu: enabled={}",
-                    event.enabled
-                );
                 this.show_event(OsdEvent::CapsLock(event.enabled), cx);
             },
         )
@@ -85,6 +82,7 @@ impl OsdService {
             visible: false,
             window_handle: None,
             hide_task: None,
+            _lock_monitor: lock_monitor,
         };
 
         this.open_window(cx);
