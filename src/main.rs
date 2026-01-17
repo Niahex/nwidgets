@@ -152,7 +152,7 @@ fn main() {
             cx.set_global(theme::Theme::nord_dark());
 
             // Bind global keys for launcher
-            use crate::widgets::launcher::widget::{Backspace, Up, Down, Launch, Quit};
+            use crate::widgets::launcher::{Backspace, Up, Down, Launch, Quit};
             cx.bind_keys([
                 KeyBinding::new("backspace", Backspace, None),
                 KeyBinding::new("up", Up, None),

@@ -1,6 +1,6 @@
 use gpui::{div, img, prelude::*};
 use crate::theme::Theme;
-use crate::widgets::launcher::state::ApplicationInfo;
+use crate::services::launcher::state::ApplicationInfo;
 use crate::services::process::ProcessInfo;
 
 #[derive(Clone)]

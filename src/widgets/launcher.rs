@@ -1,23 +1,13 @@
 use gpui::{
-    actions, background_executor, div, layer_shell::*, point, prelude::*, px, App,
-    Application, Bounds, Context, FocusHandle, KeyBinding, KeyDownEvent, Render,
-    Size, Task, Window, WindowBackgroundAppearance, WindowBounds, WindowKind, WindowOptions,
+    actions, div, prelude::*, px, Context, FocusHandle, KeyDownEvent, Render,
+    Task, Window,
 };
-use std::fs;
-use std::path::PathBuf;
 use std::process::Command;
-use std::sync::Arc;
-use parking_lot::RwLock;
 
 use crate::components::{SearchInput, SearchResults, SearchResult};
-use crate::services::{applications, calculator, process, launcher::LauncherService, clipboard::ClipboardMonitor, icon_cache::IconCache};
+use crate::services::{launcher::{LauncherService, LauncherCore, SearchResultType}, clipboard::ClipboardMonitor, process};
 use crate::theme::Theme;
-use crate::widgets::launcher::{fuzzy, state};
-use applications::{load_from_cache, save_to_cache, scan_applications};
-use calculator::{is_calculator_query, Calculator};
-use fuzzy::FuzzyMatcher;
-use process::{get_running_processes, is_process_query, kill_process, ProcessInfo};
-use state::ApplicationInfo;
+use process::{kill_process};
 
 actions!(
     launcher,
@@ -31,70 +21,43 @@ actions!(
     ]
 );
 
-enum SearchResultType {
-    Application(usize),
-    Calculation(String),
-    Process(ProcessInfo),
-    Clipboard(String),
-}
-
 struct Launcher {
     focus_handle: FocusHandle,
-    applications: Arc<RwLock<Vec<ApplicationInfo>>>,
+    core: LauncherCore,
     search_input: SearchInput,
     search_results: SearchResults,
-    fuzzy_matcher: FuzzyMatcher,
-    calculator: Option<Calculator>,
     internal_results: Vec<SearchResultType>,
     search_task: Option<Task<()>>,
     theme: Theme,
-    icon_cache: Arc<IconCache>,
 }
 
 impl Launcher {
     fn new(cx: &mut Context<Self>) -> Self {
         let theme = Theme::nord_dark();
-        let applications = Arc::new(RwLock::new(Vec::new()));
-        let icon_cache = Arc::new(IconCache::new());
+        let mut core = LauncherCore::new();
+        core.load_from_cache();
         
         let mut launcher = Self {
             focus_handle: cx.focus_handle(),
-            applications: Arc::clone(&applications),
+            core,
             search_input: SearchInput::new("Search for apps and commands").with_theme(theme.clone()),
             search_results: SearchResults::new().with_theme(theme.clone()),
-            fuzzy_matcher: FuzzyMatcher::new(),
-            calculator: Some(Calculator::new()),
             internal_results: Vec::new(),
             search_task: None,
             theme,
-            icon_cache,
         };
 
-        // Try to load vault from existing session in background
-        if let Some(apps) = load_from_cache() {
-            *applications.write() = apps;
-            launcher.fuzzy_matcher.set_candidates(&applications.read());
-            launcher.update_search_results();
-        }
+        launcher.update_search_results();
 
-        let apps_clone = Arc::clone(&applications);
+        // Scan apps in background
         cx.spawn(async move |this, cx| {
-            let apps = background_executor()
-                .spawn(async move { scan_applications() })
-                .await;
+            let apps = this.update(cx, |this, _| this.core.spawn_app_scanner())?.await;
 
             this.update(cx, |this, cx| {
-                *apps_clone.write() = apps.clone();
-                this.fuzzy_matcher.set_candidates(&apps_clone.read());
+                this.core.update_applications(apps);
                 this.update_search_results();
                 cx.notify();
             })?;
-
-            background_executor()
-                .spawn(async move {
-                    let _ = save_to_cache(&apps);
-                })
-                .detach();
 
             anyhow::Ok(())
         })
@@ -105,29 +68,18 @@ impl Launcher {
 
     fn new_for_widget<T>(cx: &mut Context<T>) -> Self {
         let theme = Theme::nord_dark();
-        let applications = Arc::new(RwLock::new(Vec::new()));
-        let icon_cache = Arc::new(IconCache::new());
+        let mut core = LauncherCore::new();
+        core.load_from_cache();
         
-        let mut launcher = Self {
+        Self {
             focus_handle: cx.focus_handle(),
-            applications: Arc::clone(&applications),
+            core,
             search_input: SearchInput::new("Search for apps and commands").with_theme(theme.clone()),
             search_results: SearchResults::new().with_theme(theme.clone()),
-            fuzzy_matcher: FuzzyMatcher::new(),
-            calculator: Some(Calculator::new()),
             internal_results: Vec::new(),
             search_task: None,
             theme,
-            icon_cache,
-        };
-
-        // Load from cache only, don't block on scan
-        if let Some(apps) = load_from_cache() {
-            *applications.write() = apps;
-            launcher.fuzzy_matcher.set_candidates(&applications.read());
         }
-
-        launcher
     }
 
     fn update_search_results(&mut self) {
@@ -135,84 +87,12 @@ impl Launcher {
     }
 
     fn update_search_results_with_clipboard(&mut self, clipboard_history: Vec<String>) {
-        // Cancel previous search if it exists
         self.search_task = None;
 
         let query_str = self.search_input.get_query();
-        self.internal_results.clear();
-
-        if query_str.starts_with("clip") {
-            let search_term = if query_str.len() > 4 {
-                query_str.strip_prefix("clip").unwrap_or("").to_lowercase()
-            } else {
-                String::new()
-            };
-
-            for entry in clipboard_history {
-                if search_term.is_empty() || entry.to_lowercase().contains(&search_term) {
-                    self.internal_results.push(SearchResultType::Clipboard(entry));
-                }
-            }
-        } else if is_process_query(query_str) {
-            let processes = get_running_processes();
-            if query_str == "ps" {
-                for process in processes {
-                    self.internal_results.push(SearchResultType::Process(process));
-                }
-            } else if query_str.starts_with("ps") && query_str.len() > 2 {
-                let search_term = query_str.strip_prefix("ps").unwrap_or("").to_lowercase();
-                for process in processes {
-                    if process.name.to_lowercase().contains(&search_term) {
-                        self.internal_results.push(SearchResultType::Process(process));
-                    }
-                }
-            }
-        } else if is_calculator_query(query_str) {
-            if let Some(calculator) = &mut self.calculator {
-                if let Some(result) = calculator.evaluate(query_str) {
-                    self.internal_results.push(SearchResultType::Calculation(result));
-                }
-            } else {
-                self.internal_results.push(SearchResultType::Calculation(
-                    "Initializing calculator...".to_string(),
-                ));
-            }
-        } else {
-            let apps = self.applications.read();
-            let app_indices = if query_str.is_empty() {
-                (0..apps.len()).collect()
-            } else {
-                self.fuzzy_matcher.search(query_str)
-            };
-
-            for index in app_indices.into_iter().take(50) {
-                self.internal_results.push(SearchResultType::Application(index));
-            }
-        }
-
-        // Convert internal results to SearchResult for the component
-        let apps = self.applications.read();
-        let display_results: Vec<SearchResult> = self.internal_results.iter().map(|result| {
-            match result {
-                SearchResultType::Application(index) => {
-                    if let Some(app) = apps.get(*index) {
-                        SearchResult::Application(app.clone())
-                    } else {
-                        SearchResult::Application(ApplicationInfo {
-                            name: "Invalid app".to_string(),
-                            name_lower: "invalid app".to_string(),
-                            exec: "".to_string(),
-                            icon: None,
-                            icon_path: None,
-                        })
-                    }
-                }
-                SearchResultType::Calculation(calc) => SearchResult::Calculation(calc.clone()),
-                SearchResultType::Process(proc) => SearchResult::Process(proc.clone()),
-                SearchResultType::Clipboard(content) => SearchResult::Clipboard(content.clone()),
-            }
-        }).collect();
-
+        self.internal_results = self.core.search(query_str, clipboard_history);
+        
+        let display_results = self.core.convert_to_display_results(&self.internal_results);
         self.search_results.set_results(display_results);
     }
 
@@ -354,96 +234,6 @@ impl Render for Launcher {
                     .child(self.search_results.render()),
             )
     }
-}
-
-fn get_lock_path() -> PathBuf {
-    let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".to_string());
-    PathBuf::from(runtime_dir).join("nlauncher.lock")
-}
-
-fn is_running() -> bool {
-    let lock_path = get_lock_path();
-    if !lock_path.exists() {
-        return false;
-    }
-
-    if let Ok(pid_str) = fs::read_to_string(&lock_path) {
-        if let Ok(pid) = pid_str.trim().parse::<i32>() {
-            return std::path::Path::new(&format!("/proc/{pid}")).exists();
-        }
-    }
-    false
-}
-
-fn create_lock() {
-    let lock_path = get_lock_path();
-    let pid = std::process::id();
-    let _ = fs::write(lock_path, pid.to_string());
-}
-
-fn remove_lock() {
-    let lock_path = get_lock_path();
-    let _ = fs::remove_file(lock_path);
-}
-
-fn main() {
-    if is_running() {
-        if let Ok(pid_str) = fs::read_to_string(get_lock_path()) {
-            if let Ok(pid) = pid_str.trim().parse::<i32>() {
-                unsafe {
-                    libc::kill(pid, libc::SIGTERM);
-                }
-            }
-        }
-        std::process::exit(0);
-    }
-
-    create_lock();
-
-    let _ = std::panic::catch_unwind(|| {
-        Application::new().run(|cx: &mut App| {
-            cx.on_action(|_: &Quit, cx| cx.quit());
-            cx.bind_keys([
-                KeyBinding::new("backspace", Backspace, None),
-                KeyBinding::new("up", Up, None),
-                KeyBinding::new("down", Down, None),
-                KeyBinding::new("enter", Launch, None),
-                KeyBinding::new("escape", Quit, None),
-            ]);
-
-            let window = cx
-                .open_window(
-                    WindowOptions {
-                        titlebar: None,
-                        window_bounds: Some(WindowBounds::Windowed(Bounds {
-                            origin: point(px(0.), px(0.)),
-                            size: Size::new(px(800.), px(600.)),
-                        })),
-                        app_id: Some("nlauncher".to_string()),
-                        window_background: WindowBackgroundAppearance::Transparent,
-                        kind: WindowKind::LayerShell(LayerShellOptions {
-                            namespace: "nlauncher".to_string(),
-                            anchor: Anchor::empty(),
-                            margin: Some((px(0.), px(0.), px(0.), px(0.))),
-                            keyboard_interactivity: KeyboardInteractivity::Exclusive,
-                            ..Default::default()
-                        }),
-                        ..Default::default()
-                    },
-                    |_, cx| cx.new(Launcher::new),
-                )
-                .unwrap();
-
-            window
-                .update(cx, |view, window, cx| {
-                    window.focus(&view.focus_handle, cx);
-                    cx.activate(true);
-                })
-                .unwrap();
-        });
-    });
-
-    remove_lock();
 }
 
 pub struct LauncherWidget {

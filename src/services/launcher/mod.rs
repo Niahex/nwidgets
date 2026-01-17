@@ -1,18 +1,31 @@
+pub mod core;
+pub mod fuzzy;
+pub mod state;
+
 use gpui::*;
+
+pub use core::{LauncherCore, SearchResultType};
+pub use fuzzy::FuzzyMatcher;
+pub use state::{ApplicationInfo, AppRef};
 
 #[derive(Clone)]
 pub struct LauncherToggled;
 
 pub struct LauncherService {
     pub visible: bool,
+    pub core: LauncherCore,
 }
 
 impl EventEmitter<LauncherToggled> for LauncherService {}
 
 impl LauncherService {
     pub fn new(_cx: &mut Context<Self>) -> Self {
+        let mut core = LauncherCore::new();
+        core.load_from_cache();
+        
         Self {
             visible: false,
+            core,
         }
     }
 
