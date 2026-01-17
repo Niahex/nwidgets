@@ -211,11 +211,11 @@ pub struct LauncherWidget {
 
 impl LauncherWidget {
     pub fn new(cx: &mut Context<Self>, launcher_service: gpui::Entity<LauncherService>, clipboard_monitor: gpui::Entity<ClipboardMonitor>) -> Self {
-        let mut launcher = Launcher::new_for_widget(cx);
+        let launcher = Launcher::new_for_widget(cx);
         
         // Scan apps in background (async, non-blocking)
         let apps_arc = launcher.core.applications.clone();
-        cx.spawn(|this: gpui::WeakEntity<Self>, mut cx: &mut gpui::AsyncApp| {
+        cx.spawn(|this: gpui::WeakEntity<Self>, cx: &mut gpui::AsyncApp| {
             let mut cx = cx.clone();
             async move {
                 // Scan sur le background executor (thread pool)
