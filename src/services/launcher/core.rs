@@ -37,22 +37,6 @@ impl LauncherCore {
         }
     }
 
-    pub fn spawn_app_scanner(&self) -> Task<Vec<ApplicationInfo>> {
-        background_executor().spawn(async move { scan_applications() })
-    }
-
-    pub fn update_applications(&mut self, apps: Vec<ApplicationInfo>) {
-        *self.applications.write() = apps.clone();
-        self.fuzzy_matcher.set_candidates(&self.applications.read());
-        
-        // Save to cache in background
-        background_executor()
-            .spawn(async move {
-                let _ = save_to_cache(&apps);
-            })
-            .detach();
-    }
-
     pub fn search(
         &mut self,
         query: &str,

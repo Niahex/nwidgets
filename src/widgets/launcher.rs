@@ -32,40 +32,6 @@ struct Launcher {
 }
 
 impl Launcher {
-    fn new(cx: &mut Context<Self>) -> Self {
-        let theme = Theme::nord_dark();
-        let mut core = LauncherCore::new();
-        core.load_from_cache();
-        
-        let mut launcher = Self {
-            focus_handle: cx.focus_handle(),
-            core,
-            search_input: SearchInput::new("Search for apps and commands").with_theme(theme.clone()),
-            search_results: SearchResults::new().with_theme(theme.clone()),
-            internal_results: Vec::new(),
-            search_task: None,
-            theme,
-        };
-
-        launcher.update_search_results();
-
-        // Scan apps in background
-        cx.spawn(async move |this, cx| {
-            let apps = this.update(cx, |this, _| this.core.spawn_app_scanner())?.await;
-
-            this.update(cx, |this, cx| {
-                this.core.update_applications(apps);
-                this.update_search_results();
-                cx.notify();
-            })?;
-
-            anyhow::Ok(())
-        })
-        .detach();
-
-        launcher
-    }
-
     fn new_for_widget<T>(cx: &mut Context<T>) -> Self {
         let theme = Theme::nord_dark();
         let mut core = LauncherCore::new();
