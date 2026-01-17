@@ -171,14 +171,15 @@
           cmake
           ninja
           rustPlatform.bindgenHook
+          mold  # Fast linker to handle long argument lists
         ];
 
         envVars = {
           RUST_BACKTRACE = "full";
           LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
           CEF_PATH = cefAssets;
-          # Vulkan/Wayland rpath MUST come before CEF (like Zed does)
-          RUSTFLAGS = "-C link-arg=-Wl,-rpath,${pkgs.lib.makeLibraryPath [pkgs.vulkan-loader pkgs.wayland]} -C link-arg=-Wl,-rpath,${cefAssets} -C link-arg=-L${cefAssets}";
+          # Use mold linker with essential rpaths for GPUI/AMD
+          RUSTFLAGS = "-C linker=clang -C link-arg=-fuse-ld=mold -C link-arg=-Wl,-rpath,${pkgs.lib.makeLibraryPath [pkgs.vulkan-loader pkgs.wayland]} -C link-arg=-Wl,-rpath,${cefAssets} -C link-arg=-L${cefAssets}";
           # Force blade-graphics to find Vulkan
           NIX_LDFLAGS = "-rpath ${pkgs.lib.makeLibraryPath [pkgs.vulkan-loader pkgs.wayland]}";
         };
