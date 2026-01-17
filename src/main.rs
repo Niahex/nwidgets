@@ -15,6 +15,7 @@ use services::{
     bluetooth::BluetoothService,
     cef::CefService,
     chat::{ChatNavigate, ChatService, ChatToggled},
+    clipboard::ClipboardMonitor,
     control_center::ControlCenterService,
     dbus::DbusService,
     hyprland::{FullscreenChanged, HyprlandService, WorkspaceChanged},
@@ -172,6 +173,7 @@ fn main() {
             DbusService::init(cx);
             let chat_service = ChatService::init(cx);
             let launcher_service = LauncherService::init(cx);
+            let clipboard_monitor = ClipboardMonitor::init(cx);
             let notif_service = NotificationService::init(cx);
             let osd_service = OsdService::init(cx);
             ControlCenterService::init(cx);
@@ -245,6 +247,7 @@ fn main() {
 
             // Launcher window - created at startup, starts hidden (1x1)
             let launcher_service_clone = launcher_service.clone();
+            let clipboard_monitor_clone = clipboard_monitor.clone();
             let launcher_window = cx
                 .open_window(
                     WindowOptions {
@@ -271,7 +274,7 @@ fn main() {
                         }),
                         ..Default::default()
                     },
-                    move |_window, cx| cx.new(|cx| LauncherWidget::new(cx, launcher_service_clone.clone())),
+                    move |_window, cx| cx.new(|cx| LauncherWidget::new(cx, launcher_service_clone.clone(), clipboard_monitor_clone.clone())),
                 )
                 .unwrap();
 

@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use crate::components::{SearchInput, SearchResults, SearchResult};
-use crate::services::{applications, calculator, process, launcher::LauncherService};
+use crate::services::{applications, calculator, process, launcher::LauncherService, clipboard::ClipboardMonitor};
 use crate::theme::Theme;
 use crate::widgets::launcher::{fuzzy, state};
 use applications::{load_from_cache, save_to_cache, scan_applications};
@@ -33,6 +33,7 @@ enum SearchResultType {
     Application(usize),
     Calculation(String),
     Process(ProcessInfo),
+    Clipboard(String),
 }
 
 struct Launcher {
@@ -119,13 +120,29 @@ impl Launcher {
     }
 
     fn update_search_results(&mut self) {
+        self.update_search_results_with_clipboard(Vec::new());
+    }
+
+    fn update_search_results_with_clipboard(&mut self, clipboard_history: Vec<String>) {
         // Cancel previous search if it exists
         self.search_task = None;
 
         let query_str = self.search_input.get_query();
         self.internal_results.clear();
 
-        if is_process_query(query_str) {
+        if query_str.starts_with("clip") {
+            let search_term = if query_str.len() > 4 {
+                query_str.strip_prefix("clip").unwrap_or("").to_lowercase()
+            } else {
+                String::new()
+            };
+
+            for entry in clipboard_history {
+                if search_term.is_empty() || entry.to_lowercase().contains(&search_term) {
+                    self.internal_results.push(SearchResultType::Clipboard(entry));
+                }
+            }
+        } else if is_process_query(query_str) {
             let processes = get_running_processes();
             if query_str == "ps" {
                 for process in processes {
@@ -179,6 +196,7 @@ impl Launcher {
                 }
                 SearchResultType::Calculation(calc) => SearchResult::Calculation(calc.clone()),
                 SearchResultType::Process(proc) => SearchResult::Process(proc.clone()),
+                SearchResultType::Clipboard(content) => SearchResult::Clipboard(content.clone()),
             }
         }).collect();
 
@@ -232,10 +250,13 @@ impl Launcher {
                 }
                 SearchResult::Calculation(result) => {
                     if result != "Initializing calculator..." {
-                        match std::process::Command::new("wl-copy").arg(result).output() {
-                            Ok(_) => eprintln!("[nlauncher] Copied to clipboard: {result}"),
-                            Err(e) => eprintln!("[nlauncher] Failed to copy to clipboard: {e}"),
-                        }
+                        let result = result.clone();
+                        std::thread::spawn(move || {
+                            match std::process::Command::new("wl-copy").arg(&result).output() {
+                                Ok(_) => eprintln!("[nlauncher] Copied to clipboard: {result}"),
+                                Err(e) => eprintln!("[nlauncher] Failed to copy to clipboard: {e}"),
+                            }
+                        });
                         cx.quit();
                     }
                 }
@@ -251,6 +272,9 @@ impl Launcher {
 
                     self.update_search_results();
                     cx.notify();
+                }
+                SearchResult::Clipboard(_) => {
+                    // Not used in standalone Launcher
                 }
             }
         }
@@ -412,13 +436,15 @@ fn main() {
 pub struct LauncherWidget {
     launcher: Launcher,
     launcher_service: gpui::Entity<LauncherService>,
+    clipboard_monitor: gpui::Entity<ClipboardMonitor>,
 }
 
 impl LauncherWidget {
-    pub fn new(cx: &mut Context<Self>, launcher_service: gpui::Entity<LauncherService>) -> Self {
+    pub fn new(cx: &mut Context<Self>, launcher_service: gpui::Entity<LauncherService>, clipboard_monitor: gpui::Entity<ClipboardMonitor>) -> Self {
         Self {
             launcher: Launcher::new_for_widget(cx),
             launcher_service,
+            clipboard_monitor,
         }
     }
 
@@ -455,7 +481,8 @@ impl Render for LauncherWidget {
                     query.push(' ');
 
                     this.launcher.search_input.set_query(query);
-                    this.launcher.update_search_results();
+                    let clipboard_history = this.clipboard_monitor.read(cx).get_history();
+                    this.launcher.update_search_results_with_clipboard(clipboard_history);
                     cx.notify();
                 } else if let Some(key_char) = &event.keystroke.key_char {
                     let allowed = key_char.chars().all(|c| c.is_alphanumeric() || "+-*/()^.=".contains(c));
@@ -464,7 +491,8 @@ impl Render for LauncherWidget {
                         let mut query = this.launcher.search_input.get_query().to_string();
                         query.push_str(key_char);
                         this.launcher.search_input.set_query(query);
-                        this.launcher.update_search_results();
+                        let clipboard_history = this.clipboard_monitor.read(cx).get_history();
+                        this.launcher.update_search_results_with_clipboard(clipboard_history);
                         cx.notify();
                     }
                 }
@@ -474,7 +502,8 @@ impl Render for LauncherWidget {
                 if !query.is_empty() {
                     query.pop();
                     this.launcher.search_input.set_query(query);
-                    this.launcher.update_search_results();
+                    let clipboard_history = this.clipboard_monitor.read(cx).get_history();
+                    this.launcher.update_search_results_with_clipboard(clipboard_history);
                     cx.notify();
                 }
             }))
@@ -522,10 +551,13 @@ impl Render for LauncherWidget {
                         }
                         SearchResult::Calculation(result) => {
                             if result != "Initializing calculator..." {
-                                match std::process::Command::new("wl-copy").arg(result).output() {
-                                    Ok(_) => eprintln!("[launcher] Copied to clipboard: {result}"),
-                                    Err(e) => eprintln!("[launcher] Failed to copy to clipboard: {e}"),
-                                }
+                                let result = result.clone();
+                                std::thread::spawn(move || {
+                                    match std::process::Command::new("wl-copy").arg(&result).output() {
+                                        Ok(_) => eprintln!("[launcher] Copied to clipboard: {result}"),
+                                        Err(e) => eprintln!("[launcher] Failed to copy to clipboard: {e}"),
+                                    }
+                                });
                                 // Hide launcher after copy
                                 this.launcher_service.update(cx, |service, cx| {
                                     service.toggle(cx);
@@ -542,8 +574,22 @@ impl Render for LauncherWidget {
                                 }
                             });
 
-                            this.launcher.update_search_results();
+                            let clipboard_history = this.clipboard_monitor.read(cx).get_history();
+                            this.launcher.update_search_results_with_clipboard(clipboard_history);
                             cx.notify();
+                        }
+                        SearchResult::Clipboard(content) => {
+                            let content = content.clone();
+                            std::thread::spawn(move || {
+                                match std::process::Command::new("wl-copy").arg(&content).output() {
+                                    Ok(_) => eprintln!("[launcher] Copied clipboard entry"),
+                                    Err(e) => eprintln!("[launcher] Failed to copy: {e}"),
+                                }
+                            });
+                            // Hide launcher after copy
+                            this.launcher_service.update(cx, |service, cx| {
+                                service.toggle(cx);
+                            });
                         }
                     }
                 }

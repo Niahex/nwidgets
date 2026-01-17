@@ -28,7 +28,6 @@ impl ClipboardMonitor {
 
         let (tx, mut rx) = futures::channel::mpsc::unbounded::<String>();
 
-        // Récupérer le service Hyprland pour vérifier la fenêtre active
         let hyprland_service = HyprlandService::global(cx);
 
         // 1. Worker Task (Tokio): Watcher asynchrone
@@ -75,22 +74,18 @@ impl ClipboardMonitor {
             async move {
                 while let Some(content) = rx.next().await {
                     let _ = weak_model.update(&mut cx, |this, cx| {
-                        // Vérifier si la fenêtre active est KeePassXC
                         let should_exclude = hyprland_service.read(cx).active_window()
+                            .as_ref()
                             .map(|w| w.class == "org.keepassxc.KeePassXC")
                             .unwrap_or(false);
 
                         if !should_exclude {
-                            // Éviter les doublons
                             if this.last_content.as_ref() != Some(&content) {
                                 this.last_content = Some(content.clone());
-                                
-                                // Ajouter à l'historique
                                 this.history.push_front(content.clone());
                                 if this.history.len() > 50 {
                                     this.history.pop_back();
                                 }
-                                
                                 cx.emit(ClipboardEvent { content });
                             }
                         }
@@ -101,5 +96,9 @@ impl ClipboardMonitor {
         .detach();
 
         model
+    }
+
+    pub fn get_history(&self) -> Vec<String> {
+        self.history.iter().cloned().collect()
     }
 }

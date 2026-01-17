@@ -8,6 +8,7 @@ pub enum SearchResult {
     Application(ApplicationInfo),
     Calculation(String),
     Process(ProcessInfo),
+    Clipboard(String),
 }
 
 pub struct SearchResults {
@@ -160,6 +161,30 @@ impl SearchResults {
                                             ),
                                     ),
                             ),
+                            SearchResult::Clipboard(content) => {
+                                let preview = if content.len() > 60 {
+                                    format!("{}...", &content[..60])
+                                } else {
+                                    content.clone()
+                                };
+                                item.child(
+                                    div()
+                                        .flex()
+                                        .items_center()
+                                        .gap_2()
+                                        .child(
+                                            div()
+                                                .size_6()
+                                                .bg(theme.accent)
+                                                .rounded_sm()
+                                                .flex()
+                                                .items_center()
+                                                .justify_center()
+                                                .child("📋"),
+                                        )
+                                        .child(preview),
+                                )
+                            }
                         }
                     })
             )
