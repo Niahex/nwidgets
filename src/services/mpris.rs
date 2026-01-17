@@ -1,6 +1,6 @@
 use futures_util::StreamExt;
 use gpui::prelude::*;
-use gpui::{App, AsyncApp, Context, Entity, EventEmitter, Global, WeakEntity};
+use gpui::{App, AsyncApp, BackgroundExecutor, Context, Entity, EventEmitter, Global, WeakEntity};
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -44,6 +44,7 @@ pub struct MprisStateChanged;
 
 pub struct MprisService {
     current_player: Arc<RwLock<Option<MprisPlayer>>>,
+    executor: BackgroundExecutor,
 }
 
 // D-Bus proxy for MPRIS2 Player interface
@@ -101,7 +102,10 @@ impl MprisService {
         })
         .detach();
 
-        Self { current_player }
+        Self {
+            current_player,
+            executor: cx.background_executor().clone(),
+        }
     }
 
     pub fn current_player(&self) -> Option<MprisPlayer> {
@@ -142,19 +146,23 @@ impl MprisService {
     }
 
     pub fn volume_up(&self) {
-        std::thread::spawn(|| {
-            let _ = std::process::Command::new("playerctl")
-                .args(["-p", "spotify", "volume", "0.05+"])
-                .status();
-        });
+        self.executor
+            .spawn(async {
+                let _ = std::process::Command::new("playerctl")
+                    .args(["-p", "spotify", "volume", "0.05+"])
+                    .status();
+            })
+            .detach();
     }
 
     pub fn volume_down(&self) {
-        std::thread::spawn(|| {
-            let _ = std::process::Command::new("playerctl")
-                .args(["-p", "spotify", "volume", "0.05-"])
-                .status();
-        });
+        self.executor
+            .spawn(async {
+                let _ = std::process::Command::new("playerctl")
+                    .args(["-p", "spotify", "volume", "0.05-"])
+                    .status();
+            })
+            .detach();
     }
 
     async fn mpris_worker(ui_tx: futures::channel::mpsc::UnboundedSender<Option<MprisPlayer>>) {
