@@ -26,6 +26,7 @@ pub struct OsdService {
     window_handle: Option<AnyWindowHandle>,
     hide_task: Option<Task<()>>,
     _lock_monitor: Entity<LockMonitor>, // Garder le LockMonitor en vie
+    _clipboard_monitor: Entity<ClipboardMonitor>, // Garder le ClipboardMonitor en vie
 }
 
 impl EventEmitter<OsdStateChanged> for OsdService {}
@@ -71,7 +72,7 @@ impl OsdService {
 
         cx.subscribe(
             &clipboard_monitor,
-            |this, _monitor, event: &ClipboardEvent, cx| {
+            |this, _monitor, _event: &ClipboardEvent, cx| {
                 this.show_event(OsdEvent::Clipboard, cx);
             },
         )
@@ -83,6 +84,7 @@ impl OsdService {
             window_handle: None,
             hide_task: None,
             _lock_monitor: lock_monitor,
+            _clipboard_monitor: clipboard_monitor,
         };
 
         this.open_window(cx);

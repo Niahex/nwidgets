@@ -30,7 +30,7 @@ impl ClipboardMonitor {
         // 1. Worker Task (Tokio): Watcher asynchrone
         gpui_tokio::Tokio::spawn(cx, async move {
             let child = tokio::process::Command::new("wl-paste")
-                .args(["--watch", "wl-paste", "-n"])
+                .args(["--watch", "echo", "clipboard_changed"])
                 .stdout(Stdio::piped())
                 .spawn();
 
@@ -38,10 +38,19 @@ impl ClipboardMonitor {
                 Ok(mut child) => {
                     if let Some(stdout) = child.stdout.take() {
                         let mut reader = BufReader::new(stdout).lines();
-                        while let Ok(Some(content)) = reader.next_line().await {
-                            if !content.trim().is_empty() {
-                                if tx.unbounded_send(content).is_err() {
-                                    break;
+                        while let Ok(Some(_)) = reader.next_line().await {
+                            // Récupérer le contenu actuel du clipboard
+                            if let Ok(output) = tokio::process::Command::new("wl-paste")
+                                .arg("-n")
+                                .output()
+                                .await
+                            {
+                                if let Ok(content) = String::from_utf8(output.stdout) {
+                                    if !content.trim().is_empty() {
+                                        if tx.unbounded_send(content).is_err() {
+                                            break;
+                                        }
+                                    }
                                 }
                             }
                         }
