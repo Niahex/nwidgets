@@ -1,6 +1,6 @@
 use crate::services::audio::{AudioService, AudioStateChanged};
 use crate::services::clipboard::{ClipboardEvent, ClipboardMonitor};
-use crate::services::lock_state::{LockMonitor, LockStateChanged, LockType};
+use crate::services::lock_state::{LockMonitor, LockStateChanged};
 use gpui::layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions};
 use gpui::*;
 use std::time::Duration;
@@ -63,13 +63,11 @@ impl OsdService {
         cx.subscribe(
             &lock_monitor,
             |this, _monitor, event: &LockStateChanged, cx| {
-                if let LockType::CapsLock = event.lock_type {
-                    eprintln!(
-                        "[OsdService] Événement CapsLock reçu: enabled={}",
-                        event.enabled
-                    );
-                    this.show_event(OsdEvent::CapsLock(event.enabled), cx);
-                }
+                eprintln!(
+                    "[OsdService] Événement CapsLock reçu: enabled={}",
+                    event.enabled
+                );
+                this.show_event(OsdEvent::CapsLock(event.enabled), cx);
             },
         )
         .detach();
