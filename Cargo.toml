@@ -25,6 +25,14 @@ cef = { git = "https://github.com/tauri-apps/cef-rs", tag = "export-cef-dir-v143
 cef-dll-sys = { git = "https://github.com/tauri-apps/cef-rs", tag = "export-cef-dir-v143.7.0+143.0.14" }
 dirs = "6.0"
 
+# Launcher dependencies
+freedesktop-desktop-entry = "0.5.0"
+freedesktop-icons = "0.4.0"
+nucleo = "0.3.0"
+numbat = "1.10.0"
+libc = "0.2"
+secret-service = { version = "5.1.0", features = ["rt-async-io-crypto-rust"] }
+
 [dev-dependencies]
 divan = "0.1"
 

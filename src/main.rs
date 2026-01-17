@@ -18,6 +18,7 @@ use services::{
     control_center::ControlCenterService,
     dbus::DbusService,
     hyprland::{FullscreenChanged, HyprlandService, WorkspaceChanged},
+    launcher::{LauncherService, LauncherToggled},
     mpris::MprisService,
     network::NetworkService,
     notifications::{NotificationAdded, NotificationService},
@@ -30,6 +31,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use widgets::{
     chat::ChatWidget,
+    launcher::LauncherWidget,
     notifications::{NotificationsStateChanged, NotificationsWindowManager},
     panel::Panel,
 };
@@ -159,6 +161,7 @@ fn main() {
             CefService::init(cx);
             DbusService::init(cx);
             let chat_service = ChatService::init(cx);
+            let launcher_service = LauncherService::init(cx);
             let notif_service = NotificationService::init(cx);
             let osd_service = OsdService::init(cx);
             ControlCenterService::init(cx);
@@ -230,9 +233,43 @@ fn main() {
                 )
                 .unwrap();
 
+            // Launcher window - created at startup, starts hidden (1x1)
+            let launcher_window = cx
+                .open_window(
+                    WindowOptions {
+                        window_bounds: Some(WindowBounds::Windowed(Bounds {
+                            origin: Point {
+                                x: px(0.0),
+                                y: px(0.0),
+                            },
+                            size: Size {
+                                width: px(1.0),
+                                height: px(1.0),
+                            },
+                        })),
+                        titlebar: None,
+                        window_background: WindowBackgroundAppearance::Transparent,
+                        kind: WindowKind::LayerShell(LayerShellOptions {
+                            namespace: "nwidgets-launcher".to_string(),
+                            layer: Layer::Overlay,
+                            anchor: Anchor::empty(),
+                            exclusive_zone: None,
+                            margin: None,
+                            keyboard_interactivity: KeyboardInteractivity::None,
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    },
+                    |_window, cx| cx.new(LauncherWidget::new),
+                )
+                .unwrap();
+
             let chat_window_arc: Arc<Mutex<WindowHandle<ChatWidget>>> =
                 Arc::new(Mutex::new(chat_window));
+            let launcher_window_arc: Arc<Mutex<WindowHandle<LauncherWidget>>> =
+                Arc::new(Mutex::new(launcher_window));
             let chat_window_toggle = Arc::clone(&chat_window_arc);
+            let launcher_window_toggle = Arc::clone(&launcher_window_arc);
             let _chat_window_fs = Arc::clone(&chat_window_arc);
             let _chat_window_ws = Arc::clone(&chat_window_arc);
             let chat_service2 = chat_service.clone();
@@ -286,6 +323,26 @@ fn main() {
                 let window = chat_window_nav.lock();
                 let _ = window.update(cx, |chat, _window, cx| {
                     chat.navigate(&event.url, cx);
+                });
+            })
+            .detach();
+
+            // Subscribe to launcher toggle events
+            cx.subscribe(&launcher_service, move |service, _event: &LauncherToggled, cx| {
+                let window = launcher_window_toggle.lock();
+                let visible = service.read(cx).visible;
+                eprintln!("[launcher] Toggle event received, visible: {}", visible);
+                let _ = window.update(cx, |_launcher, window, cx| {
+                    if visible {
+                        eprintln!("[launcher] Showing window");
+                        window.resize(size(px(700.0), px(500.0)));
+                        window.set_keyboard_interactivity(gpui::layer_shell::KeyboardInteractivity::Exclusive);
+                    } else {
+                        eprintln!("[launcher] Hiding window");
+                        window.resize(size(px(1.0), px(1.0)));
+                        window.set_keyboard_interactivity(gpui::layer_shell::KeyboardInteractivity::None);
+                    }
+                    cx.notify();
                 });
             })
             .detach();

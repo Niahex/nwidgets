@@ -9,6 +9,7 @@ pub struct DbusService;
 pub enum DbusCommand {
     ToggleChat,
     PinChat,
+    ToggleLauncher,
 }
 
 struct NWidgets {
@@ -19,6 +20,11 @@ struct NWidgets {
 impl NWidgets {
     async fn toggle_chat(&self) {
         let _ = self.tx.unbounded_send(DbusCommand::ToggleChat);
+    }
+
+    async fn toggle_launcher(&self) {
+        eprintln!("[dbus] toggle_launcher method called");
+        let _ = self.tx.unbounded_send(DbusCommand::ToggleLauncher);
     }
 
     async fn pin_chat(&self) {
@@ -73,6 +79,17 @@ impl DbusService {
                             cx.update(|cx| {
                                 let chat = super::chat::ChatService::global(cx);
                                 chat.update(cx, |chat, mcx| chat.toggle_pin(mcx));
+                            });
+                        }
+                        DbusCommand::ToggleLauncher => {
+                            eprintln!("[dbus] Received ToggleLauncher command");
+                            cx.update(|cx| {
+                                let launcher = super::launcher::LauncherService::global(cx);
+                                launcher.update(cx, |launcher, mcx| {
+                                    eprintln!("[dbus] Toggling launcher, current visible: {}", launcher.visible);
+                                    launcher.toggle(mcx);
+                                    eprintln!("[dbus] After toggle, visible: {}", launcher.visible);
+                                });
                             });
                         }
                     }
