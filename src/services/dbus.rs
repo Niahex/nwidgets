@@ -86,7 +86,10 @@ impl DbusService {
                             cx.update(|cx| {
                                 let launcher = super::launcher::LauncherService::global(cx);
                                 launcher.update(cx, |launcher, mcx| {
-                                    eprintln!("[dbus] Toggling launcher, current visible: {}", launcher.visible);
+                                    eprintln!(
+                                        "[dbus] Toggling launcher, current visible: {}",
+                                        launcher.visible
+                                    );
                                     launcher.toggle(mcx);
                                     eprintln!("[dbus] After toggle, visible: {}", launcher.visible);
                                 });

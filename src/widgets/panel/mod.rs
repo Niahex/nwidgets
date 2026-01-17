@@ -157,24 +157,27 @@ impl Render for Panel {
             )
             // Left corner
             .child(
-                canvas(
-                    move |_, _, _| {},
-                    {
-                        let color = theme.bg;
-                        move |_bounds, _, window, _| {
-                            let ox = px(0.);
-                            let oy = panel_height;
-                            let mut path = PathBuilder::fill();
-                            path.move_to(point(ox, oy + corner_radius));
-                            path.arc_to(point(corner_radius, corner_radius), px(0.), false, true, point(ox + corner_radius, oy));
-                            path.line_to(point(ox, oy));
-                            path.close();
-                            if let Ok(built_path) = path.build() {
-                                window.paint_path(built_path, color);
-                            }
+                canvas(move |_, _, _| {}, {
+                    let color = theme.bg;
+                    move |_bounds, _, window, _| {
+                        let ox = px(0.);
+                        let oy = panel_height;
+                        let mut path = PathBuilder::fill();
+                        path.move_to(point(ox, oy + corner_radius));
+                        path.arc_to(
+                            point(corner_radius, corner_radius),
+                            px(0.),
+                            false,
+                            true,
+                            point(ox + corner_radius, oy),
+                        );
+                        path.line_to(point(ox, oy));
+                        path.close();
+                        if let Ok(built_path) = path.build() {
+                            window.paint_path(built_path, color);
                         }
-                    },
-                )
+                    }
+                })
                 .absolute()
                 .top(panel_height)
                 .left_0()
@@ -182,24 +185,27 @@ impl Render for Panel {
             )
             // Right corner
             .child(
-                canvas(
-                    move |_, _, _| {},
-                    {
-                        let color = theme.bg;
-                        move |bounds, _, window, _| {
-                            let ox = bounds.origin.x;
-                            let oy = panel_height;
-                            let mut path = PathBuilder::fill();
-                            path.move_to(point(ox, oy));
-                            path.arc_to(point(corner_radius, corner_radius), px(0.), false, true, point(ox + corner_radius, oy + corner_radius));
-                            path.line_to(point(ox + corner_radius, oy));
-                            path.close();
-                            if let Ok(built_path) = path.build() {
-                                window.paint_path(built_path, color);
-                            }
+                canvas(move |_, _, _| {}, {
+                    let color = theme.bg;
+                    move |bounds, _, window, _| {
+                        let ox = bounds.origin.x;
+                        let oy = panel_height;
+                        let mut path = PathBuilder::fill();
+                        path.move_to(point(ox, oy));
+                        path.arc_to(
+                            point(corner_radius, corner_radius),
+                            px(0.),
+                            false,
+                            true,
+                            point(ox + corner_radius, oy + corner_radius),
+                        );
+                        path.line_to(point(ox + corner_radius, oy));
+                        path.close();
+                        if let Ok(built_path) = path.build() {
+                            window.paint_path(built_path, color);
                         }
-                    },
-                )
+                    }
+                })
                 .absolute()
                 .top(panel_height)
                 .right_0()

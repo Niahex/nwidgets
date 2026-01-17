@@ -1,6 +1,8 @@
 use crate::components::SearchResult;
-use crate::services::launcher::{applications, calculator, process, fuzzy::FuzzyMatcher, state::ApplicationInfo};
-use applications::{load_from_cache};
+use crate::services::launcher::{
+    applications, calculator, fuzzy::FuzzyMatcher, process, state::ApplicationInfo,
+};
+use applications::load_from_cache;
 use calculator::{is_calculator_query, Calculator};
 use parking_lot::RwLock;
 use process::{get_running_processes, is_process_query, ProcessInfo};
@@ -35,11 +37,7 @@ impl LauncherCore {
         }
     }
 
-    pub fn search(
-        &mut self,
-        query: &str,
-        clipboard_history: Vec<String>,
-    ) -> Vec<SearchResultType> {
+    pub fn search(&mut self, query: &str, clipboard_history: Vec<String>) -> Vec<SearchResultType> {
         let mut results = Vec::new();
 
         if query.starts_with("clip") {

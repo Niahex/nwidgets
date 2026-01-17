@@ -144,14 +144,14 @@ impl BrowserView {
         let mouse_pressed = Arc::new(Mutex::new(false));
         let cursor = Arc::new(Mutex::new(CefCursor::Default));
         let selected_text = Arc::new(Mutex::new(String::new()));
-        
+
         // Combine clipboard script with user injection script
         let full_script = match injection_script {
             Some(script) => format!("{}{}", super::clipboard::CLIPBOARD_SCRIPT, script),
             None => super::clipboard::CLIPBOARD_SCRIPT.to_string(),
         };
         let script_arc = Arc::new(Mutex::new(Some(full_script)));
-        
+
         let loaded = Arc::new(Mutex::new(false));
         let hidden = Arc::new(Mutex::new(false));
 
@@ -307,9 +307,11 @@ impl gpui::Render for BrowserView {
                     self.reuse_buffer.clear();
                     self.reuse_buffer.extend_from_slice(&pixels);
                     drop(pixels);
-                    
+
                     if let Some(buffer) = ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(
-                        w, h, std::mem::take(&mut self.reuse_buffer)
+                        w,
+                        h,
+                        std::mem::take(&mut self.reuse_buffer),
                     ) {
                         if let Some(old_image) = self.cached_image.take() {
                             cx.drop_image(old_image, Some(window));

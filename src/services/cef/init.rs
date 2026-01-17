@@ -98,14 +98,14 @@ cef::wrap_app! {
 pub fn initialize_cef() -> Result<()> {
     let _ = api_hash(cef_dll_sys::CEF_API_VERSION_LAST, 0);
     let args = Args::new();
-    
+
     // Setup cache directory
     let cache_dir = dirs::cache_dir()
         .unwrap_or_else(|| std::path::PathBuf::from("/tmp"))
         .join("nwidgets")
         .join("cef");
     let _ = std::fs::create_dir_all(&cache_dir);
-    
+
     let settings = Settings {
         windowless_rendering_enabled: true as _,
         external_message_pump: true as _,

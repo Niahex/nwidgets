@@ -779,10 +779,13 @@ impl ControlCenterWidget {
                                 .text_color(theme.text_muted)
                                 .cursor_pointer()
                                 .hover(|style| style.bg(theme.overlay))
-                                .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |_, _, _, cx| {
-                                    notif_service.read(cx).clear();
-                                    cx.notify();
-                                }))
+                                .on_mouse_down(
+                                    gpui::MouseButton::Left,
+                                    cx.listener(move |_, _, _, cx| {
+                                        notif_service.read(cx).clear();
+                                        cx.notify();
+                                    }),
+                                )
                                 .child("Clear"),
                         )
                     }),

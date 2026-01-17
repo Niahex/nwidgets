@@ -1,5 +1,5 @@
-use gpui::{div, prelude::*, SharedString};
 use crate::theme::Theme;
+use gpui::{div, prelude::*, SharedString};
 
 pub struct SearchInput {
     pub query: SharedString,
@@ -29,11 +29,7 @@ impl SearchInput {
         &self.query
     }
 
-    pub fn render_with_handlers<F1, F2>(
-        &self,
-        on_input: F1,
-        on_space: F2,
-    ) -> impl IntoElement
+    pub fn render_with_handlers<F1, F2>(&self, on_input: F1, on_space: F2) -> impl IntoElement
     where
         F1: Fn(&str) + 'static,
         F2: Fn(&str) + 'static,
@@ -68,7 +64,10 @@ impl SearchInput {
 
     fn render_command_input(&self, cmd: &str, query_text: &str, bg_color: gpui::Hsla) -> gpui::Div {
         let (command, rest) = if query_text.starts_with(cmd) && query_text.len() > cmd.len() {
-            (cmd.to_string(), query_text.strip_prefix(cmd).unwrap_or("").to_string())
+            (
+                cmd.to_string(),
+                query_text.strip_prefix(cmd).unwrap_or("").to_string(),
+            )
         } else if query_text == cmd {
             (cmd.to_string(), String::new())
         } else {
@@ -84,7 +83,7 @@ impl SearchInput {
                     .bg(bg_color)
                     .text_color(self.theme.text)
                     .rounded_sm()
-                    .child(command)
+                    .child(command),
             )
             .child(rest)
     }

@@ -1,6 +1,6 @@
-use gpui::{div, img, prelude::*};
+use crate::services::launcher::{process::ProcessInfo, state::ApplicationInfo};
 use crate::theme::Theme;
-use crate::services::launcher::{state::ApplicationInfo, process::ProcessInfo};
+use gpui::{div, img, prelude::*};
 
 #[derive(Clone)]
 pub enum SearchResult {
@@ -66,126 +66,111 @@ impl SearchResults {
         let theme = self.theme.clone();
         let selected_index = self.selected_index;
 
-        div()
-            .flex()
-            .flex_col()
-            .mt_2()
-            .children(
-                self.results
-                    .iter()
-                    .enumerate()
-                    .skip(self.scroll_offset)
-                    .take(visible_items)
-                    .map(|(original_index, result)| {
-                        let mut item = div()
-                            .flex()
-                            .items_center()
-                            .p_2()
-                            .text_color(theme.text_muted)
-                            .rounded_md()
-                            .hover(|style| style.bg(theme.overlay));
+        div().flex().flex_col().mt_2().children(
+            self.results
+                .iter()
+                .enumerate()
+                .skip(self.scroll_offset)
+                .take(visible_items)
+                .map(|(original_index, result)| {
+                    let mut item = div()
+                        .flex()
+                        .items_center()
+                        .p_2()
+                        .text_color(theme.text_muted)
+                        .rounded_md()
+                        .hover(|style| style.bg(theme.overlay));
 
-                        if original_index == selected_index {
-                            item = item.bg(theme.accent.opacity(0.2)).text_color(theme.accent);
-                        }
+                    if original_index == selected_index {
+                        item = item.bg(theme.accent.opacity(0.2)).text_color(theme.accent);
+                    }
 
-                        match result {
-                            SearchResult::Application(app) => {
-                                item.child(
+                    match result {
+                        SearchResult::Application(app) => item.child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap_2()
+                                .child(if let Some(icon_path) = &app.icon_path {
                                     div()
-                                        .flex()
-                                        .items_center()
-                                        .gap_2()
-                                        .child(
-                                            if let Some(icon_path) = &app.icon_path {
-                                                div().size_6().child(
-                                                    img(std::path::PathBuf::from(icon_path))
-                                                        .size_6(),
-                                                )
-                                            } else {
-                                                div()
-                                                    .size_6()
-                                                    .bg(theme.accent_alt)
-                                                    .rounded_sm()
-                                            },
-                                        )
-                                        .child(app.name.clone()),
-                                )
-                            }
-                            SearchResult::Calculation(calc_result) => item.child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .gap_2()
-                                    .child(
-                                        div()
-                                            .size_6()
-                                            .bg(theme.success)
-                                            .rounded_sm()
-                                            .flex()
-                                            .items_center()
-                                            .justify_center()
-                                            .child("="),
-                                    )
-                                    .child(format!("= {calc_result}")),
-                            ),
-                            SearchResult::Process(process) => item.child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .gap_2()
-                                    .child(
-                                        div()
-                                            .size_6()
-                                            .bg(theme.error)
-                                            .rounded_sm()
-                                            .flex()
-                                            .items_center()
-                                            .justify_center()
-                                            .child("⚡"),
-                                    )
-                                    .child(
-                                        div()
-                                            .flex()
-                                            .flex_col()
-                                            .child(format!("{} ({})", process.name, process.pid))
-                                            .child(
-                                                div()
-                                                    .text_xs()
-                                                    .text_color(theme.accent)
-                                                    .child(format!(
-                                                        "CPU: {:.1}% | RAM: {:.1}MB",
-                                                        process.cpu_usage, process.memory_mb
-                                                    )),
-                                            ),
-                                    ),
-                            ),
-                            SearchResult::Clipboard(content) => {
-                                let preview = if content.len() > 60 {
-                                    format!("{}...", &content[..60])
+                                        .size_6()
+                                        .child(img(std::path::PathBuf::from(icon_path)).size_6())
                                 } else {
-                                    content.clone()
-                                };
-                                item.child(
+                                    div().size_6().bg(theme.accent_alt).rounded_sm()
+                                })
+                                .child(app.name.clone()),
+                        ),
+                        SearchResult::Calculation(calc_result) => item.child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap_2()
+                                .child(
                                     div()
+                                        .size_6()
+                                        .bg(theme.success)
+                                        .rounded_sm()
                                         .flex()
                                         .items_center()
-                                        .gap_2()
-                                        .child(
-                                            div()
-                                                .size_6()
-                                                .bg(theme.accent)
-                                                .rounded_sm()
-                                                .flex()
-                                                .items_center()
-                                                .justify_center()
-                                                .child("📋"),
-                                        )
-                                        .child(preview),
+                                        .justify_center()
+                                        .child("="),
                                 )
-                            }
+                                .child(format!("= {calc_result}")),
+                        ),
+                        SearchResult::Process(process) => item.child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap_2()
+                                .child(
+                                    div()
+                                        .size_6()
+                                        .bg(theme.error)
+                                        .rounded_sm()
+                                        .flex()
+                                        .items_center()
+                                        .justify_center()
+                                        .child("⚡"),
+                                )
+                                .child(
+                                    div()
+                                        .flex()
+                                        .flex_col()
+                                        .child(format!("{} ({})", process.name, process.pid))
+                                        .child(div().text_xs().text_color(theme.accent).child(
+                                            format!(
+                                                "CPU: {:.1}% | RAM: {:.1}MB",
+                                                process.cpu_usage, process.memory_mb
+                                            ),
+                                        )),
+                                ),
+                        ),
+                        SearchResult::Clipboard(content) => {
+                            let preview = if content.len() > 60 {
+                                format!("{}...", &content[..60])
+                            } else {
+                                content.clone()
+                            };
+                            item.child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .gap_2()
+                                    .child(
+                                        div()
+                                            .size_6()
+                                            .bg(theme.accent)
+                                            .rounded_sm()
+                                            .flex()
+                                            .items_center()
+                                            .justify_center()
+                                            .child("📋"),
+                                    )
+                                    .child(preview),
+                            )
                         }
-                    })
-            )
+                    }
+                }),
+        )
     }
 }

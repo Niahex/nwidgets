@@ -10,4 +10,4 @@ pub use corner::Corner;
 pub use dropdown::*;
 pub use popover_menu::*;
 pub use search_input::SearchInput;
-pub use search_results::{SearchResults, SearchResult};
+pub use search_results::{SearchResult, SearchResults};

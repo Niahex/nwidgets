@@ -30,7 +30,11 @@ impl LockMonitor {
         let (caps_tx, mut caps_rx) = futures::channel::mpsc::unbounded::<bool>();
 
         // Worker Task (Tokio) - CapsLock
-        gpui_tokio::Tokio::spawn(cx, async move { Self::capslock_monitor_worker(caps_tx).await }).detach();
+        gpui_tokio::Tokio::spawn(
+            cx,
+            async move { Self::capslock_monitor_worker(caps_tx).await },
+        )
+        .detach();
 
         // UI Task (GPUI) - CapsLock
         let weak_service = service.downgrade();
@@ -49,7 +53,7 @@ impl LockMonitor {
                             });
                         }
                     }) {
-                        Ok(_) => {},
+                        Ok(_) => {}
                         Err(_) => break,
                     }
                 }

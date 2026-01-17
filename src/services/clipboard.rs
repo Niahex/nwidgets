@@ -74,14 +74,14 @@ impl ClipboardMonitor {
             async move {
                 while let Some(content) = rx.next().await {
                     let _ = weak_model.update(&mut cx, |this, cx| {
-                        let should_exclude = hyprland_service.read(cx).active_window()
+                        let should_exclude = hyprland_service
+                            .read(cx)
+                            .active_window()
                             .as_ref()
                             .map(|w| w.class == "org.keepassxc.KeePassXC")
                             .unwrap_or(false);
 
-                        if !should_exclude
-                            && this.last_content.as_ref() != Some(&content)
-                        {
+                        if !should_exclude && this.last_content.as_ref() != Some(&content) {
                             this.last_content = Some(content.clone());
                             this.history.push_front(content.clone());
                             if this.history.len() > 50 {

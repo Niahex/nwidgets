@@ -1,26 +1,15 @@
 use gpui::{
-    actions, div, prelude::*, px, Context, FocusHandle, KeyDownEvent, Render,
-    Task, Window,
+    actions, div, prelude::*, px, Context, FocusHandle, KeyDownEvent, Render, Task, Window,
 };
 use std::process::Command;
 
-use crate::components::{SearchInput, SearchResults, SearchResult};
-use crate::services::launcher::{LauncherService, LauncherCore, SearchResultType, process};
+use crate::components::{SearchInput, SearchResult, SearchResults};
 use crate::services::clipboard::ClipboardMonitor;
+use crate::services::launcher::{process, LauncherCore, LauncherService, SearchResultType};
 use crate::theme::Theme;
-use process::{kill_process};
+use process::kill_process;
 
-actions!(
-    launcher,
-    [
-        Quit,
-        Backspace,
-        Up,
-        Down,
-        Launch,
-        OpenSettings
-    ]
-);
+actions!(launcher, [Quit, Backspace, Up, Down, Launch, OpenSettings]);
 
 struct Launcher {
     focus_handle: FocusHandle,
@@ -37,11 +26,12 @@ impl Launcher {
         let theme = Theme::nord_dark();
         let mut core = LauncherCore::new();
         core.load_from_cache();
-        
+
         Self {
             focus_handle: cx.focus_handle(),
             core,
-            search_input: SearchInput::new("Search for apps and commands").with_theme(theme.clone()),
+            search_input: SearchInput::new("Search for apps and commands")
+                .with_theme(theme.clone()),
             search_results: SearchResults::new().with_theme(theme.clone()),
             internal_results: Vec::new(),
             search_task: None,
@@ -58,7 +48,7 @@ impl Launcher {
 
         let query_str = self.search_input.get_query();
         self.internal_results = self.core.search(query_str, clipboard_history);
-        
+
         let display_results = self.core.convert_to_display_results(&self.internal_results);
         self.search_results.set_results(display_results);
     }
@@ -167,7 +157,9 @@ impl Render for Launcher {
                     this.update_search_results();
                     cx.notify();
                 } else if let Some(key_char) = &event.keystroke.key_char {
-                    let allowed = key_char.chars().all(|c| c.is_alphanumeric() || "+-*/()^.=".contains(c));
+                    let allowed = key_char
+                        .chars()
+                        .all(|c| c.is_alphanumeric() || "+-*/()^.=".contains(c));
 
                     if allowed {
                         let mut query = this.search_input.get_query().to_string();
@@ -210,33 +202,44 @@ pub struct LauncherWidget {
 }
 
 impl LauncherWidget {
-    pub fn new(cx: &mut Context<Self>, launcher_service: gpui::Entity<LauncherService>, clipboard_monitor: gpui::Entity<ClipboardMonitor>) -> Self {
+    pub fn new(
+        cx: &mut Context<Self>,
+        launcher_service: gpui::Entity<LauncherService>,
+        clipboard_monitor: gpui::Entity<ClipboardMonitor>,
+    ) -> Self {
         let launcher = Launcher::new_for_widget(cx);
-        
+
         // Scan apps in background (async, non-blocking)
         let apps_arc = launcher.core.applications.clone();
         cx.spawn(|this: gpui::WeakEntity<Self>, cx: &mut gpui::AsyncApp| {
             let mut cx = cx.clone();
             async move {
                 // Scan sur le background executor (thread pool)
-                let apps = cx.background_executor().spawn(async {
-                    crate::services::launcher::applications::scan_applications()
-                }).await;
-                
+                let apps = cx
+                    .background_executor()
+                    .spawn(async { crate::services::launcher::applications::scan_applications() })
+                    .await;
+
                 // Update UI thread
                 let _ = this.update(&mut cx, |this, cx| {
                     *apps_arc.write() = apps.clone();
-                    this.launcher.core.fuzzy_matcher.set_candidates(&apps_arc.read());
+                    this.launcher
+                        .core
+                        .fuzzy_matcher
+                        .set_candidates(&apps_arc.read());
                     cx.notify();
                 });
-                
+
                 // Save cache in background
-                cx.background_executor().spawn(async move {
-                    let _ = crate::services::launcher::applications::save_to_cache(&apps);
-                }).detach();
+                cx.background_executor()
+                    .spawn(async move {
+                        let _ = crate::services::launcher::applications::save_to_cache(&apps);
+                    })
+                    .detach();
             }
-        }).detach();
-        
+        })
+        .detach();
+
         Self {
             launcher,
             launcher_service,

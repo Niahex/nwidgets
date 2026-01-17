@@ -33,8 +33,8 @@ impl FuzzyMatcher {
         if query.is_empty() {
             // Return all items if query is empty (limited by caller usually, but here we return all indices)
             // Ideally we'd know the count, but we can't easily get it from Nucleo without a snapshot.
-            // Since the caller (main.rs) has the apps vector, they handle the "empty query" case 
-            // usually by not calling search or taking all. 
+            // Since the caller (main.rs) has the apps vector, they handle the "empty query" case
+            // usually by not calling search or taking all.
             // But if they call search with empty string, Nucleo pattern matching might return everything if configured?
             // Let's rely on the pattern.
         }

@@ -215,7 +215,7 @@ impl HyprlandService {
             let mut do_ws = ev_type == 0;
             let mut do_win = ev_type == 1;
             let mut do_fs = ev_type == 2;
-            
+
             while let Ok(Some(ev)) = socket_rx.try_next() {
                 match ev {
                     0 => do_ws = true,

@@ -152,7 +152,7 @@ fn main() {
             cx.set_global(theme::Theme::nord_dark());
 
             // Bind global keys for launcher
-            use crate::widgets::launcher::{Backspace, Up, Down, Launch, Quit};
+            use crate::widgets::launcher::{Backspace, Down, Launch, Quit, Up};
             cx.bind_keys([
                 KeyBinding::new("backspace", Backspace, None),
                 KeyBinding::new("up", Up, None),
@@ -274,7 +274,15 @@ fn main() {
                         }),
                         ..Default::default()
                     },
-                    move |_window, cx| cx.new(|cx| LauncherWidget::new(cx, launcher_service_clone.clone(), clipboard_monitor_clone.clone())),
+                    move |_window, cx| {
+                        cx.new(|cx| {
+                            LauncherWidget::new(
+                                cx,
+                                launcher_service_clone.clone(),
+                                clipboard_monitor_clone.clone(),
+                            )
+                        })
+                    },
                 )
                 .unwrap();
 
@@ -299,7 +307,12 @@ fn main() {
                         let height = if fullscreen { 1440 } else { 1370 };
                         window.resize(size(px(600.0), px(height as f32)));
                         chat.resize_browser(600, height, cx);
-                        window.set_margin(if fullscreen { 0 } else { 40 }, 0, if fullscreen { 0 } else { 20 }, if fullscreen { 0 } else { 10 });
+                        window.set_margin(
+                            if fullscreen { 0 } else { 40 },
+                            0,
+                            if fullscreen { 0 } else { 20 },
+                            if fullscreen { 0 } else { 10 },
+                        );
                         window.set_exclusive_edge(Anchor::LEFT);
                         window.set_exclusive_zone(if fullscreen { 0 } else { 600 });
                     } else {
@@ -315,20 +328,26 @@ fn main() {
             .detach();
 
             // Close chat when entering fullscreen
-            cx.subscribe(&HyprlandService::global(cx), move |_hypr, event: &FullscreenChanged, cx| {
-                if chat_service2.read(cx).visible && event.0 {
-                    chat_service2.update(cx, |cs, cx| cs.toggle(cx));
-                }
-            })
+            cx.subscribe(
+                &HyprlandService::global(cx),
+                move |_hypr, event: &FullscreenChanged, cx| {
+                    if chat_service2.read(cx).visible && event.0 {
+                        chat_service2.update(cx, |cs, cx| cs.toggle(cx));
+                    }
+                },
+            )
             .detach();
 
             // Close chat when switching to fullscreen workspace
-            cx.subscribe(&HyprlandService::global(cx), move |_hypr, _event: &WorkspaceChanged, cx| {
-                let fullscreen = HyprlandService::global(cx).read(cx).has_fullscreen();
-                if chat_service3.read(cx).visible && fullscreen {
-                    chat_service3.update(cx, |cs, cx| cs.toggle(cx));
-                }
-            })
+            cx.subscribe(
+                &HyprlandService::global(cx),
+                move |_hypr, _event: &WorkspaceChanged, cx| {
+                    let fullscreen = HyprlandService::global(cx).read(cx).has_fullscreen();
+                    if chat_service3.read(cx).visible && fullscreen {
+                        chat_service3.update(cx, |cs, cx| cs.toggle(cx));
+                    }
+                },
+            )
             .detach();
 
             // Subscribe to chat navigate events
@@ -342,27 +361,34 @@ fn main() {
             .detach();
 
             // Subscribe to launcher toggle events
-            cx.subscribe(&launcher_service, move |service, _event: &LauncherToggled, cx| {
-                let window = launcher_window_toggle.lock();
-                let visible = service.read(cx).visible;
-                eprintln!("[launcher] Toggle event received, visible: {visible}");
-                let _ = window.update(cx, |launcher, window, cx| {
-                    if visible {
-                        eprintln!("[launcher] Showing window");
-                        window.resize(size(px(700.0), px(500.0)));
-                        window.set_keyboard_interactivity(gpui::layer_shell::KeyboardInteractivity::Exclusive);
-                        // Reset and focus the launcher when it becomes visible
-                        launcher.reset();
-                        window.focus(launcher.focus_handle(), cx);
-                        cx.activate(true);
-                    } else {
-                        eprintln!("[launcher] Hiding window");
-                        window.resize(size(px(1.0), px(1.0)));
-                        window.set_keyboard_interactivity(gpui::layer_shell::KeyboardInteractivity::None);
-                    }
-                    cx.notify();
-                });
-            })
+            cx.subscribe(
+                &launcher_service,
+                move |service, _event: &LauncherToggled, cx| {
+                    let window = launcher_window_toggle.lock();
+                    let visible = service.read(cx).visible;
+                    eprintln!("[launcher] Toggle event received, visible: {visible}");
+                    let _ = window.update(cx, |launcher, window, cx| {
+                        if visible {
+                            eprintln!("[launcher] Showing window");
+                            window.resize(size(px(700.0), px(500.0)));
+                            window.set_keyboard_interactivity(
+                                gpui::layer_shell::KeyboardInteractivity::Exclusive,
+                            );
+                            // Reset and focus the launcher when it becomes visible
+                            launcher.reset();
+                            window.focus(launcher.focus_handle(), cx);
+                            cx.activate(true);
+                        } else {
+                            eprintln!("[launcher] Hiding window");
+                            window.resize(size(px(1.0), px(1.0)));
+                            window.set_keyboard_interactivity(
+                                gpui::layer_shell::KeyboardInteractivity::None,
+                            );
+                        }
+                        cx.notify();
+                    });
+                },
+            )
             .detach();
 
             let _osd_service = osd_service;
