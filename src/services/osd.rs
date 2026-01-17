@@ -71,7 +71,7 @@ impl OsdService {
 
         cx.subscribe(
             &clipboard_monitor,
-            |this, _monitor, _event: &ClipboardEvent, cx| {
+            |this, _monitor, event: &ClipboardEvent, cx| {
                 this.show_event(OsdEvent::Clipboard, cx);
             },
         )

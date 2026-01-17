@@ -1,27 +1,36 @@
 use futures::StreamExt;
 use gpui::prelude::*;
 use gpui::{App, AsyncApp, Entity, EventEmitter};
+use std::collections::VecDeque;
 use std::process::Stdio;
 use tokio::io::{AsyncBufReadExt, BufReader};
 
 #[derive(Clone)]
-pub struct ClipboardEvent;
+pub struct ClipboardEvent {
+    pub content: String,
+}
 
-pub struct ClipboardMonitor;
+pub struct ClipboardMonitor {
+    history: VecDeque<String>,
+    last_content: Option<String>,
+}
 
 impl EventEmitter<ClipboardEvent> for ClipboardMonitor {}
 
 impl ClipboardMonitor {
     pub fn init(cx: &mut App) -> Entity<Self> {
-        let model = cx.new(|_cx| Self);
+        let model = cx.new(|_cx| Self {
+            history: VecDeque::with_capacity(50),
+            last_content: None,
+        });
         let weak_model = model.downgrade();
 
-        let (tx, mut rx) = futures::channel::mpsc::unbounded::<()>();
+        let (tx, mut rx) = futures::channel::mpsc::unbounded::<String>();
 
         // 1. Worker Task (Tokio): Watcher asynchrone
         gpui_tokio::Tokio::spawn(cx, async move {
             let child = tokio::process::Command::new("wl-paste")
-                .args(["--watch", "echo", "changed"])
+                .args(["--watch", "wl-paste", "-n"])
                 .stdout(Stdio::piped())
                 .spawn();
 
@@ -29,9 +38,11 @@ impl ClipboardMonitor {
                 Ok(mut child) => {
                     if let Some(stdout) = child.stdout.take() {
                         let mut reader = BufReader::new(stdout).lines();
-                        while let Ok(Some(_line)) = reader.next_line().await {
-                            if tx.unbounded_send(()).is_err() {
-                                break;
+                        while let Ok(Some(content)) = reader.next_line().await {
+                            if !content.trim().is_empty() {
+                                if tx.unbounded_send(content).is_err() {
+                                    break;
+                                }
                             }
                         }
                     }
@@ -49,9 +60,20 @@ impl ClipboardMonitor {
             let mut cx = cx.clone();
             let weak_model = weak_model.clone();
             async move {
-                while rx.next().await.is_some() {
-                    let _ = weak_model.update(&mut cx, |_, cx| {
-                        cx.emit(ClipboardEvent);
+                while let Some(content) = rx.next().await {
+                    let _ = weak_model.update(&mut cx, |this, cx| {
+                        // Éviter les doublons
+                        if this.last_content.as_ref() != Some(&content) {
+                            this.last_content = Some(content.clone());
+                            
+                            // Ajouter à l'historique
+                            this.history.push_front(content.clone());
+                            if this.history.len() > 50 {
+                                this.history.pop_back();
+                            }
+                            
+                            cx.emit(ClipboardEvent { content });
+                        }
                     });
                 }
             }
