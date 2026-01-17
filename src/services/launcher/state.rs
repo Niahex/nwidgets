@@ -8,7 +8,3 @@ pub struct ApplicationInfo {
     pub icon: Option<String>,
     pub icon_path: Option<String>,
 }
-
-// Wrapper pour partager ApplicationInfo sans cloner
-#[derive(Debug, Clone)]
-pub struct AppRef(pub Arc<ApplicationInfo>);
