@@ -211,8 +211,34 @@ pub struct LauncherWidget {
 
 impl LauncherWidget {
     pub fn new(cx: &mut Context<Self>, launcher_service: gpui::Entity<LauncherService>, clipboard_monitor: gpui::Entity<ClipboardMonitor>) -> Self {
+        let mut launcher = Launcher::new_for_widget(cx);
+        
+        // Scan apps in background (async, non-blocking)
+        let apps_arc = launcher.core.applications.clone();
+        cx.spawn(|this: gpui::WeakEntity<Self>, mut cx: &mut gpui::AsyncApp| {
+            let mut cx = cx.clone();
+            async move {
+                // Scan sur le background executor (thread pool)
+                let apps = cx.background_executor().spawn(async {
+                    crate::services::launcher::applications::scan_applications()
+                }).await;
+                
+                // Update UI thread
+                let _ = this.update(&mut cx, |this, cx| {
+                    *apps_arc.write() = apps.clone();
+                    this.launcher.core.fuzzy_matcher.set_candidates(&apps_arc.read());
+                    cx.notify();
+                });
+                
+                // Save cache in background
+                cx.background_executor().spawn(async move {
+                    let _ = crate::services::launcher::applications::save_to_cache(&apps);
+                }).detach();
+            }
+        }).detach();
+        
         Self {
-            launcher: Launcher::new_for_widget(cx),
+            launcher,
             launcher_service,
             clipboard_monitor,
         }

@@ -1,6 +1,6 @@
 use crate::components::SearchResult;
 use crate::services::launcher::{applications, calculator, process, fuzzy::FuzzyMatcher, state::ApplicationInfo};
-use applications::{load_from_cache};
+use applications::{load_from_cache, save_to_cache, scan_applications};
 use calculator::{is_calculator_query, Calculator};
 use parking_lot::RwLock;
 use process::{get_running_processes, is_process_query, ProcessInfo};
@@ -33,6 +33,13 @@ impl LauncherCore {
             *self.applications.write() = apps;
             self.fuzzy_matcher.set_candidates(&self.applications.read());
         }
+    }
+
+    pub fn scan_and_update(&mut self) {
+        let apps = scan_applications();
+        *self.applications.write() = apps.clone();
+        self.fuzzy_matcher.set_candidates(&self.applications.read());
+        let _ = save_to_cache(&apps);
     }
 
     pub fn search(
