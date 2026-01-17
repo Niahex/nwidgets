@@ -80,45 +80,53 @@ impl Launcher {
                     let exec = app.exec.clone();
                     let name = app.name.clone();
 
-                    std::thread::spawn(move || {
-                        let mut cmd = Command::new("sh");
-                        cmd.arg("-c")
-                            .arg(&exec)
-                            .stdin(std::process::Stdio::null())
-                            .stdout(std::process::Stdio::null())
-                            .stderr(std::process::Stdio::null());
+                    cx.background_executor()
+                        .spawn(async move {
+                            let mut cmd = Command::new("sh");
+                            cmd.arg("-c")
+                                .arg(&exec)
+                                .stdin(std::process::Stdio::null())
+                                .stdout(std::process::Stdio::null())
+                                .stderr(std::process::Stdio::null());
 
-                        match cmd.spawn() {
-                            Ok(_) => eprintln!("[nlauncher] Launched: {name}"),
-                            Err(err) => eprintln!(
-                                "[nlauncher] Failed to launch {name} (exec: {exec}): {err}"
-                            ),
-                        }
-                    });
+                            match cmd.spawn() {
+                                Ok(_) => eprintln!("[nlauncher] Launched: {name}"),
+                                Err(err) => eprintln!(
+                                    "[nlauncher] Failed to launch {name} (exec: {exec}): {err}"
+                                ),
+                            }
+                        })
+                        .detach();
 
                     cx.quit();
                 }
                 SearchResult::Calculation(result) => {
                     if result != "Initializing calculator..." {
                         let result = result.clone();
-                        std::thread::spawn(move || {
-                            match std::process::Command::new("wl-copy").arg(&result).output() {
-                                Ok(_) => eprintln!("[nlauncher] Copied to clipboard: {result}"),
-                                Err(e) => eprintln!("[nlauncher] Failed to copy to clipboard: {e}"),
-                            }
-                        });
+                        cx.background_executor()
+                            .spawn(async move {
+                                match std::process::Command::new("wl-copy").arg(&result).output() {
+                                    Ok(_) => eprintln!("[nlauncher] Copied to clipboard: {result}"),
+                                    Err(e) => eprintln!("[nlauncher] Failed to copy to clipboard: {e}"),
+                                }
+                            })
+                            .detach();
                         cx.quit();
                     }
                 }
                 SearchResult::Process(process) => {
                     let pid = process.pid;
                     let name = process.name.clone();
-                    std::thread::spawn(move || match kill_process(pid) {
-                        Ok(_) => eprintln!("[nlauncher] Killed process: {name} (pid: {pid})"),
-                        Err(e) => {
-                            eprintln!("[nlauncher] Failed to kill process {name} (pid: {pid}): {e}")
-                        }
-                    });
+                    cx.background_executor()
+                        .spawn(async move {
+                            match kill_process(pid) {
+                                Ok(_) => eprintln!("[nlauncher] Killed process: {name} (pid: {pid})"),
+                                Err(e) => {
+                                    eprintln!("[nlauncher] Failed to kill process {name} (pid: {pid}): {e}")
+                                }
+                            }
+                        })
+                        .detach();
 
                     self.update_search_results();
                     cx.notify();
@@ -327,21 +335,23 @@ impl Render for LauncherWidget {
                             let exec = app.exec.clone();
                             let name = app.name.clone();
 
-                            std::thread::spawn(move || {
-                                let mut cmd = Command::new("sh");
-                                cmd.arg("-c")
-                                    .arg(&exec)
-                                    .stdin(std::process::Stdio::null())
-                                    .stdout(std::process::Stdio::null())
-                                    .stderr(std::process::Stdio::null());
+                            cx.background_executor()
+                                .spawn(async move {
+                                    let mut cmd = Command::new("sh");
+                                    cmd.arg("-c")
+                                        .arg(&exec)
+                                        .stdin(std::process::Stdio::null())
+                                        .stdout(std::process::Stdio::null())
+                                        .stderr(std::process::Stdio::null());
 
-                                match cmd.spawn() {
-                                    Ok(_) => eprintln!("[launcher] Launched: {name}"),
-                                    Err(err) => eprintln!(
-                                        "[launcher] Failed to launch {name} (exec: {exec}): {err}"
-                                    ),
-                                }
-                            });
+                                    match cmd.spawn() {
+                                        Ok(_) => eprintln!("[launcher] Launched: {name}"),
+                                        Err(err) => eprintln!(
+                                            "[launcher] Failed to launch {name} (exec: {exec}): {err}"
+                                        ),
+                                    }
+                                })
+                                .detach();
 
                             // Hide launcher after launch
                             this.launcher_service.update(cx, |service, cx| {
@@ -351,12 +361,14 @@ impl Render for LauncherWidget {
                         SearchResult::Calculation(result) => {
                             if result != "Initializing calculator..." {
                                 let result = result.clone();
-                                std::thread::spawn(move || {
-                                    match std::process::Command::new("wl-copy").arg(&result).output() {
-                                        Ok(_) => eprintln!("[launcher] Copied to clipboard: {result}"),
-                                        Err(e) => eprintln!("[launcher] Failed to copy to clipboard: {e}"),
-                                    }
-                                });
+                                cx.background_executor()
+                                    .spawn(async move {
+                                        match std::process::Command::new("wl-copy").arg(&result).output() {
+                                            Ok(_) => eprintln!("[launcher] Copied to clipboard: {result}"),
+                                            Err(e) => eprintln!("[launcher] Failed to copy to clipboard: {e}"),
+                                        }
+                                    })
+                                    .detach();
                                 // Hide launcher after copy
                                 this.launcher_service.update(cx, |service, cx| {
                                     service.toggle(cx);
@@ -366,12 +378,16 @@ impl Render for LauncherWidget {
                         SearchResult::Process(process) => {
                             let pid = process.pid;
                             let name = process.name.clone();
-                            std::thread::spawn(move || match kill_process(pid) {
-                                Ok(_) => eprintln!("[launcher] Killed process: {name} (pid: {pid})"),
-                                Err(e) => {
-                                    eprintln!("[launcher] Failed to kill process {name} (pid: {pid}): {e}")
-                                }
-                            });
+                            cx.background_executor()
+                                .spawn(async move {
+                                    match kill_process(pid) {
+                                        Ok(_) => eprintln!("[launcher] Killed process: {name} (pid: {pid})"),
+                                        Err(e) => {
+                                            eprintln!("[launcher] Failed to kill process {name} (pid: {pid}): {e}")
+                                        }
+                                    }
+                                })
+                                .detach();
 
                             let clipboard_history = this.clipboard_monitor.read(cx).get_history();
                             this.launcher.update_search_results_with_clipboard(clipboard_history);
@@ -379,12 +395,14 @@ impl Render for LauncherWidget {
                         }
                         SearchResult::Clipboard(content) => {
                             let content = content.clone();
-                            std::thread::spawn(move || {
-                                match std::process::Command::new("wl-copy").arg(&content).output() {
-                                    Ok(_) => eprintln!("[launcher] Copied clipboard entry"),
-                                    Err(e) => eprintln!("[launcher] Failed to copy: {e}"),
-                                }
-                            });
+                            cx.background_executor()
+                                .spawn(async move {
+                                    match std::process::Command::new("wl-copy").arg(&content).output() {
+                                        Ok(_) => eprintln!("[launcher] Copied clipboard entry"),
+                                        Err(e) => eprintln!("[launcher] Failed to copy: {e}"),
+                                    }
+                                })
+                                .detach();
                             // Hide launcher after copy
                             this.launcher_service.update(cx, |service, cx| {
                                 service.toggle(cx);
