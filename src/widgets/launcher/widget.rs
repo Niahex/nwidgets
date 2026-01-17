@@ -56,7 +56,7 @@ impl Launcher {
             search_input: SearchInput::new("Search for apps and commands").with_theme(theme.clone()),
             search_results: SearchResults::new().with_theme(theme.clone()),
             fuzzy_matcher: FuzzyMatcher::new(),
-            calculator: None,
+            calculator: Some(Calculator::new()),
             internal_results: Vec::new(),
             search_task: None,
             theme,
@@ -91,23 +91,6 @@ impl Launcher {
         })
         .detach();
 
-        cx.spawn(async move |this, cx| {
-            let calculator = background_executor()
-                .spawn(async move { Calculator::new() })
-                .await;
-
-            this.update(cx, |this, cx| {
-                this.calculator = Some(calculator);
-                if is_calculator_query(this.search_input.get_query()) {
-                    this.update_search_results();
-                    cx.notify();
-                }
-            })?;
-
-            anyhow::Ok(())
-        })
-        .detach();
-
         launcher
     }
 
@@ -119,7 +102,7 @@ impl Launcher {
             search_input: SearchInput::new("Search for apps and commands").with_theme(theme.clone()),
             search_results: SearchResults::new().with_theme(theme.clone()),
             fuzzy_matcher: FuzzyMatcher::new(),
-            calculator: None,
+            calculator: Some(Calculator::new()),
             internal_results: Vec::new(),
             search_task: None,
             theme,
@@ -533,9 +516,9 @@ impl Render for LauncherWidget {
                             });
 
                             // Hide launcher after launch
-                            this.launcher.search_input.set_query("");
-                            this.launcher.update_search_results();
-                            cx.notify();
+                            this.launcher_service.update(cx, |service, cx| {
+                                service.toggle(cx);
+                            });
                         }
                         SearchResult::Calculation(result) => {
                             if result != "Initializing calculator..." {
@@ -543,6 +526,10 @@ impl Render for LauncherWidget {
                                     Ok(_) => eprintln!("[launcher] Copied to clipboard: {result}"),
                                     Err(e) => eprintln!("[launcher] Failed to copy to clipboard: {e}"),
                                 }
+                                // Hide launcher after copy
+                                this.launcher_service.update(cx, |service, cx| {
+                                    service.toggle(cx);
+                                });
                             }
                         }
                         SearchResult::Process(process) => {
