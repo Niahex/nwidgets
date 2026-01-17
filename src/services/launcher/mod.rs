@@ -44,6 +44,15 @@ impl LauncherService {
     pub fn init(cx: &mut App) -> Entity<Self> {
         let service = cx.new(Self::new);
         cx.set_global(GlobalLauncherService(service.clone()));
+        
+        // Scan applications in background at startup
+        cx.spawn(|cx| async move {
+            cx.background_executor().spawn(async {
+                let apps = crate::services::launcher::applications::scan_applications();
+                let _ = crate::services::launcher::applications::save_to_cache(&apps);
+            }).await;
+        }).detach();
+        
         service
     }
 }
