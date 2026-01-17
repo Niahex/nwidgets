@@ -1,6 +1,6 @@
 use futures::StreamExt;
 use gpui::prelude::*;
-use gpui::{App, AsyncApp, Context, Entity, EventEmitter, Global, WeakEntity};
+use gpui::{App, AsyncApp, BackgroundExecutor, Context, Entity, EventEmitter, Global, WeakEntity};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader};
@@ -39,6 +39,7 @@ pub struct HyprlandService {
     active_workspace_id: Arc<RwLock<i32>>,
     active_window: Arc<RwLock<Option<ActiveWindow>>>,
     fullscreen_workspace: Arc<RwLock<Option<i32>>>,
+    executor: BackgroundExecutor,
 }
 
 impl EventEmitter<WorkspaceChanged> for HyprlandService {}
@@ -135,6 +136,7 @@ impl HyprlandService {
             active_workspace_id,
             active_window,
             fullscreen_workspace,
+            executor: cx.background_executor().clone(),
         }
     }
 
@@ -157,11 +159,13 @@ impl HyprlandService {
 
     pub fn switch_to_workspace(&self, workspace_id: i32) {
         let ws_id = workspace_id.to_string();
-        std::thread::spawn(move || {
-            let _ = std::process::Command::new("hyprctl")
-                .args(["dispatch", "workspace", &ws_id])
-                .output();
-        });
+        self.executor
+            .spawn(async move {
+                let _ = std::process::Command::new("hyprctl")
+                    .args(["dispatch", "workspace", &ws_id])
+                    .output();
+            })
+            .detach();
     }
 
     // Worker running in Tokio context
