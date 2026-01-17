@@ -46,11 +46,14 @@ impl LauncherService {
         cx.set_global(GlobalLauncherService(service.clone()));
         
         // Scan applications in background at startup
-        cx.spawn(|cx| async move {
-            cx.background_executor().spawn(async {
-                let apps = crate::services::launcher::applications::scan_applications();
-                let _ = crate::services::launcher::applications::save_to_cache(&apps);
-            }).await;
+        cx.spawn(|cx: &mut AsyncApp| {
+            let mut cx = cx.clone();
+            async move {
+                cx.background_executor().spawn(async {
+                    let apps = crate::services::launcher::applications::scan_applications();
+                    let _ = crate::services::launcher::applications::save_to_cache(&apps);
+                }).await;
+            }
         }).detach();
         
         service
