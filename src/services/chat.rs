@@ -1,9 +1,7 @@
 use gpui::{App, AppContext, Context, Entity, EventEmitter, Global};
 
 pub struct ChatToggled;
-pub struct ChatPinToggled {
-    pub pinned: bool,
-}
+pub struct ChatPinToggled;
 pub struct ChatNavigate {
     pub url: String,
 }
@@ -46,9 +44,7 @@ impl ChatService {
 
     pub fn toggle_pin(&mut self, cx: &mut Context<Self>) {
         self.pinned = !self.pinned;
-        cx.emit(ChatPinToggled {
-            pinned: self.pinned,
-        });
+        cx.emit(ChatPinToggled);
         cx.notify();
     }
 
