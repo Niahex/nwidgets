@@ -5,6 +5,13 @@ use gpui::layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions}
 use gpui::*;
 use std::time::Duration;
 
+// Constantes pour éviter les allocations répétées de strings
+const SINK_MUTED: &str = "sink-muted";
+const SINK_ZERO: &str = "sink-zero";
+const SINK_LOW: &str = "sink-low";
+const SINK_MEDIUM: &str = "sink-medium";
+const SINK_HIGH: &str = "sink-high";
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum OsdEvent {
     Volume(String, u8, bool), // icon_name, volume %, muted
@@ -43,19 +50,19 @@ impl OsdService {
             move |this, _audio, event: &AudioStateChanged, cx| {
                 let state = &event.state;
                 let icon_name = if state.sink_muted {
-                    "sink-muted".to_string()
+                    SINK_MUTED
                 } else if state.sink_volume == 0 {
-                    "sink-zero".to_string()
+                    SINK_ZERO
                 } else if state.sink_volume < 33 {
-                    "sink-low".to_string()
+                    SINK_LOW
                 } else if state.sink_volume < 66 {
-                    "sink-medium".to_string()
+                    SINK_MEDIUM
                 } else {
-                    "sink-high".to_string()
+                    SINK_HIGH
                 };
 
                 this.show_event(
-                    OsdEvent::Volume(icon_name, state.sink_volume, state.sink_muted),
+                    OsdEvent::Volume(icon_name.to_string(), state.sink_volume, state.sink_muted),
                     cx,
                 );
             },
