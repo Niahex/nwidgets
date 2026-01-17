@@ -150,6 +150,16 @@ fn main() {
             gpui_tokio::init(cx);
             cx.set_global(theme::Theme::nord_dark());
 
+            // Bind global keys for launcher
+            use crate::widgets::launcher::widget::{Backspace, Up, Down, Launch, Quit};
+            cx.bind_keys([
+                KeyBinding::new("backspace", Backspace, None),
+                KeyBinding::new("up", Up, None),
+                KeyBinding::new("down", Down, None),
+                KeyBinding::new("enter", Launch, None),
+                KeyBinding::new("escape", Quit, None),
+            ]);
+
             // Initialize global services
             HyprlandService::init(cx);
             AudioService::init(cx);
@@ -234,6 +244,7 @@ fn main() {
                 .unwrap();
 
             // Launcher window - created at startup, starts hidden (1x1)
+            let launcher_service_clone = launcher_service.clone();
             let launcher_window = cx
                 .open_window(
                     WindowOptions {
@@ -260,7 +271,7 @@ fn main() {
                         }),
                         ..Default::default()
                     },
-                    |_window, cx| cx.new(LauncherWidget::new),
+                    move |_window, cx| cx.new(|cx| LauncherWidget::new(cx, launcher_service_clone.clone())),
                 )
                 .unwrap();
 
@@ -332,11 +343,15 @@ fn main() {
                 let window = launcher_window_toggle.lock();
                 let visible = service.read(cx).visible;
                 eprintln!("[launcher] Toggle event received, visible: {}", visible);
-                let _ = window.update(cx, |_launcher, window, cx| {
+                let _ = window.update(cx, |launcher, window, cx| {
                     if visible {
                         eprintln!("[launcher] Showing window");
                         window.resize(size(px(700.0), px(500.0)));
                         window.set_keyboard_interactivity(gpui::layer_shell::KeyboardInteractivity::Exclusive);
+                        // Reset and focus the launcher when it becomes visible
+                        launcher.reset();
+                        window.focus(launcher.focus_handle(), cx);
+                        cx.activate(true);
                     } else {
                         eprintln!("[launcher] Hiding window");
                         window.resize(size(px(1.0), px(1.0)));
