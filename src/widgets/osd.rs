@@ -76,14 +76,9 @@ impl OsdWidget {
 
 impl Render for OsdWidget {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        // Si pas visible et pas d'événement, ne rien afficher
-        if !self.visible && self.current_event.is_none() {
-            return div().id("osd-root").size_0().into_any_element();
-        }
-
-        // Si pas d'événement, ne rien afficher
-        if self.current_event.is_none() {
-            return div().id("osd-root").size_0().into_any_element();
+        // Si pas visible ou pas d'événement, retourner un élément vide
+        if !self.visible || self.current_event.is_none() {
+            return div().into_any_element();
         }
 
         let event = self.current_event.as_ref().unwrap();
@@ -209,9 +204,9 @@ impl Render for OsdWidget {
             "osd-fade-out"
         };
 
-        // Si pas visible, retourner size_0 après l'animation
+        // Si pas visible, retourner un élément vide
         if !is_visible {
-            return div().id("osd-root").size_0().into_any_element();
+            return div().into_any_element();
         }
 
         div()

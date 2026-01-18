@@ -161,6 +161,12 @@ fn main() {
                 KeyBinding::new("escape", Quit, None),
             ]);
 
+            // Bind global keys for control center
+            use crate::widgets::control_center::CloseControlCenter;
+            cx.bind_keys([
+                KeyBinding::new("escape", CloseControlCenter, None),
+            ]);
+
             // Initialize global services
             HyprlandService::init(cx);
             AudioService::init(cx);
@@ -315,12 +321,18 @@ fn main() {
                         );
                         window.set_exclusive_edge(Anchor::LEFT);
                         window.set_exclusive_zone(if fullscreen { 0 } else { 600 });
+                        window.set_layer(if fullscreen { 
+                            gpui::layer_shell::Layer::Overlay 
+                        } else { 
+                            gpui::layer_shell::Layer::Top 
+                        });
                     } else {
                         if let Some(url) = chat.current_url(cx) {
                             widgets::chat::save_url(&url);
                         }
                         window.set_exclusive_zone(0);
                         window.resize(size(px(1.0), px(1.0)));
+                        window.set_layer(gpui::layer_shell::Layer::Background);
                     }
                     cx.notify();
                 });
@@ -374,6 +386,7 @@ fn main() {
                             window.set_keyboard_interactivity(
                                 gpui::layer_shell::KeyboardInteractivity::Exclusive,
                             );
+                            window.set_layer(gpui::layer_shell::Layer::Overlay);
                             // Reset and focus the launcher when it becomes visible
                             launcher.reset();
                             window.focus(launcher.focus_handle(), cx);
@@ -384,6 +397,8 @@ fn main() {
                             window.set_keyboard_interactivity(
                                 gpui::layer_shell::KeyboardInteractivity::None,
                             );
+                            window.set_input_region(None);
+                            window.set_layer(gpui::layer_shell::Layer::Background);
                         }
                         cx.notify();
                     });

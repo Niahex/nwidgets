@@ -75,6 +75,16 @@ impl ControlCenterService {
         *self.expanded_section.read()
     }
 
+    pub fn close(&self, cx: &mut Context<Self>) {
+        let mut visible = self.visible.write();
+        if *visible {
+            *visible = false;
+            self.close_window(cx);
+        }
+        cx.emit(ControlCenterStateChanged);
+        cx.notify();
+    }
+
     fn open_window(&self, cx: &mut App) {
         if self.window_handle.read().is_some() {
             return;
@@ -114,6 +124,9 @@ impl ControlCenterService {
         if let Ok(handle) = handle {
             let _ = handle.update(cx, |view, window, cx| {
                 window.focus(&view.focus_handle, cx);
+                window.set_keyboard_interactivity(
+                    gpui::layer_shell::KeyboardInteractivity::Exclusive
+                );
                 cx.activate(true);
             });
             *self.window_handle.write() = Some(handle.into());
@@ -123,6 +136,9 @@ impl ControlCenterService {
     fn close_window(&self, cx: &mut Context<Self>) {
         if let Some(handle) = self.window_handle.write().take() {
             let _ = handle.update(cx, |_, window, _| {
+                window.set_keyboard_interactivity(
+                    gpui::layer_shell::KeyboardInteractivity::OnDemand
+                );
                 window.remove_window();
             });
         }

@@ -119,6 +119,13 @@ impl OsdService {
         if !self.visible {
             self.visible = true;
             changed = true;
+            
+            // Restaurer vers la layer Overlay quand visible
+            if let Some(window_handle) = &self.window_handle {
+                let _ = window_handle.update(cx, |_, window, _| {
+                    window.set_layer(gpui::layer_shell::Layer::Overlay);
+                });
+            }
         }
 
         if changed {
@@ -143,6 +150,14 @@ impl OsdService {
     pub fn hide(&mut self, cx: &mut Context<Self>) {
         if self.visible {
             self.visible = false;
+            
+            // Déplacer vers la layer Background quand caché
+            if let Some(window_handle) = &self.window_handle {
+                let _ = window_handle.update(cx, |_, window, _| {
+                    window.set_layer(gpui::layer_shell::Layer::Background);
+                });
+            }
+            
             // Note: We do NOT clear current_event here.
             // We keep the data so the UI can fade it out gracefully.
             cx.emit(OsdStateChanged {
@@ -196,6 +211,11 @@ impl OsdService {
 
         if let Ok(handle) = handle {
             self.window_handle = Some(handle.into());
+            
+            // L'OSD n'a jamais besoin de recevoir des clics, désactiver complètement
+            let _ = handle.update(cx, |_, window, _| {
+                window.set_input_region(None);
+            });
         }
     }
 

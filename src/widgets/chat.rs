@@ -2,7 +2,7 @@ use crate::services::cef::BrowserView;
 use crate::services::chat::{ChatService, ChatToggled};
 use gpui::prelude::*;
 use gpui::{
-    div, Animation, AnimationExt, AppContext, Context, Entity, IntoElement, ParentElement, Styled,
+    div, px, Animation, AnimationExt, AppContext, Context, Entity, IntoElement, ParentElement, Styled,
     Window,
 };
 use std::path::PathBuf;
@@ -85,7 +85,7 @@ impl gpui::Render for ChatWidget {
         let visible = self.chat_service.read(cx).visible;
 
         if !visible {
-            return div().id("chat-root").size_0().into_any_element();
+            return div().into_any_element();
         }
 
         let theme = cx.global::<crate::theme::Theme>();

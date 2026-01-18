@@ -295,9 +295,9 @@ impl LauncherWidget {
 
 impl Render for LauncherWidget {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        // Si pas visible, retourner size_0
+        // Si pas visible, retourner un élément vide
         if !self.visible {
-            return div().id("launcher-root").size_0().into_any_element();
+            return div().into_any_element();
         }
 
         let focus_handle = self.launcher.focus_handle.clone();

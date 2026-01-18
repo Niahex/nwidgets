@@ -281,7 +281,7 @@ impl gpui::Render for BrowserView {
         let is_hidden = *self.hidden.lock();
 
         if is_hidden {
-            return div().id("browser-hidden").size_0().into_any_element();
+            return div().into_any_element();
         }
 
         let w = *self.width.lock();

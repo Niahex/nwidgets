@@ -9,6 +9,8 @@ use gpui::prelude::*;
 use gpui::*;
 use std::time::{Duration, Instant};
 
+actions!(control_center, [CloseControlCenter]);
+
 pub struct ControlCenterWidget {
     pub focus_handle: FocusHandle,
     control_center: Entity<ControlCenterService>,
@@ -842,13 +844,9 @@ impl Render for ControlCenterWidget {
             .text_color(theme.text)
             .p_4()
             .gap_4()
-            .on_key_down(cx.listener(|this, event: &KeyDownEvent, _window, cx| {
-                if event.keystroke.key == "escape" {
-                    this.control_center.update(cx, |cc, cx| {
-                        cc.toggle(cx);
-                    });
-                }
-            }))
+            .on_action(|_: &CloseControlCenter, window, cx| {
+                window.remove_window();
+            })
             .child(self.render_audio_section(cx))
             .child(self.render_connectivity_section(cx))
             .child(div().h(px(1.)).bg(theme.hover))

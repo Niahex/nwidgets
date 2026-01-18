@@ -84,9 +84,9 @@ impl Render for NotificationsWidget {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let notifs = self.notifications.read().clone();
 
-        // Si pas de notifications, retourner un div vide pour cacher la fenêtre layer shell
+        // Si pas de notifications, retourner un div vide
         if notifs.is_empty() {
-            return div().size_0().into_any_element();
+            return div().into_any_element();
         }
 
         let theme = cx.global::<crate::theme::Theme>();
@@ -232,7 +232,11 @@ impl NotificationsWindowManager {
                     }),
                     ..Default::default()
                 },
-                |_window, cx| cx.new(NotificationsWidget::new),
+                |window, cx| {
+                    // Les notifications n'ont pas besoin de recevoir des clics
+                    window.set_input_region(None);
+                    cx.new(NotificationsWidget::new)
+                },
             )
             .ok()?;
 
