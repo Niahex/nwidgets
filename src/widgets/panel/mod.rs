@@ -53,6 +53,7 @@ impl Render for Panel {
             .justify_between()
             .h(panel_height + corner_radius)
             .w_full()
+            // Panel principal (sans border)
             .child(
                 div()
                     .absolute()
@@ -62,8 +63,6 @@ impl Render for Panel {
                     .h(panel_height)
                     .px_3()
                     .bg(theme.bg)
-                    .border_b_1()
-                    .border_color(theme.accent_alt.opacity(0.25))
                     .shadow_lg()
                     .text_color(theme.text)
                     .flex()
@@ -158,7 +157,7 @@ impl Render for Panel {
                             ),
                     ),
             )
-            // Left corner
+            // Left corner avec bg
             .child(
                 canvas(move |_, _, _| {}, {
                     let color = theme.bg;
@@ -184,9 +183,9 @@ impl Render for Panel {
                 .absolute()
                 .top(panel_height)
                 .left_0()
-                .size(corner_radius),
+                .size(corner_radius)
             )
-            // Right corner
+            // Right corner avec bg
             .child(
                 canvas(move |_, _, _| {}, {
                     let color = theme.bg;
@@ -212,7 +211,7 @@ impl Render for Panel {
                 .absolute()
                 .top(panel_height)
                 .right_0()
-                .size(corner_radius),
+                .size(corner_radius)
             )
     }
 }
