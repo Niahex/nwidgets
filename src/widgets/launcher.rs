@@ -2,8 +2,8 @@ use gpui::{
     actions, div, prelude::*, px, Animation, AnimationExt, Context, FocusHandle, KeyDownEvent,
     Render, Task, Window,
 };
-use std::process::Command;
 use std::time::Duration;
+use gio::prelude::*;
 
 use crate::components::{SearchInput, SearchResult, SearchResults};
 use crate::services::clipboard::ClipboardMonitor;
@@ -86,18 +86,20 @@ impl Launcher {
 
                     cx.background_executor()
                         .spawn(async move {
-                            let mut cmd = Command::new("sh");
-                            cmd.arg("-c")
-                                .arg(&exec)
-                                .stdin(std::process::Stdio::null())
-                                .stdout(std::process::Stdio::null())
-                                .stderr(std::process::Stdio::null());
-
-                            match cmd.spawn() {
-                                Ok(_) => eprintln!("[nlauncher] Launched: {name}"),
-                                Err(err) => eprintln!(
-                                    "[nlauncher] Failed to launch {name} (exec: {exec}): {err}"
-                                ),
+                            eprintln!("[nlauncher] Launching: {name} with command: {exec}");
+                            
+                            match gio::AppInfo::create_from_commandline(
+                                &exec,
+                                Some(&name),
+                                gio::AppInfoCreateFlags::NONE,
+                            ) {
+                                Ok(app_info) => {
+                                    match app_info.launch(&[], gio::AppLaunchContext::NONE) {
+                                        Ok(_) => eprintln!("[nlauncher] Successfully launched: {name}"),
+                                        Err(err) => eprintln!("[nlauncher] Failed to launch {name}: {err}"),
+                                    }
+                                }
+                                Err(err) => eprintln!("[nlauncher] Failed to create AppInfo for {name}: {err}"),
                             }
                         })
                         .detach();
