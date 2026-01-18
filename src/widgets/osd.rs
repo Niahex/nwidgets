@@ -76,17 +76,18 @@ impl OsdWidget {
 
 impl Render for OsdWidget {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        // Always render the structure, just manage opacity
-        // If we have no event yet at all, render transparently
+        // Si pas visible et pas d'événement, ne rien afficher
+        if !self.visible && self.current_event.is_none() {
+            return div().id("osd-root").size_0().into_any_element();
+        }
+
+        // Si pas d'événement, ne rien afficher
         if self.current_event.is_none() {
             return div().id("osd-root").size_0().into_any_element();
         }
 
         let event = self.current_event.as_ref().unwrap();
         let theme = cx.global::<crate::theme::Theme>();
-
-        // Define transition style for the whole OSD
-        let _opacity = if self.visible { 1.0 } else { 0.0 };
 
         let content = match event {
             OsdEvent::Volume(icon_name, _level, _muted) => {
@@ -200,14 +201,21 @@ impl Render for OsdWidget {
                 ),
         };
 
-        // If not visible, we want to animate out, so we start at 1.0 (delta 0) and go to 0.0 (delta 1).
-        // If visible, we want to animate in, so we start at 0.0 (delta 0) and go to 1.0 (delta 1).
+        // Animation: fade in/out
         let is_visible = self.visible;
         let animation_id = if is_visible {
             "osd-fade-in"
         } else {
             "osd-fade-out"
         };
+
+        // Si pas visible, retourner size_0 après l'animation
+        if !is_visible {
+            return div()
+                .id("osd-root")
+                .size_0()
+                .into_any_element();
+        }
 
         div()
             .id("osd-root")
@@ -223,15 +231,11 @@ impl Render for OsdWidget {
             .justify_center()
             .px_4()
             .py_3()
-            .opacity(if is_visible { 1.0 } else { 0.0 })
             .child(content)
             .with_animation(
                 animation_id,
                 Animation::new(Duration::from_millis(200)),
-                move |this, delta| {
-                    let opacity = if is_visible { delta } else { 1.0 - delta };
-                    this.opacity(opacity)
-                },
+                move |this, delta| this.opacity(delta),
             )
             .into_any_element()
     }

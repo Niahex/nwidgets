@@ -1,8 +1,9 @@
 use crate::services::cef::BrowserView;
 use crate::services::chat::{ChatService, ChatToggled};
 use gpui::prelude::*;
-use gpui::{div, AppContext, Context, Entity, IntoElement, ParentElement, Styled, Window};
+use gpui::{div, Animation, AnimationExt, AppContext, Context, Entity, IntoElement, ParentElement, Styled, Window};
 use std::path::PathBuf;
+use std::time::Duration;
 
 const DEFAULT_URL: &str = "https://gemini.google.com/app";
 
@@ -81,7 +82,7 @@ impl gpui::Render for ChatWidget {
         let visible = self.chat_service.read(cx).visible;
 
         if !visible {
-            return gpui::Empty.into_any_element();
+            return div().id("chat-root").size_0().into_any_element();
         }
 
         let theme = cx.global::<crate::theme::Theme>();
@@ -97,6 +98,11 @@ impl gpui::Render for ChatWidget {
             .border_color(theme.accent_alt.opacity(0.25))
             .shadow_lg()
             .child(self.browser.clone())
+            .with_animation(
+                "chat-fade-in",
+                Animation::new(Duration::from_millis(150)),
+                |this, delta| this.opacity(delta),
+            )
             .into_any_element()
     }
 }

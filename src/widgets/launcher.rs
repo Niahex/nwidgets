@@ -1,11 +1,12 @@
 use gpui::{
-    actions, div, prelude::*, px, Context, FocusHandle, KeyDownEvent, Render, Task, Window,
+    actions, div, prelude::*, px, Animation, AnimationExt, Context, FocusHandle, KeyDownEvent, Render, Task, Window,
 };
 use std::process::Command;
+use std::time::Duration;
 
 use crate::components::{SearchInput, SearchResult, SearchResults};
 use crate::services::clipboard::ClipboardMonitor;
-use crate::services::launcher::{process, LauncherCore, LauncherService, SearchResultType};
+use crate::services::launcher::{process, LauncherCore, LauncherService, LauncherToggled, SearchResultType};
 use crate::theme::Theme;
 use process::kill_process;
 
@@ -207,6 +208,7 @@ pub struct LauncherWidget {
     launcher: Launcher,
     launcher_service: gpui::Entity<LauncherService>,
     clipboard_monitor: gpui::Entity<ClipboardMonitor>,
+    visible: bool,
 }
 
 impl LauncherWidget {
@@ -248,10 +250,20 @@ impl LauncherWidget {
         })
         .detach();
 
+        // Écouter les changements de visibilité
+        cx.subscribe(&launcher_service, |this, _service, _event: &LauncherToggled, cx| {
+            this.visible = this.launcher_service.read(cx).visible;
+            cx.notify();
+        })
+        .detach();
+
+        let initial_visible = launcher_service.read(cx).visible;
+
         Self {
             launcher,
             launcher_service,
             clipboard_monitor,
+            visible: initial_visible,
         }
     }
 
@@ -267,9 +279,15 @@ impl LauncherWidget {
 
 impl Render for LauncherWidget {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        // Si pas visible, retourner size_0
+        if !self.visible {
+            return div().id("launcher-root").size_0().into_any_element();
+        }
+
         let focus_handle = self.launcher.focus_handle.clone();
 
         div()
+            .id("launcher-root")
             .track_focus(&focus_handle)
             .size_full()
             .flex()
@@ -427,7 +445,13 @@ impl Render for LauncherWidget {
                         |_query| {},
                         |_query| {},
                     ))
-                    .child(self.launcher.search_results.render()),
+                    .child(self.launcher.search_results.render())
+                    .with_animation(
+                        "launcher-fade-in",
+                        Animation::new(Duration::from_millis(150)),
+                        |this, delta| this.opacity(delta),
+                    ),
             )
+            .into_any_element()
     }
 }
