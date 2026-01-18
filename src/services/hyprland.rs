@@ -187,7 +187,7 @@ impl HyprlandService {
             if let Ok(stream) = tokio::net::UnixStream::connect(&socket_path).await {
                 let reader = tokio::io::BufReader::new(stream);
                 let mut lines = reader.lines();
-                
+
                 while let Ok(Some(line)) = lines.next_line().await {
                     if line.starts_with("workspace>>")
                         || line.starts_with("createworkspace>>")

@@ -1,7 +1,10 @@
 use crate::services::cef::BrowserView;
 use crate::services::chat::{ChatService, ChatToggled};
 use gpui::prelude::*;
-use gpui::{div, Animation, AnimationExt, AppContext, Context, Entity, IntoElement, ParentElement, Styled, Window};
+use gpui::{
+    div, Animation, AnimationExt, AppContext, Context, Entity, IntoElement, ParentElement, Styled,
+    Window,
+};
 use std::path::PathBuf;
 use std::time::Duration;
 

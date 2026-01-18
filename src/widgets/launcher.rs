@@ -1,12 +1,15 @@
 use gpui::{
-    actions, div, prelude::*, px, Animation, AnimationExt, Context, FocusHandle, KeyDownEvent, Render, Task, Window,
+    actions, div, prelude::*, px, Animation, AnimationExt, Context, FocusHandle, KeyDownEvent,
+    Render, Task, Window,
 };
 use std::process::Command;
 use std::time::Duration;
 
 use crate::components::{SearchInput, SearchResult, SearchResults};
 use crate::services::clipboard::ClipboardMonitor;
-use crate::services::launcher::{process, LauncherCore, LauncherService, LauncherToggled, SearchResultType};
+use crate::services::launcher::{
+    process, LauncherCore, LauncherService, LauncherToggled, SearchResultType,
+};
 use crate::theme::Theme;
 use process::kill_process;
 
@@ -108,7 +111,9 @@ impl Launcher {
                             .spawn(async move {
                                 match std::process::Command::new("wl-copy").arg(&result).output() {
                                     Ok(_) => eprintln!("[nlauncher] Copied to clipboard: {result}"),
-                                    Err(e) => eprintln!("[nlauncher] Failed to copy to clipboard: {e}"),
+                                    Err(e) => {
+                                        eprintln!("[nlauncher] Failed to copy to clipboard: {e}")
+                                    }
                                 }
                             })
                             .detach();
@@ -251,10 +256,13 @@ impl LauncherWidget {
         .detach();
 
         // Écouter les changements de visibilité
-        cx.subscribe(&launcher_service, |this, _service, _event: &LauncherToggled, cx| {
-            this.visible = this.launcher_service.read(cx).visible;
-            cx.notify();
-        })
+        cx.subscribe(
+            &launcher_service,
+            |this, _service, _event: &LauncherToggled, cx| {
+                this.visible = this.launcher_service.read(cx).visible;
+                cx.notify();
+            },
+        )
         .detach();
 
         let initial_visible = launcher_service.read(cx).visible;

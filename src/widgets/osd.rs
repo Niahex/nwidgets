@@ -211,10 +211,7 @@ impl Render for OsdWidget {
 
         // Si pas visible, retourner size_0 après l'animation
         if !is_visible {
-            return div()
-                .id("osd-root")
-                .size_0()
-                .into_any_element();
+            return div().id("osd-root").size_0().into_any_element();
         }
 
         div()
