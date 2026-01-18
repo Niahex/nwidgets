@@ -81,8 +81,14 @@ impl Launcher {
         if let Some(selected_result) = self.search_results.get_selected() {
             match selected_result {
                 SearchResult::Application(app) => {
-                    let exec = app.exec.clone();
+                    let mut exec = app.exec.clone();
                     let name = app.name.clone();
+                    
+                    // Remove desktop entry field codes
+                    exec = exec.replace("%U", "").replace("%u", "")
+                        .replace("%F", "").replace("%f", "")
+                        .replace("%i", "").replace("%c", "")
+                        .replace("%k", "");
 
                     cx.background_executor()
                         .spawn(async move {
@@ -360,8 +366,14 @@ impl Render for LauncherWidget {
                 if let Some(selected_result) = this.launcher.search_results.get_selected() {
                     match selected_result {
                         SearchResult::Application(app) => {
-                            let exec = app.exec.clone();
+                            let mut exec = app.exec.clone();
                             let name = app.name.clone();
+                            
+                            // Remove desktop entry field codes
+                            exec = exec.replace("%U", "").replace("%u", "")
+                                .replace("%F", "").replace("%f", "")
+                                .replace("%i", "").replace("%c", "")
+                                .replace("%k", "");
 
                             cx.background_executor()
                                 .spawn(async move {
