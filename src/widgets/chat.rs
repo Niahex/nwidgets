@@ -78,6 +78,17 @@ impl ChatWidget {
     pub fn resize_browser(&self, width: u32, height: u32, cx: &gpui::App) {
         self.browser.read(cx).resize(width, height);
     }
+
+    // TODO : Not fonctional auto focus input at launch
+    pub fn focus_input(&self, cx: &gpui::App) {
+        let js = r#"
+            const editor = document.querySelector('.ql-editor[contenteditable="true"]');
+            if (editor) {
+                editor.focus();
+            }
+        "#;
+        self.browser.read(cx).execute_js(js);
+    }
 }
 
 impl gpui::Render for ChatWidget {

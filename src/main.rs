@@ -313,6 +313,7 @@ fn main() {
                         let height = if fullscreen { 1440 } else { 1370 };
                         window.resize(size(px(600.0), px(height as f32)));
                         chat.resize_browser(600, height, cx);
+                        chat.focus_input(cx);
                         window.set_margin(
                             if fullscreen { 0 } else { 40 },
                             0,

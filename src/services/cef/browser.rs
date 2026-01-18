@@ -250,6 +250,14 @@ impl BrowserView {
         }
     }
 
+    pub fn execute_js(&self, js: &str) {
+        if let Some(browser) = &self.browser {
+            if let Some(frame) = browser.main_frame() {
+                frame.execute_java_script(Some(&CefString::from(js)), None, 0);
+            }
+        }
+    }
+
     pub fn set_hidden(&self, hidden: bool) {
         *self.hidden.lock() = hidden;
         if let Some(browser) = &self.browser {
