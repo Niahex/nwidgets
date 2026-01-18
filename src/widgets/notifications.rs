@@ -163,6 +163,11 @@ impl Render for NotificationsWidget {
                         )
                     })
             }))
+            .with_animation(
+                "notifications-fade-in",
+                Animation::new(Duration::from_millis(150)),
+                |this, delta| this.opacity(delta),
+            )
             .into_any_element()
     }
 }

@@ -853,5 +853,10 @@ impl Render for ControlCenterWidget {
             .child(self.render_connectivity_section(cx))
             .child(div().h(px(1.)).bg(theme.hover))
             .child(self.render_notifications_section(cx))
+            .with_animation(
+                "control-center-fade-in",
+                Animation::new(Duration::from_millis(150)),
+                |this, delta| this.opacity(delta),
+            )
     }
 }
