@@ -326,6 +326,10 @@ fn main() {
                         } else { 
                             gpui::layer_shell::Layer::Top 
                         });
+                        window.set_keyboard_interactivity(
+                            gpui::layer_shell::KeyboardInteractivity::OnDemand
+                        );
+                        cx.activate(true);
                     } else {
                         if let Some(url) = chat.current_url(cx) {
                             widgets::chat::save_url(&url);
