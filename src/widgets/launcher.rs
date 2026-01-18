@@ -365,18 +365,20 @@ impl Render for LauncherWidget {
 
                             cx.background_executor()
                                 .spawn(async move {
-                                    let mut cmd = Command::new("sh");
-                                    cmd.arg("-c")
-                                        .arg(&exec)
-                                        .stdin(std::process::Stdio::null())
-                                        .stdout(std::process::Stdio::null())
-                                        .stderr(std::process::Stdio::null());
-
-                                    match cmd.spawn() {
-                                        Ok(_) => eprintln!("[launcher] Launched: {name}"),
-                                        Err(err) => eprintln!(
-                                            "[launcher] Failed to launch {name} (exec: {exec}): {err}"
-                                        ),
+                                    eprintln!("[launcher] Launching: {name} with command: {exec}");
+                                    
+                                    match gio::AppInfo::create_from_commandline(
+                                        &exec,
+                                        Some(&name),
+                                        gio::AppInfoCreateFlags::NONE,
+                                    ) {
+                                        Ok(app_info) => {
+                                            match app_info.launch(&[], gio::AppLaunchContext::NONE) {
+                                                Ok(_) => eprintln!("[launcher] Successfully launched: {name}"),
+                                                Err(err) => eprintln!("[launcher] Failed to launch {name}: {err}"),
+                                            }
+                                        }
+                                        Err(err) => eprintln!("[launcher] Failed to create AppInfo for {name}: {err}"),
                                     }
                                 })
                                 .detach();
