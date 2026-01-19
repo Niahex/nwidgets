@@ -719,6 +719,11 @@ impl ControlCenterWidget {
                                     cc.toggle_section(ControlCenterSection::Bluetooth, cx);
                                 });
                             }))
+                            .on_mouse_down(gpui::MouseButton::Right, cx.listener(|this, _, _, cx| {
+                                this.bluetooth.update(cx, |bt, cx| {
+                                    bt.toggle_power(cx);
+                                });
+                            }))
                             .child(Icon::new("bluetooth-active").size(px(20.)).color(if bt_expanded { theme.accent } else { theme.text_muted.opacity(0.5) }))
                             .when(bt_state.connected_devices > 0, |this| {
                                 this.child(format!("{}", bt_state.connected_devices))
@@ -852,10 +857,62 @@ impl ControlCenterWidget {
                                 .text_color(theme.text)
                                 .child("Bluetooth Devices"),
                         )
-                        .child(div().text_xs().text_color(theme.text_muted).child(format!(
-                            "{} device(s) connected",
-                            bt_state.connected_devices
-                        )))
+                        .children(
+                            bt_state.devices.iter().enumerate().map(|(idx, device)| {
+                                let address = device.address.clone();
+                                let bluetooth = self.bluetooth.clone();
+                                div()
+                                    .id(("bt-device", idx))
+                                    .flex()
+                                    .items_center()
+                                    .justify_between()
+                                    .p_2()
+                                    .rounded_md()
+                                    .bg(theme.surface)
+                                    .cursor_pointer()
+                                    .hover(|style| style.bg(theme.hover))
+                                    .on_click(move |_, _, cx| {
+                                        let addr = address.clone();
+                                        bluetooth.update(cx, |bt, cx| {
+                                            bt.toggle_device(addr, cx);
+                                        });
+                                    })
+                                    .child(
+                                        div()
+                                            .flex()
+                                            .flex_col()
+                                            .gap_1()
+                                            .child(
+                                                div()
+                                                    .text_xs()
+                                                    .text_color(theme.text)
+                                                    .child(device.name.clone()),
+                                            )
+                                            .child(
+                                                div()
+                                                    .text_xs()
+                                                    .text_color(theme.text_muted)
+                                                    .child(device.address.clone()),
+                                            ),
+                                    )
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .font_weight(FontWeight::BOLD)
+                                            .text_color(if device.connected {
+                                                theme.green
+                                            } else {
+                                                theme.text_muted
+                                            })
+                                            .child(if device.connected {
+                                                "Connected"
+                                            } else {
+                                                "Disconnected"
+                                            }),
+                                    )
+                                    .into_any_element()
+                            }),
+                        )
                         .into_any_element()
                 } else if net_expanded {
                     div()

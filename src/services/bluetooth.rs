@@ -12,9 +12,17 @@ use zbus::{
 };
 
 #[derive(Clone, Debug, PartialEq, Default)]
+pub struct BluetoothDevice {
+    pub name: String,
+    pub address: String,
+    pub connected: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct BluetoothState {
     pub powered: bool,
     pub connected_devices: usize,
+    pub devices: Vec<BluetoothDevice>,
 }
 
 #[derive(Clone)]
@@ -162,6 +170,7 @@ impl BluetoothService {
     async fn fetch_bluetooth_state_dbus(om: &ObjectManagerProxy<'_>) -> BluetoothState {
         let mut powered = false;
         let mut connected_devices = 0;
+        let mut devices = Vec::new();
 
         if let Ok(objects) = om.get_managed_objects().await {
             for (_path, interfaces) in objects {
@@ -178,12 +187,35 @@ impl BluetoothService {
 
                 // Check Device interface for Connected state
                 if let Some(device) = interfaces.get("org.bluez.Device1") {
+                    let mut name = String::new();
+                    let mut address = String::new();
+                    let mut connected = false;
+
+                    if let Some(value) = device.get("Name") {
+                        if let Ok(n) = <&str>::try_from(value) {
+                            name = n.to_string();
+                        }
+                    }
+                    if let Some(value) = device.get("Address") {
+                        if let Ok(a) = <&str>::try_from(value) {
+                            address = a.to_string();
+                        }
+                    }
                     if let Some(value) = device.get("Connected") {
-                        if let Ok(connected) = bool::try_from(value) {
+                        if let Ok(c) = bool::try_from(value) {
+                            connected = c;
                             if connected {
                                 connected_devices += 1;
                             }
                         }
+                    }
+
+                    if !address.is_empty() {
+                        devices.push(BluetoothDevice {
+                            name: if name.is_empty() { address.clone() } else { name },
+                            address,
+                            connected,
+                        });
                     }
                 }
             }
@@ -192,12 +224,34 @@ impl BluetoothService {
         BluetoothState {
             powered,
             connected_devices,
+            devices,
         }
     }
 }
 
 struct GlobalBluetoothService(Entity<BluetoothService>);
 impl Global for GlobalBluetoothService {}
+
+#[proxy(
+    default_service = "org.bluez",
+    interface = "org.bluez.Adapter1"
+)]
+trait Adapter {
+    #[zbus(property)]
+    fn powered(&self) -> Result<bool>;
+
+    #[zbus(property)]
+    fn set_powered(&self, value: bool) -> Result<()>;
+}
+
+#[proxy(
+    default_service = "org.bluez",
+    interface = "org.bluez.Device1"
+)]
+trait Device {
+    fn connect(&self) -> Result<()>;
+    fn disconnect(&self) -> Result<()>;
+}
 
 impl BluetoothService {
     pub fn global(cx: &App) -> Entity<Self> {
@@ -208,5 +262,86 @@ impl BluetoothService {
         let service = cx.new(Self::new);
         cx.set_global(GlobalBluetoothService(service.clone()));
         service
+    }
+
+    pub fn toggle_power(&self, cx: &mut Context<Self>) {
+        let current_powered = self.state.read().powered;
+        gpui_tokio::Tokio::spawn(cx, async move {
+            if let Err(e) = Self::set_adapter_power(!current_powered).await {
+                eprintln!("[BluetoothService] Failed to toggle power: {e}");
+            }
+        })
+        .detach();
+    }
+
+    pub fn toggle_device(&self, address: String, cx: &mut Context<Self>) {
+        let powered = self.state.read().powered;
+        gpui_tokio::Tokio::spawn(cx, async move {
+            // Enable bluetooth first if it's off
+            if !powered {
+                if let Err(e) = Self::set_adapter_power(true).await {
+                    eprintln!("[BluetoothService] Failed to enable bluetooth: {e}");
+                    return;
+                }
+                // Wait a bit for bluetooth to be ready
+                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+            }
+            
+            if let Err(e) = Self::toggle_device_connection(&address).await {
+                eprintln!("[BluetoothService] Failed to toggle device: {e}");
+            }
+        })
+        .detach();
+    }
+
+    async fn set_adapter_power(powered: bool) -> Result<()> {
+        let conn = Connection::system().await?;
+        let om = ObjectManagerProxy::new(&conn).await?;
+        let objects = om.get_managed_objects().await?;
+
+        for (path, interfaces) in objects {
+            if interfaces.contains_key("org.bluez.Adapter1") {
+                let adapter = AdapterProxy::builder(&conn)
+                    .path(path)?
+                    .build()
+                    .await?;
+                adapter.set_powered(powered).await?;
+                return Ok(());
+            }
+        }
+        Ok(())
+    }
+
+    async fn toggle_device_connection(address: &str) -> Result<()> {
+        let conn = Connection::system().await?;
+        let om = ObjectManagerProxy::new(&conn).await?;
+        let objects = om.get_managed_objects().await?;
+
+        for (path, interfaces) in objects {
+            if let Some(device) = interfaces.get("org.bluez.Device1") {
+                if let Some(addr_value) = device.get("Address") {
+                    if let Ok(addr) = <&str>::try_from(addr_value) {
+                        if addr == address {
+                            let device_proxy = DeviceProxy::builder(&conn)
+                                .path(path)?
+                                .build()
+                                .await?;
+
+                            if let Some(connected_value) = device.get("Connected") {
+                                if let Ok(connected) = bool::try_from(connected_value) {
+                                    if connected {
+                                        device_proxy.disconnect().await?;
+                                    } else {
+                                        device_proxy.connect().await?;
+                                    }
+                                }
+                            }
+                            return Ok(());
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 }
