@@ -7,16 +7,16 @@ use crate::services::cef::handlers::{
 use crate::services::cef::input::{
     key_to_windows_code, modifiers_to_cef, send_char_event, send_key_event, SCROLL_MULTIPLIER,
 };
+use crate::services::cef::message_handler::ClipboardMessageHandler;
+use cef::wrapper::message_router::{
+    BrowserSideRouter, MessageRouterBrowserSide, MessageRouterBrowserSideHandlerCallbacks,
+    MessageRouterConfig,
+};
 use cef::{
     rc::Rc, Browser, BrowserSettings, CefString, Client, DisplayHandler, ImplBrowser,
     ImplBrowserHost, ImplClient, ImplFrame, LoadHandler, PermissionHandler, ProcessId,
     ProcessMessage, RenderHandler, WindowInfo, WrapClient,
 };
-use cef::wrapper::message_router::{
-    BrowserSideRouter, MessageRouterBrowserSide, MessageRouterBrowserSideHandlerCallbacks,
-    MessageRouterConfig,
-};
-use crate::services::cef::message_handler::ClipboardMessageHandler;
 use cef_dll_sys::cef_mouse_button_type_t;
 use futures::StreamExt;
 use gpui::prelude::FluentBuilder;
@@ -69,7 +69,7 @@ cef::wrap_client! {
             let browser_owned = browser.as_ref().map(|b| (*b).clone());
             let frame_owned = frame.as_ref().map(|f| (*f).clone());
             let message_owned = message.as_ref().map(|m| (*m).clone());
-            
+
             if self.client.message_router.on_process_message_received(
                 browser_owned,
                 frame_owned,
@@ -97,15 +97,19 @@ struct BrowserConfig {
     clipboard_tx: futures::channel::mpsc::UnboundedSender<super::clipboard::ClipboardData>,
 }
 
-fn create_browser(url: &str, config: BrowserConfig) -> (Browser, std::sync::Arc<BrowserSideRouter>) {
+fn create_browser(
+    url: &str,
+    config: BrowserConfig,
+) -> (Browser, std::sync::Arc<BrowserSideRouter>) {
     // Create MessageRouter for clipboard communication
     let router_config = MessageRouterConfig::default();
     let message_router = BrowserSideRouter::new(router_config);
-    
+
     // Create and add clipboard handler
-    let clipboard_handler = std::sync::Arc::new(ClipboardMessageHandler::new(config.clipboard_tx.clone()));
+    let clipboard_handler =
+        std::sync::Arc::new(ClipboardMessageHandler::new(config.clipboard_tx.clone()));
     message_router.add_handler(clipboard_handler, true);
-    
+
     let render_handler = RenderHandlerWrapper::new(GpuiRenderHandler {
         buffer: config.buffer,
         width: config.width,
@@ -149,7 +153,7 @@ fn create_browser(url: &str, config: BrowserConfig) -> (Browser, std::sync::Arc<
         None,
     )
     .expect("Failed to create browser");
-    
+
     (browser, message_router)
 }
 
@@ -168,7 +172,7 @@ pub struct BrowserView {
     cached_image: Option<Arc<RenderImage>>,
     reuse_buffer: Vec<u8>,
     find_bar: FindBar,
-    message_router: std::sync::Arc<BrowserSideRouter>,
+    _message_router: std::sync::Arc<BrowserSideRouter>,
 }
 
 impl BrowserView {
@@ -249,7 +253,7 @@ impl BrowserView {
             cached_image: None,
             reuse_buffer: Vec::new(),
             find_bar: FindBar::new(),
-            message_router,
+            _message_router: message_router,
         }
     }
 
@@ -383,7 +387,7 @@ impl gpui::Render for BrowserView {
                     .size_full()
                     .cursor(cursor_style)
                     .track_focus(&self.focus_handle)
-                    .on_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
+                    .on_key_down(cx.listener(|this, event: &KeyDownEvent, _window, cx| {
                         let ks = &event.keystroke;
                         let mods = modifiers_to_cef(&ks.modifiers);
 

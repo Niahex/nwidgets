@@ -1,10 +1,10 @@
-use cef::{
-    rc::Rc, Browser, Frame, ImplRenderProcessHandler, ProcessId, ProcessMessage, RenderProcessHandler,
-    V8Context, WrapRenderProcessHandler,
-};
 use cef::wrapper::message_router::{
-    MessageRouterRendererSide, MessageRouterConfig, MessageRouterRendererSideHandlerCallbacks,
+    MessageRouterConfig, MessageRouterRendererSide, MessageRouterRendererSideHandlerCallbacks,
     RendererSideRouter,
+};
+use cef::{
+    rc::Rc, Browser, Frame, ImplRenderProcessHandler, ProcessId, ProcessMessage,
+    RenderProcessHandler, V8Context, WrapRenderProcessHandler,
 };
 
 #[derive(Clone)]
@@ -35,7 +35,7 @@ cef::wrap_render_process_handler! {
             let browser_owned = browser.as_ref().map(|b| (*b).clone());
             let frame_owned = frame.as_ref().map(|f| (*f).clone());
             let context_owned = context.as_ref().map(|c| (*c).clone());
-            
+
             self.handler.message_router.on_context_created(
                 browser_owned,
                 frame_owned,
@@ -52,7 +52,7 @@ cef::wrap_render_process_handler! {
             let browser_owned = browser.as_ref().map(|b| (*b).clone());
             let frame_owned = frame.as_ref().map(|f| (*f).clone());
             let context_owned = context.as_ref().map(|c| (*c).clone());
-            
+
             self.handler.message_router.on_context_released(
                 browser_owned,
                 frame_owned,
@@ -70,7 +70,7 @@ cef::wrap_render_process_handler! {
             let browser_owned = browser.as_ref().map(|b| (*b).clone());
             let frame_owned = frame.as_ref().map(|f| (*f).clone());
             let message_owned = message.as_ref().map(|m| (*m).clone());
-            
+
             if self.handler.message_router.on_process_message_received(
                 browser_owned,
                 frame_owned,

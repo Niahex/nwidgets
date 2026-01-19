@@ -1,6 +1,7 @@
 use anyhow::Result;
 use cef::{
-    api_hash, args::Args, rc::Rc, App, CefString, ImplApp, ImplCommandLine, RenderProcessHandler, Settings, WrapApp,
+    api_hash, args::Args, rc::Rc, App, CefString, ImplApp, ImplCommandLine, RenderProcessHandler,
+    Settings, WrapApp,
 };
 use gpui::{App as GpuiApp, AsyncApp};
 use std::time::Duration;
@@ -126,7 +127,7 @@ pub fn initialize_cef() -> Result<()> {
         ..Default::default()
     };
     let mut app = AppWrapper::new(CefAppStruct {
-        render_process_handler: render_handler.into(),
+        render_process_handler: render_handler,
     });
     let code = cef::execute_process(
         Some(args.as_main_args()),

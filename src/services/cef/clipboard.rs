@@ -86,21 +86,23 @@ return origWriteText(t);
 pub fn extract_clipboard_from_message(message: &str) -> Option<ClipboardData> {
     // Parse JSON message from cefQuery
     let parsed: serde_json::Value = serde_json::from_str(message).ok()?;
-    
+
     if parsed.get("type")?.as_str()? != "clipboard" {
         return None;
     }
-    
+
     let data = parsed.get("data")?;
     let data_type = data.get("type")?.as_str()?;
     let content = data.get("content")?.as_str()?;
-    
+
     match data_type {
         "text" => Some(ClipboardData::Text(content.to_string())),
         "image" => {
             use base64::Engine;
-            let bytes = base64::engine::general_purpose::STANDARD.decode(content).ok()?;
-            
+            let bytes = base64::engine::general_purpose::STANDARD
+                .decode(content)
+                .ok()?;
+
             let format = if bytes.starts_with(&[0x89, 0x50, 0x4E, 0x47]) {
                 ImageFormat::Png
             } else if bytes.starts_with(&[0xFF, 0xD8, 0xFF]) {
@@ -110,7 +112,7 @@ pub fn extract_clipboard_from_message(message: &str) -> Option<ClipboardData> {
             } else {
                 ImageFormat::Png
             };
-            
+
             Some(ClipboardData::Image {
                 data: bytes,
                 format,
@@ -130,15 +132,13 @@ pub fn spawn_clipboard_handler<V: 'static>(
         async move {
             let mut clipboard_rx = clipboard_rx;
             while let Some(data) = futures::StreamExt::next(&mut clipboard_rx).await {
-                cx.update(|cx| {
-                    match data {
-                        ClipboardData::Text(text) => {
-                            cx.write_to_clipboard(ClipboardItem::new_string(text));
-                        }
-                        ClipboardData::Image { data, format } => {
-                            let image = Image::from_bytes(format, data);
-                            cx.write_to_clipboard(ClipboardItem::new_image(&image));
-                        }
+                cx.update(|cx| match data {
+                    ClipboardData::Text(text) => {
+                        cx.write_to_clipboard(ClipboardItem::new_string(text));
+                    }
+                    ClipboardData::Image { data, format } => {
+                        let image = Image::from_bytes(format, data);
+                        cx.write_to_clipboard(ClipboardItem::new_image(&image));
                     }
                 });
             }

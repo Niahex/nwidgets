@@ -1,6 +1,6 @@
-use gpui::{ClipboardEntry, ClipboardItem};
+use base64::{engine::general_purpose::STANDARD, Engine as _};
 use cef::{Browser, CefString, ImplBrowser, ImplFrame};
-use base64::{Engine as _, engine::general_purpose::STANDARD};
+use gpui::{ClipboardEntry, ClipboardItem};
 
 pub fn inject_clipboard_to_cef(browser: &Browser, clipboard_item: &ClipboardItem) {
     let mut image_script = None;
@@ -12,11 +12,12 @@ pub fn inject_clipboard_to_cef(browser: &Browser, clipboard_item: &ClipboardItem
                 let mime = image.format.mime_type();
                 let b64 = STANDARD.encode(&image.bytes);
                 // JS to write image and dispatch paste event
-                let js = format!(r#"(
+                let js = format!(
+                    r#"(
                     async () => {{
                         try {{
-                            const b64 = "{}";
-                            const mime = "{}";
+                            const b64 = "{b64}";
+                            const mime = "{mime}";
                             const byteCharacters = atob(b64);
                             const byteNumbers = new Array(byteCharacters.length);
                             for (let i = 0; i < byteCharacters.length; i++) {{
@@ -48,29 +49,33 @@ pub fn inject_clipboard_to_cef(browser: &Browser, clipboard_item: &ClipboardItem
                             console.error("Failed to inject image:", e);
                         }}
                     }})();
-                "# , b64, mime);
+                "#
+                );
                 image_script = Some(js);
-                break; 
+                break;
             }
             ClipboardEntry::String(s) => {
                 if text_script.is_none() {
-                     let escaped = s.text()
+                    let escaped = s
+                        .text()
                         .replace('\\', "\\\\")
                         .replace('`', "\\`")
                         .replace("${ ", "\\${ ");
-                     
-                     // JS to write text and insert it
-                     text_script = Some(format!(r#"(
+
+                    // JS to write text and insert it
+                    text_script = Some(format!(
+                        r#"(
                         async () => {{
                             try {{
-                                const text = `{}`;
+                                const text = `{escaped}`;
                                 await navigator.clipboard.writeText(text);
                                 document.execCommand('insertText', false, text);
                             }} catch (e) {{
                                 console.error("Failed to inject text:", e);
                             }}
                         }})();
-                     "#, escaped));
+                     "#
+                    ));
                 }
             }
             _ => {}
@@ -81,7 +86,11 @@ pub fn inject_clipboard_to_cef(browser: &Browser, clipboard_item: &ClipboardItem
 
     if let Some(script) = script {
         if let Some(frame) = browser.main_frame() {
-            frame.execute_java_script(Some(&CefString::from(script.as_str())), Some(&CefString::from("clipboard_inject")), 0);
+            frame.execute_java_script(
+                Some(&CefString::from(script.as_str())),
+                Some(&CefString::from("clipboard_inject")),
+                0,
+            );
         }
     }
 }

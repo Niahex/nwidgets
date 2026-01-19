@@ -193,6 +193,7 @@ cef::wrap_render_handler! {
 #[derive(Clone)]
 pub struct GpuiDisplayHandler {
     pub cursor: Arc<Mutex<CefCursor>>,
+    #[allow(dead_code)]
     pub clipboard_tx: futures::channel::mpsc::UnboundedSender<super::clipboard::ClipboardData>,
 }
 

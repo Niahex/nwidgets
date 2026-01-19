@@ -1,4 +1,4 @@
-use cef::wrapper::message_router::{BrowserSideCallback, BrowserSideHandler, BinaryBuffer};
+use cef::wrapper::message_router::{BinaryBuffer, BrowserSideCallback, BrowserSideHandler};
 use cef::{Browser, Frame};
 use futures::channel::mpsc::UnboundedSender;
 use std::sync::{Arc, Mutex};
@@ -22,7 +22,7 @@ impl BrowserSideHandler for ClipboardMessageHandler {
         &self,
         _browser: Option<Browser>,
         _frame: Option<Frame>,
-        query_id: i64,
+        _query_id: i64,
         request: &str,
         _persistent: bool,
         callback: Arc<Mutex<dyn BrowserSideCallback>>,
@@ -34,13 +34,13 @@ impl BrowserSideHandler for ClipboardMessageHandler {
                 }
                 return true;
             }
-            
+
             if let Ok(cb) = callback.lock() {
                 cb.success_str("ok");
             }
             return true;
         }
-        
+
         false
     }
 
@@ -48,17 +48,23 @@ impl BrowserSideHandler for ClipboardMessageHandler {
         &self,
         _browser: Option<Browser>,
         _frame: Option<Frame>,
-        query_id: i64,
+        _query_id: i64,
         request: &dyn BinaryBuffer,
         _persistent: bool,
         callback: Arc<Mutex<dyn BrowserSideCallback>>,
     ) -> bool {
         if let Ok(request_str) = std::str::from_utf8(request.data()) {
-            return self.on_query_str(_browser, _frame, query_id, request_str, _persistent, callback);
+            return self.on_query_str(
+                _browser,
+                _frame,
+                _query_id,
+                request_str,
+                _persistent,
+                callback,
+            );
         }
         false
     }
 
-    fn on_query_canceled(&self, _browser: Option<Browser>, _frame: Option<Frame>, _query_id: i64) {
-    }
+    fn on_query_canceled(&self, _browser: Option<Browser>, _frame: Option<Frame>, _query_id: i64) {}
 }
