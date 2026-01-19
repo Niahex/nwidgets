@@ -39,6 +39,7 @@ This documentation is organized into logical categories for easy AI consumption:
 ### Platform Support
 - [NixOS](platform/nixos.md)
 - [Wayland](platform/wayland.md)
+- [LayerShell](platform/layershell.md)
 
 ### Troubleshooting
 - [Common Issues](troubleshooting/common-issues.md)
