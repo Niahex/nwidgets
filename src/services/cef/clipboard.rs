@@ -20,7 +20,15 @@ onSuccess:()=>{},
 onFailure:()=>{}
 });
 };
-const origWrite=navigator.clipboard.write?.bind(navigator.clipboard);
+document.addEventListener('copy',e=>{
+setTimeout(()=>{
+const sel=window.getSelection();
+if(sel&&!sel.isCollapsed){
+send('text',sel.toString());
+}
+},0);
+},true);
+const origWrite=navigator.clipboard?.write?.bind(navigator.clipboard);
 if(origWrite){
 navigator.clipboard.write=async(data)=>{
 try{
@@ -44,7 +52,7 @@ reader.readAsDataURL(blob);
 return origWrite(data);
 };
 }
-const origWriteText=navigator.clipboard.writeText?.bind(navigator.clipboard);
+const origWriteText=navigator.clipboard?.writeText?.bind(navigator.clipboard);
 if(origWriteText){
 navigator.clipboard.writeText=t=>{
 send('text',t);
