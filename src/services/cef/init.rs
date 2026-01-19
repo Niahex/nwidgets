@@ -95,6 +95,10 @@ cef::wrap_app! {
                     Some(&"renderer-process-limit".into()),
                     Some(&"1".into()),
                 );
+                cmd.append_switch_with_value(
+                    Some(&"disable-features".into()),
+                    Some(&"AudioServiceOutOfProcess".into()),
+                );
             }
         }
 
