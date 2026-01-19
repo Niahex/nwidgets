@@ -11,32 +11,58 @@ pub enum ClipboardData {
 /// Sends clipboard data via window.cefQuery to sync with system clipboard
 pub const CLIPBOARD_SCRIPT: &str = r#"
 (function(){
-if(!window.cefQuery)return;
+console.log('[CLIPBOARD] Initializing...');
+if(!window.cefQuery){console.error('[CLIPBOARD] cefQuery not available!');return;}
 const send=(type,data)=>{
+console.log('[CLIPBOARD] Sending to CEF:',type,data?.substring?.(0,50));
 window.cefQuery({
 request:JSON.stringify({type:'clipboard',data:{type:type,content:data}}),
 persistent:false,
-onSuccess:()=>{},
-onFailure:()=>{}
+onSuccess:()=>console.log('[CLIPBOARD] CEF received'),
+onFailure:(e,m)=>console.error('[CLIPBOARD] CEF failed:',e,m)
 });
 };
 document.addEventListener('copy',e=>{
+console.log('[CLIPBOARD] copy event triggered',e);
 setTimeout(()=>{
 const sel=window.getSelection();
 if(sel&&!sel.isCollapsed){
+console.log('[CLIPBOARD] Selection:',sel.toString().substring(0,50));
 send('text',sel.toString());
+}else{
+console.log('[CLIPBOARD] No selection');
 }
 },0);
 },true);
+document.addEventListener('cut',e=>{
+console.log('[CLIPBOARD] cut event triggered',e);
+},true);
+const origExec=document.execCommand;
+document.execCommand=function(cmd,...args){
+console.log('[CLIPBOARD] execCommand:',cmd,args);
+if(cmd==='copy'||cmd==='cut'){
+setTimeout(()=>{
+const sel=window.getSelection();
+if(sel&&!sel.isCollapsed){
+console.log('[CLIPBOARD] execCommand selection:',sel.toString().substring(0,50));
+send('text',sel.toString());
+}
+},0);
+}
+return origExec.call(this,cmd,...args);
+};
 const origWrite=navigator.clipboard?.write?.bind(navigator.clipboard);
 if(origWrite){
+console.log('[CLIPBOARD] Intercepting clipboard.write');
 navigator.clipboard.write=async(data)=>{
+console.log('[CLIPBOARD] clipboard.write called',data);
 try{
 const items=await Promise.resolve(data);
 for(const item of items){
 if(item.types?.includes('text/plain')){
 const blob=await item.getType('text/plain');
 const text=await blob.text();
+console.log('[CLIPBOARD] Got text from write:',text.substring(0,50));
 send('text',text);
 }else if(item.types?.includes('image/png')){
 const blob=await item.getType('image/png');
@@ -48,17 +74,20 @@ send('image',base64);
 reader.readAsDataURL(blob);
 }
 }
-}catch(e){}
+}catch(e){console.error('[CLIPBOARD] write error:',e);}
 return origWrite(data);
 };
-}
+}else{console.warn('[CLIPBOARD] clipboard.write not available');}
 const origWriteText=navigator.clipboard?.writeText?.bind(navigator.clipboard);
 if(origWriteText){
+console.log('[CLIPBOARD] Intercepting clipboard.writeText');
 navigator.clipboard.writeText=t=>{
+console.log('[CLIPBOARD] writeText called:',t?.substring?.(0,50));
 send('text',t);
 return origWriteText(t);
 };
-}
+}else{console.warn('[CLIPBOARD] clipboard.writeText not available');}
+console.log('[CLIPBOARD] Script loaded successfully');
 })();
 "#;
 

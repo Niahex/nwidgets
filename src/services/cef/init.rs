@@ -1,9 +1,11 @@
 use anyhow::Result;
 use cef::{
-    api_hash, args::Args, rc::Rc, App, CefString, ImplApp, ImplCommandLine, Settings, WrapApp,
+    api_hash, args::Args, rc::Rc, App, CefString, ImplApp, ImplCommandLine, RenderProcessHandler, Settings, WrapApp,
 };
 use gpui::{App as GpuiApp, AsyncApp};
 use std::time::Duration;
+
+use super::render_handler::{GpuiRenderProcessHandler, RenderProcessHandlerWrapper};
 
 pub struct CefService;
 
@@ -31,7 +33,9 @@ impl CefService {
 }
 
 #[derive(Clone)]
-struct CefAppStruct;
+struct CefAppStruct {
+    render_process_handler: RenderProcessHandler,
+}
 
 cef::wrap_app! {
     struct AppWrapper {
@@ -92,6 +96,10 @@ cef::wrap_app! {
                 );
             }
         }
+
+        fn render_process_handler(&self) -> Option<RenderProcessHandler> {
+            Some(self.app.render_process_handler.clone())
+        }
     }
 }
 
@@ -106,6 +114,8 @@ pub fn initialize_cef() -> Result<()> {
         .join("cef");
     let _ = std::fs::create_dir_all(&cache_dir);
 
+    let render_handler = RenderProcessHandlerWrapper::new(GpuiRenderProcessHandler::new());
+
     let settings = Settings {
         windowless_rendering_enabled: true as _,
         external_message_pump: true as _,
@@ -115,7 +125,9 @@ pub fn initialize_cef() -> Result<()> {
         cache_path: CefString::from(cache_dir.to_string_lossy().as_ref()),
         ..Default::default()
     };
-    let mut app = AppWrapper::new(CefAppStruct);
+    let mut app = AppWrapper::new(CefAppStruct {
+        render_process_handler: render_handler.into(),
+    });
     let code = cef::execute_process(
         Some(args.as_main_args()),
         Some(&mut app),

@@ -6,6 +6,7 @@ mod handlers;
 mod init;
 mod input;
 mod message_handler;
+mod render_handler;
 
 pub use browser::BrowserView;
 pub use init::{initialize_cef, CefService};
