@@ -9,6 +9,7 @@ pub enum ControlCenterSection {
     Mic,
     Bluetooth,
     Network,
+    Monitor,
 }
 
 #[derive(Clone)]

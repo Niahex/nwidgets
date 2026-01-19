@@ -4,6 +4,7 @@ use crate::services::bluetooth::BluetoothService;
 use crate::services::control_center::{ControlCenterSection, ControlCenterService};
 use crate::services::network::NetworkService;
 use crate::services::notifications::{NotificationAdded, NotificationService};
+use crate::services::system_monitor::SystemMonitorService;
 use crate::utils::Icon;
 use gpui::prelude::*;
 use gpui::*;
@@ -18,6 +19,7 @@ pub struct ControlCenterWidget {
     bluetooth: Entity<BluetoothService>,
     network: Entity<NetworkService>,
     notifications: Entity<NotificationService>,
+    system_monitor: Entity<SystemMonitorService>,
     sink_dropdown_open: bool,
     source_dropdown_open: bool,
     last_volume: u8,
@@ -66,6 +68,7 @@ impl ControlCenterWidget {
         let bluetooth = BluetoothService::global(cx);
         let network = NetworkService::global(cx);
         let notifications = NotificationService::global(cx);
+        let system_monitor = SystemMonitorService::global(cx);
 
         let audio_state = audio.read(cx).state();
 
@@ -98,6 +101,7 @@ impl ControlCenterWidget {
 
         cx.subscribe(&bluetooth, |_, _, _, cx| cx.notify()).detach();
         cx.subscribe(&network, |_, _, _, cx| cx.notify()).detach();
+        cx.subscribe(&system_monitor, |_, _, _, cx| cx.notify()).detach();
         cx.subscribe(&notifications, |_, _, _: &NotificationAdded, cx| {
             cx.notify()
         })
@@ -110,6 +114,7 @@ impl ControlCenterWidget {
             bluetooth,
             network,
             notifications,
+            system_monitor,
             sink_dropdown_open: false,
             source_dropdown_open: false,
             last_volume: audio_state.sink_volume,
@@ -630,6 +635,7 @@ impl ControlCenterWidget {
 
         let bt_expanded = expanded == Some(ControlCenterSection::Bluetooth);
         let net_expanded = expanded == Some(ControlCenterSection::Network);
+        let monitor_expanded = expanded == Some(ControlCenterSection::Monitor);
 
         let theme = cx.global::<crate::theme::Theme>();
 
@@ -695,6 +701,26 @@ impl ControlCenterWidget {
                                     .size(px(24.))
                                     .color(theme.text),
                             ),
+                    )
+                    .child(
+                        // Monitor Button
+                        div()
+                            .id("monitor-toggle")
+                            .flex_1()
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .gap_2()
+                            .bg(theme.surface)
+                            .rounded_md()
+                            .p_4()
+                            .cursor_pointer()
+                            .on_click(cx.listener(|this, _, _window, cx| {
+                                this.control_center.update(cx, |cc, cx| {
+                                    cc.toggle_section(ControlCenterSection::Monitor, cx);
+                                });
+                            }))
+                            .child(Icon::new("monitor").size(px(24.)).color(theme.text)),
                     ),
             )
             .child(
@@ -743,6 +769,8 @@ impl ControlCenterWidget {
                             ),
                         )
                         .into_any_element()
+                } else if monitor_expanded {
+                    self.render_monitor_details(cx)
                 } else {
                     div().into_any_element()
                 },
@@ -821,6 +849,64 @@ impl ControlCenterWidget {
                         .child("No notifications"),
                 )
             })
+    }
+
+    fn render_monitor_details(&mut self, cx: &mut Context<Self>) -> AnyElement {
+        let theme = cx.global::<crate::theme::Theme>().clone();
+        let stats = self.system_monitor.read(cx).stats();
+
+        div()
+            .bg(theme.bg)
+            .rounded_md()
+            .p_3()
+            .flex()
+            .flex_col()
+            .gap_2()
+            .children(stats.metrics().iter().map(|metric| {
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap_1()
+                    .p_2()
+                    .bg(theme.surface)
+                    .rounded_md()
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap_2()
+                            .child(
+                                div()
+                                    .flex_1()
+                                    .text_xs()
+                                    .text_color(theme.text)
+                                    .child(metric.name.clone()),
+                            )
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .text_color(theme.text_muted)
+                                    .child(format!("{}%", metric.percent)),
+                            ),
+                    )
+                    .child(
+                        div().h(px(20.)).flex().items_center().child(
+                            div()
+                                .flex_1()
+                                .h(px(4.))
+                                .bg(theme.hover)
+                                .rounded(px(2.))
+                                .child(
+                                    div()
+                                        .w(relative(metric.percent as f32 / 100.0))
+                                        .h_full()
+                                        .bg(theme.accent)
+                                        .rounded(px(2.)),
+                                ),
+                        ),
+                    )
+            }))
+            .into_any_element()
     }
 }
 

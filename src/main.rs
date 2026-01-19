@@ -25,6 +25,7 @@ use services::{
     notifications::{NotificationAdded, NotificationService},
     osd::OsdService,
     pomodoro::PomodoroService,
+    system_monitor::SystemMonitorService,
     systray::SystrayService,
 };
 use std::collections::HashMap;
@@ -172,6 +173,7 @@ fn main() {
             AudioService::init(cx);
             BluetoothService::init(cx);
             NetworkService::init(cx);
+            SystemMonitorService::init(cx);
             MprisService::init(cx);
             PomodoroService::init(cx);
             SystrayService::init(cx);
