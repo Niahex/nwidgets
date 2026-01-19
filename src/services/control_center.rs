@@ -40,6 +40,8 @@ impl ControlCenterService {
             self.close_window(cx);
         } else {
             *visible = true;
+            // Reset expanded section when opening
+            *self.expanded_section.write() = None;
             let service = self.clone();
             cx.spawn(move |_, cx: &mut AsyncApp| {
                 let cx = cx.clone();

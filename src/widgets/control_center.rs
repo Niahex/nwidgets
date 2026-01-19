@@ -361,13 +361,6 @@ impl ControlCenterWidget {
             .flex_col()
             .gap_2()
             .child(
-                div()
-                    .text_xs()
-                    .font_weight(FontWeight::BOLD)
-                    .text_color(theme.text_muted)
-                    .child("Output Device"),
-            )
-            .child(
                 Dropdown::new("sink-dropdown", options)
                     .selected(default_sink.map(|s| s.id))
                     .placeholder("No device")
@@ -404,8 +397,6 @@ impl ControlCenterWidget {
                             .text_xs()
                             .font_weight(FontWeight::BOLD)
                             .text_color(theme.text_muted)
-                            .child("Applications"),
-                    )
                     .children({
                         let streams = self.audio.read(cx).sink_inputs();
                         if streams.is_empty() {
@@ -506,13 +497,6 @@ impl ControlCenterWidget {
             .flex_col()
             .gap_2()
             .child(
-                div()
-                    .text_xs()
-                    .font_weight(FontWeight::BOLD)
-                    .text_color(theme.text_muted)
-                    .child("Input Device"),
-            )
-            .child(
                 Dropdown::new("source-dropdown", options)
                     .selected(default_source.map(|s| s.id))
                     .placeholder("No device")
@@ -544,13 +528,6 @@ impl ControlCenterWidget {
                     .flex_col()
                     .gap_1()
                     .mt_3()
-                    .child(
-                        div()
-                            .text_xs()
-                            .font_weight(FontWeight::BOLD)
-                            .text_color(theme.text_muted)
-                            .child("Applications"),
-                    )
                     .children({
                         let streams = self.audio.read(cx).source_outputs();
                         if streams.is_empty() {
@@ -1292,6 +1269,7 @@ impl Render for ControlCenterWidget {
                 window.remove_window();
             })
             .child(self.render_audio_section(cx))
+            .child(div().h(px(1.)).bg(theme.hover))
             .child(self.render_connectivity_section(cx))
             .child(div().h(px(1.)).bg(theme.hover))
             .child(self.render_notifications_section(cx))
