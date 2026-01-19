@@ -21,7 +21,7 @@ impl CefService {
             async move {
                 loop {
                     cx.background_executor()
-                        .timer(Duration::from_millis(33)) // ~30fps message loop
+                        .timer(Duration::from_millis(16)) // 60Hz message processing
                         .await;
                     cx.update(|_| {
                         cef::do_message_loop_work();
