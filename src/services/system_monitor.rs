@@ -35,14 +35,7 @@ pub struct SystemStats {
 
 impl SystemStats {
     pub fn metrics(&self) -> Vec<SystemMetric> {
-        vec![
-            SystemMetric {
-                name: "Network".into(),
-                value: format!("↓ {} ↑ {}", Self::format_bytes(self.net_down), Self::format_bytes(self.net_up)).into(),
-                secondary: Some(format!("Total: {}", Self::format_bytes_total(self.net_total)).into()),
-                percent: None,
-            },
-        ]
+        vec![]
     }
 
     fn format_bytes(bytes: u64) -> String {
