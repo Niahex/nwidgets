@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="128"
+   height="128"
+   viewBox="0 0 33.866665 33.866667"
+   version="1.1"
+   id="svg1"
+   xml:space="preserve"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"><defs
+     id="defs1"><linearGradient
+       id="linearGradient19300"><stop
+         style="stop-color:#5e81ac;stop-opacity:1;"
+         offset="0"
+         id="stop19300" /><stop
+         style="stop-color:#5e81ac;stop-opacity:0;"
+         offset="1"
+         id="stop19301" /></linearGradient><linearGradient
+       id="swatch59"><stop
+         style="stop-color:#92bcba;stop-opacity:1;"
+         offset="0"
+         id="stop59" /></linearGradient><linearGradient
+       xlink:href="#linearGradient19300"
+       id="linearGradient19301"
+       x1="-2281.8865"
+       y1="-8822.5088"
+       x2="-2276.51"
+       y2="-8807.7373"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="translate(-274.02582,325.04943)" /><filter
+       style="color-interpolation-filters:sRGB"
+       id="filter19301"
+       x="-0.033949363"
+       y="-0.022412257"
+       width="1.0678987"
+       height="1.0448245"><feGaussianBlur
+         stdDeviation="0.22236975"
+         id="feGaussianBlur19301" /></filter><radialGradient
+       id="radialGradient11800-8"
+       cx="8.4665003"
+       cy="8.4665003"
+       r="7.5405002"
+       gradientTransform="matrix(3.4753696,0.00842253,-0.00758063,3.1279673,-2542.0968,-8523.7585)"
+       gradientUnits="userSpaceOnUse"><stop
+         stop-color="#88c0d0"
+         offset="0"
+         id="stop2-066-6" /><stop
+         stop-color="#5e81ac"
+         offset="1"
+         id="stop3-4-8" /></radialGradient><filter
+       style="color-interpolation-filters:sRGB"
+       id="filter99-2"
+       x="-0.060354424"
+       y="-0.039844013"
+       width="1.1207088"
+       height="1.079688"><feGaussianBlur
+         stdDeviation="0.395324"
+         id="feGaussianBlur99-8" /></filter><style
+       id="style1-6">
+      .cls-1 {
+        fill: none;
+        stroke: #20808d;
+        stroke-miterlimit: 10;
+      }
+
+      .cls-2 {
+        fill: #13343b;
+        stroke-width: 0px;
+      }
+    </style></defs><g
+     id="layer1"
+     transform="translate(2527.8922,8557.0017)"><g
+       id="g123"
+       transform="translate(1.7773423,-42.863575)"><rect
+         x="-2529.6694"
+         y="-8514.1387"
+         width="33.866665"
+         height="33.866665"
+         rx="6.7369537"
+         ry="6.7369537"
+         fill="url(#radialGradient11800)"
+         stroke-width="2.7563"
+         id="rect4-9-3"
+         style="fill:url(#radialGradient11800-8);stroke-linecap:round;stroke-linejoin:round" /><g
+         id="g122"
+         transform="translate(40.487949,-7.1316885)"><path
+           style="opacity:0.2;fill:#2e3440;fill-opacity:1;stroke-width:2.07159;stroke-linecap:round;stroke-linejoin:round;filter:url(#filter99-2)"
+           d="m -2559.5134,-8492.653 -0.011,-5.695 -1.5597,-2.4616 0.014,-0.5956 6.4837,-0.5746 0.011,7.4194 2.7268,-0.025 0.046,-7.3943 6.4386,0.5505 -0.034,0.6964 -1.5543,2.5983 v 5.4816 l 0.034,11.0215 -4.5035,3.4639 -0.3687,-0.1451 -0.064,-13.2772 h -2.797 l -0.025,8.9275 -0.5213,0.1602 -4.353,-2.6475 z"
+           id="path19300-5-4-8" /><path
+           style="fill:#eceff4;fill-opacity:1;stroke-width:2.07159;stroke-linecap:round;stroke-linejoin:round"
+           d="m -2559.5134,-8492.653 -0.011,-5.695 -1.5597,-2.4616 0.014,-0.5956 6.4837,-0.5746 0.011,7.4194 2.7268,-0.025 0.046,-7.3943 6.4386,0.5505 -0.034,0.6964 -1.5543,2.5983 v 5.4816 l 0.034,11.0215 -4.5035,3.4639 -0.3687,-0.1451 -0.064,-13.2772 h -2.797 l -0.025,8.9275 -0.5213,0.1602 -4.353,-2.6475 z"
+           id="path19300-5" /><path
+           style="opacity:0.4;fill:url(#linearGradient19301);fill-opacity:1;stroke-width:2.07159;stroke-linecap:round;stroke-linejoin:round;filter:url(#filter19301)"
+           d="m -2559.5134,-8492.653 -0.011,-5.695 -1.5597,-2.4616 0.014,-0.5956 6.4837,-0.5746 0.011,7.4194 2.7268,-0.025 0.046,-7.3943 6.4386,0.5505 -0.034,0.6964 -1.5543,2.5983 v 5.4816 l 0.034,11.0215 -4.5035,3.4639 -0.3687,-0.1451 -0.064,-13.2772 h -2.797 l -0.025,8.9275 -0.5213,0.1602 -4.353,-2.6475 z"
+           id="path19300-5-1" /></g></g><!-- Styles et D�finitions --><!-- Fond --><!-- Titre Principal --><!-- Axe Transversal : M�tacognition --><!-- Ligne de l'Entrelacement --><!-- �tapes du Processus --><!-- �tape 1 --><!-- �tape 2 --><!-- �tape 3 --><!-- �tape 4 --><!-- �tape 5 --><!-- Section Points Cl�s Bas de Page --><!-- Fl�ches de progression --><style
+       id="style1-36">.st1{fill:#ffce00}</style><style
+       id="style1-09">.st1{fill:#ffce00}</style></g><style
+     type="text/css"
+     id="style1">
+	.st0{fill:#000000;}
+</style><style
+     type="text/css"
+     id="style1-2">
+	.st0{fill:#000000;}
+</style><style
+     type="text/css"
+     id="style1-3">
+	.st0{fill:#000000;}
+</style><style
+     type="text/css"
+     id="style1-29">
+	.st0{fill:#000000;}
+</style><style
+     type="text/css"
+     id="style1-0">
+	.st0{fill:#000000;}
+</style><style
+     type="text/css"
+     id="style6">.st0 { fill:#323232; }</style><style
+     type="text/css"
+     id="style6-2">.st0{fill:#F05133;}</style></svg>
