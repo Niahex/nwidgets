@@ -648,6 +648,43 @@ impl ControlCenterWidget {
                     .flex()
                     .gap_2()
                     .child(
+                        // Monitor Button
+                        div()
+                            .id("monitor-toggle")
+                            .flex_1()
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .gap_2()
+                            .px_3()
+                            .py_2()
+                            .rounded_md()
+                            .text_sm()
+                            .font_weight(if monitor_expanded {
+                                FontWeight::BOLD
+                            } else {
+                                FontWeight::MEDIUM
+                            })
+                            .when(monitor_expanded, |this| {
+                                this.bg(theme.accent.opacity(0.2)).text_color(theme.accent)
+                            })
+                            .when(!monitor_expanded, |this| {
+                                this.text_color(theme.text_muted.opacity(0.5))
+                                    .hover(|style| {
+                                        style
+                                            .bg(theme.hover)
+                                            .text_color(theme.text_muted.opacity(0.8))
+                                    })
+                            })
+                            .cursor_pointer()
+                            .on_click(cx.listener(|this, _, _window, cx| {
+                                this.control_center.update(cx, |cc, cx| {
+                                    cc.toggle_section(ControlCenterSection::Monitor, cx);
+                                });
+                            }))
+                            .child(Icon::new("monitor").size(px(20.)).color(if monitor_expanded { theme.accent } else { theme.text_muted.opacity(0.5) })),
+                    )
+                    .child(
                         // Bluetooth Button
                         div()
                             .id("bluetooth-toggle")
@@ -656,20 +693,33 @@ impl ControlCenterWidget {
                             .items_center()
                             .justify_center()
                             .gap_2()
-                            .bg(if bt_state.powered {
-                                theme.accent
-                            } else {
-                                theme.surface
-                            })
+                            .px_3()
+                            .py_2()
                             .rounded_md()
-                            .p_4()
+                            .text_sm()
+                            .font_weight(if bt_expanded {
+                                FontWeight::BOLD
+                            } else {
+                                FontWeight::MEDIUM
+                            })
+                            .when(bt_expanded, |this| {
+                                this.bg(theme.accent.opacity(0.2)).text_color(theme.accent)
+                            })
+                            .when(!bt_expanded, |this| {
+                                this.text_color(theme.text_muted.opacity(0.5))
+                                    .hover(|style| {
+                                        style
+                                            .bg(theme.hover)
+                                            .text_color(theme.text_muted.opacity(0.8))
+                                    })
+                            })
                             .cursor_pointer()
                             .on_click(cx.listener(|this, _, _window, cx| {
                                 this.control_center.update(cx, |cc, cx| {
                                     cc.toggle_section(ControlCenterSection::Bluetooth, cx);
                                 });
                             }))
-                            .child(Icon::new("bluetooth").size(px(24.)).color(theme.text))
+                            .child(Icon::new("bluetooth-active").size(px(20.)).color(if bt_expanded { theme.accent } else { theme.text_muted.opacity(0.5) }))
                             .when(bt_state.connected_devices > 0, |this| {
                                 this.child(format!("{}", bt_state.connected_devices))
                             }),
@@ -683,13 +733,26 @@ impl ControlCenterWidget {
                             .items_center()
                             .justify_center()
                             .gap_2()
-                            .bg(if net_state.connected {
-                                theme.accent
-                            } else {
-                                theme.surface
-                            })
+                            .px_3()
+                            .py_2()
                             .rounded_md()
-                            .p_4()
+                            .text_sm()
+                            .font_weight(if net_expanded {
+                                FontWeight::BOLD
+                            } else {
+                                FontWeight::MEDIUM
+                            })
+                            .when(net_expanded, |this| {
+                                this.bg(theme.accent.opacity(0.2)).text_color(theme.accent)
+                            })
+                            .when(!net_expanded, |this| {
+                                this.text_color(theme.text_muted.opacity(0.5))
+                                    .hover(|style| {
+                                        style
+                                            .bg(theme.hover)
+                                            .text_color(theme.text_muted.opacity(0.8))
+                                    })
+                            })
                             .cursor_pointer()
                             .on_click(cx.listener(|this, _, _window, cx| {
                                 this.control_center.update(cx, |cc, cx| {
@@ -698,29 +761,78 @@ impl ControlCenterWidget {
                             }))
                             .child(
                                 Icon::new(net_state.get_icon_name())
-                                    .size(px(24.))
-                                    .color(theme.text),
+                                    .size(px(20.))
+                                    .color(if net_expanded { theme.accent } else { theme.text_muted.opacity(0.5) }),
                             ),
                     )
                     .child(
-                        // Monitor Button
+                        // Proxy Button
                         div()
-                            .id("monitor-toggle")
+                            .id("proxy-toggle")
                             .flex_1()
                             .flex()
                             .items_center()
                             .justify_center()
                             .gap_2()
-                            .bg(theme.surface)
+                            .px_3()
+                            .py_2()
                             .rounded_md()
-                            .p_4()
+                            .text_sm()
+                            .font_weight(FontWeight::MEDIUM)
+                            .text_color(theme.text_muted.opacity(0.5))
+                            .hover(|style| {
+                                style
+                                    .bg(theme.hover)
+                                    .text_color(theme.text_muted.opacity(0.8))
+                            })
                             .cursor_pointer()
-                            .on_click(cx.listener(|this, _, _window, cx| {
-                                this.control_center.update(cx, |cc, cx| {
-                                    cc.toggle_section(ControlCenterSection::Monitor, cx);
-                                });
-                            }))
-                            .child(Icon::new("monitor").size(px(24.)).color(theme.text)),
+                            .child(Icon::new("proxy").size(px(20.)).color(theme.text_muted.opacity(0.5))),
+                    )
+                    .child(
+                        // SSH Button
+                        div()
+                            .id("ssh-toggle")
+                            .flex_1()
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .gap_2()
+                            .px_3()
+                            .py_2()
+                            .rounded_md()
+                            .text_sm()
+                            .font_weight(FontWeight::MEDIUM)
+                            .text_color(theme.text_muted.opacity(0.5))
+                            .hover(|style| {
+                                style
+                                    .bg(theme.hover)
+                                    .text_color(theme.text_muted.opacity(0.8))
+                            })
+                            .cursor_pointer()
+                            .child(Icon::new("ssh").size(px(20.)).color(theme.text_muted.opacity(0.5))),
+                    )
+                    .child(
+                        // VM Button
+                        div()
+                            .id("vm-toggle")
+                            .flex_1()
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .gap_2()
+                            .px_3()
+                            .py_2()
+                            .rounded_md()
+                            .text_sm()
+                            .font_weight(FontWeight::MEDIUM)
+                            .text_color(theme.text_muted.opacity(0.5))
+                            .hover(|style| {
+                                style
+                                    .bg(theme.hover)
+                                    .text_color(theme.text_muted.opacity(0.8))
+                            })
+                            .cursor_pointer()
+                            .child(Icon::new("vm").size(px(20.)).color(theme.text_muted.opacity(0.5))),
                     ),
             )
             .child(
