@@ -108,7 +108,7 @@ impl SearchResults {
                                 .child(
                                     div()
                                         .size_6()
-                                        .bg(theme.success)
+                                        .bg(theme.green)
                                         .rounded_sm()
                                         .flex()
                                         .items_center()
@@ -125,7 +125,7 @@ impl SearchResults {
                                 .child(
                                     div()
                                         .size_6()
-                                        .bg(theme.error)
+                                        .bg(theme.red)
                                         .rounded_sm()
                                         .flex()
                                         .items_center()

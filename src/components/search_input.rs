@@ -52,7 +52,7 @@ impl SearchInput {
             .child(if query_text.is_empty() {
                 div().child(placeholder)
             } else if query_text.starts_with("ps") {
-                self.render_command_input("ps", &query_text, theme.success)
+                self.render_command_input("ps", &query_text, theme.green)
             } else if query_text.starts_with("clip") {
                 self.render_command_input("clip", &query_text, theme.accent)
             } else if query_text.starts_with('=') {

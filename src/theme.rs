@@ -19,11 +19,11 @@ pub struct Theme {
     pub accent_alt: Hsla, // frost3 - 0x8fbcbb
 
     // Status colors
-    pub error: Hsla,   // red - 0xbf616a
-    pub success: Hsla, // green - 0xa3be8c
-    pub warning: Hsla, // yellow - 0xebcb8b
-    pub orange: Hsla,  // orange - 0xd08770
-    pub purple: Hsla,  // purple - 0xb48ead
+    pub red: Hsla,    // red - 0xbf616a
+    pub green: Hsla,  // green - 0xa3be8c
+    pub yellow: Hsla, // yellow - 0xebcb8b
+    pub orange: Hsla, // orange - 0xd08770
+    pub purple: Hsla, // purple - 0xb48ead
 
     // Special
     pub white: Hsla,         // 0xFFFFFF
@@ -44,9 +44,9 @@ impl Theme {
             text_bright: rgb(0xe5e9f0).into(),
             accent: rgb(0x88c0d0).into(),
             accent_alt: rgb(0x8fbcbb).into(),
-            error: rgb(0xbf616a).into(),
-            success: rgb(0xa3be8c).into(),
-            warning: rgb(0xebcb8b).into(),
+            red: rgb(0xbf616a).into(),
+            green: rgb(0xa3be8c).into(),
+            yellow: rgb(0xebcb8b).into(),
             orange: rgb(0xd08770).into(),
             purple: rgb(0xb48ead).into(),
             white: rgb(0xFFFFFF).into(),

@@ -98,7 +98,7 @@ impl Render for NotificationsWidget {
             .w(px(380.0))
             .children(notifs.iter().map(|notif| {
                 let urgency_class = match notif.urgency {
-                    2 => theme.error,
+                    2 => theme.red,
                     1 => theme.bg,
                     _ => theme.hover,
                 };

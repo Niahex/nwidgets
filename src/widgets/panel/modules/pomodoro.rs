@@ -63,8 +63,8 @@ impl Render for PomodoroModule {
                 remaining_secs,
             } => {
                 let color = match phase {
-                    PomodoroPhase::Work => theme.error,
-                    PomodoroPhase::ShortBreak => theme.success,
+                    PomodoroPhase::Work => theme.red,
+                    PomodoroPhase::ShortBreak => theme.green,
                     PomodoroPhase::LongBreak => theme.accent,
                 };
 

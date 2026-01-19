@@ -882,7 +882,7 @@ impl ControlCenterWidget {
                             if let Some(temp) = stats.cpu_temp {
                                 progress = progress
                                     .secondary_percent(temp as u8)
-                                    .secondary_color(theme.warning);
+                                    .secondary_color(theme.yellow);
                             }
                             
                             progress
@@ -898,7 +898,7 @@ impl ControlCenterWidget {
                             if let Some(temp) = stats.gpu_temp {
                                 progress = progress
                                     .secondary_percent(temp as u8)
-                                    .secondary_color(theme.warning);
+                                    .secondary_color(theme.yellow);
                             }
                             
                             progress
@@ -915,7 +915,7 @@ impl ControlCenterWidget {
                             if let Some(root_disk) = stats.disks.iter().find(|d| d.mount == "/") {
                                 progress = progress
                                     .secondary_percent(root_disk.percent)
-                                    .secondary_color(theme.warning)
+                                    .secondary_color(theme.yellow)
                                     .secondary_unit("%");
                             }
                             
@@ -1016,9 +1016,9 @@ impl ControlCenterWidget {
                         .rounded_md()
                         .children(stats.disks.iter().map(|disk| {
                             let color = if disk.percent >= 90 {
-                                theme.error
+                                theme.red
                             } else if disk.percent >= 75 {
-                                theme.warning
+                                theme.yellow
                             } else {
                                 theme.accent
                             };
