@@ -227,6 +227,9 @@ impl BrowserView {
         // Clipboard handler
         super::clipboard::spawn_clipboard_handler(cx, clipboard_rx);
 
+        // Register this browser as active
+        super::init::register_browser();
+
         // Event-driven repaint loop (Push)
         cx.spawn(move |view: WeakEntity<BrowserView>, cx: &mut AsyncApp| {
             let mut cx = cx.clone();
@@ -310,6 +313,20 @@ impl BrowserView {
         *self.height.write() = height;
         if let Some(host) = self.browser.as_ref().and_then(|b| b.host()) {
             host.was_resized();
+        }
+    }
+}
+
+impl Drop for BrowserView {
+    fn drop(&mut self) {
+        // Unregister this browser when dropped
+        super::init::unregister_browser();
+        
+        // Close the browser
+        if let Some(browser) = &self.browser {
+            if let Some(host) = browser.host() {
+                host.close_browser(1);
+            }
         }
     }
 }

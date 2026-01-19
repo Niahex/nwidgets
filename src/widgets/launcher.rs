@@ -93,32 +93,38 @@ impl Launcher {
                         .replace("%i", "")
                         .replace("%c", "")
                         .replace("%k", "");
+                    let exec = exec.trim().to_string();
 
-                    cx.background_executor()
-                        .spawn(async move {
-                            eprintln!("[nlauncher] Launching: {name} with command: {exec}");
+                    // Spawn in tokio runtime, not GPUI executor
+                    let _ = tokio::spawn(async move {
+                        eprintln!("[nlauncher] Launching: {name} with command: {exec}");
 
-                            match gio::AppInfo::create_from_commandline(
-                                &exec,
-                                Some(&name),
-                                gio::AppInfoCreateFlags::NONE,
-                            ) {
-                                Ok(app_info) => {
-                                    match app_info.launch(&[], gio::AppLaunchContext::NONE) {
-                                        Ok(_) => {
-                                            eprintln!("[nlauncher] Successfully launched: {name}")
-                                        }
-                                        Err(err) => {
-                                            eprintln!("[nlauncher] Failed to launch {name}: {err}")
-                                        }
+                        use std::os::unix::process::CommandExt;
+                        
+                        // Double fork to completely detach
+                        unsafe {
+                            let result = std::process::Command::new("sh")
+                                .arg("-c")
+                                .arg(&exec)
+                                .env_remove("LD_LIBRARY_PATH")
+                                .stdin(std::process::Stdio::null())
+                                .stdout(std::process::Stdio::null())
+                                .stderr(std::process::Stdio::null())
+                                .pre_exec(|| {
+                                    // Create new session
+                                    if libc::setsid() == -1 {
+                                        return Err(std::io::Error::last_os_error());
                                     }
-                                }
-                                Err(err) => eprintln!(
-                                    "[nlauncher] Failed to create AppInfo for {name}: {err}"
-                                ),
+                                    Ok(())
+                                })
+                                .spawn();
+
+                            match result {
+                                Ok(_) => eprintln!("[nlauncher] Successfully launched: {name}"),
+                                Err(err) => eprintln!("[nlauncher] Failed to launch {name}: {err}"),
                             }
-                        })
-                        .detach();
+                        }
+                    });
 
                     cx.quit();
                 }
@@ -384,23 +390,30 @@ impl Render for LauncherWidget {
                                 .replace("%F", "").replace("%f", "")
                                 .replace("%i", "").replace("%c", "")
                                 .replace("%k", "");
+                            let exec = exec.trim().to_string();
 
                             cx.background_executor()
                                 .spawn(async move {
-                                    eprintln!("[launcher] Launching: {name} with command: {exec}");
+                                    eprintln!("[launcher] Launching: {name} with command: '{exec}'");
 
-                                    match gio::AppInfo::create_from_commandline(
-                                        &exec,
-                                        Some(&name),
-                                        gio::AppInfoCreateFlags::NONE,
-                                    ) {
-                                        Ok(app_info) => {
-                                            match app_info.launch(&[], gio::AppLaunchContext::NONE) {
-                                                Ok(_) => eprintln!("[launcher] Successfully launched: {name}"),
-                                                Err(err) => eprintln!("[launcher] Failed to launch {name}: {err}"),
-                                            }
+                                    use std::os::unix::process::CommandExt;
+                                    unsafe {
+                                        let result = std::process::Command::new("sh")
+                                            .arg("-c")
+                                            .arg(&exec)
+                                            .env_remove("LD_LIBRARY_PATH")
+                                            .pre_exec(|| {
+                                                if libc::setsid() == -1 {
+                                                    return Err(std::io::Error::last_os_error());
+                                                }
+                                                Ok(())
+                                            })
+                                            .spawn();
+
+                                        match result {
+                                            Ok(_) => eprintln!("[launcher] Successfully spawned: {name}"),
+                                            Err(err) => eprintln!("[launcher] Failed to spawn {name}: {err}"),
                                         }
-                                        Err(err) => eprintln!("[launcher] Failed to create AppInfo for {name}: {err}"),
                                     }
                                 })
                                 .detach();

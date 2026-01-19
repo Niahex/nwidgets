@@ -4,9 +4,20 @@ use cef::{
     Settings, WrapApp,
 };
 use gpui::{App as GpuiApp, AsyncApp};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 use super::render_handler::{GpuiRenderProcessHandler, RenderProcessHandlerWrapper};
+
+static ACTIVE_BROWSERS: AtomicUsize = AtomicUsize::new(0);
+
+pub fn register_browser() {
+    ACTIVE_BROWSERS.fetch_add(1, Ordering::Relaxed);
+}
+
+pub fn unregister_browser() {
+    ACTIVE_BROWSERS.fetch_sub(1, Ordering::Relaxed);
+}
 
 pub struct CefService;
 
@@ -20,12 +31,24 @@ impl CefService {
             let cx = cx.clone();
             async move {
                 loop {
-                    cx.background_executor()
-                        .timer(Duration::from_millis(16)) // 60Hz message processing
-                        .await;
-                    cx.update(|_| {
-                        cef::do_message_loop_work();
-                    });
+                    let active = ACTIVE_BROWSERS.load(Ordering::Relaxed);
+                    if active > 0 {
+                        // 60Hz when browsers are active
+                        cx.background_executor()
+                            .timer(Duration::from_millis(16))
+                            .await;
+                        cx.update(|_| {
+                            cef::do_message_loop_work();
+                        });
+                    } else {
+                        // 1Hz when idle to keep CEF alive
+                        cx.background_executor()
+                            .timer(Duration::from_secs(1))
+                            .await;
+                        cx.update(|_| {
+                            cef::do_message_loop_work();
+                        });
+                    }
                 }
             }
         })
