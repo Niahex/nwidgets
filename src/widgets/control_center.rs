@@ -78,7 +78,7 @@ impl ControlCenterWidget {
             .detach();
 
         // Close control center on workspace change or fullscreen
-        cx.subscribe(&hyprland, |this, _, event: &crate::services::hyprland::WorkspaceChanged, cx| {
+        cx.subscribe(&hyprland, |this, _, _event: &crate::services::hyprland::WorkspaceChanged, cx| {
             this.control_center.update(cx, |cc, cx| {
                 if cc.is_visible() {
                     cc.close(cx);
@@ -87,7 +87,7 @@ impl ControlCenterWidget {
         })
         .detach();
 
-        cx.subscribe(&hyprland, |this, _, event: &crate::services::hyprland::FullscreenChanged, cx| {
+        cx.subscribe(&hyprland, |this, _, _event: &crate::services::hyprland::FullscreenChanged, cx| {
             this.control_center.update(cx, |cc, cx| {
                 if cc.is_visible() {
                     cc.close(cx);
