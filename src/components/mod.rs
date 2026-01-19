@@ -1,3 +1,4 @@
+mod circular_progress;
 mod corner;
 mod dropdown;
 mod element_ext;
@@ -5,6 +6,7 @@ mod popover_menu;
 mod search_input;
 mod search_results;
 
+pub use circular_progress::CircularProgress;
 #[allow(unused_imports)]
 pub use corner::Corner;
 pub use dropdown::*;

@@ -6,19 +6,31 @@ use std::sync::Arc;
 use std::time::Duration;
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct DiskInfo {
+    pub name: SharedString,
+    pub mount: SharedString,
+    pub percent: u8,
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct SystemMetric {
     pub name: SharedString,
-    pub icon: &'static str,
-    pub percent: u8,
+    pub value: SharedString,
+    pub secondary: Option<SharedString>,
+    pub percent: Option<u8>,
 }
 
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct SystemStats {
     pub cpu: u8,
+    pub cpu_temp: Option<f32>,
     pub ram: u8,
     pub gpu: u8,
-    pub network: u8,
-    pub disk: u8,
+    pub gpu_temp: Option<f32>,
+    pub disks: Vec<DiskInfo>,
+    pub net_up: u64,
+    pub net_down: u64,
+    pub net_total: u64,
 }
 
 impl SystemStats {
@@ -26,30 +38,53 @@ impl SystemStats {
         vec![
             SystemMetric {
                 name: "CPU".into(),
-                icon: "cpu",
-                percent: self.cpu,
+                value: format!("{}%", self.cpu).into(),
+                secondary: self.cpu_temp.map(|t| format!("{:.0}°C", t).into()),
+                percent: Some(self.cpu),
             },
             SystemMetric {
                 name: "RAM".into(),
-                icon: "memory",
-                percent: self.ram,
+                value: format!("{}%", self.ram).into(),
+                secondary: None,
+                percent: Some(self.ram),
             },
             SystemMetric {
                 name: "GPU".into(),
-                icon: "gpu",
-                percent: self.gpu,
+                value: format!("{}%", self.gpu).into(),
+                secondary: self.gpu_temp.map(|t| format!("{:.0}°C", t).into()),
+                percent: Some(self.gpu),
             },
             SystemMetric {
                 name: "Network".into(),
-                icon: "network-eternet-unsecure",
-                percent: self.network,
-            },
-            SystemMetric {
-                name: "Disk".into(),
-                icon: "drive-harddisk",
-                percent: self.disk,
+                value: format!("↓ {} ↑ {}", Self::format_bytes(self.net_down), Self::format_bytes(self.net_up)).into(),
+                secondary: Some(format!("Total: {}", Self::format_bytes_total(self.net_total)).into()),
+                percent: None,
             },
         ]
+    }
+
+    fn format_bytes(bytes: u64) -> String {
+        if bytes < 1024 {
+            format!("{} B/s", bytes)
+        } else if bytes < 1024 * 1024 {
+            format!("{:.1} KB/s", bytes as f64 / 1024.0)
+        } else if bytes < 1024 * 1024 * 1024 {
+            format!("{:.1} MB/s", bytes as f64 / (1024.0 * 1024.0))
+        } else {
+            format!("{:.2} GB/s", bytes as f64 / (1024.0 * 1024.0 * 1024.0))
+        }
+    }
+
+    fn format_bytes_total(bytes: u64) -> String {
+        if bytes < 1024 {
+            format!("{} B", bytes)
+        } else if bytes < 1024 * 1024 {
+            format!("{:.1} KB", bytes as f64 / 1024.0)
+        } else if bytes < 1024 * 1024 * 1024 {
+            format!("{:.1} MB", bytes as f64 / (1024.0 * 1024.0))
+        } else {
+            format!("{:.2} GB", bytes as f64 / (1024.0 * 1024.0 * 1024.0))
+        }
     }
 }
 
@@ -104,13 +139,42 @@ impl SystemMonitorService {
     }
 
     async fn monitor_worker(ui_tx: futures::channel::mpsc::UnboundedSender<SystemStats>) {
+        let mut last_net_rx = 0u64;
+        let mut last_net_tx = 0u64;
+        let mut total_rx = 0u64;
+        let mut total_tx = 0u64;
+
         loop {
+            let (net_rx, net_tx) = Self::read_network_bytes().await;
+            
+            let net_down = if last_net_rx > 0 {
+                net_rx.saturating_sub(last_net_rx) / 2
+            } else {
+                0
+            };
+            
+            let net_up = if last_net_tx > 0 {
+                net_tx.saturating_sub(last_net_tx) / 2
+            } else {
+                0
+            };
+
+            total_rx = total_rx.saturating_add(net_down);
+            total_tx = total_tx.saturating_add(net_up);
+
+            last_net_rx = net_rx;
+            last_net_tx = net_tx;
+
             let stats = SystemStats {
                 cpu: Self::read_cpu().await,
+                cpu_temp: Self::read_cpu_temp().await,
                 ram: Self::read_ram().await,
                 gpu: Self::read_gpu().await,
-                network: Self::read_network().await,
-                disk: Self::read_disk().await,
+                gpu_temp: Self::read_gpu_temp().await,
+                disks: Self::read_disks().await,
+                net_up,
+                net_down,
+                net_total: total_rx + total_tx,
             };
 
             let _ = ui_tx.unbounded_send(stats);
@@ -167,36 +231,98 @@ impl SystemMonitorService {
         0
     }
 
-    async fn read_network() -> u8 {
-        0
+    async fn read_cpu_temp() -> Option<f32> {
+        tokio::fs::read_to_string("/sys/class/thermal/thermal_zone0/temp")
+            .await
+            .ok()
+            .and_then(|s| s.trim().parse::<f32>().ok())
+            .map(|t| t / 1000.0)
     }
 
-    async fn read_disk() -> u8 {
-        tokio::fs::read_to_string("/proc/mounts")
+    async fn read_gpu_temp() -> Option<f32> {
+        // Try NVIDIA
+        if let Ok(output) = tokio::process::Command::new("nvidia-smi")
+            .args(["--query-gpu=temperature.gpu", "--format=csv,noheader,nounits"])
+            .output()
+            .await
+        {
+            if let Ok(text) = String::from_utf8(output.stdout) {
+                if let Ok(temp) = text.trim().parse::<f32>() {
+                    return Some(temp);
+                }
+            }
+        }
+
+        // Try AMD
+        if let Ok(temp_str) = tokio::fs::read_to_string("/sys/class/drm/card0/device/hwmon/hwmon0/temp1_input").await {
+            if let Ok(temp) = temp_str.trim().parse::<f32>() {
+                return Some(temp / 1000.0);
+            }
+        }
+
+        None
+    }
+
+    async fn read_network_bytes() -> (u64, u64) {
+        tokio::fs::read_to_string("/proc/net/dev")
             .await
             .ok()
             .and_then(|s| {
-                for line in s.lines() {
+                let mut total_rx = 0u64;
+                let mut total_tx = 0u64;
+
+                for line in s.lines().skip(2) {
                     let parts: Vec<_> = line.split_whitespace().collect();
-                    if parts.len() >= 2 && parts[1] == "/" {
-                        if let Ok(output) = std::process::Command::new("df")
-                            .arg("--output=pcent")
-                            .arg("/")
-                            .output()
-                        {
-                            if let Ok(text) = String::from_utf8(output.stdout) {
-                                if let Some(line) = text.lines().nth(1) {
-                                    if let Ok(percent) = line.trim().trim_end_matches('%').parse::<u8>() {
-                                        return Some(percent);
-                                    }
-                                }
+                    if parts.len() >= 10 {
+                        let iface = parts[0].trim_end_matches(':');
+                        if iface != "lo" {
+                            if let (Ok(rx), Ok(tx)) = (parts[1].parse::<u64>(), parts[9].parse::<u64>()) {
+                                total_rx += rx;
+                                total_tx += tx;
                             }
                         }
                     }
                 }
-                None
+
+                Some((total_rx, total_tx))
             })
-            .unwrap_or(0)
+            .unwrap_or((0, 0))
+    }
+
+    async fn read_disks() -> Vec<DiskInfo> {
+        if let Ok(output) = tokio::process::Command::new("df")
+            .args(["-h", "--output=source,target,pcent"])
+            .output()
+            .await
+        {
+            if let Ok(text) = String::from_utf8(output.stdout) {
+                return text
+                    .lines()
+                    .skip(1)
+                    .filter_map(|line| {
+                        let parts: Vec<_> = line.split_whitespace().collect();
+                        if parts.len() >= 3 {
+                            let source = parts[0];
+                            let mount = parts[1];
+                            let percent_str = parts[2].trim_end_matches('%');
+                            
+                            if source.starts_with("/dev/") && !source.contains("loop") && mount != "/boot" {
+                                if let Ok(percent) = percent_str.parse::<u8>() {
+                                    let name = source.strip_prefix("/dev/").unwrap_or(source);
+                                    return Some(DiskInfo {
+                                        name: name.to_string().into(),
+                                        mount: mount.to_string().into(),
+                                        percent,
+                                    });
+                                }
+                            }
+                        }
+                        None
+                    })
+                    .collect();
+            }
+        }
+        vec![]
     }
 }
 

@@ -1,4 +1,4 @@
-use crate::components::{Dropdown, DropdownOption};
+use crate::components::{CircularProgress, Dropdown, DropdownOption};
 use crate::services::audio::AudioService;
 use crate::services::bluetooth::BluetoothService;
 use crate::services::control_center::{ControlCenterSection, ControlCenterService};
@@ -862,7 +862,33 @@ impl ControlCenterWidget {
             .flex()
             .flex_col()
             .gap_2()
-            .children(stats.metrics().iter().map(|metric| {
+            .child(
+                // CPU with circular progress
+                div()
+                    .flex()
+                    .items_center()
+                    .gap_2()
+                    .p_2()
+                    .bg(theme.surface)
+                    .rounded_md()
+                    .child(
+                        {
+                            let mut progress = CircularProgress::new(px(80.))
+                                .percent(stats.cpu)
+                                .label("CPU")
+                                .color(theme.accent);
+                            
+                            if let Some(temp) = stats.cpu_temp {
+                                progress = progress
+                                    .secondary_percent(temp as u8)
+                                    .secondary_color(theme.warning);
+                            }
+                            
+                            progress
+                        }
+                    ),
+            )
+            .children(stats.metrics().iter().skip(1).map(|metric| {
                 div()
                     .flex()
                     .flex_col()
@@ -884,28 +910,103 @@ impl ControlCenterWidget {
                             )
                             .child(
                                 div()
-                                    .text_xs()
-                                    .text_color(theme.text_muted)
-                                    .child(format!("{}%", metric.percent)),
+                                    .flex()
+                                    .gap_2()
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .text_color(theme.text_muted)
+                                            .child(metric.value.clone()),
+                                    )
+                                    .when(metric.secondary.is_some(), |this| {
+                                        this.child(
+                                            div()
+                                                .text_xs()
+                                                .text_color(theme.text_muted)
+                                                .child(metric.secondary.clone().unwrap()),
+                                        )
+                                    }),
                             ),
                     )
-                    .child(
-                        div().h(px(20.)).flex().items_center().child(
+                    .when(metric.percent.is_some(), |this| {
+                        this.child(
+                            div().h(px(20.)).flex().items_center().child(
+                                div()
+                                    .flex_1()
+                                    .h(px(4.))
+                                    .bg(theme.hover)
+                                    .rounded(px(2.))
+                                    .child(
+                                        div()
+                                            .w(relative(metric.percent.unwrap() as f32 / 100.0))
+                                            .h_full()
+                                            .bg(theme.accent)
+                                            .rounded(px(2.)),
+                                    ),
+                            ),
+                        )
+                    })
+            }))
+            .when(!stats.disks.is_empty(), |this| {
+                this.child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap_1()
+                        .p_2()
+                        .bg(theme.surface)
+                        .rounded_md()
+                        .children(stats.disks.iter().map(|disk| {
+                            let color = if disk.percent >= 90 {
+                                theme.error
+                            } else if disk.percent >= 75 {
+                                theme.warning
+                            } else {
+                                theme.accent
+                            };
+
                             div()
-                                .flex_1()
-                                .h(px(4.))
-                                .bg(theme.hover)
-                                .rounded(px(2.))
+                                .flex()
+                                .flex_col()
+                                .gap_1()
                                 .child(
                                     div()
-                                        .w(relative(metric.percent as f32 / 100.0))
-                                        .h_full()
-                                        .bg(theme.accent)
-                                        .rounded(px(2.)),
-                                ),
-                        ),
-                    )
-            }))
+                                        .flex()
+                                        .items_center()
+                                        .gap_2()
+                                        .child(
+                                            div()
+                                                .flex_1()
+                                                .text_xs()
+                                                .text_color(theme.text)
+                                                .child(disk.mount.clone()),
+                                        )
+                                        .child(
+                                            div()
+                                                .text_xs()
+                                                .text_color(theme.text_muted)
+                                                .child(format!("{}%", disk.percent)),
+                                        ),
+                                )
+                                .child(
+                                    div().h(px(20.)).flex().items_center().child(
+                                        div()
+                                            .flex_1()
+                                            .h(px(4.))
+                                            .bg(theme.hover)
+                                            .rounded(px(2.))
+                                            .child(
+                                                div()
+                                                    .w(relative(disk.percent as f32 / 100.0))
+                                                    .h_full()
+                                                    .bg(color)
+                                                    .rounded(px(2.)),
+                                            ),
+                                    ),
+                                )
+                        })),
+                )
+            })
             .into_any_element()
     }
 }
@@ -930,7 +1031,7 @@ impl Render for ControlCenterWidget {
             .text_color(theme.text)
             .p_4()
             .gap_4()
-            .on_action(|_: &CloseControlCenter, window, cx| {
+            .on_action(|_: &CloseControlCenter, window, _cx| {
                 window.remove_window();
             })
             .child(self.render_audio_section(cx))
