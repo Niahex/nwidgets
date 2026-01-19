@@ -1,4 +1,4 @@
-use crate::components::{CircularProgress, Dropdown, DropdownOption};
+use crate::components::{CircularProgress, Dropdown, DropdownOption, Toggle};
 use crate::services::audio::AudioService;
 use crate::services::bluetooth::BluetoothService;
 use crate::services::control_center::{ControlCenterSection, ControlCenterService};
@@ -859,9 +859,9 @@ impl ControlCenterWidget {
                         )
                         .children(
                             bt_state.devices.iter().enumerate().map(|(idx, device)| {
-                                let address = device.address.clone();
+                                let address_for_toggle = device.address.clone();
                                 let address_for_pin = device.address.clone();
-                                let bluetooth = self.bluetooth.clone();
+                                let bluetooth_for_toggle = self.bluetooth.clone();
                                 let bluetooth_for_pin = self.bluetooth.clone();
                                 div()
                                     .id(("bt-device", idx))
@@ -873,18 +873,9 @@ impl ControlCenterWidget {
                                     .bg(theme.surface)
                                     .child(
                                         div()
-                                            .id(("bt-name", idx))
                                             .flex()
                                             .flex_col()
                                             .gap_1()
-                                            .cursor_pointer()
-                                            .hover(|style| style.opacity(0.8))
-                                            .on_click(move |_, _, cx| {
-                                                let addr = address.clone();
-                                                bluetooth.update(cx, |bt, cx| {
-                                                    bt.toggle_device(addr, cx);
-                                                });
-                                            })
                                             .child(
                                                 div()
                                                     .text_xs()
@@ -903,21 +894,15 @@ impl ControlCenterWidget {
                                             .flex()
                                             .items_center()
                                             .gap_2()
-                                            .child(
-                                                div()
-                                                    .text_xs()
-                                                    .font_weight(FontWeight::BOLD)
-                                                    .text_color(if device.connected {
-                                                        theme.green
-                                                    } else {
-                                                        theme.text_muted
+                                            .child({
+                                                Toggle::new(("bt-toggle", idx), device.connected)
+                                                    .on_click(move |_, _, cx| {
+                                                        let a = address_for_toggle.clone();
+                                                        bluetooth_for_toggle.update(cx, |bt, cx| {
+                                                            bt.toggle_device(a, cx);
+                                                        });
                                                     })
-                                                    .child(if device.connected {
-                                                        "Connected"
-                                                    } else {
-                                                        "Disconnected"
-                                                    }),
-                                            )
+                                            })
                                             .child({
                                                 div()
                                                     .id(("bt-pin", idx))
