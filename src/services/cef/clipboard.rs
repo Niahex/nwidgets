@@ -7,8 +7,8 @@ pub enum ClipboardData {
     Image { data: Vec<u8>, format: ImageFormat },
 }
 
-/// Enhanced clipboard script that uses Clipboard API with proper permissions
-/// Sends clipboard data via window.cefQuery for better reliability
+/// Enhanced clipboard script that intercepts Clipboard API calls
+/// Sends clipboard data via window.cefQuery to sync with system clipboard
 pub const CLIPBOARD_SCRIPT: &str = r#"
 (function(){
 if(!window.cefQuery)return;
@@ -20,26 +20,6 @@ onSuccess:()=>{},
 onFailure:()=>{}
 });
 };
-document.addEventListener('copy',async e=>{
-try{
-const items=await navigator.clipboard.read();
-for(const item of items){
-if(item.types.includes('image/png')){
-const blob=await item.getType('image/png');
-const reader=new FileReader();
-reader.onload=()=>{
-const base64=reader.result.split(',')[1];
-send('image',base64);
-};
-reader.readAsDataURL(blob);
-return;
-}
-}
-}catch(err){
-const t=e.clipboardData?.getData('text/plain')||window.getSelection()?.toString();
-if(t)send('text',t);
-}
-});
 const origWrite=navigator.clipboard.write?.bind(navigator.clipboard);
 if(origWrite){
 navigator.clipboard.write=async(data)=>{
@@ -50,8 +30,7 @@ if(item.types?.includes('text/plain')){
 const blob=await item.getType('text/plain');
 const text=await blob.text();
 send('text',text);
-}
-if(item.types?.includes('image/png')){
+}else if(item.types?.includes('image/png')){
 const blob=await item.getType('image/png');
 const reader=new FileReader();
 reader.onload=()=>{
@@ -62,14 +41,14 @@ reader.readAsDataURL(blob);
 }
 }
 }catch(e){}
-return origWrite(data).catch(()=>Promise.resolve());
+return origWrite(data);
 };
 }
 const origWriteText=navigator.clipboard.writeText?.bind(navigator.clipboard);
 if(origWriteText){
 navigator.clipboard.writeText=t=>{
 send('text',t);
-return origWriteText(t).catch(()=>Promise.resolve());
+return origWriteText(t);
 };
 }
 })();

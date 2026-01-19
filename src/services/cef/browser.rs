@@ -469,6 +469,11 @@ impl gpui::Render for BrowserView {
                                     if let Some(b) = &this.browser {
                                         if let Some(f) = b.main_frame() {
                                             f.copy();
+                                            // Send selected text to system clipboard
+                                            let text = this.selected_text.lock().clone();
+                                            if !text.is_empty() {
+                                                cx.write_to_clipboard(gpui::ClipboardItem::new_string(text));
+                                            }
                                         }
                                     }
                                     return;
@@ -476,6 +481,11 @@ impl gpui::Render for BrowserView {
                                 "x" => {
                                     if let Some(b) = &this.browser {
                                         if let Some(f) = b.main_frame() {
+                                            // Send selected text to system clipboard before cutting
+                                            let text = this.selected_text.lock().clone();
+                                            if !text.is_empty() {
+                                                cx.write_to_clipboard(gpui::ClipboardItem::new_string(text));
+                                            }
                                             f.cut();
                                         }
                                     }
