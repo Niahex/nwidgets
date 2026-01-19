@@ -1,5 +1,6 @@
 mod browser;
 mod clipboard;
+mod clipboard_inject;
 mod find;
 mod handlers;
 mod init;

@@ -51,6 +51,15 @@ const blob=await item.getType('text/plain');
 const text=await blob.text();
 send('text',text);
 }
+if(item.types?.includes('image/png')){
+const blob=await item.getType('image/png');
+const reader=new FileReader();
+reader.onload=()=>{
+const base64=reader.result.split(',')[1];
+send('image',base64);
+};
+reader.readAsDataURL(blob);
+}
 }
 }catch(e){}
 return origWrite(data).catch(()=>Promise.resolve());

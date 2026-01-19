@@ -383,16 +383,26 @@ impl gpui::Render for BrowserView {
                     .size_full()
                     .cursor(cursor_style)
                     .track_focus(&self.focus_handle)
-                    .on_key_down(cx.listener(|this, event: &KeyDownEvent, _window, _cx| {
+                    .on_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
                         let ks = &event.keystroke;
                         let mods = modifiers_to_cef(&ks.modifiers);
+
+                        // Handle Ctrl+V / Cmd+V for paste
+                        if (ks.modifiers.control || ks.modifiers.platform) && ks.key == "v" {
+                            if let Some(browser) = &this.browser {
+                                if let Some(clipboard_item) = cx.read_from_clipboard() {
+                                    super::clipboard_inject::inject_clipboard_to_cef(browser, &clipboard_item);
+                                }
+                                return;
+                            }
+                        }
 
                         // Handle find bar input
                         if this.find_bar.visible {
                             if let Some(b) = &this.browser {
                                 if let Some(host) = b.host() {
                                     if this.find_bar.handle_key(&ks.key, ks.key_char.as_deref(), &ks.modifiers, &host) {
-                                        _cx.notify();
+                                        cx.notify();
                                         return;
                                     }
                                 }
@@ -423,19 +433,6 @@ impl gpui::Render for BrowserView {
                                         if let Some(b) = &this.browser {
                                             if let Some(f) = b.main_frame() {
                                                 f.paste_and_match_style();
-                                            }
-                                        }
-                                    } else {
-                                        // Ctrl+V: Paste from system clipboard
-                                        if let Some(b) = &this.browser {
-                                            if let Some(f) = b.main_frame() {
-                                                if let Some(text) = _cx.read_from_clipboard().and_then(|c| c.text()) {
-                                                    let escaped = text.replace('\\', "\\\\").replace('`', "\\`").replace("${ ", "\\${ ");
-                                                    let script = format!(
-                                                        "document.execCommand('insertText', false, `{escaped}`);"
-                                                    );
-                                                    f.execute_java_script(Some(&CefString::from(script.as_str())), None, 0);
-                                                }
                                             }
                                         }
                                     }
@@ -469,22 +466,17 @@ impl gpui::Render for BrowserView {
                                     return;
                                 }
                                 "c" => {
-                                    // Copy selected text to system clipboard
-                                    let text = this.selected_text.lock().clone();
-                                    if !text.is_empty() {
-                                        _cx.write_to_clipboard(gpui::ClipboardItem::new_string(text));
+                                    if let Some(b) = &this.browser {
+                                        if let Some(f) = b.main_frame() {
+                                            f.copy();
+                                        }
                                     }
                                     return;
                                 }
                                 "x" => {
-                                    // Cut: copy to clipboard then delete
-                                    let text = this.selected_text.lock().clone();
-                                    if !text.is_empty() {
-                                        _cx.write_to_clipboard(gpui::ClipboardItem::new_string(text));
-                                        if let Some(b) = &this.browser {
-                                            if let Some(f) = b.main_frame() {
-                                                f.del();
-                                            }
+                                    if let Some(b) = &this.browser {
+                                        if let Some(f) = b.main_frame() {
+                                            f.cut();
                                         }
                                     }
                                     return;
@@ -499,7 +491,7 @@ impl gpui::Render for BrowserView {
                                             }
                                         }
                                     }
-                                    _cx.notify();
+                                    cx.notify();
                                     return;
                                 }
                                 _ => {}
