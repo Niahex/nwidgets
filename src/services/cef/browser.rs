@@ -188,7 +188,7 @@ impl BrowserView {
         let h = Arc::new(RwLock::new(height));
         let mouse_pressed = Arc::new(Mutex::new(false));
         let cursor = Arc::new(RwLock::new(CefCursor::Default));
-        let selected_text = Arc::new(Mutex::new(String::new()));
+        let selected_text = Arc::new(Mutex::new(String::with_capacity(256)));
 
         // Combine clipboard script with user injection script
         let full_script = match injection_script {
@@ -251,7 +251,7 @@ impl BrowserView {
             hidden,
             last_version: 0,
             cached_image: None,
-            reuse_buffer: Vec::new(),
+            reuse_buffer: Vec::with_capacity((width * height * 4) as usize),
             find_bar: FindBar::new(),
             _message_router: message_router,
         }
