@@ -9,9 +9,14 @@ use crate::services::cef::input::{
 };
 use cef::{
     rc::Rc, Browser, BrowserSettings, CefString, Client, DisplayHandler, ImplBrowser,
-    ImplBrowserHost, ImplClient, ImplFrame, LoadHandler, PermissionHandler, RenderHandler,
-    WindowInfo, WrapClient,
+    ImplBrowserHost, ImplClient, ImplFrame, LoadHandler, PermissionHandler, ProcessId,
+    ProcessMessage, RenderHandler, WindowInfo, WrapClient,
 };
+use cef::wrapper::message_router::{
+    BrowserSideRouter, MessageRouterBrowserSide, MessageRouterBrowserSideHandlerCallbacks,
+    MessageRouterConfig,
+};
+use crate::services::cef::message_handler::ClipboardMessageHandler;
 use cef_dll_sys::cef_mouse_button_type_t;
 use futures::StreamExt;
 use gpui::prelude::FluentBuilder;
@@ -32,6 +37,7 @@ struct BrowserClient {
     display_handler: DisplayHandler,
     permission_handler: PermissionHandler,
     load_handler: LoadHandler,
+    message_router: std::sync::Arc<BrowserSideRouter>,
 }
 
 cef::wrap_client! {
@@ -52,6 +58,29 @@ cef::wrap_client! {
         fn load_handler(&self) -> Option<LoadHandler> {
             Some(self.client.load_handler.clone())
         }
+        fn on_process_message_received(
+            &self,
+            browser: Option<&mut Browser>,
+            frame: Option<&mut cef::Frame>,
+            source_process: ProcessId,
+            message: Option<&mut ProcessMessage>,
+        ) -> i32 {
+            // Convert mutable references to owned types for the router
+            let browser_owned = browser.as_ref().map(|b| (*b).clone());
+            let frame_owned = frame.as_ref().map(|f| (*f).clone());
+            let message_owned = message.as_ref().map(|m| (*m).clone());
+            
+            if self.client.message_router.on_process_message_received(
+                browser_owned,
+                frame_owned,
+                source_process,
+                message_owned,
+            ) {
+                1 // true
+            } else {
+                0 // false
+            }
+        }
     }
 }
 
@@ -65,10 +94,18 @@ struct BrowserConfig {
     loaded: Arc<Mutex<bool>>,
     scale_factor: f32,
     repaint_tx: futures::channel::mpsc::UnboundedSender<()>,
-    clipboard_tx: futures::channel::mpsc::UnboundedSender<String>,
+    clipboard_tx: futures::channel::mpsc::UnboundedSender<super::clipboard::ClipboardData>,
 }
 
-fn create_browser(url: &str, config: BrowserConfig) -> Browser {
+fn create_browser(url: &str, config: BrowserConfig) -> (Browser, std::sync::Arc<BrowserSideRouter>) {
+    // Create MessageRouter for clipboard communication
+    let router_config = MessageRouterConfig::default();
+    let message_router = BrowserSideRouter::new(router_config);
+    
+    // Create and add clipboard handler
+    let clipboard_handler = std::sync::Arc::new(ClipboardMessageHandler::new(config.clipboard_tx.clone()));
+    message_router.add_handler(clipboard_handler, true);
+    
     let render_handler = RenderHandlerWrapper::new(GpuiRenderHandler {
         buffer: config.buffer,
         width: config.width,
@@ -92,9 +129,10 @@ fn create_browser(url: &str, config: BrowserConfig) -> Browser {
         display_handler,
         permission_handler,
         load_handler,
+        message_router: message_router.clone(),
     });
 
-    cef::browser_host_create_browser_sync(
+    let browser = cef::browser_host_create_browser_sync(
         Some(&WindowInfo {
             windowless_rendering_enabled: 1,
             ..Default::default()
@@ -110,7 +148,9 @@ fn create_browser(url: &str, config: BrowserConfig) -> Browser {
         None,
         None,
     )
-    .expect("Failed to create browser")
+    .expect("Failed to create browser");
+    
+    (browser, message_router)
 }
 
 pub struct BrowserView {
@@ -128,6 +168,7 @@ pub struct BrowserView {
     cached_image: Option<Arc<RenderImage>>,
     reuse_buffer: Vec<u8>,
     find_bar: FindBar,
+    message_router: std::sync::Arc<BrowserSideRouter>,
 }
 
 impl BrowserView {
@@ -158,7 +199,7 @@ impl BrowserView {
         let (tx, mut rx) = futures::channel::mpsc::unbounded();
         let (clipboard_tx, clipboard_rx) = super::clipboard::create_clipboard_channel();
 
-        let browser = create_browser(
+        let (browser, message_router) = create_browser(
             url,
             BrowserConfig {
                 buffer: buffer.clone(),
@@ -208,6 +249,7 @@ impl BrowserView {
             cached_image: None,
             reuse_buffer: Vec::new(),
             find_bar: FindBar::new(),
+            message_router,
         }
     }
 

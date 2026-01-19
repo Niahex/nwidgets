@@ -193,7 +193,7 @@ cef::wrap_render_handler! {
 #[derive(Clone)]
 pub struct GpuiDisplayHandler {
     pub cursor: Arc<Mutex<CefCursor>>,
-    pub clipboard_tx: futures::channel::mpsc::UnboundedSender<String>,
+    pub clipboard_tx: futures::channel::mpsc::UnboundedSender<super::clipboard::ClipboardData>,
 }
 
 cef::wrap_display_handler! {
@@ -209,9 +209,10 @@ cef::wrap_display_handler! {
         ) {
             if let Some(title_str) = title {
                 let s = title_str.to_string();
-                if let Some(text) = super::clipboard::extract_clipboard_data(&s) {
-                    let _ = self.handler.clipboard_tx.unbounded_send(text.to_string());
-                }
+                // Note: extract_clipboard_data is now extract_clipboard_from_message
+                // and is only used by the MessageRouter handler
+                // We keep this for backward compatibility with old method
+                eprintln!("[CEF] Title changed: {}", &s[..s.len().min(100)]);
             }
         }
 

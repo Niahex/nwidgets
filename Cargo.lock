@@ -4129,6 +4129,7 @@ name = "nwidgets"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "base64",
  "cef",
  "cef-dll-sys",
  "chrono",
