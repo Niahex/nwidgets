@@ -392,11 +392,6 @@ impl ControlCenterWidget {
                     .flex_col()
                     .gap_1()
                     .mt_3()
-                    .child(
-                        div()
-                            .text_xs()
-                            .font_weight(FontWeight::BOLD)
-                            .text_color(theme.text_muted)
                     .children({
                         let streams = self.audio.read(cx).sink_inputs();
                         if streams.is_empty() {
@@ -827,13 +822,6 @@ impl ControlCenterWidget {
                         .flex()
                         .flex_col()
                         .gap_2()
-                        .child(
-                            div()
-                                .text_sm()
-                                .font_weight(FontWeight::BOLD)
-                                .text_color(theme.text)
-                                .child("Bluetooth Devices"),
-                        )
                         .children(
                             bt_state.devices.iter().enumerate().map(|(idx, device)| {
                                 let address_for_toggle = device.address.clone();
