@@ -8,6 +8,7 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 
 #[derive(Clone)]
 pub struct ClipboardEvent {
+    #[allow(dead_code)]
     pub content: String,
 }
 

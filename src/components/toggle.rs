@@ -1,11 +1,13 @@
 use gpui::prelude::*;
 use gpui::*;
 
+type ToggleClickHandler = Box<dyn Fn(bool, &mut Window, &mut App) + 'static>;
+
 #[derive(IntoElement)]
 pub struct Toggle {
     id: ElementId,
     checked: bool,
-    on_click: Option<Box<dyn Fn(bool, &mut Window, &mut App) + 'static>>,
+    on_click: Option<ToggleClickHandler>,
 }
 
 impl Toggle {

@@ -25,7 +25,7 @@ impl LauncherService {
 
     pub fn toggle(&mut self, cx: &mut Context<Self>) {
         self.visible = !self.visible;
-        
+
         // Close control center when launcher opens
         if self.visible {
             let cc = crate::services::control_center::ControlCenterService::global(cx);
@@ -35,7 +35,7 @@ impl LauncherService {
                 }
             });
         }
-        
+
         cx.emit(LauncherToggled);
         cx.notify();
     }

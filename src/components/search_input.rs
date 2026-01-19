@@ -29,7 +29,7 @@ impl SearchInput {
         &self.query
     }
 
-    pub fn render_with_handlers<F1, F2>(&self, on_input: F1, on_space: F2) -> impl IntoElement
+    pub fn render_with_handlers<F1, F2>(&self, _on_input: F1, _on_space: F2) -> impl IntoElement
     where
         F1: Fn(&str) + 'static,
         F2: Fn(&str) + 'static,

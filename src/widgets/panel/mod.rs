@@ -183,7 +183,7 @@ impl Render for Panel {
                 .absolute()
                 .top(panel_height)
                 .left_0()
-                .size(corner_radius)
+                .size(corner_radius),
             )
             // Right corner avec bg
             .child(
@@ -211,7 +211,7 @@ impl Render for Panel {
                 .absolute()
                 .top(panel_height)
                 .right_0()
-                .size(corner_radius)
+                .size(corner_radius),
             )
     }
 }

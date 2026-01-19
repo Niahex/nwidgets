@@ -128,7 +128,7 @@ impl ControlCenterService {
             let _ = handle.update(cx, |view, window, cx| {
                 window.focus(&view.focus_handle, cx);
                 window.set_keyboard_interactivity(
-                    gpui::layer_shell::KeyboardInteractivity::Exclusive
+                    gpui::layer_shell::KeyboardInteractivity::Exclusive,
                 );
                 cx.activate(true);
             });
@@ -139,9 +139,8 @@ impl ControlCenterService {
     fn close_window(&self, cx: &mut Context<Self>) {
         if let Some(handle) = self.window_handle.write().take() {
             let _ = handle.update(cx, |_, window, _| {
-                window.set_keyboard_interactivity(
-                    gpui::layer_shell::KeyboardInteractivity::OnDemand
-                );
+                window
+                    .set_keyboard_interactivity(gpui::layer_shell::KeyboardInteractivity::OnDemand);
                 window.remove_window();
             });
         }

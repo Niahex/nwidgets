@@ -218,7 +218,11 @@ impl BluetoothService {
 
                     if !address.is_empty() {
                         devices.push(BluetoothDevice {
-                            name: if name.is_empty() { address.clone() } else { name },
+                            name: if name.is_empty() {
+                                address.clone()
+                            } else {
+                                name
+                            },
                             address,
                             connected,
                             auto_connect,
@@ -239,10 +243,7 @@ impl BluetoothService {
 struct GlobalBluetoothService(Entity<BluetoothService>);
 impl Global for GlobalBluetoothService {}
 
-#[proxy(
-    default_service = "org.bluez",
-    interface = "org.bluez.Adapter1"
-)]
+#[proxy(default_service = "org.bluez", interface = "org.bluez.Adapter1")]
 trait Adapter {
     #[zbus(property)]
     fn powered(&self) -> Result<bool>;
@@ -251,17 +252,14 @@ trait Adapter {
     fn set_powered(&self, value: bool) -> Result<()>;
 }
 
-#[proxy(
-    default_service = "org.bluez",
-    interface = "org.bluez.Device1"
-)]
+#[proxy(default_service = "org.bluez", interface = "org.bluez.Device1")]
 trait Device {
     fn connect(&self) -> Result<()>;
     fn disconnect(&self) -> Result<()>;
-    
+
     #[zbus(property)]
     fn trusted(&self) -> Result<bool>;
-    
+
     #[zbus(property)]
     fn set_trusted(&self, value: bool) -> Result<()>;
 }
@@ -299,7 +297,7 @@ impl BluetoothService {
                 // Wait a bit for bluetooth to be ready
                 tokio::time::sleep(std::time::Duration::from_millis(500)).await;
             }
-            
+
             if let Err(e) = Self::toggle_device_connection(&address).await {
                 eprintln!("[BluetoothService] Failed to toggle device: {e}");
             }
@@ -323,10 +321,7 @@ impl BluetoothService {
 
         for (path, interfaces) in objects {
             if interfaces.contains_key("org.bluez.Adapter1") {
-                let adapter = AdapterProxy::builder(&conn)
-                    .path(path)?
-                    .build()
-                    .await?;
+                let adapter = AdapterProxy::builder(&conn).path(path)?.build().await?;
                 adapter.set_powered(powered).await?;
                 return Ok(());
             }
@@ -344,10 +339,8 @@ impl BluetoothService {
                 if let Some(addr_value) = device.get("Address") {
                     if let Ok(addr) = <&str>::try_from(addr_value) {
                         if addr == address {
-                            let device_proxy = DeviceProxy::builder(&conn)
-                                .path(path)?
-                                .build()
-                                .await?;
+                            let device_proxy =
+                                DeviceProxy::builder(&conn).path(path)?.build().await?;
 
                             if let Some(connected_value) = device.get("Connected") {
                                 if let Ok(connected) = bool::try_from(connected_value) {
@@ -377,10 +370,8 @@ impl BluetoothService {
                 if let Some(addr_value) = device.get("Address") {
                     if let Ok(addr) = <&str>::try_from(addr_value) {
                         if addr == address {
-                            let device_proxy = DeviceProxy::builder(&conn)
-                                .path(path)?
-                                .build()
-                                .await?;
+                            let device_proxy =
+                                DeviceProxy::builder(&conn).path(path)?.build().await?;
 
                             let current_trusted = device_proxy.trusted().await.unwrap_or(false);
                             device_proxy.set_trusted(!current_trusted).await?;

@@ -164,9 +164,7 @@ fn main() {
 
             // Bind global keys for control center
             use crate::widgets::control_center::CloseControlCenter;
-            cx.bind_keys([
-                KeyBinding::new("escape", CloseControlCenter, None),
-            ]);
+            cx.bind_keys([KeyBinding::new("escape", CloseControlCenter, None)]);
 
             // Initialize global services
             HyprlandService::init(cx);
@@ -324,13 +322,13 @@ fn main() {
                         );
                         window.set_exclusive_edge(Anchor::LEFT);
                         window.set_exclusive_zone(if fullscreen { 0 } else { 600 });
-                        window.set_layer(if fullscreen { 
-                            gpui::layer_shell::Layer::Overlay 
-                        } else { 
-                            gpui::layer_shell::Layer::Top 
+                        window.set_layer(if fullscreen {
+                            gpui::layer_shell::Layer::Overlay
+                        } else {
+                            gpui::layer_shell::Layer::Top
                         });
                         window.set_keyboard_interactivity(
-                            gpui::layer_shell::KeyboardInteractivity::OnDemand
+                            gpui::layer_shell::KeyboardInteractivity::OnDemand,
                         );
                         cx.activate(true);
                     } else {

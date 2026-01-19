@@ -1,9 +1,9 @@
+use gio::prelude::*;
 use gpui::{
     actions, div, prelude::*, px, Animation, AnimationExt, Context, FocusHandle, KeyDownEvent,
     Render, Task, Window,
 };
 use std::time::Duration;
-use gio::prelude::*;
 
 use crate::components::{SearchInput, SearchResult, SearchResults};
 use crate::services::clipboard::ClipboardMonitor;
@@ -83,17 +83,21 @@ impl Launcher {
                 SearchResult::Application(app) => {
                     let mut exec = app.exec.clone();
                     let name = app.name.clone();
-                    
+
                     // Remove desktop entry field codes
-                    exec = exec.replace("%U", "").replace("%u", "")
-                        .replace("%F", "").replace("%f", "")
-                        .replace("%i", "").replace("%c", "")
+                    exec = exec
+                        .replace("%U", "")
+                        .replace("%u", "")
+                        .replace("%F", "")
+                        .replace("%f", "")
+                        .replace("%i", "")
+                        .replace("%c", "")
                         .replace("%k", "");
 
                     cx.background_executor()
                         .spawn(async move {
                             eprintln!("[nlauncher] Launching: {name} with command: {exec}");
-                            
+
                             match gio::AppInfo::create_from_commandline(
                                 &exec,
                                 Some(&name),
@@ -101,11 +105,17 @@ impl Launcher {
                             ) {
                                 Ok(app_info) => {
                                     match app_info.launch(&[], gio::AppLaunchContext::NONE) {
-                                        Ok(_) => eprintln!("[nlauncher] Successfully launched: {name}"),
-                                        Err(err) => eprintln!("[nlauncher] Failed to launch {name}: {err}"),
+                                        Ok(_) => {
+                                            eprintln!("[nlauncher] Successfully launched: {name}")
+                                        }
+                                        Err(err) => {
+                                            eprintln!("[nlauncher] Failed to launch {name}: {err}")
+                                        }
                                     }
                                 }
-                                Err(err) => eprintln!("[nlauncher] Failed to create AppInfo for {name}: {err}"),
+                                Err(err) => eprintln!(
+                                    "[nlauncher] Failed to create AppInfo for {name}: {err}"
+                                ),
                             }
                         })
                         .detach();
@@ -368,7 +378,7 @@ impl Render for LauncherWidget {
                         SearchResult::Application(app) => {
                             let mut exec = app.exec.clone();
                             let name = app.name.clone();
-                            
+
                             // Remove desktop entry field codes
                             exec = exec.replace("%U", "").replace("%u", "")
                                 .replace("%F", "").replace("%f", "")
@@ -378,7 +388,7 @@ impl Render for LauncherWidget {
                             cx.background_executor()
                                 .spawn(async move {
                                     eprintln!("[launcher] Launching: {name} with command: {exec}");
-                                    
+
                                     match gio::AppInfo::create_from_commandline(
                                         &exec,
                                         Some(&name),

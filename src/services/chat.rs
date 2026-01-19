@@ -38,7 +38,7 @@ impl ChatService {
 
     pub fn toggle(&mut self, cx: &mut Context<Self>) {
         self.visible = !self.visible;
-        
+
         // Close control center when chat opens
         if self.visible {
             let cc = crate::services::control_center::ControlCenterService::global(cx);
@@ -48,7 +48,7 @@ impl ChatService {
                 }
             });
         }
-        
+
         cx.emit(ChatToggled);
         cx.notify();
     }

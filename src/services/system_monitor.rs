@@ -38,9 +38,10 @@ impl SystemStats {
         vec![]
     }
 
+    #[allow(dead_code)]
     fn format_bytes(bytes: u64) -> String {
         if bytes < 1024 {
-            format!("{} B/s", bytes)
+            format!("{bytes} B/s")
         } else if bytes < 1024 * 1024 {
             format!("{:.1} KB/s", bytes as f64 / 1024.0)
         } else if bytes < 1024 * 1024 * 1024 {
@@ -50,9 +51,10 @@ impl SystemStats {
         }
     }
 
+    #[allow(dead_code)]
     fn format_bytes_total(bytes: u64) -> String {
         if bytes < 1024 {
-            format!("{} B", bytes)
+            format!("{bytes} B")
         } else if bytes < 1024 * 1024 {
             format!("{:.1} KB", bytes as f64 / 1024.0)
         } else if bytes < 1024 * 1024 * 1024 {
@@ -121,13 +123,13 @@ impl SystemMonitorService {
 
         loop {
             let (net_rx, net_tx) = Self::read_network_bytes().await;
-            
+
             let net_down = if last_net_rx > 0 {
                 net_rx.saturating_sub(last_net_rx) / 2
             } else {
                 0
             };
-            
+
             let net_up = if last_net_tx > 0 {
                 net_tx.saturating_sub(last_net_tx) / 2
             } else {
@@ -206,16 +208,28 @@ impl SystemMonitorService {
         // Try generic DRM sysfs (works for AMD, Intel, and some NVIDIA)
         for card in 0..4 {
             // Try AMD/Intel style
-            if let Ok(usage_str) = tokio::fs::read_to_string(format!("/sys/class/drm/card{}/device/gpu_busy_percent", card)).await {
+            if let Ok(usage_str) = tokio::fs::read_to_string(format!(
+                "/sys/class/drm/card{card}/device/gpu_busy_percent"
+            ))
+            .await
+            {
                 if let Ok(usage) = usage_str.trim().parse::<u8>() {
                     return usage;
                 }
             }
-            
+
             // Try alternative path
-            if let Ok(usage_str) = tokio::fs::read_to_string(format!("/sys/class/drm/card{}/gt/gt0/rps_cur_freq_mhz", card)).await {
+            if let Ok(usage_str) = tokio::fs::read_to_string(format!(
+                "/sys/class/drm/card{card}/gt/gt0/rps_cur_freq_mhz"
+            ))
+            .await
+            {
                 if let Ok(cur_freq) = usage_str.trim().parse::<u32>() {
-                    if let Ok(max_str) = tokio::fs::read_to_string(format!("/sys/class/drm/card{}/gt/gt0/rps_max_freq_mhz", card)).await {
+                    if let Ok(max_str) = tokio::fs::read_to_string(format!(
+                        "/sys/class/drm/card{card}/gt/gt0/rps_max_freq_mhz"
+                    ))
+                    .await
+                    {
                         if let Ok(max_freq) = max_str.trim().parse::<u32>() {
                             return ((cur_freq * 100) / max_freq.max(1)) as u8;
                         }
@@ -223,7 +237,7 @@ impl SystemMonitorService {
                 }
             }
         }
-        
+
         0
     }
 
@@ -239,14 +253,18 @@ impl SystemMonitorService {
         // Try generic DRM hwmon (works for AMD, Intel, and some NVIDIA)
         for card in 0..4 {
             for hwmon in 0..4 {
-                if let Ok(temp_str) = tokio::fs::read_to_string(format!("/sys/class/drm/card{}/device/hwmon/hwmon{}/temp1_input", card, hwmon)).await {
+                if let Ok(temp_str) = tokio::fs::read_to_string(format!(
+                    "/sys/class/drm/card{card}/device/hwmon/hwmon{hwmon}/temp1_input"
+                ))
+                .await
+                {
                     if let Ok(temp) = temp_str.trim().parse::<f32>() {
                         return Some(temp / 1000.0);
                     }
                 }
             }
         }
-        
+
         None
     }
 
@@ -254,7 +272,7 @@ impl SystemMonitorService {
         tokio::fs::read_to_string("/proc/net/dev")
             .await
             .ok()
-            .and_then(|s| {
+            .map(|s| {
                 let mut total_rx = 0u64;
                 let mut total_tx = 0u64;
 
@@ -263,7 +281,9 @@ impl SystemMonitorService {
                     if parts.len() >= 10 {
                         let iface = parts[0].trim_end_matches(':');
                         if iface != "lo" {
-                            if let (Ok(rx), Ok(tx)) = (parts[1].parse::<u64>(), parts[9].parse::<u64>()) {
+                            if let (Ok(rx), Ok(tx)) =
+                                (parts[1].parse::<u64>(), parts[9].parse::<u64>())
+                            {
                                 total_rx += rx;
                                 total_tx += tx;
                             }
@@ -271,7 +291,7 @@ impl SystemMonitorService {
                     }
                 }
 
-                Some((total_rx, total_tx))
+                (total_rx, total_tx)
             })
             .unwrap_or((0, 0))
     }
@@ -292,8 +312,11 @@ impl SystemMonitorService {
                             let source = parts[0];
                             let mount = parts[1];
                             let percent_str = parts[2].trim_end_matches('%');
-                            
-                            if source.starts_with("/dev/") && !source.contains("loop") && mount != "/boot" {
+
+                            if source.starts_with("/dev/")
+                                && !source.contains("loop")
+                                && mount != "/boot"
+                            {
                                 if let Ok(percent) = percent_str.parse::<u8>() {
                                     let name = source.strip_prefix("/dev/").unwrap_or(source);
                                     return Some(DiskInfo {
