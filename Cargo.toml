@@ -33,6 +33,7 @@ numbat = "1.10.0"
 libc = "0.2"
 secret-service = { version = "5.1.0", features = ["rt-async-io-crypto-rust"] }
 gio = "0.20"
+lyon_tessellation = "1.0.16"
 
 [dev-dependencies]
 divan = "0.1"

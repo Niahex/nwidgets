@@ -868,7 +868,7 @@ impl ControlCenterWidget {
                     .flex()
                     .items_center()
                     .justify_center()
-                    .gap(px(60.))
+                    .gap(px(15.))
                     .p_4()
                     .bg(theme.surface)
                     .rounded_md()
@@ -905,10 +905,45 @@ impl ControlCenterWidget {
                         }
                     )
                     .child(
-                        CircularProgress::new(px(80.))
-                            .percent(stats.ram)
-                            .label("RAM")
-                            .color(theme.accent)
+                        {
+                            let mut progress = CircularProgress::new(px(80.))
+                                .percent(stats.ram)
+                                .label("Memory")
+                                .color(theme.accent);
+                            
+                            // Trouver le disque / et utiliser son pourcentage
+                            if let Some(root_disk) = stats.disks.iter().find(|d| d.mount == "/") {
+                                progress = progress
+                                    .secondary_percent(root_disk.percent)
+                                    .secondary_color(theme.warning)
+                                    .secondary_unit("%");
+                            }
+                            
+                            progress
+                        }
+                    )
+                    .child(
+                        {
+                            // Convertir bytes/s en Mbps
+                            let down_mbps = (stats.net_down as f64 * 8.0) / (1024.0 * 1024.0);
+                            let up_mbps = (stats.net_up as f64 * 8.0) / (1024.0 * 1024.0);
+                            let max_mbps = 1000.0;
+                            
+                            // Calculer les pourcentages pour les arcs
+                            let down_percent = ((down_mbps / max_mbps * 100.0).min(100.0)) as u8;
+                            let up_percent = ((up_mbps / max_mbps * 100.0).min(100.0)) as u8;
+                            
+                            // Mais afficher les valeurs en Mbps
+                            CircularProgress::new(px(80.))
+                                .percent(down_percent)
+                                .secondary_percent(up_percent)
+                                .label("NET")
+                                .color(theme.accent)
+                                .secondary_color(theme.purple)
+                                .secondary_unit("↑")
+                                .display_values(down_mbps as u32, up_mbps as u32)
+                                .primary_unit("↓")
+                        }
                     ),
             )
             .children(stats.metrics().iter().map(|metric| {

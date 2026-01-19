@@ -22,6 +22,8 @@ pub struct Theme {
     pub error: Hsla,   // red - 0xbf616a
     pub success: Hsla, // green - 0xa3be8c
     pub warning: Hsla, // yellow - 0xebcb8b
+    pub orange: Hsla,  // orange - 0xd08770
+    pub purple: Hsla,  // purple - 0xb48ead
 
     // Special
     pub white: Hsla,         // 0xFFFFFF
@@ -45,6 +47,8 @@ impl Theme {
             error: rgb(0xbf616a).into(),
             success: rgb(0xa3be8c).into(),
             warning: rgb(0xebcb8b).into(),
+            orange: rgb(0xd08770).into(),
+            purple: rgb(0xb48ead).into(),
             white: rgb(0xFFFFFF).into(),
             systray_hover: rgb(0x313244).into(),
         }
