@@ -69,12 +69,32 @@ impl ControlCenterWidget {
         let network = NetworkService::global(cx);
         let notifications = NotificationService::global(cx);
         let system_monitor = SystemMonitorService::global(cx);
+        let hyprland = crate::services::hyprland::HyprlandService::global(cx);
 
         let audio_state = audio.read(cx).state();
 
         // Subscriptions
         cx.subscribe(&control_center, |_, _, _, cx| cx.notify())
             .detach();
+
+        // Close control center on workspace change or fullscreen
+        cx.subscribe(&hyprland, |this, _, event: &crate::services::hyprland::WorkspaceChanged, cx| {
+            this.control_center.update(cx, |cc, cx| {
+                if cc.is_visible() {
+                    cc.close(cx);
+                }
+            });
+        })
+        .detach();
+
+        cx.subscribe(&hyprland, |this, _, event: &crate::services::hyprland::FullscreenChanged, cx| {
+            this.control_center.update(cx, |cc, cx| {
+                if cc.is_visible() {
+                    cc.close(cx);
+                }
+            });
+        })
+        .detach();
 
         cx.subscribe(&audio, |this, _, _, cx| {
             let audio_state = this.audio.read(cx).state();
@@ -1261,6 +1281,12 @@ impl Render for ControlCenterWidget {
             .child(self.render_connectivity_section(cx))
             .child(div().h(px(1.)).bg(theme.hover))
             .child(self.render_notifications_section(cx))
+            .on_mouse_down_out(cx.listener(|this, _, window, cx| {
+                this.control_center.update(cx, |cc, cx| {
+                    cc.close(cx);
+                });
+                window.remove_window();
+            }))
             .with_animation(
                 "control-center-fade-in",
                 Animation::new(Duration::from_millis(150)),
