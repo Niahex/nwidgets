@@ -205,15 +205,8 @@ cef::wrap_display_handler! {
         fn on_title_change(
             &self,
             _browser: Option<&mut Browser>,
-            title: Option<&CefString>,
+            _title: Option<&CefString>,
         ) {
-            if let Some(title_str) = title {
-                let s = title_str.to_string();
-                // Note: extract_clipboard_data is now extract_clipboard_from_message
-                // and is only used by the MessageRouter handler
-                // We keep this for backward compatibility with old method
-                eprintln!("[CEF] Title changed: {}", &s[..s.len().min(100)]);
-            }
         }
 
         fn on_cursor_change(
