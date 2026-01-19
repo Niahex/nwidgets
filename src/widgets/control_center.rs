@@ -860,7 +860,9 @@ impl ControlCenterWidget {
                         .children(
                             bt_state.devices.iter().enumerate().map(|(idx, device)| {
                                 let address = device.address.clone();
+                                let address_for_pin = device.address.clone();
                                 let bluetooth = self.bluetooth.clone();
+                                let bluetooth_for_pin = self.bluetooth.clone();
                                 div()
                                     .id(("bt-device", idx))
                                     .flex()
@@ -869,19 +871,20 @@ impl ControlCenterWidget {
                                     .p_2()
                                     .rounded_md()
                                     .bg(theme.surface)
-                                    .cursor_pointer()
-                                    .hover(|style| style.bg(theme.hover))
-                                    .on_click(move |_, _, cx| {
-                                        let addr = address.clone();
-                                        bluetooth.update(cx, |bt, cx| {
-                                            bt.toggle_device(addr, cx);
-                                        });
-                                    })
                                     .child(
                                         div()
+                                            .id(("bt-name", idx))
                                             .flex()
                                             .flex_col()
                                             .gap_1()
+                                            .cursor_pointer()
+                                            .hover(|style| style.opacity(0.8))
+                                            .on_click(move |_, _, cx| {
+                                                let addr = address.clone();
+                                                bluetooth.update(cx, |bt, cx| {
+                                                    bt.toggle_device(addr, cx);
+                                                });
+                                            })
                                             .child(
                                                 div()
                                                     .text_xs()
@@ -916,8 +919,6 @@ impl ControlCenterWidget {
                                                     }),
                                             )
                                             .child({
-                                                let addr = device.address.clone();
-                                                let bluetooth = self.bluetooth.clone();
                                                 div()
                                                     .id(("bt-pin", idx))
                                                     .flex()
@@ -933,8 +934,8 @@ impl ControlCenterWidget {
                                                     .cursor_pointer()
                                                     .hover(|style| style.bg(theme.accent.opacity(0.3)))
                                                     .on_click(move |_, _, cx| {
-                                                        let a = addr.clone();
-                                                        bluetooth.update(cx, |bt, cx| {
+                                                        let a = address_for_pin.clone();
+                                                        bluetooth_for_pin.update(cx, |bt, cx| {
                                                             bt.toggle_auto_connect(a, cx);
                                                         });
                                                     })
