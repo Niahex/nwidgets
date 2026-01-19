@@ -27,7 +27,7 @@ use gpui::{
     Window,
 };
 use image::{Frame, ImageBuffer, Rgba};
-use parking_lot::Mutex;
+use parking_lot::{Mutex, RwLock};
 use smallvec::SmallVec;
 use std::sync::Arc;
 
@@ -86,9 +86,9 @@ cef::wrap_client! {
 
 struct BrowserConfig {
     buffer: Arc<DoubleBuffer>,
-    width: Arc<Mutex<u32>>,
-    height: Arc<Mutex<u32>>,
-    cursor: Arc<Mutex<CefCursor>>,
+    width: Arc<RwLock<u32>>,
+    height: Arc<RwLock<u32>>,
+    cursor: Arc<RwLock<CefCursor>>,
     selected_text: Arc<Mutex<String>>,
     injection_script: Arc<Mutex<Option<String>>>,
     loaded: Arc<Mutex<bool>>,
@@ -160,11 +160,11 @@ fn create_browser(
 pub struct BrowserView {
     browser: Option<Browser>,
     buffer: Arc<DoubleBuffer>,
-    width: Arc<Mutex<u32>>,
-    height: Arc<Mutex<u32>>,
+    width: Arc<RwLock<u32>>,
+    height: Arc<RwLock<u32>>,
     focus_handle: FocusHandle,
     mouse_pressed: Arc<Mutex<bool>>,
-    cursor: Arc<Mutex<CefCursor>>,
+    cursor: Arc<RwLock<CefCursor>>,
     selected_text: Arc<Mutex<String>>,
     loaded: Arc<Mutex<bool>>,
     hidden: Arc<Mutex<bool>>,
@@ -184,10 +184,10 @@ impl BrowserView {
         cx: &mut Context<Self>,
     ) -> Self {
         let buffer = Arc::new(DoubleBuffer::new((width * height * 4) as usize));
-        let w = Arc::new(Mutex::new(width));
-        let h = Arc::new(Mutex::new(height));
+        let w = Arc::new(RwLock::new(width));
+        let h = Arc::new(RwLock::new(height));
         let mouse_pressed = Arc::new(Mutex::new(false));
-        let cursor = Arc::new(Mutex::new(CefCursor::Default));
+        let cursor = Arc::new(RwLock::new(CefCursor::Default));
         let selected_text = Arc::new(Mutex::new(String::new()));
 
         // Combine clipboard script with user injection script
@@ -314,8 +314,8 @@ impl BrowserView {
     }
 
     pub fn resize(&self, width: u32, height: u32) {
-        *self.width.lock() = width;
-        *self.height.lock() = height;
+        *self.width.write() = width;
+        *self.height.write() = height;
         if let Some(browser) = &self.browser {
             if let Some(host) = browser.host() {
                 host.was_resized();
@@ -338,12 +338,12 @@ impl gpui::Render for BrowserView {
             return div().into_any_element();
         }
 
-        let w = *self.width.lock();
-        let h = *self.height.lock();
+        let w = *self.width.read();
+        let h = *self.height.read();
         let current_version = self.buffer.version();
         let is_loaded = *self.loaded.lock();
 
-        let cursor_style = match *self.cursor.lock() {
+        let cursor_style = match *self.cursor.read() {
             CefCursor::Default => CursorStyle::Arrow,
             CefCursor::Pointer => CursorStyle::PointingHand,
             CefCursor::Text => CursorStyle::IBeam,

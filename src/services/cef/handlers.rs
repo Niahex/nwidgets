@@ -6,7 +6,7 @@ use cef::{
     WrapPermissionHandler, WrapRenderHandler,
 };
 use cef_dll_sys::cef_cursor_type_t;
-use parking_lot::Mutex;
+use parking_lot::{Mutex, RwLock};
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
 
@@ -67,8 +67,8 @@ impl DoubleBuffer {
 #[derive(Clone)]
 pub struct GpuiRenderHandler {
     pub buffer: Arc<DoubleBuffer>,
-    pub width: Arc<Mutex<u32>>,
-    pub height: Arc<Mutex<u32>>,
+    pub width: Arc<RwLock<u32>>,
+    pub height: Arc<RwLock<u32>>,
     pub scale_factor: f32,
     pub selected_text: Arc<Mutex<String>>,
     pub repaint_tx: futures::channel::mpsc::UnboundedSender<()>,
@@ -82,8 +82,8 @@ cef::wrap_render_handler! {
     impl RenderHandler {
         fn view_rect(&self, _browser: Option<&mut Browser>, rect: Option<&mut cef::Rect>) {
             if let Some(rect) = rect {
-                rect.width = *self.handler.width.lock() as i32;
-                rect.height = *self.handler.height.lock() as i32;
+                rect.width = *self.handler.width.read() as i32;
+                rect.height = *self.handler.height.read() as i32;
             }
         }
 
@@ -192,7 +192,7 @@ cef::wrap_render_handler! {
 
 #[derive(Clone)]
 pub struct GpuiDisplayHandler {
-    pub cursor: Arc<Mutex<CefCursor>>,
+    pub cursor: Arc<RwLock<CefCursor>>,
     #[allow(dead_code)]
     pub clipboard_tx: futures::channel::mpsc::UnboundedSender<super::clipboard::ClipboardData>,
 }
@@ -226,7 +226,7 @@ cef::wrap_display_handler! {
                 cef_cursor_type_t::CT_NONE => CefCursor::None,
                 _ => CefCursor::Default,
             };
-            *self.handler.cursor.lock() = cursor;
+            *self.handler.cursor.write() = cursor;
             0
         }
     }
