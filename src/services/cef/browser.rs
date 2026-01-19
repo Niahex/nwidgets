@@ -259,34 +259,30 @@ impl BrowserView {
 
     #[inline]
     fn send_key(&self, key_code: i32, modifiers: u32, down: bool) {
-        if let Some(browser) = &self.browser {
-            if let Some(host) = browser.host() {
-                send_key_event(&host, key_code, modifiers, down);
-            }
+        if let Some(host) = self.browser.as_ref().and_then(|b| b.host()) {
+            send_key_event(&host, key_code, modifiers, down);
         }
     }
 
     #[inline]
     fn send_char(&self, ch: char, modifiers: u32) {
-        if let Some(browser) = &self.browser {
-            if let Some(host) = browser.host() {
-                send_char_event(&host, ch, modifiers);
-            }
+        if let Some(host) = self.browser.as_ref().and_then(|b| b.host()) {
+            send_char_event(&host, ch, modifiers);
         }
     }
 
     pub fn current_url(&self) -> Option<String> {
-        self.browser.as_ref().and_then(|b| b.main_frame()).map(|f| {
-            let cef_str: cef::CefStringUtf16 = (&f.url()).into();
-            format!("{cef_str}")
-        })
+        self.browser.as_ref()
+            .and_then(|b| b.main_frame())
+            .map(|f| {
+                let url: cef::CefStringUtf16 = (&f.url()).into();
+                url.to_string()
+            })
     }
 
     pub fn navigate(&self, url: &str) {
-        if let Some(browser) = &self.browser {
-            if let Some(frame) = browser.main_frame() {
-                frame.load_url(Some(&CefString::from(url)));
-            }
+        if let Some(frame) = self.browser.as_ref().and_then(|b| b.main_frame()) {
+            frame.load_url(Some(&CefString::from(url)));
         }
     }
 
@@ -297,29 +293,23 @@ impl BrowserView {
     }
 
     pub fn execute_js(&self, js: &str) {
-        if let Some(browser) = &self.browser {
-            if let Some(frame) = browser.main_frame() {
-                frame.execute_java_script(Some(&CefString::from(js)), None, 0);
-            }
+        if let Some(frame) = self.browser.as_ref().and_then(|b| b.main_frame()) {
+            frame.execute_java_script(Some(&CefString::from(js)), None, 0);
         }
     }
 
     pub fn set_hidden(&self, hidden: bool) {
         *self.hidden.lock() = hidden;
-        if let Some(browser) = &self.browser {
-            if let Some(host) = browser.host() {
-                host.was_hidden(hidden as i32);
-            }
+        if let Some(host) = self.browser.as_ref().and_then(|b| b.host()) {
+            host.was_hidden(hidden as i32);
         }
     }
 
     pub fn resize(&self, width: u32, height: u32) {
         *self.width.write() = width;
         *self.height.write() = height;
-        if let Some(browser) = &self.browser {
-            if let Some(host) = browser.host() {
-                host.was_resized();
-            }
+        if let Some(host) = self.browser.as_ref().and_then(|b| b.host()) {
+            host.was_resized();
         }
     }
 }
