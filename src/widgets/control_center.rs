@@ -897,17 +897,61 @@ impl ControlCenterWidget {
                                     )
                                     .child(
                                         div()
-                                            .text_xs()
-                                            .font_weight(FontWeight::BOLD)
-                                            .text_color(if device.connected {
-                                                theme.green
-                                            } else {
-                                                theme.text_muted
-                                            })
-                                            .child(if device.connected {
-                                                "Connected"
-                                            } else {
-                                                "Disconnected"
+                                            .flex()
+                                            .items_center()
+                                            .gap_2()
+                                            .child(
+                                                div()
+                                                    .text_xs()
+                                                    .font_weight(FontWeight::BOLD)
+                                                    .text_color(if device.connected {
+                                                        theme.green
+                                                    } else {
+                                                        theme.text_muted
+                                                    })
+                                                    .child(if device.connected {
+                                                        "Connected"
+                                                    } else {
+                                                        "Disconnected"
+                                                    }),
+                                            )
+                                            .child({
+                                                let addr = device.address.clone();
+                                                let bluetooth = self.bluetooth.clone();
+                                                div()
+                                                    .id(("bt-pin", idx))
+                                                    .flex()
+                                                    .items_center()
+                                                    .justify_center()
+                                                    .p_2()
+                                                    .rounded_md()
+                                                    .bg(if device.auto_connect {
+                                                        theme.accent.opacity(0.2)
+                                                    } else {
+                                                        theme.hover
+                                                    })
+                                                    .cursor_pointer()
+                                                    .hover(|style| style.bg(theme.accent.opacity(0.3)))
+                                                    .on_click(move |_, _, cx| {
+                                                        let a = addr.clone();
+                                                        bluetooth.update(cx, |bt, cx| {
+                                                            bt.toggle_auto_connect(a, cx);
+                                                        });
+                                                    })
+                                                    .child(
+                                                        Icon::new(if device.auto_connect {
+                                                            "pin"
+                                                        } else {
+                                                            "unpin"
+                                                        })
+                                                        .size(px(20.))
+                                                        .preserve_colors(!device.auto_connect)
+                                                        .color(if device.auto_connect {
+                                                            theme.accent
+                                                        } else {
+                                                            theme.text_muted
+                                                        }),
+                                                    )
                                             }),
                                     )
                                     .into_any_element()

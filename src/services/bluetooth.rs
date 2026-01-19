@@ -16,6 +16,7 @@ pub struct BluetoothDevice {
     pub name: String,
     pub address: String,
     pub connected: bool,
+    pub auto_connect: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Default)]
@@ -210,11 +211,17 @@ impl BluetoothService {
                         }
                     }
 
+                    let auto_connect = device
+                        .get("Trusted")
+                        .and_then(|v| bool::try_from(v).ok())
+                        .unwrap_or(false);
+
                     if !address.is_empty() {
                         devices.push(BluetoothDevice {
                             name: if name.is_empty() { address.clone() } else { name },
                             address,
                             connected,
+                            auto_connect,
                         });
                     }
                 }
@@ -251,6 +258,12 @@ trait Adapter {
 trait Device {
     fn connect(&self) -> Result<()>;
     fn disconnect(&self) -> Result<()>;
+    
+    #[zbus(property)]
+    fn trusted(&self) -> Result<bool>;
+    
+    #[zbus(property)]
+    fn set_trusted(&self, value: bool) -> Result<()>;
 }
 
 impl BluetoothService {
@@ -289,6 +302,15 @@ impl BluetoothService {
             
             if let Err(e) = Self::toggle_device_connection(&address).await {
                 eprintln!("[BluetoothService] Failed to toggle device: {e}");
+            }
+        })
+        .detach();
+    }
+
+    pub fn toggle_auto_connect(&self, address: String, cx: &mut Context<Self>) {
+        gpui_tokio::Tokio::spawn(cx, async move {
+            if let Err(e) = Self::toggle_device_trusted(&address).await {
+                eprintln!("[BluetoothService] Failed to toggle auto-connect: {e}");
             }
         })
         .detach();
@@ -336,6 +358,32 @@ impl BluetoothService {
                                     }
                                 }
                             }
+                            return Ok(());
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    async fn toggle_device_trusted(address: &str) -> Result<()> {
+        let conn = Connection::system().await?;
+        let om = ObjectManagerProxy::new(&conn).await?;
+        let objects = om.get_managed_objects().await?;
+
+        for (path, interfaces) in objects {
+            if let Some(device) = interfaces.get("org.bluez.Device1") {
+                if let Some(addr_value) = device.get("Address") {
+                    if let Ok(addr) = <&str>::try_from(addr_value) {
+                        if addr == address {
+                            let device_proxy = DeviceProxy::builder(&conn)
+                                .path(path)?
+                                .build()
+                                .await?;
+
+                            let current_trusted = device_proxy.trusted().await.unwrap_or(false);
+                            device_proxy.set_trusted(!current_trusted).await?;
                             return Ok(());
                         }
                     }
