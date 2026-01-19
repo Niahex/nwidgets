@@ -37,24 +37,6 @@ impl SystemStats {
     pub fn metrics(&self) -> Vec<SystemMetric> {
         vec![
             SystemMetric {
-                name: "CPU".into(),
-                value: format!("{}%", self.cpu).into(),
-                secondary: self.cpu_temp.map(|t| format!("{:.0}°C", t).into()),
-                percent: Some(self.cpu),
-            },
-            SystemMetric {
-                name: "RAM".into(),
-                value: format!("{}%", self.ram).into(),
-                secondary: None,
-                percent: Some(self.ram),
-            },
-            SystemMetric {
-                name: "GPU".into(),
-                value: format!("{}%", self.gpu).into(),
-                secondary: self.gpu_temp.map(|t| format!("{:.0}°C", t).into()),
-                percent: Some(self.gpu),
-            },
-            SystemMetric {
                 name: "Network".into(),
                 value: format!("↓ {} ↑ {}", Self::format_bytes(self.net_down), Self::format_bytes(self.net_up)).into(),
                 secondary: Some(format!("Total: {}", Self::format_bytes_total(self.net_total)).into()),
@@ -228,6 +210,27 @@ impl SystemMonitorService {
     }
 
     async fn read_gpu() -> u8 {
+        // Try generic DRM sysfs (works for AMD, Intel, and some NVIDIA)
+        for card in 0..4 {
+            // Try AMD/Intel style
+            if let Ok(usage_str) = tokio::fs::read_to_string(format!("/sys/class/drm/card{}/device/gpu_busy_percent", card)).await {
+                if let Ok(usage) = usage_str.trim().parse::<u8>() {
+                    return usage;
+                }
+            }
+            
+            // Try alternative path
+            if let Ok(usage_str) = tokio::fs::read_to_string(format!("/sys/class/drm/card{}/gt/gt0/rps_cur_freq_mhz", card)).await {
+                if let Ok(cur_freq) = usage_str.trim().parse::<u32>() {
+                    if let Ok(max_str) = tokio::fs::read_to_string(format!("/sys/class/drm/card{}/gt/gt0/rps_max_freq_mhz", card)).await {
+                        if let Ok(max_freq) = max_str.trim().parse::<u32>() {
+                            return ((cur_freq * 100) / max_freq.max(1)) as u8;
+                        }
+                    }
+                }
+            }
+        }
+        
         0
     }
 
@@ -240,26 +243,17 @@ impl SystemMonitorService {
     }
 
     async fn read_gpu_temp() -> Option<f32> {
-        // Try NVIDIA
-        if let Ok(output) = tokio::process::Command::new("nvidia-smi")
-            .args(["--query-gpu=temperature.gpu", "--format=csv,noheader,nounits"])
-            .output()
-            .await
-        {
-            if let Ok(text) = String::from_utf8(output.stdout) {
-                if let Ok(temp) = text.trim().parse::<f32>() {
-                    return Some(temp);
+        // Try generic DRM hwmon (works for AMD, Intel, and some NVIDIA)
+        for card in 0..4 {
+            for hwmon in 0..4 {
+                if let Ok(temp_str) = tokio::fs::read_to_string(format!("/sys/class/drm/card{}/device/hwmon/hwmon{}/temp1_input", card, hwmon)).await {
+                    if let Ok(temp) = temp_str.trim().parse::<f32>() {
+                        return Some(temp / 1000.0);
+                    }
                 }
             }
         }
-
-        // Try AMD
-        if let Ok(temp_str) = tokio::fs::read_to_string("/sys/class/drm/card0/device/hwmon/hwmon0/temp1_input").await {
-            if let Ok(temp) = temp_str.trim().parse::<f32>() {
-                return Some(temp / 1000.0);
-            }
-        }
-
+        
         None
     }
 

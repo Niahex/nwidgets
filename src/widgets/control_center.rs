@@ -863,12 +863,13 @@ impl ControlCenterWidget {
             .flex_col()
             .gap_2()
             .child(
-                // CPU with circular progress
+                // CPU, GPU and RAM with circular progress
                 div()
                     .flex()
                     .items_center()
-                    .gap_2()
-                    .p_2()
+                    .justify_center()
+                    .gap(px(60.))
+                    .p_4()
                     .bg(theme.surface)
                     .rounded_md()
                     .child(
@@ -886,9 +887,31 @@ impl ControlCenterWidget {
                             
                             progress
                         }
+                    )
+                    .child(
+                        {
+                            let mut progress = CircularProgress::new(px(80.))
+                                .percent(stats.gpu)
+                                .label("GPU")
+                                .color(theme.accent);
+                            
+                            if let Some(temp) = stats.gpu_temp {
+                                progress = progress
+                                    .secondary_percent(temp as u8)
+                                    .secondary_color(theme.warning);
+                            }
+                            
+                            progress
+                        }
+                    )
+                    .child(
+                        CircularProgress::new(px(80.))
+                            .percent(stats.ram)
+                            .label("RAM")
+                            .color(theme.accent)
                     ),
             )
-            .children(stats.metrics().iter().skip(1).map(|metric| {
+            .children(stats.metrics().iter().map(|metric| {
                 div()
                     .flex()
                     .flex_col()

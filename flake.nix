@@ -171,7 +171,7 @@
           cmake
           ninja
           rustPlatform.bindgenHook
-          mold  # Fast linker to handle long argument lists
+          mold # Fast linker to handle long argument lists
         ];
 
         envVars = {
@@ -226,6 +226,7 @@
           cargo-bloat
           cargo-flamegraph
           bacon
+          libnotify
         ];
       in {
         packages = {

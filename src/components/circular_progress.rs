@@ -50,31 +50,31 @@ impl CircularProgress {
 
     fn get_circle_icon(percent: u8) -> &'static str {
         if percent == 0 {
-            "circle-0"
+            "circle_0"
         } else if percent <= 20 {
-            "circle-20"
+            "circle_20"
         } else if percent <= 40 {
-            "circle-40"
+            "circle_40"
         } else if percent <= 60 {
-            "circle-60"
+            "circle_60"
         } else if percent <= 80 {
-            "circle-80"
+            "circle_80"
         } else {
-            "circle-100"
+            "circle_100"
         }
     }
 
     fn get_circle_color_icon(percent: u8) -> &'static str {
         if percent <= 20 {
-            "circle-color-20"
+            "circle_color_20"
         } else if percent <= 40 {
-            "circle-color-40"
+            "circle_color_40"
         } else if percent <= 60 {
-            "circle-color-60"
+            "circle_color_60"
         } else if percent <= 80 {
-            "circle-color-80"
+            "circle_color_80"
         } else {
-            "circle-color-100"
+            "circle_color_100"
         }
     }
 }
@@ -92,19 +92,27 @@ impl IntoElement for CircularProgress {
                     .size(self.size)
                     .relative()
                     .child(
-                        Icon::new(Self::get_circle_icon(100))
-                            .size(self.size)
-                            .preserve_colors(true),
+                        div()
+                            .size_full()
+                            .child(
+                                Icon::new(Self::get_circle_icon(self.percent))
+                                    .size(self.size)
+                                    .preserve_colors(true),
+                            ),
                     )
                     .when(self.secondary_percent.is_some(), |this| {
                         let sec_percent = self.secondary_percent.unwrap();
+                        let inner_size = self.size * 0.7;
+                        let offset = (self.size - inner_size) / 2.0;
                         this.child(
                             div()
                                 .absolute()
-                                .inset_0()
+                                .top(offset)
+                                .left(offset)
+                                .size(inner_size)
                                 .child(
                                     Icon::new(Self::get_circle_color_icon(sec_percent))
-                                        .size(self.size)
+                                        .size(inner_size)
                                         .preserve_colors(true),
                                 ),
                         )
@@ -113,20 +121,11 @@ impl IntoElement for CircularProgress {
                         div()
                             .absolute()
                             .inset_0()
-                            .child(
-                                Icon::new(Self::get_circle_color_icon(self.percent))
-                                    .size(self.size)
-                                    .preserve_colors(true),
-                            ),
-                    )
-                    .child(
-                        div()
-                            .absolute()
-                            .inset_0()
                             .flex()
                             .items_center()
                             .justify_center()
                             .text_xs()
+                            .font_weight(FontWeight::BOLD)
                             .text_color(rgb(0xeceff4))
                             .child(self.label.clone()),
                     ),
