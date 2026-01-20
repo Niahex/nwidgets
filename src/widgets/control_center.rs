@@ -969,8 +969,7 @@ impl ControlCenterWidget {
                         .child(
                             div().text_xs().text_color(theme.text_muted).child(
                                 net_state
-                                    .ssid
-                                    .clone()
+                                    .ssid()
                                     .unwrap_or_else(|| "Not connected".into()),
                             ),
                         )

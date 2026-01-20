@@ -21,7 +21,6 @@ use services::{
     hyprland::{FullscreenChanged, HyprlandService, WorkspaceChanged},
     launcher::{LauncherService, LauncherToggled},
     mpris::MprisService,
-    network::NetworkService,
     notifications::{NotificationAdded, NotificationService},
     osd::OsdService,
     pomodoro::PomodoroService,
@@ -170,7 +169,7 @@ fn main() {
             HyprlandService::init(cx);
             AudioService::init(cx);
             BluetoothService::init(cx);
-            NetworkService::init(cx);
+            crate::services::network::init_network_services(cx);
             SystemMonitorService::init(cx);
             MprisService::init(cx);
             PomodoroService::init(cx);
