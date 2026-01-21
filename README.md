@@ -9,7 +9,7 @@ A high-performance Wayland widget system built with GPUI, featuring a panel, lau
 - [x] **Pomodoro** timer interractive
 - [x] **Workspaces** Indicator and interractive
 - [x] **MPRIS** spotify indicator and controls with mouse (vertical +/-, horizontal next/prev, click pause/play )
-- [] **Sytray** : (5)
+- [ ] **Sytray** : (5)
 - [x] **Audio/Bluetooth/Network/Date-Time** indicators
 
 ### 🚀 Launcher
@@ -23,9 +23,11 @@ A high-performance Wayland widget system built with GPUI, featuring a panel, lau
   - [ ] keepass protect (1)
 
 ### 💬 Chat
-- **Embedded browser** for differents AI chat
-- **Custom Nord theme** CSS injection
-- **Fullscreen-aware** (auto-hide in fullscreen)
+
+>**Features**
+- [x] **Custom Nord theme** CSS injection
+  - [ ] Need improve (4)
+- [x] **Fullscreen-aware** (auto-hide in fullscreen)
 - **Persistent URL** state
 - [x] **Audio** : i/o
 - [-] **Screenshare** : work but force (5)
@@ -33,39 +35,41 @@ A high-performance Wayland widget system built with GPUI, featuring a panel, lau
 - [?] WGPU
 - [?] Blade 
 
+>**Behavior**
+- [x] **Fullscreen-aware** (auto-hide in fullscreen)
+
 ### 🔔 Notifications
-- **Native Wayland notifications**
-- **Auto-dismiss** after timeout
+- [x] **Auto-dismiss** after timeout
 - [x] **History**
 
 
 ### 🎛️ Control Center
-- **Quick actions** (WiFi, Bluetooth, DND, etc.)
-- [x] Monitors
-  - [x] **CPU** : % & Temp
-  - [x] **GPU** : % & Temp
-  - [x] **Memory** : ram and primary disk 
-  - [x] **Network** : download / upload
-  - [x] **Disks** : 7
 - **Audio mixer** :
-   - [x] **Sink/source**
+  - [x] **Sink/source**
     - [x] Modify with scroll
     - [?] slider mouse interract (5)
   - [] **Streams**
     - [~] icones per site (5)
     - [] progress bar control (4)
     - [?] slider mouse interract (5)
-- [] **Bluetooth**
-  - [] on/off blutooth (5)
-  - [x] list
-  - [x] toggle connection devices
-  - [x] trust toggle devices  
-- [] **Network manager**
-  - [] all informations (5)
-  - [] vpn (2)
-  - [] proxy (3)
-  - [] ssh (3)
-- [] VM Manager (5)
+- **Quick actions** (WiFi, Bluetooth, DND, etc.)
+  - [x] Monitors
+    - [x] **CPU** : % & Temp
+    - [x] **GPU** : % & Temp
+    - [x] **Memory** : ram and primary disk 
+    - [x] **Network** : download / upload
+    - [x] **Disks** : 7
+  - [] **Bluetooth**
+    - [] on/off blutooth (5)
+    - [x] list
+    - [x] toggle connection devices
+    - [x] trust toggle devices  
+  - [] **Network manager**
+    - [] all informations (5)
+    - [] vpn (2)
+    - [] proxy (3)
+    - [] ssh (3)
+  - [] VM Manager (5)
 - [x] **Notification** 
   - [x] List
   - [x] Clear
@@ -75,11 +79,11 @@ A high-performance Wayland widget system built with GPUI, featuring a panel, lau
   - [x] +/-
   - [ ] mute (5)
   - [ ] bypass 100% (5)
-- [ ] (Source
+- [ ] **Source**
   - [ ] +/- (5)
   - [ ] mute (5)
   - [?] in used 
-- [] record (5)
+- [] Record (5)
 - [] Clipboard
   - [x] text
     - [?] display the first words
