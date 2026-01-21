@@ -14,12 +14,12 @@
   - Optimizations: ✅ Already optimal (small fixed list)
   
 - **modules/active_window.rs**: Current window title
-  - Allocations: String clone per frame
-  - Optimizations: ⚠️ Cache title, update only on change
+  - Allocations: ~~String clone per frame~~ ✅ OPTIMIZED
+  - Optimizations: ✅ Cache title, update only on change (SharedString)
   
 - **modules/datetime.rs**: Clock display
-  - Allocations: String formatting every second
-  - Optimizations: ⚠️ Cache formatted string, update only on minute change
+  - Allocations: ~~String formatting every second~~ ✅ OPTIMIZED
+  - Optimizations: ✅ Cache formatted string, update only on minute change (60s interval)
   
 - **modules/sink.rs**: Volume indicator
   - Allocations: Icon lookup per frame
@@ -193,8 +193,8 @@
 ## Priority Optimizations
 
 ### Critical (Panel - 60 FPS)
-1. **datetime.rs**: Cache formatted time, update only on minute change
-2. **active_window.rs**: Cache title, update only on window change
+1. ~~**datetime.rs**: Cache formatted time, update only on minute change~~ ✅ DONE
+2. ~~**active_window.rs**: Cache title, update only on window change~~ ✅ DONE
 3. **systray.rs**: Cache decoded icon images
 4. **mpris.rs**: Cache metadata, diff updates
 
