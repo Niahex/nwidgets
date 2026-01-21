@@ -108,6 +108,7 @@ fn main() {
         .filter_module("naga", log::LevelFilter::Warn)
         .filter_module("zbus", log::LevelFilter::Warn)
         .filter_module("gpui::platform", log::LevelFilter::Warn)
+        .filter_module("gpui::window", log::LevelFilter::Warn)
         .format(|buf, record| {
             use std::io::Write;
             

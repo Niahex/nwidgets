@@ -139,8 +139,7 @@ impl ControlCenterService {
     fn close_window(&self, cx: &mut Context<Self>) {
         if let Some(handle) = self.window_handle.write().take() {
             let _ = handle.update(cx, |_, window, _| {
-                window
-                    .set_keyboard_interactivity(gpui::layer_shell::KeyboardInteractivity::OnDemand);
+                window.set_keyboard_interactivity(gpui::layer_shell::KeyboardInteractivity::OnDemand);
                 window.remove_window();
             });
         }

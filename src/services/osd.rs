@@ -141,7 +141,7 @@ impl OsdService {
             cx.background_executor()
                 .timer(Duration::from_millis(1500))
                 .await;
-            this.update(cx, |service, cx| service.hide(cx)).ok();
+            let _ = this.update(cx, |service, cx| service.hide(cx));
         });
 
         self.hide_task = Some(task);
