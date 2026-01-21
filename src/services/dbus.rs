@@ -23,7 +23,7 @@ impl NWidgets {
     }
 
     async fn toggle_launcher(&self) {
-        eprintln!("[dbus] toggle_launcher method called");
+        log::debug!("D-Bus toggle_launcher called");
         let _ = self.tx.unbounded_send(DbusCommand::ToggleLauncher);
     }
 
@@ -38,7 +38,7 @@ impl DbusService {
 
         // D-Bus server using gpui_tokio runtime
         gpui_tokio::Tokio::spawn(cx, async move {
-            eprintln!("[DBUS] Starting D-Bus server");
+            log::info!("Starting D-Bus server");
             match Builder::session() {
                 Ok(builder) => {
                     match builder
@@ -50,13 +50,13 @@ impl DbusService {
                         .await
                     {
                         Ok(_conn) => {
-                            eprintln!("[DBUS] ✅ Service ready on org.nwidgets.App");
+                            log::info!("D-Bus service ready on org.nwidgets.App");
                             std::future::pending::<()>().await;
                         }
-                        Err(e) => eprintln!("[DBUS] ❌ Failed to build connection: {e}"),
+                        Err(e) => log::error!("Failed to build D-Bus connection: {e}"),
                     }
                 }
-                Err(e) => eprintln!("[DBUS] ❌ Failed to create builder: {e}"),
+                Err(e) => log::error!("Failed to create D-Bus builder: {e}"),
             }
         })
         .detach();
@@ -80,16 +80,13 @@ impl DbusService {
                             });
                         }
                         DbusCommand::ToggleLauncher => {
-                            eprintln!("[dbus] Received ToggleLauncher command");
+                            log::debug!("Received ToggleLauncher command");
                             cx.update(|cx| {
                                 let launcher = super::launcher::LauncherService::global(cx);
                                 launcher.update(cx, |launcher, mcx| {
-                                    eprintln!(
-                                        "[dbus] Toggling launcher, current visible: {}",
-                                        launcher.visible
-                                    );
+                                    log::debug!("Toggling launcher, current visible: {}", launcher.visible);
                                     launcher.toggle(mcx);
-                                    eprintln!("[dbus] After toggle, visible: {}", launcher.visible);
+                                    log::debug!("After toggle, visible: {}", launcher.visible);
                                 });
                             });
                         }
