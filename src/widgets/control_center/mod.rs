@@ -33,6 +33,9 @@ pub struct ControlCenterWidget {
     last_mic_volume: u8,
     last_volume_update: Option<Instant>,
     last_mic_update: Option<Instant>,
+    // Memoization cache
+    cached_audio_state: Option<(Instant, crate::services::audio::AudioState)>,
+    cached_network_state: Option<(Instant, crate::services::network::NetworkState)>,
 }
 
 fn get_stream_display(
@@ -128,7 +131,35 @@ impl ControlCenterWidget {
             last_mic_volume: audio_state.source_volume,
             last_volume_update: None,
             last_mic_update: None,
+            cached_audio_state: None,
+            cached_network_state: None,
         }
+    }
+
+    // Helper: get audio state with 100ms cache
+    fn get_audio_state(&mut self, cx: &mut Context<Self>) -> crate::services::audio::AudioState {
+        let now = Instant::now();
+        if let Some((cached_time, ref state)) = self.cached_audio_state {
+            if now.duration_since(cached_time) < Duration::from_millis(100) {
+                return state.clone();
+            }
+        }
+        let state = self.audio.read(cx).state();
+        self.cached_audio_state = Some((now, state.clone()));
+        state
+    }
+
+    // Helper: get network state with 100ms cache
+    fn get_network_state(&mut self, cx: &mut Context<Self>) -> crate::services::network::NetworkState {
+        let now = Instant::now();
+        if let Some((cached_time, ref state)) = self.cached_network_state {
+            if now.duration_since(cached_time) < Duration::from_millis(100) {
+                return state.clone();
+            }
+        }
+        let state = self.network.read(cx).state();
+        self.cached_network_state = Some((now, state.clone()));
+        state
     }
 
     include!("audio.rs");

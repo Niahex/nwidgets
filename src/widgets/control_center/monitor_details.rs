@@ -1,5 +1,5 @@
     fn render_monitor_details(&mut self, cx: &mut Context<Self>) -> AnyElement {
-        let theme = cx.global::<crate::theme::Theme>().clone();
+        let theme = cx.global::<crate::theme::Theme>();
         let stats = self.system_monitor.read(cx).stats();
 
         div()

@@ -1,5 +1,5 @@
     fn render_network_details(&mut self, cx: &mut Context<Self>) -> AnyElement {
-        let theme = cx.global::<crate::theme::Theme>().clone();
+        let theme = cx.global::<crate::theme::Theme>();
         let net_state = self.network.read(cx).state();
         let vpn_service = self.network.read(cx).vpn();
         let vpn_state = vpn_service.read(cx).state();
@@ -40,8 +40,7 @@
                             .flex_col()
                             .gap_2()
                             .children(vpn_state.connections.iter().enumerate().map(|(idx, vpn)| {
-                                let uuid = vpn.uuid.clone();
-                                let vpn_service_clone = vpn_service.clone();
+                                let uuid = &vpn.uuid;
                                 let connected = vpn.connected;
                                 
                                 div()
@@ -60,27 +59,27 @@
                                                 div()
                                                     .text_xs()
                                                     .text_color(theme.text)
-                                                    .child(vpn.name.clone()),
+                                                    .child(&vpn.name),
                                             )
                                             .child(
                                                 div()
                                                     .text_xs()
                                                     .text_color(theme.text_muted)
-                                                    .child(vpn.vpn_type.clone()),
+                                                    .child(&vpn.vpn_type),
                                             ),
                                     )
                                     .child(
                                         Toggle::new(("vpn-toggle", idx), connected)
-                                            .on_click(move |_, _, cx| {
-                                                let uuid = uuid.clone();
-                                                vpn_service_clone.update(cx, |vpn_svc, cx| {
+                                            .on_click(cx.listener(move |this, _, _, cx| {
+                                                let vpn_service = this.network.read(cx).vpn();
+                                                vpn_service.update(cx, |vpn_svc, cx| {
                                                     if connected {
-                                                        vpn_svc.disconnect(uuid, cx);
+                                                        vpn_svc.disconnect(uuid.clone(), cx);
                                                     } else {
-                                                        vpn_svc.connect(uuid, cx);
+                                                        vpn_svc.connect(uuid.clone(), cx);
                                                     }
                                                 });
-                                            }),
+                                            })),
                                     )
                             })),
                     )

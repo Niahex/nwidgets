@@ -1,7 +1,6 @@
     fn render_notifications_section(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
         let notifications = self.notifications.read(cx).get_all();
         let theme = cx.global::<crate::theme::Theme>();
-        let notif_service = self.notifications.clone();
 
         div()
             .flex()
@@ -51,14 +50,14 @@
                         div()
                             .font_weight(FontWeight::BOLD)
                             .text_color(theme.text)
-                            .child(n.summary.clone()),
+                            .child(&n.summary),
                     )
                     .when(!n.body.is_empty(), |this| {
                         this.child(
                             div()
                                 .text_size(px(12.0))
                                 .text_color(theme.text_muted)
-                                .child(n.body.clone()),
+                                .child(&n.body),
                         )
                     })
             }))

@@ -1,9 +1,9 @@
     fn render_volume_details(&mut self, cx: &mut Context<Self>) -> AnyElement {
-        let theme = cx.global::<crate::theme::Theme>().clone();
+        let theme = cx.global::<crate::theme::Theme>();
         let sinks = self.audio.read(cx).sinks();
         let default_sink = sinks.iter().find(|s| s.is_default).cloned();
         let is_open = self.sink_dropdown_open;
-        let audio = self.audio.clone();
+        let audio = &self.audio;
         let sinks_empty = sinks.is_empty();
 
         let options: Vec<_> = sinks
@@ -31,7 +31,7 @@
                         cx.notify();
                     }))
                     .on_select(cx.listener(move |this, id: &u32, _, cx| {
-                        audio.update(cx, |audio, cx| {
+                        this.audio.update(cx, |audio, cx| {
                             audio.set_default_sink(*id, cx);
                         });
                         this.sink_dropdown_open = false;
@@ -123,11 +123,10 @@
     }
 
     fn render_mic_details(&mut self, cx: &mut Context<Self>) -> AnyElement {
-        let theme = cx.global::<crate::theme::Theme>().clone();
+        let theme = cx.global::<crate::theme::Theme>();
         let sources = self.audio.read(cx).sources();
         let default_source = sources.iter().find(|s| s.is_default).cloned();
         let is_open = self.source_dropdown_open;
-        let audio = self.audio.clone();
         let sources_empty = sources.is_empty();
 
         let options: Vec<_> = sources
@@ -155,7 +154,7 @@
                         cx.notify();
                     }))
                     .on_select(cx.listener(move |this, id: &u32, _, cx| {
-                        audio.update(cx, |audio, cx| {
+                        this.audio.update(cx, |audio, cx| {
                             audio.set_default_source(*id, cx);
                         });
                         this.source_dropdown_open = false;

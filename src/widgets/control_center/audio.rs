@@ -6,7 +6,7 @@
         let vol_expanded = expanded == Some(ControlCenterSection::Volume);
         let mic_expanded = expanded == Some(ControlCenterSection::Mic);
 
-        let theme = cx.global::<crate::theme::Theme>().clone();
+        let theme = cx.global::<crate::theme::Theme>();
 
         let volume_icon = if audio_state.sink_muted {
             "sink-muted"
