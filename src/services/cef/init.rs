@@ -75,7 +75,7 @@ cef::wrap_app! {
             if let Some(cmd) = command_line {
                 // Check for NWIDGETS_GPU environment variable set by flake.nix
                 let gpu_vendor = std::env::var("NWIDGETS_GPU").unwrap_or_else(|_| "unknown".to_string());
-                println!("[nwidgets] CEF Init - Detected GPU vendor: {}", gpu_vendor);
+                log::info!("CEF Init - Detected GPU vendor: {}", gpu_vendor);
 
                 cmd.append_switch(Some(&"enable-begin-frame-scheduling".into()));
                 cmd.append_switch(Some(&"no-sandbox".into()));
@@ -85,37 +85,21 @@ cef::wrap_app! {
                     Some(&"wayland".into()),
                 );
 
+                // Force software rendering globally to avoid EGL conflicts with GPUI
+                // This is essential for stability on all GPUs as GPUI manages the primary GPU context
+                log::info!("Forcing CEF software rendering (SwiftShader) for stability");
+                cmd.append_switch(Some(&"disable-gpu".into()));
+                cmd.append_switch(Some(&"disable-gpu-compositing".into()));
+                cmd.append_switch(Some(&"enable-unsafe-swiftshader".into())); // Required for WebGL with SwiftShader
+                cmd.append_switch_with_value(
+                    Some(&"use-gl".into()),
+                    Some(&"swiftshader".into()),
+                );
+
                 if gpu_vendor == "nvidia" {
-                    // NVIDIA specific optimizations to prevent freezes
-                    println!("[nwidgets] Applying NVIDIA-specific CEF flags...");
-                    // Ensure GPU is disabled to prevent EGL conflicts which cause freezes on Nvidia
-                    cmd.append_switch(Some(&"disable-gpu".into()));
-                    cmd.append_switch(Some(&"disable-gpu-compositing".into()));
-                    cmd.append_switch_with_value(
-                        Some(&"use-gl".into()),
-                        Some(&"swiftshader".into()),
-                    );
-                    // Additional flags that might help stability on Nvidia
+                    // Additional NVIDIA-specific stability flags
+                    log::info!("Applying NVIDIA-specific stability flags (disabling Vulkan)");
                     cmd.append_switch(Some(&"disable-vulkan".into()));
-                } else if gpu_vendor == "amd" {
-                    // AMD specific (potentially allow more GPU usage if safe, but stick to safe defaults for now)
-                    println!("[nwidgets] Applying AMD-specific CEF flags...");
-                     // Force software rendering to avoid EGL conflicts with GPUI (same as default for now)
-                    cmd.append_switch(Some(&"disable-gpu".into()));
-                    cmd.append_switch(Some(&"disable-gpu-compositing".into()));
-                    cmd.append_switch_with_value(
-                        Some(&"use-gl".into()),
-                        Some(&"swiftshader".into()),
-                    );
-                } else {
-                    // Default / Intel / Unknown
-                    // Force software rendering to avoid EGL conflicts with GPUI
-                    cmd.append_switch(Some(&"disable-gpu".into()));
-                    cmd.append_switch(Some(&"disable-gpu-compositing".into()));
-                    cmd.append_switch_with_value(
-                        Some(&"use-gl".into()),
-                        Some(&"swiftshader".into()),
-                    );
                 }
 
                 // PipeWire for screen capture and audio
