@@ -1,3 +1,4 @@
+mod app;
 mod assets;
 mod cli;
 mod components;
@@ -6,6 +7,7 @@ mod nwidgets;
 mod services;
 mod theme;
 mod widgets;
+mod windows;
 
 use gpui::*;
 
