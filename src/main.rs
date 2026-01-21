@@ -101,9 +101,35 @@ fn send_dbus_command(method: &str) -> bool {
 }
 
 fn main() {
-    // Initialize logger
+    // Initialize logger with custom format
     env_logger::Builder::from_default_env()
         .filter_level(log::LevelFilter::Info)
+        .format(|buf, record| {
+            use std::io::Write;
+            
+            // Extract module path and format it
+            let module = record.module_path().unwrap_or("unknown");
+            let category = if module.starts_with("nwidgets::services") {
+                format!("service::{}", module.strip_prefix("nwidgets::services::").unwrap_or(module))
+            } else if module.starts_with("nwidgets::widgets") {
+                format!("widget::{}", module.strip_prefix("nwidgets::widgets::").unwrap_or(module))
+            } else if module.starts_with("nwidgets::components") {
+                format!("component::{}", module.strip_prefix("nwidgets::components::").unwrap_or(module))
+            } else if module.starts_with("nwidgets") {
+                module.strip_prefix("nwidgets::").unwrap_or(module).to_string()
+            } else {
+                module.to_string()
+            };
+            
+            writeln!(
+                buf,
+                "[{} {:5} {}] {}",
+                chrono::Local::now().format("%Y-%m-%dT%H:%M:%S"),
+                record.level(),
+                category,
+                record.args()
+            )
+        })
         .init();
 
     let args: Vec<String> = std::env::args().collect();
