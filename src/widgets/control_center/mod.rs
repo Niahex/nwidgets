@@ -78,6 +78,21 @@ impl ControlCenterWidget {
         })
     }
 
+    fn subscribe_to_slider<F>(
+        slider: &Entity<SliderState>,
+        handler: F,
+        cx: &mut Context<Self>,
+    ) where
+        F: Fn(&mut Self, f32, &mut Context<Self>) + 'static,
+    {
+        cx.subscribe(slider, move |this, _, event: &crate::ui::components::SliderEvent, cx| {
+            if let crate::ui::components::SliderEvent::Change(value) = event {
+                handler(this, *value, cx);
+            }
+        })
+        .detach();
+    }
+
     fn get_or_create_stream_slider(
         &mut self,
         stream_id: u32,
@@ -91,18 +106,15 @@ impl ControlCenterWidget {
                 let slider = Self::create_volume_slider(initial_volume, cx);
                 
                 // Subscribe to slider events
-                cx.subscribe(&slider, move |this, _, event: &crate::ui::components::SliderEvent, cx| {
-                    if let crate::ui::components::SliderEvent::Change(value) = event {
-                        this.audio.update(cx, |audio, cx| {
-                            if is_sink_input {
-                                audio.set_sink_input_volume(stream_id, *value as u8, cx);
-                            } else {
-                                audio.set_source_output_volume(stream_id, *value as u8, cx);
-                            }
-                        });
-                    }
-                })
-                .detach();
+                Self::subscribe_to_slider(&slider, move |this, value, cx| {
+                    this.audio.update(cx, |audio, cx| {
+                        if is_sink_input {
+                            audio.set_sink_input_volume(stream_id, value as u8, cx);
+                        } else {
+                            audio.set_source_output_volume(stream_id, value as u8, cx);
+                        }
+                    });
+                }, cx);
                 
                 slider
             })
@@ -173,23 +185,17 @@ impl ControlCenterWidget {
         .detach();
 
         // Subscribe to slider events
-        cx.subscribe(&sink_slider, |this, _, event: &crate::ui::components::SliderEvent, cx| {
-            if let crate::ui::components::SliderEvent::Change(value) = event {
-                this.audio.update(cx, |audio, cx| {
-                    audio.set_sink_volume(*value as u8, cx);
-                });
-            }
-        })
-        .detach();
+        Self::subscribe_to_slider(&sink_slider, |this, value, cx| {
+            this.audio.update(cx, |audio, cx| {
+                audio.set_sink_volume(value as u8, cx);
+            });
+        }, cx);
 
-        cx.subscribe(&source_slider, |this, _, event: &crate::ui::components::SliderEvent, cx| {
-            if let crate::ui::components::SliderEvent::Change(value) = event {
-                this.audio.update(cx, |audio, cx| {
-                    audio.set_source_volume(*value as u8, cx);
-                });
-            }
-        })
-        .detach();
+        Self::subscribe_to_slider(&source_slider, |this, value, cx| {
+            this.audio.update(cx, |audio, cx| {
+                audio.set_source_volume(value as u8, cx);
+            });
+        }, cx);
 
         let vpn_service = network.read(cx).vpn();
         cx.subscribe(
