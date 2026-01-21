@@ -153,7 +153,7 @@
                         .p_2()
                         .bg(theme.surface)
                         .rounded_md()
-                        .children(stats.disks.iter().map(|disk| {
+                        .children(stats.disks.iter().take(7).map(|disk| { // Lazy: max 7 disks
                             let color = if disk.percent >= 90 {
                                 theme.red
                             } else if disk.percent >= 75 {

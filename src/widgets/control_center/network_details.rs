@@ -39,7 +39,7 @@
                             .flex()
                             .flex_col()
                             .gap_2()
-                            .children(vpn_state.connections.iter().enumerate().map(|(idx, vpn)| {
+                            .children(vpn_state.connections.iter().take(6).enumerate().map(|(idx, vpn)| { // Lazy: max 6 VPNs
                                 let uuid = &vpn.uuid;
                                 let connected = vpn.connected;
                                 

@@ -252,7 +252,7 @@
                         .flex()
                         .flex_col()
                         .gap_2()
-                        .children(bt_state.devices.iter().enumerate().map(|(idx, device)| {
+                        .children(bt_state.devices.iter().take(8).enumerate().map(|(idx, device)| { // Lazy: max 8 devices
                             let address_for_toggle = device.address.clone();
                             let address_for_pin = device.address.clone();
                             let bluetooth_for_toggle = self.bluetooth.clone();

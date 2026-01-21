@@ -47,7 +47,7 @@
                 )
             })
             .child(
-                // Streams section
+                // Streams section - lazy load with limit
                 div().flex().flex_col().gap_1().mt_3().children({
                     let streams = self.audio.read(cx).sink_inputs();
                     if streams.is_empty() {
@@ -59,6 +59,7 @@
                     } else {
                         streams
                             .iter()
+                            .take(5) // Lazy: limit to 5 streams max
                             .map(|stream| {
                                 let stream_volume = stream.volume;
                                 let (display_name, icon_name, preserve_colors) =
@@ -170,7 +171,7 @@
                 )
             })
             .child(
-                // Streams section
+                // Streams section - lazy load with limit
                 div().flex().flex_col().gap_1().mt_3().children({
                     let streams = self.audio.read(cx).source_outputs();
                     if streams.is_empty() {
@@ -182,6 +183,7 @@
                     } else {
                         streams
                             .iter()
+                            .take(5) // Lazy: limit to 5 streams max
                             .map(|stream| {
                                 let stream_volume = stream.volume;
                                 let (display_name, icon_name, preserve_colors) =
