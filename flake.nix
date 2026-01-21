@@ -178,9 +178,8 @@
           RUST_BACKTRACE = "full";
           LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
           CEF_PATH = cefAssets;
-          # Use mold linker with essential rpaths for GPUI/AMD
+          # Use mold linker with rpaths for AMD/NVIDIA Vulkan support
           RUSTFLAGS = "-C linker=clang -C link-arg=-fuse-ld=mold -C link-arg=-Wl,-rpath,${pkgs.lib.makeLibraryPath [pkgs.vulkan-loader pkgs.wayland]} -C link-arg=-Wl,-rpath,${cefAssets} -C link-arg=-L${cefAssets}";
-          # Force blade-graphics to find Vulkan
           NIX_LDFLAGS = "-rpath ${pkgs.lib.makeLibraryPath [pkgs.vulkan-loader pkgs.wayland]}";
         };
 
@@ -197,6 +196,9 @@
           pname = "nwidgets";
           version = "0.1.0";
 
+          # Prevent nix from removing "unused" wayland/vulkan rpaths
+          dontPatchELF = true;
+
           postFixup = ''
             # Copy assets to the output
             mkdir -p $out/share/nwidgets
@@ -209,9 +211,10 @@
 
             wrapProgram $out/bin/nwidgets \
               --prefix LD_LIBRARY_PATH : /run/opengl-driver/lib:${pkgs.lib.makeLibraryPath (buildInputs ++ runtimeDependencies)}:${cefAssets} \
-              --set VK_ICD_FILENAMES "/run/opengl-driver/share/vulkan/icd.d/nvidia_icd.x86_64.json:/run/opengl-driver/share/vulkan/icd.d/radeon_icd.x86_64.json:/run/opengl-driver/share/vulkan/icd.d/intel_icd.x86_64.json:/run/opengl-driver/share/vulkan/icd.d/intel_hasvk_icd.x86_64.json" \
               --set NWIDGETS_ASSETS_DIR $out/share/nwidgets/assets \
-              --set CEF_PATH ${cefAssets}
+              --set CEF_PATH ${cefAssets} \
+              --run 'export VK_ICD_FILENAMES=$(find /run/opengl-driver/share/vulkan/icd.d -name "*_icd.*.json" 2>/dev/null | tr "\n" ":" | sed "s/:$//")' \
+              --run 'if lspci 2>/dev/null | grep -qi nvidia; then export __GL_THREADED_OPTIMIZATIONS=1 __GL_YIELD=USLEEP; elif lspci 2>/dev/null | grep -qi amd; then export MESA_GLTHREAD=true RADV_PERFTEST=gpl; fi'
           '';
         };
 
@@ -253,15 +256,31 @@
 
           # Vulkan libs first, then system GL, then CEF
           LD_LIBRARY_PATH = "/run/opengl-driver/lib:${pkgs.lib.makeLibraryPath (buildInputs ++ runtimeDependencies)}:${cefAssets}";
-          VK_ICD_FILENAMES = "/run/opengl-driver/share/vulkan/icd.d/nvidia_icd.x86_64.json:/run/opengl-driver/share/vulkan/icd.d/radeon_icd.x86_64.json:/run/opengl-driver/share/vulkan/icd.d/intel_icd.x86_64.json:/run/opengl-driver/share/vulkan/icd.d/intel_hasvk_icd.x86_64.json";
           __EGL_VENDOR_LIBRARY_FILENAMES = "/run/opengl-driver/share/glvnd/egl_vendor.d/50_mesa.json:/run/opengl-driver/share/glvnd/egl_vendor.d/10_nvidia.json";
           FONTCONFIG_FILE = pkgs.makeFontsConf {fontDirectories = buildInputs;};
 
-          # Force GPUI to use Vulkan backend instead of EGL
+          # Force GPUI to use Vulkan backend (auto-detects AMD/NVIDIA/Intel)
           GPUI_BACKEND = "vulkan";
 
           shellHook = ''
             echo "[🦀 Rust $(rustc --version)] - Ready to develop nwidgets!"
+            
+            # Auto-detect available Vulkan ICDs
+            export VK_ICD_FILENAMES=$(find /run/opengl-driver/share/vulkan/icd.d -name "*_icd.*.json" 2>/dev/null | tr '\n' ':' | sed 's/:$//')
+            
+            # GPU-specific optimizations
+            if lspci 2>/dev/null | grep -qi nvidia; then
+              export __GL_THREADED_OPTIMIZATIONS=1
+              export __GL_YIELD=USLEEP
+              echo "GPU: NVIDIA detected - threaded optimizations enabled"
+            elif lspci 2>/dev/null | grep -qi amd; then
+              export MESA_GLTHREAD=true
+              export RADV_PERFTEST=gpl
+              echo "GPU: AMD detected - RADV optimizations enabled"
+            else
+              echo "GPU: Auto-detected (AMD/NVIDIA/Intel)"
+            fi
+            
             echo "Vulkan ICD: $VK_ICD_FILENAMES"
             echo "Available Vulkan devices:"
             vulkaninfo --summary 2>/dev/null | grep -A 2 "GPU" || echo "  Run 'vulkaninfo' for details"
