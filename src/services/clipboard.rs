@@ -62,7 +62,7 @@ impl ClipboardMonitor {
                     let _ = child.kill().await;
                 }
                 Err(e) => {
-                    eprintln!("[Clipboard] Failed to start wl-paste watcher: {e}");
+                    log::error!("Failed to start wl-paste watcher: {e}");
                 }
             }
         })

@@ -132,7 +132,7 @@ impl SystemMonitorService {
         if !*enabled {
             *enabled = true;
             self.notify.notify_one();
-            eprintln!("[SYSMON] Monitoring enabled");
+            log::debug!("System monitoring enabled");
         }
     }
 
@@ -140,7 +140,7 @@ impl SystemMonitorService {
         let mut enabled = self.monitoring_enabled.write();
         if *enabled {
             *enabled = false;
-            eprintln!("[SYSMON] Monitoring disabled");
+            log::debug!("System monitoring disabled");
         }
     }
 
@@ -202,7 +202,7 @@ impl SystemMonitorService {
                 _ = tokio::time::sleep(Duration::from_secs(2)) => {}
                 _ = notify.notified() => {
                     if !*monitoring_enabled.read() {
-                        eprintln!("[SYSMON] Pausing monitoring");
+                        log::debug!("Pausing system monitoring");
                     }
                 }
             }

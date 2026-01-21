@@ -174,7 +174,7 @@ impl NetworkService {
         let conn = match Connection::system().await {
             Ok(c) => c,
             Err(e) => {
-                eprintln!("[NetworkService] Failed to connect to system bus: {e}");
+                log::error!("Failed to connect to system bus: {e}");
                 return;
             }
         };
@@ -183,7 +183,7 @@ impl NetworkService {
         let nm_proxy = match NetworkManagerProxy::new(&conn).await {
             Ok(p) => p,
             Err(e) => {
-                eprintln!("[NetworkService] Failed to create NM proxy: {e}");
+                log::error!("Failed to create NetworkManager proxy: {e}");
                 return;
             }
         };

@@ -179,6 +179,6 @@ impl Render for ControlCenterWidget {
 
 impl Drop for ControlCenterWidget {
     fn drop(&mut self) {
-        eprintln!("[CONTROL_CENTER] Widget dropped, disabling monitoring");
+        log::debug!("Control center widget dropped, disabling monitoring");
     }
 }

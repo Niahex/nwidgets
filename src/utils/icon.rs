@@ -102,7 +102,7 @@ impl Icon {
 
         // Check if file exists
         if !std::path::Path::new(&path).exists() {
-            eprintln!("[Icon] WARNING: Icon file not found: '{path}'");
+            log::warn!("Icon file not found: '{path}'");
         }
 
         let path_arc: Arc<str> = path.into();

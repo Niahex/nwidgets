@@ -117,13 +117,13 @@ impl HyprlandService {
                             let mut windows = open_windows_clone.write();
                             if !windows.contains(&class) {
                                 windows.push(class.clone());
-                                eprintln!("[HYPRLAND] Window opened: {}", class);
+                                log::debug!("Window opened: {}", class);
                             }
                         }
                         HyprlandUpdate::WindowClosed(class) => {
                             let mut windows = open_windows_clone.write();
                             windows.retain(|w| w != &class);
-                            eprintln!("[HYPRLAND] Window closed: {}", class);
+                            log::debug!("Window closed: {}", class);
                         }
                     }
 

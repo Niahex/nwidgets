@@ -203,7 +203,7 @@ impl AudioService {
                     let mainloop = match pw::main_loop::MainLoopRc::new(None) {
                         Ok(ml) => ml,
                         Err(e) => {
-                            eprintln!("[AudioService] Failed to create PipeWire mainloop: {e}");
+                            log::error!("Failed to create PipeWire mainloop: {e}");
                             return;
                         }
                     };
@@ -211,7 +211,7 @@ impl AudioService {
                     let context = match pw::context::ContextRc::new(&mainloop, None) {
                         Ok(ctx) => ctx,
                         Err(e) => {
-                            eprintln!("[AudioService] Failed to create PipeWire context: {e}");
+                            log::error!("Failed to create PipeWire context: {e}");
                             return;
                         }
                     };
@@ -219,7 +219,7 @@ impl AudioService {
                     let core = match context.connect_rc(None) {
                         Ok(c) => c,
                         Err(e) => {
-                            eprintln!("[AudioService] Failed to connect to PipeWire: {e}");
+                            log::error!("Failed to connect to PipeWire: {e}");
                             return;
                         }
                     };
@@ -227,7 +227,7 @@ impl AudioService {
                     let registry = match core.get_registry_rc() {
                         Ok(r) => r,
                         Err(e) => {
-                            eprintln!("[AudioService] Failed to get PipeWire registry: {e}");
+                            log::error!("Failed to get PipeWire registry: {e}");
                             return;
                         }
                     };
@@ -402,7 +402,7 @@ impl AudioService {
                 });
             }
 
-            eprintln!("[AudioService] PipeWire connection lost, reconnecting...");
+            log::warn!("PipeWire connection lost, reconnecting...");
             tokio::time::sleep(std::time::Duration::from_secs(2)).await;
         }
     }
