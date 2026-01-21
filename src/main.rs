@@ -80,10 +80,10 @@ impl AssetSource for Assets {
 
 fn init_cef() {
     if let Err(e) = services::cef::initialize_cef() {
-        eprintln!("Failed to initialize CEF: {e:?}");
+        log::error!("Failed to initialize CEF: {e:?}");
         std::process::exit(1);
     }
-    eprintln!("CEF initialized successfully!");
+    log::info!("CEF initialized successfully");
 }
 
 fn send_dbus_command(method: &str) -> bool {
@@ -101,6 +101,11 @@ fn send_dbus_command(method: &str) -> bool {
 }
 
 fn main() {
+    // Initialize logger
+    env_logger::Builder::from_default_env()
+        .filter_level(log::LevelFilter::Info)
+        .init();
+
     let args: Vec<String> = std::env::args().collect();
 
     // CEF subprocess - let CEF handle it
@@ -116,13 +121,13 @@ fn main() {
                 if send_dbus_command("ToggleChat") {
                     std::process::exit(0);
                 } else {
-                    eprintln!("nwidgets is not running or D-Bus call failed");
+                    log::error!("nwidgets is not running or D-Bus call failed");
                     std::process::exit(1);
                 }
             }
             _ => {
-                eprintln!("Unknown command: {}", args[1]);
-                eprintln!("Usage: nwidgets [chat]");
+                log::error!("Unknown command: {}", args[1]);
+                log::info!("Usage: nwidgets [chat]");
                 std::process::exit(1);
             }
         }
@@ -214,7 +219,7 @@ fn main() {
                 },
                 |_window, cx| cx.new(Panel::new),
             )
-            .unwrap();
+            .expect("Failed to create panel window");
 
             // Chat window - created at startup, starts hidden (1x1)
             let chat_window = cx
@@ -248,7 +253,7 @@ fn main() {
                     },
                     |_window, cx| cx.new(ChatWidget::new),
                 )
-                .unwrap();
+                .expect("Failed to create chat window");
 
             // Launcher window - created at startup, starts hidden (1x1)
             let launcher_service_clone = launcher_service.clone();
@@ -289,7 +294,7 @@ fn main() {
                         })
                     },
                 )
-                .unwrap();
+                .expect("Failed to create launcher window");
 
             let chat_window_arc: Arc<Mutex<WindowHandle<ChatWidget>>> =
                 Arc::new(Mutex::new(chat_window));
