@@ -101,15 +101,26 @@ fn send_dbus_command(method: &str) -> bool {
 }
 
 fn main() {
-    // Initialize logger with custom format and filters
+    // Initialize logger with custom format, colors, and filters
     env_logger::Builder::from_default_env()
         .filter_level(log::LevelFilter::Info)
         .filter_module("blade_graphics", log::LevelFilter::Warn)
         .filter_module("naga", log::LevelFilter::Warn)
-        .filter_module("zbus::proxy", log::LevelFilter::Warn)
+        .filter_module("zbus", log::LevelFilter::Warn)
         .filter_module("gpui::platform", log::LevelFilter::Warn)
         .format(|buf, record| {
             use std::io::Write;
+            use env_logger::fmt::Color;
+            
+            // Color for log level
+            let mut style = buf.style();
+            let level_color = match record.level() {
+                log::Level::Error => style.set_color(Color::Red).set_bold(true),
+                log::Level::Warn => style.set_color(Color::Yellow).set_bold(true),
+                log::Level::Info => style.set_color(Color::Green),
+                log::Level::Debug => style.set_color(Color::Cyan),
+                log::Level::Trace => style.set_color(Color::White),
+            };
             
             // Extract module path and format it
             let module = record.module_path().unwrap_or("unknown");
@@ -127,9 +138,9 @@ fn main() {
             
             writeln!(
                 buf,
-                "[{} {:5} {}] {}",
+                "[{} {} {}] {}",
                 chrono::Local::now().format("%Y-%m-%dT%H:%M:%S"),
-                record.level(),
+                level_color.value(format!("{:5}", record.level())),
                 category,
                 record.args()
             )
