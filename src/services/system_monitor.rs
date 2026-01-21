@@ -70,6 +70,8 @@ pub struct SystemStatsChanged;
 
 pub struct SystemMonitorService {
     stats: Arc<RwLock<SystemStats>>,
+    monitoring_enabled: Arc<RwLock<bool>>,
+    notify: Arc<tokio::sync::Notify>,
 }
 
 impl EventEmitter<SystemStatsChanged> for SystemMonitorService {}
@@ -78,10 +80,16 @@ impl SystemMonitorService {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let stats = Arc::new(RwLock::new(SystemStats::default()));
         let stats_clone = Arc::clone(&stats);
+        let monitoring_enabled = Arc::new(RwLock::new(false));
+        let monitoring_enabled_clone = Arc::clone(&monitoring_enabled);
+        let notify = Arc::new(tokio::sync::Notify::new());
+        let notify_clone = Arc::clone(&notify);
 
         let (ui_tx, mut ui_rx) = futures::channel::mpsc::unbounded::<SystemStats>();
 
-        gpui_tokio::Tokio::spawn(cx, async move { Self::monitor_worker(ui_tx).await }).detach();
+        gpui_tokio::Tokio::spawn(cx, async move { 
+            Self::monitor_worker(ui_tx, monitoring_enabled_clone, notify_clone).await 
+        }).detach();
 
         cx.spawn(move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
             let mut cx = cx.clone();
@@ -108,20 +116,53 @@ impl SystemMonitorService {
         })
         .detach();
 
-        Self { stats }
+        Self { 
+            stats,
+            monitoring_enabled,
+            notify,
+        }
     }
 
     pub fn stats(&self) -> SystemStats {
         self.stats.read().clone()
     }
 
-    async fn monitor_worker(ui_tx: futures::channel::mpsc::UnboundedSender<SystemStats>) {
+    pub fn enable_monitoring(&self) {
+        let mut enabled = self.monitoring_enabled.write();
+        if !*enabled {
+            *enabled = true;
+            self.notify.notify_one();
+            eprintln!("[SYSMON] Monitoring enabled");
+        }
+    }
+
+    pub fn disable_monitoring(&self) {
+        let mut enabled = self.monitoring_enabled.write();
+        if *enabled {
+            *enabled = false;
+            eprintln!("[SYSMON] Monitoring disabled");
+        }
+    }
+
+    async fn monitor_worker(
+        ui_tx: futures::channel::mpsc::UnboundedSender<SystemStats>,
+        monitoring_enabled: Arc<RwLock<bool>>,
+        notify: Arc<tokio::sync::Notify>,
+    ) {
         let mut last_net_rx = 0u64;
         let mut last_net_tx = 0u64;
         let mut total_rx = 0u64;
         let mut total_tx = 0u64;
 
         loop {
+            // Wait for monitoring to be enabled
+            loop {
+                if *monitoring_enabled.read() {
+                    break;
+                }
+                notify.notified().await;
+            }
+
             let (net_rx, net_tx) = Self::read_network_bytes().await;
 
             let net_down = if last_net_rx > 0 {
@@ -155,7 +196,16 @@ impl SystemMonitorService {
             };
 
             let _ = ui_tx.unbounded_send(stats);
-            tokio::time::sleep(Duration::from_secs(2)).await;
+            
+            // Sleep or wait for disable
+            tokio::select! {
+                _ = tokio::time::sleep(Duration::from_secs(2)) => {}
+                _ = notify.notified() => {
+                    if !*monitoring_enabled.read() {
+                        eprintln!("[SYSMON] Pausing monitoring");
+                    }
+                }
+            }
         }
     }
 

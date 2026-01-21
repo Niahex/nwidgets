@@ -77,6 +77,9 @@ impl ControlCenterWidget {
         let system_monitor = SystemMonitorService::global(cx);
         let hyprland = crate::services::hyprland::HyprlandService::global(cx);
 
+        // Enable system monitoring when control center opens
+        system_monitor.read(cx).enable_monitoring();
+
         let audio_state = audio.read(cx).state();
 
         cx.subscribe(&control_center, |_, _, _, cx| cx.notify()).detach();
@@ -160,6 +163,7 @@ impl Render for ControlCenterWidget {
             .child(div().h(px(1.)).bg(theme.hover))
             .child(self.render_notifications_section(cx))
             .on_mouse_down_out(cx.listener(|this, _, window, cx| {
+                this.system_monitor.read(cx).disable_monitoring();
                 this.control_center.update(cx, |cc, cx| {
                     cc.close(cx);
                 });
@@ -170,5 +174,11 @@ impl Render for ControlCenterWidget {
                 Animation::new(Duration::from_millis(150)),
                 |this, delta| this.opacity(delta),
             )
+    }
+}
+
+impl Drop for ControlCenterWidget {
+    fn drop(&mut self) {
+        eprintln!("[CONTROL_CENTER] Widget dropped, disabling monitoring");
     }
 }
