@@ -1,47 +1,90 @@
 # nwidgets
 
-A high-performance Wayland widget system built with GPUI, featuring a customizable panel, launcher, notifications, and more.
+A high-performance Wayland widget system built with GPUI, featuring a panel, launcher, notifications, and more.
 
 ## Features
 
 ### 🎨 Panel
-- **Top bar** with workspace indicators, system tray, and status modules
-- **Active window** title display
-- **MPRIS** media controls with album art
-- **System monitor** (CPU, RAM, temperature)
-- **Audio/Bluetooth** controls
-- **Network** status
-- **Date/Time** display
-- **Pomodoro** timer
+- [x] **Active-window** title, class, icon display
+- [x] **Pomodoro** timer interractive
+- [x] **Workspaces** Indicator and interractive
+- [x] **MPRIS** spotify indicator and controls with mouse (vertical +/-, horizontal next/prev, click pause/play )
+- [] (5) **Sytray** :
+- [x] **Audio/Bluetooth/Network/Date-Time** indicators
 
 ### 🚀 Launcher
 - **Fast application launcher** with fuzzy search
-- **Calculator** mode (type `=` to calculate)
-- **Process manager** (type `ps` to list/kill processes)
-- **Clipboard history** integration
+- [x] **Calculator** mode (type `=` to calculate)
+  - [?] remove "="
+- [x] **Process manager** (type `ps` to list/kill processes)
+- [x] **Clipboard history** integration
+  - [x] text
+  - [ ] (2) image
+  - [ ] (1) keepass protect
 
 ### 💬 Chat
-- **Embedded browser** for Gemini AI chat
+- **Embedded browser** for differents AI chat
 - **Custom Nord theme** CSS injection
 - **Fullscreen-aware** (auto-hide in fullscreen)
 - **Persistent URL** state
+- [x] **Audio** : i/o
+- [-] (5) **Screenshare** : work but force
+- [x] disable gpu rendering
+- [?] WGPU
+- [?] Blade 
 
 ### 🔔 Notifications
 - **Native Wayland notifications**
 - **Auto-dismiss** after timeout
-- **Click to dismiss**
+- [x] **History**
+
 
 ### 🎛️ Control Center
 - **Quick actions** (WiFi, Bluetooth, DND, etc.)
-- **Audio mixer** with per-app volume control
-- **Bluetooth device manager**
-- **Network manager**
-- **Notification settings**
+- [x] Monitors
+  - [x] **CPU** : % & Temp
+  - [x] **GPU** : % & Temp
+  - [x] **Memory** : ram and primary disk 
+  - [x] **Network** : download / upload
+- **Audio mixer** :
+   - [x] **Sink/source**
+    - [x] Modify with scroll
+    - [?] (5) slider mouse interract
+  - [] (4) **Streams**
+    - [~] (5) icones per site
+    - [] (4) progress bar control  
+    - [?] (5) slider mouse interract
+- [] **Bluetooth**
+  - [] (5) on/off blutooth
+  - [x] list
+  - [x] toggle connection devices
+  - [x] trust toggle devices  
+- [] (3) **Network manager**
+  - [] (5) all informations
+  - [] (2) vpn
+  - [] (3) proxy
+  - [] (3) ssh
+- [] (5) VM Manager
+- [] (5) **Notification**
+  - [x] List
+  - [x] Clear
 
 ### 📊 OSD (On-Screen Display)
-- **Volume** indicator
-- **Brightness** indicator
-- **Microphone mute** indicator
+- [] (5) **Sink**
+  - [x] +/-
+  - [ ] (5) mute
+  - [ ] (5) bypass 100% 
+- [ ] (5) Source
+  - [ ] (5) +/-
+  - [ ] (5) mute
+  - [?] use
+- [] (5) record
+- [] (5) Clipboard
+  - [x] text
+    - [?] display the first words
+  - [?] image
+  - [?] files
+
 
 ## Architecture
 
