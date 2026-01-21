@@ -11,7 +11,7 @@ use crate::services::network::NetworkService;
 use crate::services::notifications::{NotificationAdded, NotificationService};
 use crate::services::system_monitor::SystemMonitorService;
 use crate::theme::ActiveTheme;
-use crate::utils::Icon;
+use crate::assets::Icon;
 use gpui::prelude::*;
 use gpui::*;
 use std::time::{Duration, Instant};

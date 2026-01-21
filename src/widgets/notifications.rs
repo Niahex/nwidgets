@@ -1,6 +1,6 @@
 use crate::services::notifications::{Notification, NotificationAdded, NotificationService};
 use crate::theme::ActiveTheme;
-use crate::utils::Icon;
+use crate::assets::Icon;
 use gpui::prelude::*;
 use gpui::*;
 use parking_lot::RwLock;

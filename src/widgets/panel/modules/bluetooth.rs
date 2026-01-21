@@ -1,5 +1,5 @@
 use crate::services::bluetooth::{BluetoothService, BluetoothStateChanged};
-use crate::utils::Icon;
+use crate::assets::Icon;
 use gpui::prelude::*;
 use gpui::*;
 

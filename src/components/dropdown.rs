@@ -95,7 +95,7 @@ impl<T: Clone + PartialEq + 'static> RenderOnce for Dropdown<T> {
             })
             .child(div().text_xs().text_color(theme.text).child(label))
             .child(
-                crate::utils::Icon::new(if is_open { "arrow-up" } else { "arrow-down" })
+                crate::assets::Icon::new(if is_open { "arrow-up" } else { "arrow-down" })
                     .size(px(12.))
                     .color(theme.text_muted),
             );

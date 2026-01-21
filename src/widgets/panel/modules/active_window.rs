@@ -1,7 +1,7 @@
 use crate::services::chat::ChatService;
 use crate::services::hyprland::{ActiveWindowChanged, HyprlandService};
 use crate::theme::ActiveTheme;
-use crate::utils::Icon;
+use crate::assets::Icon;
 use gpui::prelude::*;
 use gpui::*;
 

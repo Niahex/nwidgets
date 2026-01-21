@@ -1,6 +1,6 @@
 use crate::services::audio::{AudioService, AudioStateChanged};
 use crate::theme::ActiveTheme;
-use crate::utils::Icon;
+use crate::assets::Icon;
 use gpui::prelude::*;
 use gpui::*;
 

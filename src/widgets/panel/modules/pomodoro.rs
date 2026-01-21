@@ -2,7 +2,7 @@ use crate::services::pomodoro::{
     PomodoroPhase, PomodoroService, PomodoroStateChanged, PomodoroStatus,
 };
 use crate::theme::ActiveTheme;
-use crate::utils::Icon;
+use crate::assets::Icon;
 use gpui::prelude::*;
 use gpui::*;
 

@@ -1,7 +1,7 @@
 use crate::services::audio::AudioService;
 use crate::services::control_center::ControlCenterSection;
 use crate::theme::{ActiveTheme, Theme};
-use crate::utils::Icon;
+use crate::assets::Icon;
 use gpui::*;
 use std::time::{Duration, Instant};
 
