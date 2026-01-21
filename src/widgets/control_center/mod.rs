@@ -132,25 +132,43 @@ impl ControlCenterWidget {
 }
 
 impl Render for ControlCenterWidget {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let theme = cx.theme();
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        window.focus(&self.focus_handle, cx);
+
+        let theme = cx.theme().clone();
 
         div()
             .track_focus(&self.focus_handle)
-            .key_context("ControlCenter")
-            .on_action(cx.listener(|this, _: &CloseControlCenter, _window, cx| {
-                this.control_center.update(cx, |cc, cx| cc.close(cx));
-            }))
             .flex()
             .flex_col()
-            .gap_3()
-            .p_3()
+            .size_full()
             .bg(theme.bg)
-            .rounded_lg()
+            .rounded(px(18.))
+            .overflow_hidden()
+            .border_1()
+            .border_color(theme.accent_alt.opacity(0.25))
             .shadow_lg()
-            .w(px(400.))
+            .text_color(theme.text)
+            .p_4()
+            .gap_4()
+            .on_action(|_: &CloseControlCenter, window, _cx| {
+                window.remove_window();
+            })
             .child(self.render_audio_section(cx))
+            .child(div().h(px(1.)).bg(theme.hover))
             .child(self.render_connectivity_section(cx))
+            .child(div().h(px(1.)).bg(theme.hover))
             .child(self.render_notifications_section(cx))
+            .on_mouse_down_out(cx.listener(|this, _, window, cx| {
+                this.control_center.update(cx, |cc, cx| {
+                    cc.close(cx);
+                });
+                window.remove_window();
+            }))
+            .with_animation(
+                "control-center-fade-in",
+                Animation::new(Duration::from_millis(150)),
+                |this, delta| this.opacity(delta),
+            )
     }
 }
