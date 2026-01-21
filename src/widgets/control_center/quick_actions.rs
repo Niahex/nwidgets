@@ -1,4 +1,4 @@
-use crate::services::control_center::ControlCenterSection;
+use crate::services::ui::control_center::ControlCenterSection;
 use crate::theme::ActiveTheme;
 use crate::assets::Icon;
 use gpui::prelude::*;

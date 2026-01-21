@@ -1,5 +1,5 @@
-use crate::services::audio::AudioService;
-use crate::services::control_center::ControlCenterSection;
+use crate::services::media::audio::AudioService;
+use crate::services::ui::control_center::ControlCenterSection;
 use crate::theme::{ActiveTheme, Theme};
 use crate::assets::Icon;
 use gpui::*;
@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 impl super::ControlCenterWidget {
     // Helper: render stream item (used by both sink and source)
     pub(in crate::widgets::control_center) fn render_stream_item(
-        stream: &crate::services::audio::AudioStream,
+        stream: &crate::services::media::audio::AudioStream,
         theme: &Theme,
         accent_color: Hsla,
     ) -> AnyElement {

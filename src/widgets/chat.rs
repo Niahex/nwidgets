@@ -1,5 +1,5 @@
 use crate::services::cef::BrowserView;
-use crate::services::chat::{ChatService, ChatToggled};
+use crate::services::ui::chat::{ChatService, ChatToggled};
 use crate::theme::ActiveTheme;
 use gpui::prelude::*;
 use gpui::{

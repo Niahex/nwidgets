@@ -4,8 +4,8 @@ use gpui::{
 };
 use std::time::Duration;
 
-use crate::components::{SearchInput, SearchResult, SearchResults};
-use crate::services::clipboard::ClipboardMonitor;
+use crate::ui::components::{SearchInput, SearchResult, SearchResults};
+use crate::services::ui::clipboard::ClipboardMonitor;
 use crate::services::launcher::{
     process, LauncherCore, LauncherService, LauncherToggled, SearchResultType,
 };

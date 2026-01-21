@@ -79,12 +79,12 @@ impl MprisService {
         let (ui_tx, mut ui_rx) = futures::channel::mpsc::unbounded::<Option<MprisPlayer>>();
 
         // Subscribe to Hyprland window changes to detect Spotify
-        let hyprland = crate::services::hyprland::HyprlandService::global(cx);
+        let hyprland = crate::services::system::hyprland::HyprlandService::global(cx);
         let spotify_running_for_sub = Arc::clone(&spotify_running);
         let spotify_notify_for_sub = Arc::clone(&spotify_notify);
         cx.subscribe(
             &hyprland,
-            move |_, hyprland, _: &crate::services::hyprland::ActiveWindowChanged, _cx| {
+            move |_, hyprland, _: &crate::services::system::hyprland::ActiveWindowChanged, _cx| {
                 let is_spotify = hyprland.read(_cx).is_window_open("spotify");
 
                 let mut running = spotify_running_for_sub.write();

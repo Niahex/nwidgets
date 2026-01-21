@@ -6,7 +6,7 @@ pub use modules::{
     PomodoroModule, SinkModule, SourceModule, SystrayModule, WorkspacesModule,
 };
 
-use crate::services::control_center::ControlCenterService;
+use crate::services::ui::control_center::ControlCenterService;
 use gpui::*;
 
 pub struct Panel {

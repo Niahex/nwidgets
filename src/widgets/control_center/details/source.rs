@@ -1,4 +1,4 @@
-use crate::components::{Dropdown, DropdownOption};
+use crate::ui::components::{Dropdown, DropdownOption};
 use crate::theme::ActiveTheme;
 use gpui::prelude::*;
 use gpui::*;

@@ -1,4 +1,4 @@
-use crate::services::hyprland::HyprlandService;
+use crate::services::system::hyprland::HyprlandService;
 use futures::StreamExt;
 use gpui::prelude::*;
 use gpui::{App, AsyncApp, Entity, EventEmitter};

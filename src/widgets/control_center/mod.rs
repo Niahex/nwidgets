@@ -3,13 +3,13 @@ mod details;
 mod notifications;
 mod quick_actions;
 
-use crate::components::{CircularProgress, Dropdown, DropdownOption, Toggle};
-use crate::services::audio::AudioService;
-use crate::services::bluetooth::BluetoothService;
-use crate::services::control_center::{ControlCenterSection, ControlCenterService};
+use crate::ui::components::{CircularProgress, Dropdown, DropdownOption, Toggle};
+use crate::services::media::audio::AudioService;
+use crate::services::hardware::bluetooth::BluetoothService;
+use crate::services::ui::control_center::{ControlCenterSection, ControlCenterService};
 use crate::services::network::NetworkService;
-use crate::services::notifications::{NotificationAdded, NotificationService};
-use crate::services::system_monitor::SystemMonitorService;
+use crate::services::ui::notifications::{NotificationAdded, NotificationService};
+use crate::services::hardware::system_monitor::SystemMonitorService;
 use crate::theme::ActiveTheme;
 use crate::assets::Icon;
 use gpui::prelude::*;
@@ -35,7 +35,7 @@ pub struct ControlCenterWidget {
 }
 
 fn get_stream_display(
-    stream: &crate::services::audio::AudioStream,
+    stream: &crate::services::media::audio::AudioStream,
 ) -> (SharedString, &'static str, bool) {
     let title = stream.window_title.as_ref().unwrap_or(&stream.app_name);
     let title_lower = title.to_lowercase();
@@ -75,7 +75,7 @@ impl ControlCenterWidget {
         let network = NetworkService::global(cx);
         let notifications = NotificationService::global(cx);
         let system_monitor = SystemMonitorService::global(cx);
-        let hyprland = crate::services::hyprland::HyprlandService::global(cx);
+        let hyprland = crate::services::system::hyprland::HyprlandService::global(cx);
 
         // Enable system monitoring when control center opens
         system_monitor.read(cx).enable_monitoring();
@@ -86,7 +86,7 @@ impl ControlCenterWidget {
             .detach();
         cx.subscribe(
             &hyprland,
-            |this, _, _: &crate::services::hyprland::WorkspaceChanged, cx| {
+            |this, _, _: &crate::services::system::hyprland::WorkspaceChanged, cx| {
                 this.control_center.update(cx, |cc, cx| {
                     if cc.is_visible() {
                         cc.close(cx);
@@ -97,7 +97,7 @@ impl ControlCenterWidget {
         .detach();
         cx.subscribe(
             &hyprland,
-            |this, _, _: &crate::services::hyprland::FullscreenChanged, cx| {
+            |this, _, _: &crate::services::system::hyprland::FullscreenChanged, cx| {
                 this.control_center.update(cx, |cc, cx| {
                     if cc.is_visible() {
                         cc.close(cx);

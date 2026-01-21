@@ -1,11 +1,12 @@
 mod app;
 mod assets;
 mod cli;
-mod components;
 mod logger;
 mod nwidgets;
 mod services;
 mod theme;
+mod types;
+mod ui;
 mod widgets;
 mod windows;
 

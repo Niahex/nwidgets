@@ -1,4 +1,4 @@
-use crate::components::SearchResult;
+use crate::ui::components::SearchResult;
 use crate::services::launcher::{
     applications, calculator, fuzzy::FuzzyMatcher, process, state::ApplicationInfo,
 };

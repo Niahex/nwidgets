@@ -78,20 +78,20 @@ impl DbusService {
                     match cmd {
                         DbusCommand::ToggleChat => {
                             cx.update(|cx| {
-                                let chat = super::chat::ChatService::global(cx);
+                                let chat = crate::services::ui::chat::ChatService::global(cx);
                                 chat.update(cx, |chat, mcx| chat.toggle(mcx));
                             });
                         }
                         DbusCommand::PinChat => {
                             cx.update(|cx| {
-                                let chat = super::chat::ChatService::global(cx);
+                                let chat = crate::services::ui::chat::ChatService::global(cx);
                                 chat.update(cx, |chat, mcx| chat.toggle_pin(mcx));
                             });
                         }
                         DbusCommand::ToggleLauncher => {
                             log::debug!("Received ToggleLauncher command");
                             cx.update(|cx| {
-                                let launcher = super::launcher::LauncherService::global(cx);
+                                let launcher = crate::services::launcher::LauncherService::global(cx);
                                 launcher.update(cx, |launcher, mcx| {
                                     log::debug!(
                                         "Toggling launcher, current visible: {}",

@@ -1,4 +1,4 @@
-use crate::services::osd::{OsdEvent, OsdService, OsdStateChanged};
+use crate::services::ui::osd::{OsdEvent, OsdService, OsdStateChanged};
 use crate::theme::ActiveTheme;
 use crate::assets::Icon;
 use gpui::prelude::*;

@@ -41,7 +41,7 @@ impl ChatService {
 
         // Close control center when chat opens
         if self.visible {
-            let cc = crate::services::control_center::ControlCenterService::global(cx);
+            let cc = crate::services::ui::control_center::ControlCenterService::global(cx);
             cc.update(cx, |cc, cx| {
                 if cc.is_visible() {
                     cc.toggle(cx);

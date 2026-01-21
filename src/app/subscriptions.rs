@@ -1,9 +1,9 @@
 use gpui::*;
 
-use crate::services::chat::{ChatService, ChatToggled};
-use crate::services::hyprland::HyprlandService;
+use crate::services::system::{FullscreenChanged, HyprlandService, WorkspaceChanged};
+use crate::services::ui::{ChatNavigate, ChatService, ChatToggled};
 use crate::services::launcher::{LauncherService, LauncherToggled};
-use crate::services::notifications::{NotificationAdded, NotificationService};
+use crate::services::ui::{NotificationAdded, NotificationService};
 use crate::widgets::chat::ChatWidget;
 use crate::widgets::launcher::LauncherWidget;
 use crate::widgets::notifications::{NotificationsStateChanged, NotificationsWindowManager};

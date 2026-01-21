@@ -1,17 +1,11 @@
-pub mod audio;
-pub mod bluetooth;
 pub mod cef;
-pub mod chat;
-pub mod clipboard;
-pub mod control_center;
-pub mod dbus;
-pub mod hyprland;
 pub mod launcher;
-pub mod lock_state;
-pub mod mpris;
 pub mod network;
-pub mod notifications;
-pub mod osd;
-pub mod pomodoro;
-pub mod system_monitor;
-pub mod systray;
+
+pub mod hardware;
+pub mod media;
+pub mod system;
+pub mod ui;
+
+pub use cef::CefService;
+pub use launcher::LauncherService;

@@ -1,4 +1,4 @@
-use crate::services::mpris::{MprisService, MprisStateChanged, PlaybackStatus};
+use crate::services::media::mpris::{MprisService, MprisStateChanged, PlaybackStatus};
 use crate::theme::ActiveTheme;
 use gpui::prelude::*;
 use gpui::*;
@@ -50,7 +50,7 @@ impl MprisModule {
         }
     }
 
-    fn update_cache(&mut self, player: Option<&crate::services::mpris::MprisPlayer>) {
+    fn update_cache(&mut self, player: Option<&crate::services::media::mpris::MprisPlayer>) {
         if let Some(player) = player {
             self.cached_title = player
                 .metadata

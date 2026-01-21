@@ -2,8 +2,8 @@ use gpui::*;
 use parking_lot::Mutex;
 use std::sync::Arc;
 
-use crate::services::chat::{ChatNavigate, ChatService, ChatToggled};
-use crate::services::hyprland::{FullscreenChanged, HyprlandService, WorkspaceChanged};
+use crate::services::system::{FullscreenChanged, HyprlandService, WorkspaceChanged};
+use crate::services::ui::{ChatNavigate, ChatService, ChatToggled};
 use crate::widgets::chat::ChatWidget;
 
 static CHAT_WINDOW: once_cell::sync::OnceCell<Arc<Mutex<WindowHandle<ChatWidget>>>> = once_cell::sync::OnceCell::new();

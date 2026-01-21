@@ -2,7 +2,7 @@ use gpui::*;
 use parking_lot::Mutex;
 use std::sync::Arc;
 
-use crate::services::clipboard::ClipboardMonitor;
+use crate::services::ui::ClipboardMonitor;
 use crate::services::launcher::{LauncherService, LauncherToggled};
 use crate::widgets::launcher::LauncherWidget;
 

@@ -1,5 +1,5 @@
-use crate::services::chat::ChatService;
-use crate::services::hyprland::{ActiveWindowChanged, HyprlandService};
+use crate::services::ui::chat::ChatService;
+use crate::services::system::hyprland::{ActiveWindowChanged, HyprlandService};
 use crate::theme::ActiveTheme;
 use crate::assets::Icon;
 use gpui::prelude::*;
@@ -50,7 +50,7 @@ impl ActiveWindowModule {
     }
 
     fn compute_window_info(
-        window: Option<&crate::services::hyprland::ActiveWindow>,
+        window: Option<&crate::services::system::hyprland::ActiveWindow>,
         chat_visible: bool,
         site_index: usize,
     ) -> (SharedString, SharedString, SharedString) {
@@ -74,7 +74,7 @@ impl ActiveWindowModule {
 
     fn update_cache(
         &mut self,
-        window: Option<&crate::services::hyprland::ActiveWindow>,
+        window: Option<&crate::services::system::hyprland::ActiveWindow>,
         chat_visible: bool,
     ) {
         let (icon, class, title) = Self::compute_window_info(window, chat_visible, self.site_index);
