@@ -68,6 +68,13 @@ fn get_stream_display(
 }
 
 impl ControlCenterWidget {
+    fn subscribe_and_notify<E: 'static>(
+        entity: &Entity<E>,
+        cx: &mut Context<Self>,
+    ) {
+        cx.subscribe(entity, |_, _, _, cx| cx.notify()).detach();
+    }
+
     fn create_volume_slider(initial_volume: u8, cx: &mut Context<Self>) -> Entity<SliderState> {
         cx.new(|_| {
             SliderState::new()
@@ -139,8 +146,7 @@ impl ControlCenterWidget {
         let sink_slider = Self::create_volume_slider(audio_state.sink_volume, cx);
         let source_slider = Self::create_volume_slider(audio_state.source_volume, cx);
 
-        cx.subscribe(&control_center, |_, _, _, cx| cx.notify())
-            .detach();
+        Self::subscribe_and_notify(&control_center, cx);
         cx.subscribe(
             &hyprland,
             |this, _, _: &crate::services::system::hyprland::WorkspaceChanged, cx| {
@@ -175,10 +181,9 @@ impl ControlCenterWidget {
             cx.notify();
         })
         .detach();
-        cx.subscribe(&bluetooth, |_, _, _, cx| cx.notify()).detach();
-        cx.subscribe(&network, |_, _, _, cx| cx.notify()).detach();
-        cx.subscribe(&system_monitor, |_, _, _, cx| cx.notify())
-            .detach();
+        Self::subscribe_and_notify(&bluetooth, cx);
+        Self::subscribe_and_notify(&network, cx);
+        Self::subscribe_and_notify(&system_monitor, cx);
         cx.subscribe(&notifications, |_, _, _: &NotificationAdded, cx| {
             cx.notify()
         })
