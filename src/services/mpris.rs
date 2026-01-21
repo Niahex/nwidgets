@@ -91,7 +91,7 @@ impl MprisService {
             if *running != is_spotify {
                 *running = is_spotify;
                 spotify_notify_for_sub.notify_one();
-                eprintln!("[MPRIS] Spotify window state: {}", is_spotify);
+                log::debug!("Spotify window state changed: {}", is_spotify);
             }
         }).detach();
 
@@ -203,24 +203,24 @@ impl MprisService {
                 }
                 spotify_notify.notified().await;
             }
-            eprintln!("[MPRIS] Spotify window detected, connecting to DBus...");
+            log::info!("Spotify window detected, connecting to MPRIS");
 
             // Try to connect once
             let connection = match Connection::session().await {
                 Ok(conn) => conn,
                 Err(e) => {
-                    eprintln!("[MPRIS] Failed to connect to session bus: {}", e);
+                    log::error!("Failed to connect to session bus: {}", e);
                     continue;
                 }
             };
 
             let proxy = match MediaPlayer2PlayerProxy::new(&connection).await {
                 Ok(p) => {
-                    eprintln!("[MPRIS] Connected to Spotify MPRIS");
+                    log::info!("Connected to Spotify MPRIS");
                     p
                 }
                 Err(e) => {
-                    eprintln!("[MPRIS] Spotify MPRIS not available: {} - waiting for window close", e);
+                    log::warn!("Spotify MPRIS not available: {} - waiting for window close", e);
                     // DBus service doesn't exist, wait for window to close then retry
                     loop {
                         if !*spotify_running.read() {
@@ -236,11 +236,11 @@ impl MprisService {
             // Get initial state
             match Self::fetch_player_state(&proxy).await {
                 Ok(player) => {
-                    eprintln!("[MPRIS] Initial state: {:?}", player.metadata.title);
+                    log::debug!("Initial MPRIS state: {:?}", player.metadata.title);
                     let _ = ui_tx.unbounded_send(Some(player));
                 }
                 Err(e) => {
-                    eprintln!("[MPRIS] Failed to fetch initial state: {}", e);
+                    log::error!("Failed to fetch initial state: {}", e);
                     let _ = ui_tx.unbounded_send(None);
                     continue;
                 }
@@ -255,7 +255,7 @@ impl MprisService {
                 tokio::select! {
                     status_change = status_stream.next() => {
                         if status_change.is_none() {
-                            eprintln!("[MPRIS] Status stream ended");
+                            log::debug!("MPRIS status stream ended");
                             break;
                         }
                         if let Ok(player) = Self::fetch_player_state(&proxy).await {
@@ -264,7 +264,7 @@ impl MprisService {
                     }
                     metadata_change = metadata_stream.next() => {
                         if metadata_change.is_none() {
-                            eprintln!("[MPRIS] Metadata stream ended");
+                            log::debug!("MPRIS metadata stream ended");
                             break;
                         }
                         if let Ok(player) = Self::fetch_player_state(&proxy).await {
@@ -273,7 +273,7 @@ impl MprisService {
                     }
                     _ = spotify_notify.notified() => {
                         if !*spotify_running.read() {
-                            eprintln!("[MPRIS] Spotify window closed");
+                            log::info!("Spotify window closed");
                             break;
                         }
                     }
@@ -281,7 +281,7 @@ impl MprisService {
             }
 
             // Spotify closed, clear state
-            eprintln!("[MPRIS] Clearing MPRIS state...");
+            log::debug!("Clearing MPRIS state");
             let _ = ui_tx.unbounded_send(None);
         }
     }
