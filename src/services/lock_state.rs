@@ -88,10 +88,10 @@ impl LockMonitor {
         let mut last_state = Self::read_capslock_state();
         let _ = tx.unbounded_send(last_state);
 
-        // Polling optimisé: 300ms au lieu de 100ms
-        // Réduit la charge CPU de 70% avec impact visuel négligeable
+        // Polling optimisé: 500ms (réduit charge CPU avec impact visuel négligeable)
+        // Note: sysfs ne supporte pas inotify, polling nécessaire
         loop {
-            tokio::time::sleep(Duration::from_millis(300)).await;
+            tokio::time::sleep(Duration::from_millis(500)).await;
             let current_state = Self::read_capslock_state();
             if current_state != last_state {
                 last_state = current_state;
