@@ -45,8 +45,6 @@ pub struct MprisStateChanged;
 pub struct MprisService {
     current_player: Arc<RwLock<Option<MprisPlayer>>>,
     executor: BackgroundExecutor,
-    spotify_running: Arc<RwLock<bool>>,
-    spotify_notify: Arc<tokio::sync::Notify>,
 }
 
 // D-Bus proxy for MPRIS2 Player interface
@@ -128,8 +126,6 @@ impl MprisService {
         Self {
             current_player,
             executor: cx.background_executor().clone(),
-            spotify_running,
-            spotify_notify,
         }
     }
 
