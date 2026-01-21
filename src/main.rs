@@ -33,6 +33,7 @@ use std::sync::Arc;
 use widgets::{
     chat::ChatWidget,
     launcher::LauncherWidget,
+    markdown::MarkdownWidget,
     notifications::{NotificationsStateChanged, NotificationsWindowManager},
     panel::Panel,
 };
@@ -260,6 +261,25 @@ fn main() {
                 |_window, cx| cx.new(Panel::new),
             )
             .expect("Failed to create panel window");
+
+            // Markdown test window
+            cx.open_window(
+                WindowOptions {
+                    window_bounds: Some(WindowBounds::Windowed(Bounds {
+                        origin: Point { x: px(100.0), y: px(100.0) },
+                        size: Size { width: px(1200.0), height: px(800.0) },
+                    })),
+                    titlebar: Some(gpui::TitlebarOptions {
+                        title: Some("Markdown Live Preview".into()),
+                        appears_transparent: false,
+                        traffic_light_position: None,
+                    }),
+                    window_decorations: Some(WindowDecorations::Server),
+                    ..Default::default()
+                },
+                |_window, cx| cx.new(MarkdownWidget::new),
+            )
+            .expect("Failed to create markdown window");
 
             // Chat window - created at startup, starts hidden (1x1)
             let chat_window = cx
