@@ -1,3 +1,4 @@
+mod button;
 mod circular_progress;
 mod corner;
 mod dropdown;
@@ -7,6 +8,7 @@ mod search_input;
 mod search_results;
 mod toggle;
 
+pub use button::{Button, ButtonVariant};
 pub use circular_progress::CircularProgress;
 #[allow(unused_imports)]
 pub use corner::Corner;

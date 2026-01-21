@@ -1,6 +1,7 @@
 use crate::services::ui::control_center::ControlCenterSection;
 use crate::theme::ActiveTheme;
 use crate::assets::Icon;
+use crate::ui::components::Button;
 use gpui::prelude::*;
 use gpui::*;
 
@@ -30,47 +31,19 @@ impl super::ControlCenterWidget {
                     .gap_2()
                     .child(
                         div()
-                            .id("monitor-toggle")
                             .flex_1()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .gap_2()
-                            .px_3()
-                            .py_2()
-                            .rounded_md()
-                            .text_sm()
-                            .font_weight(if monitor_expanded {
-                                FontWeight::BOLD
-                            } else {
-                                FontWeight::MEDIUM
-                            })
-                            .when(monitor_expanded, |this| {
-                                this.bg(theme.accent.opacity(0.2)).text_color(theme.accent)
-                            })
-                            .when(!monitor_expanded, |this| {
-                                this.text_color(theme.text_muted.opacity(0.5))
-                                    .hover(|style| {
-                                        style
-                                            .bg(theme.hover)
-                                            .text_color(theme.text_muted.opacity(0.8))
-                                    })
-                            })
-                            .cursor_pointer()
-                            .on_click(cx.listener(|this, _, _window, cx| {
-                                this.control_center.update(cx, |cc, cx| {
-                                    cc.toggle_section(ControlCenterSection::Monitor, cx)
-                                });
-                            }))
                             .child(
-                                Icon::new("monitor")
-                                    .size(px(20.))
-                                    .color(if monitor_expanded {
-                                        theme.accent
-                                    } else {
-                                        theme.text_muted.opacity(0.5)
-                                    }),
-                            ),
+                                Button::new("monitor-toggle")
+                                    .icon("monitor")
+                                    .icon_size(px(20.))
+                                    .accent()
+                                    .selected(monitor_expanded)
+                                    .on_click(cx.listener(|this, _, _window, cx| {
+                                        this.control_center.update(cx, |cc, cx| {
+                                            cc.toggle_section(ControlCenterSection::Monitor, cx)
+                                        });
+                                    }))
+                            )
                     )
                     .child(
                         div()
