@@ -68,6 +68,16 @@ fn get_stream_display(
 }
 
 impl ControlCenterWidget {
+    fn create_volume_slider(initial_volume: u8, cx: &mut Context<Self>) -> Entity<SliderState> {
+        cx.new(|_| {
+            SliderState::new()
+                .min(0.0)
+                .max(100.0)
+                .step(5.0)
+                .default_value(initial_volume as f32)
+        })
+    }
+
     fn get_or_create_stream_slider(
         &mut self,
         stream_id: u32,
@@ -78,13 +88,7 @@ impl ControlCenterWidget {
         self.stream_sliders
             .entry(stream_id)
             .or_insert_with(|| {
-                let slider = cx.new(|_| {
-                    SliderState::new()
-                        .min(0.0)
-                        .max(100.0)
-                        .step(5.0)
-                        .default_value(initial_volume as f32)
-                });
+                let slider = Self::create_volume_slider(initial_volume, cx);
                 
                 // Subscribe to slider events
                 cx.subscribe(&slider, move |this, _, event: &crate::ui::components::SliderEvent, cx| {
@@ -120,21 +124,8 @@ impl ControlCenterWidget {
         let audio_state = audio.read(cx).state();
 
         // Create sliders
-        let sink_slider = cx.new(|_| {
-            SliderState::new()
-                .min(0.0)
-                .max(100.0)
-                .step(5.0)
-                .default_value(audio_state.sink_volume as f32)
-        });
-
-        let source_slider = cx.new(|_| {
-            SliderState::new()
-                .min(0.0)
-                .max(100.0)
-                .step(5.0)
-                .default_value(audio_state.source_volume as f32)
-        });
+        let sink_slider = Self::create_volume_slider(audio_state.sink_volume, cx);
+        let source_slider = Self::create_volume_slider(audio_state.source_volume, cx);
 
         cx.subscribe(&control_center, |_, _, _, cx| cx.notify())
             .detach();
