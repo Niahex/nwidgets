@@ -10,7 +10,7 @@ A high-performance Wayland widget system built with GPUI, featuring a panel, lau
 - **Active-window** title, class, icon display
 - **Pomodoro** timer interactive
 - **Workspaces** indicator and interactive
-- **MPRIS** media controls (vertical scroll: volume, horizontal scroll: next/prev, click: pause/play)
+- **MPRIS** spotify (full mouse control)
 - **Audio/Bluetooth/Network/Date-Time** indicators
 
 ### 🚀 Launcher
