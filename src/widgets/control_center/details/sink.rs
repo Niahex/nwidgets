@@ -5,7 +5,7 @@ use gpui::*;
 
 impl super::super::ControlCenterWidget {
     pub(in crate::widgets::control_center) fn render_sink_details(&mut self, cx: &mut Context<Self>) -> AnyElement {
-        let theme = cx.theme().clone();
+        let theme = cx.theme();
         let sinks = self.audio.read(cx).sinks();
         let default_sink = sinks.iter().find(|s| s.is_default).cloned();
         let is_open = self.sink_dropdown_open;

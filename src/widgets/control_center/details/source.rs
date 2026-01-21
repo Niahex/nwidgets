@@ -5,7 +5,7 @@ use gpui::*;
 
 impl super::super::ControlCenterWidget {
     pub(in crate::widgets::control_center) fn render_source_details(&mut self, cx: &mut Context<Self>) -> AnyElement {
-        let theme = cx.theme().clone();
+        let theme = cx.theme();
         let sources = self.audio.read(cx).sources();
         let default_source = sources.iter().find(|s| s.is_default).cloned();
         let is_open = self.source_dropdown_open;

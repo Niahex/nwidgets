@@ -5,7 +5,7 @@ use gpui::*;
 
 impl super::super::ControlCenterWidget {
     pub(in crate::widgets::control_center) fn render_monitor_details(&mut self, cx: &mut Context<Self>) -> AnyElement {
-        let theme = cx.theme().clone();
+        let theme = cx.theme();
         let stats = self.system_monitor.read(cx).stats();
 
         div()

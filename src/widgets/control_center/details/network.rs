@@ -5,7 +5,7 @@ use gpui::*;
 
 impl super::super::ControlCenterWidget {
     pub(in crate::widgets::control_center) fn render_network_details(&mut self, cx: &mut Context<Self>) -> AnyElement {
-        let theme = cx.theme().clone();
+        let theme = cx.theme();
         let net_state = self.network.read(cx).state();
         let vpn_service = self.network.read(cx).vpn();
         let vpn_state = vpn_service.read(cx).state();
