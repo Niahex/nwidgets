@@ -1,3 +1,4 @@
+use crate::theme::ActiveTheme;
 use chrono::Timelike;
 use gpui::prelude::*;
 use gpui::*;
@@ -69,7 +70,7 @@ impl Render for DateTimeModule {
             .child(
                 div()
                     .text_xs()
-                    .text_color(cx.global::<crate::theme::Theme>().text_muted)
+                    .text_color(cx.theme().text_muted)
                     .child(self.date.clone()),
             )
     }

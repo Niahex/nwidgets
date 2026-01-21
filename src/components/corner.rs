@@ -1,3 +1,4 @@
+use crate::theme::ActiveTheme;
 use gpui::*;
 
 /// Corner position for the rounded corner widget
@@ -24,7 +25,7 @@ impl Corner {
 
 impl Render for Corner {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let theme = cx.global::<crate::theme::Theme>();
+        let theme = cx.theme();
         let color = theme.bg;
         let r = self.radius;
         let position = self.position;

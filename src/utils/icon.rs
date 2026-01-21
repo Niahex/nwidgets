@@ -1,3 +1,4 @@
+use crate::theme::ActiveTheme;
 use gpui::*;
 use once_cell::sync::Lazy;
 use parking_lot::RwLock;
@@ -135,7 +136,7 @@ impl RenderOnce for Icon {
                 svg_element = svg_element.text_color(color);
             } else {
                 // Couleur par défaut si aucune n'est spécifiée
-                svg_element = svg_element.text_color(cx.global::<crate::theme::Theme>().white);
+                svg_element = svg_element.text_color(cx.theme().white);
             }
 
             svg_element.into_any_element()

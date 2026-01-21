@@ -1,3 +1,4 @@
+use crate::theme::ActiveTheme;
 use gpui::prelude::*;
 use gpui::*;
 
@@ -27,7 +28,7 @@ impl Toggle {
 
 impl RenderOnce for Toggle {
     fn render(self, _: &mut Window, cx: &mut App) -> impl IntoElement {
-        let theme = cx.global::<crate::theme::Theme>();
+        let theme = cx.theme();
         let is_on = self.checked;
 
         let (bg_color, border_color) = if is_on {

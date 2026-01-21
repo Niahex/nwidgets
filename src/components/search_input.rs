@@ -16,8 +16,8 @@ impl SearchInput {
         }
     }
 
-    pub fn with_theme(mut self, theme: Theme) -> Self {
-        self.theme = theme;
+    pub fn with_theme(mut self, theme: &Theme) -> Self {
+        self.theme = theme.clone();
         self
     }
 

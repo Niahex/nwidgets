@@ -1,3 +1,4 @@
+use crate::theme::ActiveTheme;
 use gpui::prelude::*;
 use gpui::*;
 use std::rc::Rc;
@@ -42,7 +43,7 @@ impl PopoverMenu {
 
 impl RenderOnce for PopoverMenu {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let theme = cx.global::<crate::theme::Theme>().clone();
+        let theme = cx.theme().clone();
         let on_close = self.on_close.clone();
         let is_open = self.is_open;
         let content = self.content.clone();

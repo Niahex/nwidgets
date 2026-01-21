@@ -1,3 +1,4 @@
+use crate::theme::ActiveTheme;
 use crate::services::notifications::{Notification, NotificationAdded, NotificationService};
 use crate::utils::Icon;
 use gpui::prelude::*;
@@ -89,7 +90,7 @@ impl Render for NotificationsWidget {
             return div().into_any_element();
         }
 
-        let theme = cx.global::<crate::theme::Theme>();
+        let theme = cx.theme();
 
         div()
             .flex()

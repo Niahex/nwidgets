@@ -1,3 +1,4 @@
+use crate::theme::ActiveTheme;
 use crate::services::cef::BrowserView;
 use crate::services::chat::{ChatService, ChatToggled};
 use gpui::prelude::*;
@@ -99,7 +100,7 @@ impl gpui::Render for ChatWidget {
             return div().into_any_element();
         }
 
-        let theme = cx.global::<crate::theme::Theme>();
+        let theme = cx.theme();
 
         div()
             .id("chat-root")

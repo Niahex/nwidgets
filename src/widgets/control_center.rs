@@ -5,6 +5,7 @@ use crate::services::control_center::{ControlCenterSection, ControlCenterService
 use crate::services::network::NetworkService;
 use crate::services::notifications::{NotificationAdded, NotificationService};
 use crate::services::system_monitor::SystemMonitorService;
+use crate::theme::ActiveTheme;
 use crate::utils::Icon;
 use gpui::prelude::*;
 use gpui::*;
@@ -166,7 +167,7 @@ impl ControlCenterWidget {
         let vol_expanded = expanded == Some(ControlCenterSection::Volume);
         let mic_expanded = expanded == Some(ControlCenterSection::Mic);
 
-        let theme = cx.global::<crate::theme::Theme>().clone();
+        let theme = cx.theme().clone();
 
         let volume_icon = if audio_state.sink_muted {
             "sink-muted"
@@ -372,7 +373,7 @@ impl ControlCenterWidget {
     }
 
     fn render_volume_details(&mut self, cx: &mut Context<Self>) -> AnyElement {
-        let theme = cx.global::<crate::theme::Theme>().clone();
+        let theme = cx.theme().clone();
         let sinks = self.audio.read(cx).sinks();
         let default_sink = sinks.iter().find(|s| s.is_default).cloned();
         let is_open = self.sink_dropdown_open;
@@ -496,7 +497,7 @@ impl ControlCenterWidget {
     }
 
     fn render_mic_details(&mut self, cx: &mut Context<Self>) -> AnyElement {
-        let theme = cx.global::<crate::theme::Theme>().clone();
+        let theme = cx.theme().clone();
         let sources = self.audio.read(cx).sources();
         let default_source = sources.iter().find(|s| s.is_default).cloned();
         let is_open = self.source_dropdown_open;
@@ -629,7 +630,7 @@ impl ControlCenterWidget {
         let net_expanded = expanded == Some(ControlCenterSection::Network);
         let monitor_expanded = expanded == Some(ControlCenterSection::Monitor);
 
-        let theme = cx.global::<crate::theme::Theme>();
+        let theme = cx.theme();
 
         div()
             .flex()
@@ -970,7 +971,7 @@ impl ControlCenterWidget {
 
     fn render_notifications_section(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
         let notifications = self.notifications.read(cx).get_all();
-        let theme = cx.global::<crate::theme::Theme>();
+        let theme = cx.theme();
         let notif_service = self.notifications.clone();
 
         div()
@@ -1043,7 +1044,7 @@ impl ControlCenterWidget {
     }
 
     fn render_network_details(&mut self, cx: &mut Context<Self>) -> AnyElement {
-        let theme = cx.global::<crate::theme::Theme>().clone();
+        let theme = cx.theme().clone();
         let net_state = self.network.read(cx).state();
         let vpn_service = self.network.read(cx).vpn();
         let vpn_state = vpn_service.read(cx).state();
@@ -1133,7 +1134,7 @@ impl ControlCenterWidget {
     }
 
     fn render_monitor_details(&mut self, cx: &mut Context<Self>) -> AnyElement {
-        let theme = cx.global::<crate::theme::Theme>().clone();
+        let theme = cx.theme().clone();
         let stats = self.system_monitor.read(cx).stats();
 
         div()
@@ -1346,7 +1347,7 @@ impl Render for ControlCenterWidget {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         window.focus(&self.focus_handle, cx);
 
-        let theme = cx.global::<crate::theme::Theme>().clone();
+        let theme = cx.theme().clone();
 
         div()
             .track_focus(&self.focus_handle)

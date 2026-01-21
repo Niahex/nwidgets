@@ -1,3 +1,4 @@
+use crate::theme::ActiveTheme;
 use crate::services::osd::{OsdEvent, OsdService, OsdStateChanged};
 use crate::utils::Icon;
 use gpui::prelude::*;
@@ -82,7 +83,7 @@ impl Render for OsdWidget {
         }
 
         let event = self.current_event.as_ref().unwrap();
-        let theme = cx.global::<crate::theme::Theme>();
+        let theme = cx.theme();
 
         let content = match event {
             OsdEvent::Volume(icon_name, _level, _muted) => {

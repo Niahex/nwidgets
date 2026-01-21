@@ -35,8 +35,8 @@ impl Launcher {
             focus_handle: cx.focus_handle(),
             core,
             search_input: SearchInput::new("Search for apps and commands")
-                .with_theme(theme.clone()),
-            search_results: SearchResults::new().with_theme(theme.clone()),
+                .with_theme(&theme),
+            search_results: SearchResults::new().with_theme(&theme),
             internal_results: Vec::new(),
             search_task: None,
             theme,

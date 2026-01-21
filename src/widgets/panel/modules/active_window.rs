@@ -1,3 +1,4 @@
+use crate::theme::ActiveTheme;
 use crate::services::chat::ChatService;
 use crate::services::hyprland::{ActiveWindowChanged, HyprlandService};
 use crate::utils::Icon;
@@ -76,7 +77,7 @@ impl Render for ActiveWindowModule {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let active_window = self.hyprland.read(cx).active_window();
         let chat_visible = self.chat.read(cx).visible;
-        let theme = cx.global::<crate::theme::Theme>();
+        let theme = cx.theme();
 
         let (icon_name, class_text, title_text) = if chat_visible {
             let site_name = self.current_site_name();

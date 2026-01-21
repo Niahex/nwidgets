@@ -1,3 +1,4 @@
+use crate::theme::ActiveTheme;
 use crate::services::hyprland::{HyprlandService, WorkspaceChanged};
 use gpui::prelude::*;
 use gpui::*;
@@ -29,7 +30,7 @@ impl Render for WorkspacesModule {
         let active_id = self.hyprland.read(cx).active_workspace_id();
         let hyprland = self.hyprland.clone();
 
-        let theme = cx.global::<crate::theme::Theme>();
+        let theme = cx.theme();
 
         div()
             .flex()

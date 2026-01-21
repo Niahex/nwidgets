@@ -53,4 +53,28 @@ impl Theme {
             systray_hover: rgb(0x313244).into(),
         }
     }
+
+    pub fn background(&self) -> Hsla {
+        self.bg
+    }
+
+    pub fn border(&self) -> Hsla {
+        self.overlay
+    }
+}
+
+pub trait ActiveTheme {
+    fn theme(&self) -> &Theme;
+}
+
+impl ActiveTheme for App {
+    fn theme(&self) -> &Theme {
+        self.global::<Theme>()
+    }
+}
+
+impl<V> ActiveTheme for Context<'_, V> {
+    fn theme(&self) -> &Theme {
+        self.global::<Theme>()
+    }
 }

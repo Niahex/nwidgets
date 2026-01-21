@@ -1,3 +1,4 @@
+use crate::theme::ActiveTheme;
 use super::PopoverMenu;
 use gpui::prelude::*;
 use gpui::*;
@@ -65,7 +66,7 @@ impl<T: Clone + PartialEq + 'static> Dropdown<T> {
 
 impl<T: Clone + PartialEq + 'static> RenderOnce for Dropdown<T> {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let theme = cx.global::<crate::theme::Theme>().clone();
+        let theme = cx.theme();
         let is_open = self.is_open;
 
         let label: SharedString = self
@@ -105,7 +106,7 @@ impl<T: Clone + PartialEq + 'static> RenderOnce for Dropdown<T> {
         let on_toggle = self.on_toggle.clone();
 
         PopoverMenu::new("dropdown-menu", trigger, move |_window, cx| {
-            let theme = cx.global::<crate::theme::Theme>().clone();
+            let theme = cx.theme();
 
             div()
                 .flex()

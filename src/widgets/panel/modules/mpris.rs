@@ -1,3 +1,4 @@
+use crate::theme::ActiveTheme;
 use crate::services::mpris::{MprisService, MprisStateChanged, PlaybackStatus};
 use gpui::prelude::*;
 use gpui::*;
@@ -53,7 +54,7 @@ impl Render for MprisModule {
                     this.text_color(rgba(0xd8dee980)) // Dimmed when paused
                 })
                 .when(!is_paused, |this| {
-                    this.text_color(cx.global::<crate::theme::Theme>().text)
+                    this.text_color(cx.theme().text)
                 })
                 .hover(|style| style.bg(rgba(0x4c566a40)))
                 // Click to play/pause

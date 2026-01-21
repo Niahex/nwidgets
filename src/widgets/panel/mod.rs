@@ -1,3 +1,4 @@
+use crate::theme::ActiveTheme;
 mod modules;
 
 pub use modules::{
@@ -42,7 +43,7 @@ impl Panel {
 
 impl Render for Panel {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let theme = cx.global::<crate::theme::Theme>();
+        let theme = cx.theme();
         let corner_radius = px(18.);
         let panel_height = px(50.);
 

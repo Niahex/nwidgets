@@ -1,3 +1,4 @@
+use crate::theme::ActiveTheme;
 use crate::services::pomodoro::{
     PomodoroPhase, PomodoroService, PomodoroStateChanged, PomodoroStatus,
 };
@@ -37,7 +38,7 @@ impl Render for PomodoroModule {
         let pomodoro_left = self.pomodoro.clone();
         let pomodoro_middle = self.pomodoro.clone();
 
-        let theme = cx.global::<crate::theme::Theme>();
+        let theme = cx.theme();
 
         let element = match status {
             PomodoroStatus::Idle => div()
