@@ -2,6 +2,8 @@
 
 A high-performance Wayland widget system built with GPUI, featuring a panel, launcher, notifications, and more.
 
+> [!WARNING]
+> For now, this is for my personal use, so a number of things are hardcoded and there are no settings yet. The goal is simply for curious > > people who want to see what can be done with GPUI, CEF, etc., all running on Wayland (on both Nvidia and AMD). If there is enough > interest, we might turn this into a community-driven project.
 ## Features
 
 ### 🎨 Panel
