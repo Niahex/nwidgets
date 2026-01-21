@@ -1,3 +1,4 @@
+mod bluetooth;
 mod monitor;
 mod network;
 mod proxy;
