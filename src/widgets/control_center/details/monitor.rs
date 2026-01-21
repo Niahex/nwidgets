@@ -64,41 +64,6 @@ impl super::super::ControlCenterWidget {
                                 .primary_unit("↓")
                         }),
                 )
-                .children(stats.metrics().iter().map(|metric| {
-                    div()
-                        .flex()
-                        .flex_col()
-                        .gap_1()
-                        .p_2()
-                        .bg(theme.surface)
-                        .rounded_md()
-                        .child(
-                            div()
-                                .flex()
-                                .items_center()
-                                .gap_2()
-                                .child(div().flex_1().text_xs().text_color(theme.text).child(metric.name.clone()))
-                                .child(
-                                    div()
-                                        .flex()
-                                        .gap_2()
-                                        .child(div().text_xs().text_color(theme.text_muted).child(metric.value.clone()))
-                                        .when_some(metric.secondary.clone(), |this, secondary| {
-                                            this.child(div().text_xs().text_color(theme.text_muted).child(secondary))
-                                        }),
-                                ),
-                        )
-                        .when_some(metric.percent, |this, percent| {
-                            this.child(div().h(px(20.)).flex().items_center().child(
-                                div()
-                                    .flex_1()
-                                    .h(px(4.))
-                                    .bg(theme.hover)
-                                    .rounded(px(2.))
-                                    .child(div().w(relative(percent as f32 / 100.0)).h_full().bg(theme.accent).rounded(px(2.))),
-                            ))
-                        })
-                }))
                 .when(!stats.disks.is_empty(), |this| {
                     this.child(
                         div()

@@ -12,14 +12,6 @@ pub struct DiskInfo {
     pub percent: u8,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct SystemMetric {
-    pub name: SharedString,
-    pub value: SharedString,
-    pub secondary: Option<SharedString>,
-    pub percent: Option<u8>,
-}
-
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct SystemStats {
     pub cpu: u8,
@@ -33,37 +25,7 @@ pub struct SystemStats {
     pub net_total: u64,
 }
 
-impl SystemStats {
-    pub fn metrics(&self) -> Vec<SystemMetric> {
-        vec![]
-    }
 
-    #[allow(dead_code)]
-    fn format_bytes(bytes: u64) -> String {
-        if bytes < 1024 {
-            format!("{bytes} B/s")
-        } else if bytes < 1024 * 1024 {
-            format!("{:.1} KB/s", bytes as f64 / 1024.0)
-        } else if bytes < 1024 * 1024 * 1024 {
-            format!("{:.1} MB/s", bytes as f64 / (1024.0 * 1024.0))
-        } else {
-            format!("{:.2} GB/s", bytes as f64 / (1024.0 * 1024.0 * 1024.0))
-        }
-    }
-
-    #[allow(dead_code)]
-    fn format_bytes_total(bytes: u64) -> String {
-        if bytes < 1024 {
-            format!("{bytes} B")
-        } else if bytes < 1024 * 1024 {
-            format!("{:.1} KB", bytes as f64 / 1024.0)
-        } else if bytes < 1024 * 1024 * 1024 {
-            format!("{:.1} MB", bytes as f64 / (1024.0 * 1024.0))
-        } else {
-            format!("{:.2} GB", bytes as f64 / (1024.0 * 1024.0 * 1024.0))
-        }
-    }
-}
 
 #[derive(Clone)]
 pub struct SystemStatsChanged;
@@ -87,8 +49,8 @@ impl SystemMonitorService {
 
         let (ui_tx, mut ui_rx) = futures::channel::mpsc::unbounded::<SystemStats>();
 
-        gpui_tokio::Tokio::spawn(cx, async move { 
-            Self::monitor_worker(ui_tx, monitoring_enabled_clone, notify_clone).await 
+        gpui_tokio::Tokio::spawn(cx, async move {
+            Self::monitor_worker(ui_tx, monitoring_enabled_clone, notify_clone).await
         }).detach();
 
         cx.spawn(move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
@@ -116,7 +78,7 @@ impl SystemMonitorService {
         })
         .detach();
 
-        Self { 
+        Self {
             stats,
             monitoring_enabled,
             notify,
@@ -196,7 +158,7 @@ impl SystemMonitorService {
             };
 
             let _ = ui_tx.unbounded_send(stats);
-            
+
             // Sleep or wait for disable
             tokio::select! {
                 _ = tokio::time::sleep(Duration::from_secs(2)) => {}
