@@ -189,21 +189,17 @@ impl MprisService {
         spotify_running: Arc<RwLock<bool>>,
     ) {
         loop {
-            // Wait for Spotify to be running
-            loop {
-                if *spotify_running.read() {
-                    eprintln!("[MPRIS] Spotify detected, connecting...");
-                    break;
-                }
-                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+            // Wait for Spotify window to open
+            while !*spotify_running.read() {
+                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
             }
+            eprintln!("[MPRIS] Spotify window detected, connecting to DBus...");
 
-            // Try to connect to Spotify via D-Bus
+            // Try to connect once
             let connection = match Connection::session().await {
                 Ok(conn) => conn,
                 Err(e) => {
                     eprintln!("[MPRIS] Failed to connect to session bus: {}", e);
-                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
                     continue;
                 }
             };
@@ -214,9 +210,12 @@ impl MprisService {
                     p
                 }
                 Err(e) => {
-                    eprintln!("[MPRIS] Failed to create proxy: {}", e);
+                    eprintln!("[MPRIS] Spotify MPRIS not available: {} - waiting for window close", e);
+                    // DBus service doesn't exist, wait for window to close then retry
+                    while *spotify_running.read() {
+                        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                    }
                     let _ = ui_tx.unbounded_send(None);
-                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
                     continue;
                 }
             };
@@ -230,7 +229,6 @@ impl MprisService {
                 Err(e) => {
                     eprintln!("[MPRIS] Failed to fetch initial state: {}", e);
                     let _ = ui_tx.unbounded_send(None);
-                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
                     continue;
                 }
             }
@@ -261,14 +259,11 @@ impl MprisService {
                         }
                     }
                     _ = async {
-                        loop {
+                        while *spotify_running.read() {
                             tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-                            if !*spotify_running.read() {
-                                eprintln!("[MPRIS] Spotify window closed");
-                                break;
-                            }
                         }
                     } => {
+                        eprintln!("[MPRIS] Spotify window closed");
                         break;
                     }
                 }
