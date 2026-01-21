@@ -213,8 +213,9 @@
               --prefix LD_LIBRARY_PATH : /run/opengl-driver/lib:${pkgs.lib.makeLibraryPath (buildInputs ++ runtimeDependencies)}:${cefAssets} \
               --set NWIDGETS_ASSETS_DIR $out/share/nwidgets/assets \
               --set CEF_PATH ${cefAssets} \
+              --set __EGL_VENDOR_LIBRARY_FILENAMES /run/opengl-driver/share/glvnd/egl_vendor.d/50_mesa.json:/run/opengl-driver/share/glvnd/egl_vendor.d/10_nvidia.json \
               --run 'export VK_ICD_FILENAMES=$(find /run/opengl-driver/share/vulkan/icd.d -name "*_icd.*.json" 2>/dev/null | tr "\n" ":" | sed "s/:$//")' \
-              --run 'if lspci 2>/dev/null | grep -qi nvidia; then export __GL_THREADED_OPTIMIZATIONS=1 __GL_YIELD=USLEEP; elif lspci 2>/dev/null | grep -qi amd; then export MESA_GLTHREAD=true RADV_PERFTEST=gpl; fi'
+              --run 'if lspci 2>/dev/null | grep -qi nvidia; then export __GL_THREADED_OPTIMIZATIONS=1 __GL_YIELD=USLEEP NWIDGETS_GPU=nvidia; elif lspci 2>/dev/null | grep -qi amd; then export MESA_GLTHREAD=true RADV_PERFTEST=gpl NWIDGETS_GPU=amd; fi'
           '';
         };
 
@@ -272,10 +273,12 @@
             if lspci 2>/dev/null | grep -qi nvidia; then
               export __GL_THREADED_OPTIMIZATIONS=1
               export __GL_YIELD=USLEEP
+              export NWIDGETS_GPU=nvidia
               echo "GPU: NVIDIA detected - threaded optimizations enabled"
             elif lspci 2>/dev/null | grep -qi amd; then
               export MESA_GLTHREAD=true
               export RADV_PERFTEST=gpl
+              export NWIDGETS_GPU=amd
               echo "GPU: AMD detected - RADV optimizations enabled"
             else
               echo "GPU: Auto-detected (AMD/NVIDIA/Intel)"

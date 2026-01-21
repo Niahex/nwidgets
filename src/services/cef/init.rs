@@ -73,6 +73,10 @@ cef::wrap_app! {
             command_line: Option<&mut cef::CommandLine>,
         ) {
             if let Some(cmd) = command_line {
+                // Check for NWIDGETS_GPU environment variable set by flake.nix
+                let gpu_vendor = std::env::var("NWIDGETS_GPU").unwrap_or_else(|_| "unknown".to_string());
+                println!("[nwidgets] CEF Init - Detected GPU vendor: {}", gpu_vendor);
+
                 cmd.append_switch(Some(&"enable-begin-frame-scheduling".into()));
                 cmd.append_switch(Some(&"no-sandbox".into()));
                 cmd.append_switch(Some(&"enable-media-stream".into()));
@@ -80,13 +84,40 @@ cef::wrap_app! {
                     Some(&"ozone-platform".into()),
                     Some(&"wayland".into()),
                 );
-                // Force software rendering to avoid EGL conflicts with GPUI
-                cmd.append_switch(Some(&"disable-gpu".into()));
-                cmd.append_switch(Some(&"disable-gpu-compositing".into()));
-                cmd.append_switch_with_value(
-                    Some(&"use-gl".into()),
-                    Some(&"swiftshader".into()),
-                );
+
+                if gpu_vendor == "nvidia" {
+                    // NVIDIA specific optimizations to prevent freezes
+                    println!("[nwidgets] Applying NVIDIA-specific CEF flags...");
+                    // Ensure GPU is disabled to prevent EGL conflicts which cause freezes on Nvidia
+                    cmd.append_switch(Some(&"disable-gpu".into()));
+                    cmd.append_switch(Some(&"disable-gpu-compositing".into()));
+                    cmd.append_switch_with_value(
+                        Some(&"use-gl".into()),
+                        Some(&"swiftshader".into()),
+                    );
+                    // Additional flags that might help stability on Nvidia
+                    cmd.append_switch(Some(&"disable-vulkan".into()));
+                } else if gpu_vendor == "amd" {
+                    // AMD specific (potentially allow more GPU usage if safe, but stick to safe defaults for now)
+                    println!("[nwidgets] Applying AMD-specific CEF flags...");
+                     // Force software rendering to avoid EGL conflicts with GPUI (same as default for now)
+                    cmd.append_switch(Some(&"disable-gpu".into()));
+                    cmd.append_switch(Some(&"disable-gpu-compositing".into()));
+                    cmd.append_switch_with_value(
+                        Some(&"use-gl".into()),
+                        Some(&"swiftshader".into()),
+                    );
+                } else {
+                    // Default / Intel / Unknown
+                    // Force software rendering to avoid EGL conflicts with GPUI
+                    cmd.append_switch(Some(&"disable-gpu".into()));
+                    cmd.append_switch(Some(&"disable-gpu-compositing".into()));
+                    cmd.append_switch_with_value(
+                        Some(&"use-gl".into()),
+                        Some(&"swiftshader".into()),
+                    );
+                }
+
                 // PipeWire for screen capture and audio
                 cmd.append_switch(Some(&"enable-features=WebRTCPipeWireCapturer,SmoothScrolling".into()));
                 cmd.append_switch_with_value(
