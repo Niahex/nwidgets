@@ -112,7 +112,7 @@ impl BluetoothService {
         let conn = match Connection::system().await {
             Ok(c) => c,
             Err(e) => {
-                eprintln!("[BluetoothService] Failed to connect to system bus: {e}");
+                log::error!("Failed to connect to system bus: {e}");
                 return;
             }
         };
@@ -120,7 +120,7 @@ impl BluetoothService {
         let object_manager = match ObjectManagerProxy::new(&conn).await {
             Ok(p) => p,
             Err(e) => {
-                eprintln!("[BluetoothService] Failed to create ObjectManager proxy: {e}");
+                log::error!("Failed to create ObjectManager proxy: {e}");
                 return;
             }
         };
@@ -133,7 +133,7 @@ impl BluetoothService {
         let mut added_stream = match object_manager.receive_interfaces_added().await {
             Ok(s) => Some(s),
             Err(e) => {
-                eprintln!("[BluetoothService] Failed to receive InterfacesAdded signal: {e}");
+                log::error!("Failed to receive InterfacesAdded signal: {e}");
                 None
             }
         };
@@ -141,7 +141,7 @@ impl BluetoothService {
         let mut removed_stream = match object_manager.receive_interfaces_removed().await {
             Ok(s) => Some(s),
             Err(e) => {
-                eprintln!("[BluetoothService] Failed to receive InterfacesRemoved signal: {e}");
+                log::error!("Failed to receive InterfacesRemoved signal: {e}");
                 None
             }
         };
@@ -279,7 +279,7 @@ impl BluetoothService {
         let current_powered = self.state.read().powered;
         gpui_tokio::Tokio::spawn(cx, async move {
             if let Err(e) = Self::set_adapter_power(!current_powered).await {
-                eprintln!("[BluetoothService] Failed to toggle power: {e}");
+                log::error!("Failed to toggle bluetooth power: {e}");
             }
         })
         .detach();
@@ -291,7 +291,7 @@ impl BluetoothService {
             // Enable bluetooth first if it's off
             if !powered {
                 if let Err(e) = Self::set_adapter_power(true).await {
-                    eprintln!("[BluetoothService] Failed to enable bluetooth: {e}");
+                    log::error!("Failed to enable bluetooth: {e}");
                     return;
                 }
                 // Wait a bit for bluetooth to be ready
@@ -299,7 +299,7 @@ impl BluetoothService {
             }
 
             if let Err(e) = Self::toggle_device_connection(&address).await {
-                eprintln!("[BluetoothService] Failed to toggle device: {e}");
+                log::error!("Failed to toggle device connection: {e}");
             }
         })
         .detach();
@@ -308,7 +308,7 @@ impl BluetoothService {
     pub fn toggle_auto_connect(&self, address: String, cx: &mut Context<Self>) {
         gpui_tokio::Tokio::spawn(cx, async move {
             if let Err(e) = Self::toggle_device_trusted(&address).await {
-                eprintln!("[BluetoothService] Failed to toggle auto-connect: {e}");
+                log::error!("Failed to toggle auto-connect: {e}");
             }
         })
         .detach();
