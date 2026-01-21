@@ -1,5 +1,6 @@
 use crate::services::system::hyprland::{HyprlandService, WorkspaceChanged};
 use crate::theme::ActiveTheme;
+use crate::ui::components::Button;
 use gpui::prelude::*;
 use gpui::*;
 
@@ -30,8 +31,6 @@ impl Render for WorkspacesModule {
         let active_id = self.hyprland.read(cx).active_workspace_id();
         let hyprland = self.hyprland.clone();
 
-        let theme = cx.theme();
-
         div()
             .flex()
             .gap_1()
@@ -52,33 +51,13 @@ impl Render for WorkspacesModule {
                         .to_string()
                 };
 
-                div()
-                    .id(("workspace", ws.id as u32))
-                    .px_3()
-                    .py_1()
-                    .rounded_md()
-                    .text_sm()
-                    .font_weight(if is_active {
-                        FontWeight::BOLD
-                    } else {
-                        FontWeight::MEDIUM
-                    })
-                    .when(is_active, |this| {
-                        this.bg(theme.accent.opacity(0.2)).text_color(theme.accent)
-                    })
-                    .when(!is_active, |this| {
-                        this.text_color(theme.text_muted.opacity(0.5))
-                            .hover(|style| {
-                                style
-                                    .bg(theme.accent.opacity(0.1))
-                                    .text_color(theme.text_muted.opacity(0.8))
-                            })
-                    })
-                    .cursor_pointer()
+                Button::new(("workspace", ws.id as u32))
+                    .label(display_name)
+                    .accent()
+                    .selected(is_active)
                     .on_click(move |_event, _window, cx| {
                         hyprland.read(cx).switch_to_workspace(ws_id);
                     })
-                    .child(display_name)
             }))
     }
 }

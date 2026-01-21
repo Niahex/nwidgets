@@ -19,8 +19,6 @@ impl super::ControlCenterWidget {
         let net_expanded = expanded == Some(ControlCenterSection::Network);
         let monitor_expanded = expanded == Some(ControlCenterSection::Monitor);
 
-        let theme = cx.theme();
-
         div()
             .flex()
             .flex_col()
@@ -47,168 +45,71 @@ impl super::ControlCenterWidget {
                     )
                     .child(
                         div()
-                            .id("bluetooth-toggle")
                             .flex_1()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .gap_2()
-                            .px_3()
-                            .py_2()
-                            .rounded_md()
-                            .text_sm()
-                            .font_weight(if bt_expanded {
-                                FontWeight::BOLD
-                            } else {
-                                FontWeight::MEDIUM
-                            })
-                            .when(bt_expanded, |this| {
-                                this.bg(theme.accent.opacity(0.2)).text_color(theme.accent)
-                            })
-                            .when(!bt_expanded, |this| {
-                                this.text_color(theme.text_muted.opacity(0.5))
-                                    .hover(|style| {
-                                        style
-                                            .bg(theme.hover)
-                                            .text_color(theme.text_muted.opacity(0.8))
+                            .child(
+                                Button::new("bluetooth-toggle")
+                                    .icon("bluetooth-active")
+                                    .icon_size(px(20.))
+                                    .accent()
+                                    .selected(bt_expanded)
+                                    .on_click(cx.listener(|this, _, _window, cx| {
+                                        this.control_center.update(cx, |cc, cx| {
+                                            cc.toggle_section(ControlCenterSection::Bluetooth, cx)
+                                        });
+                                    }))
+                                    .on_right_click(cx.listener(|this, _, _, cx| {
+                                        this.bluetooth.update(cx, |bt, cx| bt.toggle_power(cx));
+                                    }))
+                                    .when(bt_state.connected_devices > 0, |this| {
+                                        this.child(format!("{}", bt_state.connected_devices))
                                     })
-                            })
-                            .cursor_pointer()
-                            .on_click(cx.listener(|this, _, _window, cx| {
-                                this.control_center.update(cx, |cc, cx| {
-                                    cc.toggle_section(ControlCenterSection::Bluetooth, cx)
-                                });
-                            }))
-                            .on_mouse_down(
-                                gpui::MouseButton::Right,
-                                cx.listener(|this, _, _, cx| {
-                                    this.bluetooth.update(cx, |bt, cx| bt.toggle_power(cx));
-                                }),
                             )
-                            .child(Icon::new("bluetooth-active").size(px(20.)).color(
-                                if bt_expanded {
-                                    theme.accent
-                                } else {
-                                    theme.text_muted.opacity(0.5)
-                                },
-                            ))
-                            .when(bt_state.connected_devices > 0, |this| {
-                                this.child(format!("{}", bt_state.connected_devices))
-                            }),
                     )
                     .child(
                         div()
-                            .id("network-toggle")
                             .flex_1()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .gap_2()
-                            .px_3()
-                            .py_2()
-                            .rounded_md()
-                            .text_sm()
-                            .font_weight(if net_expanded {
-                                FontWeight::BOLD
-                            } else {
-                                FontWeight::MEDIUM
-                            })
-                            .when(net_expanded, |this| {
-                                this.bg(theme.accent.opacity(0.2)).text_color(theme.accent)
-                            })
-                            .when(!net_expanded, |this| {
-                                this.text_color(theme.text_muted.opacity(0.5))
-                                    .hover(|style| {
-                                        style
-                                            .bg(theme.hover)
-                                            .text_color(theme.text_muted.opacity(0.8))
-                                    })
-                            })
-                            .cursor_pointer()
-                            .on_click(cx.listener(|this, _, _window, cx| {
-                                this.control_center.update(cx, |cc, cx| {
-                                    cc.toggle_section(ControlCenterSection::Network, cx)
-                                });
-                            }))
-                            .child(Icon::new(net_state.get_icon_name()).size(px(20.)).color(
-                                if net_expanded {
-                                    theme.accent
-                                } else {
-                                    theme.text_muted.opacity(0.5)
-                                },
-                            )),
-                    )
-                    .child(
-                        div()
-                            .id("proxy-toggle")
-                            .flex_1()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .px_3()
-                            .py_2()
-                            .rounded_md()
-                            .text_sm()
-                            .text_color(theme.text_muted.opacity(0.5))
-                            .hover(|style| {
-                                style
-                                    .bg(theme.hover)
-                                    .text_color(theme.text_muted.opacity(0.8))
-                            })
-                            .cursor_pointer()
                             .child(
-                                Icon::new("proxy")
-                                    .size(px(20.))
-                                    .color(theme.text_muted.opacity(0.5)),
-                            ),
+                                Button::new("network-toggle")
+                                    .icon(net_state.get_icon_name())
+                                    .icon_size(px(20.))
+                                    .accent()
+                                    .selected(net_expanded)
+                                    .on_click(cx.listener(|this, _, _window, cx| {
+                                        this.control_center.update(cx, |cc, cx| {
+                                            cc.toggle_section(ControlCenterSection::Network, cx)
+                                        });
+                                    }))
+                            )
                     )
                     .child(
                         div()
-                            .id("ssh-toggle")
                             .flex_1()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .px_3()
-                            .py_2()
-                            .rounded_md()
-                            .text_sm()
-                            .text_color(theme.text_muted.opacity(0.5))
-                            .hover(|style| {
-                                style
-                                    .bg(theme.hover)
-                                    .text_color(theme.text_muted.opacity(0.8))
-                            })
-                            .cursor_pointer()
                             .child(
-                                Icon::new("ssh")
-                                    .size(px(20.))
-                                    .color(theme.text_muted.opacity(0.5)),
-                            ),
+                                Button::new("proxy-toggle")
+                                    .icon("proxy")
+                                    .icon_size(px(20.))
+                                    .accent()
+                            )
                     )
                     .child(
                         div()
-                            .id("vm-toggle")
                             .flex_1()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .px_3()
-                            .py_2()
-                            .rounded_md()
-                            .text_sm()
-                            .text_color(theme.text_muted.opacity(0.5))
-                            .hover(|style| {
-                                style
-                                    .bg(theme.hover)
-                                    .text_color(theme.text_muted.opacity(0.8))
-                            })
-                            .cursor_pointer()
                             .child(
-                                Icon::new("vm")
-                                    .size(px(20.))
-                                    .color(theme.text_muted.opacity(0.5)),
-                            ),
+                                Button::new("ssh-toggle")
+                                    .icon("ssh")
+                                    .icon_size(px(20.))
+                                    .accent()
+                            )
+                    )
+                    .child(
+                        div()
+                            .flex_1()
+                            .child(
+                                Button::new("vm-toggle")
+                                    .icon("vm")
+                                    .icon_size(px(20.))
+                                    .accent()
+                            )
                     ),
             )
             .child(if bt_expanded {
