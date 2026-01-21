@@ -9,7 +9,7 @@ A high-performance Wayland widget system built with GPUI, featuring a panel, lau
 - [x] **Pomodoro** timer interractive
 - [x] **Workspaces** Indicator and interractive
 - [x] **MPRIS** spotify indicator and controls with mouse (vertical +/-, horizontal next/prev, click pause/play )
-- [] (5) **Sytray** :
+- [] **Sytray** : (5)
 - [x] **Audio/Bluetooth/Network/Date-Time** indicators
 
 ### 🚀 Launcher
@@ -19,8 +19,8 @@ A high-performance Wayland widget system built with GPUI, featuring a panel, lau
 - [x] **Process manager** (type `ps` to list/kill processes)
 - [x] **Clipboard history** integration
   - [x] text
-  - [ ] (2) image
-  - [ ] (1) keepass protect
+  - [ ] image (2)
+  - [ ] keepass protect (1)
 
 ### 💬 Chat
 - **Embedded browser** for differents AI chat
@@ -28,7 +28,7 @@ A high-performance Wayland widget system built with GPUI, featuring a panel, lau
 - **Fullscreen-aware** (auto-hide in fullscreen)
 - **Persistent URL** state
 - [x] **Audio** : i/o
-- [-] (5) **Screenshare** : work but force
+- [-] **Screenshare** : work but force (5)
 - [x] disable gpu rendering
 - [?] WGPU
 - [?] Blade 
@@ -46,43 +46,44 @@ A high-performance Wayland widget system built with GPUI, featuring a panel, lau
   - [x] **GPU** : % & Temp
   - [x] **Memory** : ram and primary disk 
   - [x] **Network** : download / upload
+  - [x] **Disks** : 7
 - **Audio mixer** :
    - [x] **Sink/source**
     - [x] Modify with scroll
-    - [?] (5) slider mouse interract
-  - [] (4) **Streams**
-    - [~] (5) icones per site
-    - [] (4) progress bar control  
-    - [?] (5) slider mouse interract
+    - [?] slider mouse interract (5)
+  - [] **Streams**
+    - [~] icones per site (5)
+    - [] progress bar control (4)
+    - [?] slider mouse interract (5)
 - [] **Bluetooth**
-  - [] (5) on/off blutooth
+  - [] on/off blutooth (5)
   - [x] list
   - [x] toggle connection devices
   - [x] trust toggle devices  
-- [] (3) **Network manager**
-  - [] (5) all informations
-  - [] (2) vpn
-  - [] (3) proxy
-  - [] (3) ssh
-- [] (5) VM Manager
-- [] (5) **Notification**
+- [] **Network manager**
+  - [] all informations (5)
+  - [] vpn (2)
+  - [] proxy (3)
+  - [] ssh (3)
+- [] VM Manager (5)
+- [x] **Notification** 
   - [x] List
   - [x] Clear
 
 ### 📊 OSD (On-Screen Display)
-- [] (5) **Sink**
+- [] **Sink**
   - [x] +/-
-  - [ ] (5) mute
-  - [ ] (5) bypass 100% 
-- [ ] (5) Source
-  - [ ] (5) +/-
-  - [ ] (5) mute
-  - [?] use
-- [] (5) record
-- [] (5) Clipboard
+  - [ ] mute (5)
+  - [ ] bypass 100% (5)
+- [ ] (Source
+  - [ ] +/- (5)
+  - [ ] mute (5)
+  - [?] in used 
+- [] record (5)
+- [] Clipboard
   - [x] text
     - [?] display the first words
-  - [?] image
+  - [?] image 
   - [?] files
 
 
