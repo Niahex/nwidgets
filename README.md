@@ -19,8 +19,12 @@ A high-performance Wayland widget system built with GPUI, featuring a panel, lau
 - [x] **Process manager** (type `ps` to list/kill processes)
 - [x] **Clipboard history** integration
   - [x] text
-  - [ ] image (2)
-  - [ ] keepass protect (1)
+
+> [!NOTE]
+> Clipboard : image, keepass protect ? Cacl
+> - [ ] test
+
+---
 
 ### 💬 Chat
 
@@ -37,6 +41,11 @@ A high-performance Wayland widget system built with GPUI, featuring a panel, lau
 
 >**Behavior**
 - [x] **Fullscreen-aware** (auto-hide in fullscreen)
+<>
+> [!NOTE]
+> Gpu accel : wgpu blade ?
+
+---
 
 ### 🔔 Notifications
 - [x] **Auto-dismiss** after timeout
