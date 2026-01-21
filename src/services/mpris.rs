@@ -46,6 +46,7 @@ pub struct MprisService {
     current_player: Arc<RwLock<Option<MprisPlayer>>>,
     executor: BackgroundExecutor,
     spotify_running: Arc<RwLock<bool>>,
+    spotify_notify: Arc<tokio::sync::Notify>,
 }
 
 // D-Bus proxy for MPRIS2 Player interface
@@ -74,25 +75,29 @@ impl MprisService {
         let current_player_clone = Arc::clone(&current_player);
         let spotify_running = Arc::new(RwLock::new(false));
         let spotify_running_clone = Arc::clone(&spotify_running);
+        let spotify_notify = Arc::new(tokio::sync::Notify::new());
+        let spotify_notify_clone = Arc::clone(&spotify_notify);
 
         let (ui_tx, mut ui_rx) = futures::channel::mpsc::unbounded::<Option<MprisPlayer>>();
 
         // Subscribe to Hyprland window changes to detect Spotify
         let hyprland = crate::services::hyprland::HyprlandService::global(cx);
         let spotify_running_for_sub = Arc::clone(&spotify_running);
+        let spotify_notify_for_sub = Arc::clone(&spotify_notify);
         cx.subscribe(&hyprland, move |_, hyprland, _: &crate::services::hyprland::ActiveWindowChanged, _cx| {
             let is_spotify = hyprland.read(_cx).is_window_open("spotify");
             
             let mut running = spotify_running_for_sub.write();
             if *running != is_spotify {
                 *running = is_spotify;
+                spotify_notify_for_sub.notify_one();
                 eprintln!("[MPRIS] Spotify window state: {}", is_spotify);
             }
         }).detach();
 
         // 1. Worker Task (Tokio)
         gpui_tokio::Tokio::spawn(cx, async move { 
-            Self::mpris_worker(ui_tx, spotify_running_clone).await 
+            Self::mpris_worker(ui_tx, spotify_running_clone, spotify_notify_clone).await 
         }).detach();
 
         // 2. UI Task (GPUI)
@@ -124,6 +129,7 @@ impl MprisService {
             current_player,
             executor: cx.background_executor().clone(),
             spotify_running,
+            spotify_notify,
         }
     }
 
@@ -187,11 +193,15 @@ impl MprisService {
     async fn mpris_worker(
         ui_tx: futures::channel::mpsc::UnboundedSender<Option<MprisPlayer>>,
         spotify_running: Arc<RwLock<bool>>,
+        spotify_notify: Arc<tokio::sync::Notify>,
     ) {
         loop {
-            // Wait for Spotify window to open
-            while !*spotify_running.read() {
-                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            // Wait for Spotify window to open (event-driven)
+            loop {
+                if *spotify_running.read() {
+                    break;
+                }
+                spotify_notify.notified().await;
             }
             eprintln!("[MPRIS] Spotify window detected, connecting to DBus...");
 
@@ -212,8 +222,11 @@ impl MprisService {
                 Err(e) => {
                     eprintln!("[MPRIS] Spotify MPRIS not available: {} - waiting for window close", e);
                     // DBus service doesn't exist, wait for window to close then retry
-                    while *spotify_running.read() {
-                        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                    loop {
+                        if !*spotify_running.read() {
+                            break;
+                        }
+                        spotify_notify.notified().await;
                     }
                     let _ = ui_tx.unbounded_send(None);
                     continue;
@@ -258,13 +271,11 @@ impl MprisService {
                             let _ = ui_tx.unbounded_send(Some(player));
                         }
                     }
-                    _ = async {
-                        while *spotify_running.read() {
-                            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                    _ = spotify_notify.notified() => {
+                        if !*spotify_running.read() {
+                            eprintln!("[MPRIS] Spotify window closed");
+                            break;
                         }
-                    } => {
-                        eprintln!("[MPRIS] Spotify window closed");
-                        break;
                     }
                 }
             }
