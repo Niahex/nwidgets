@@ -29,22 +29,45 @@ pub struct SliderState {
 }
 
 impl SliderState {
-    pub fn new(min: f32, max: f32, value: f32) -> Self {
-        let mut state = Self {
-            min,
-            max,
-            value: value.clamp(min, max),
+    pub fn new() -> Self {
+        Self {
+            min: 0.0,
+            max: 100.0,
+            value: 0.0,
             percentage: 0.0,
             bounds: Bounds::default(),
-        };
-        state.update_percentage();
-        state
+        }
+    }
+
+    pub fn min(mut self, min: f32) -> Self {
+        self.min = min;
+        self.update_percentage();
+        self
+    }
+
+    pub fn max(mut self, max: f32) -> Self {
+        self.max = max;
+        self.update_percentage();
+        self
+    }
+
+    pub fn default_value(mut self, value: f32) -> Self {
+        self.value = value.clamp(self.min, self.max);
+        self.update_percentage();
+        self
     }
 
     pub fn set_value(&mut self, value: f32, _: &mut Window, cx: &mut Context<Self>) {
         self.value = value.clamp(self.min, self.max);
         self.update_percentage();
         cx.emit(SliderEvent::Change(self.value));
+        cx.notify();
+    }
+
+    /// Update value without emitting event (for external updates)
+    pub fn update_value(&mut self, value: f32, cx: &mut Context<Self>) {
+        self.value = value.clamp(self.min, self.max);
+        self.update_percentage();
         cx.notify();
     }
 
@@ -108,6 +131,7 @@ impl RenderOnce for Slider {
         let percentage = state.percentage;
 
         div()
+            .id(("slider", entity_id))
             .relative()
             .w_full()
             .h(px(6.))
@@ -115,7 +139,7 @@ impl RenderOnce for Slider {
             .items_center()
             .child(
                 div()
-                    .id("slider-container")
+                    .id(("slider-container", entity_id))
                     .w_full()
                     .h(px(6.))
                     .flex()
@@ -130,7 +154,7 @@ impl RenderOnce for Slider {
                     })
                     .child(
                         div()
-                            .id("slider-bar")
+                            .id(("slider-bar", entity_id))
                             .relative()
                             .w_full()
                             .h(px(4.))
@@ -148,7 +172,7 @@ impl RenderOnce for Slider {
                             .child(
                                 // Thumb
                                 div()
-                                    .id("slider-thumb")
+                                    .id(("slider-thumb", entity_id))
                                     .absolute()
                                     .size(px(12.))
                                     .rounded_full()

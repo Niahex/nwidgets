@@ -3,7 +3,7 @@ mod details;
 mod notifications;
 mod quick_actions;
 
-use crate::ui::components::{CircularProgress, Dropdown, DropdownOption, Toggle};
+use crate::ui::components::{CircularProgress, Dropdown, DropdownOption, SliderState, Toggle};
 use crate::services::media::audio::AudioService;
 use crate::services::hardware::bluetooth::BluetoothService;
 use crate::services::ui::control_center::{ControlCenterSection, ControlCenterService};
@@ -28,10 +28,8 @@ pub struct ControlCenterWidget {
     system_monitor: Entity<SystemMonitorService>,
     sink_dropdown_open: bool,
     source_dropdown_open: bool,
-    last_volume: u8,
-    last_mic_volume: u8,
-    last_volume_update: Option<Instant>,
-    last_mic_update: Option<Instant>,
+    sink_slider: Entity<SliderState>,
+    source_slider: Entity<SliderState>,
 }
 
 fn get_stream_display(
@@ -82,6 +80,21 @@ impl ControlCenterWidget {
 
         let audio_state = audio.read(cx).state();
 
+        // Create sliders
+        let sink_slider = cx.new(|_| {
+            SliderState::new()
+                .min(0.0)
+                .max(100.0)
+                .default_value(audio_state.sink_volume as f32)
+        });
+
+        let source_slider = cx.new(|_| {
+            SliderState::new()
+                .min(0.0)
+                .max(100.0)
+                .default_value(audio_state.source_volume as f32)
+        });
+
         cx.subscribe(&control_center, |_, _, _, cx| cx.notify())
             .detach();
         cx.subscribe(
@@ -108,21 +121,13 @@ impl ControlCenterWidget {
         .detach();
         cx.subscribe(&audio, |this, _, _, cx| {
             let audio_state = this.audio.read(cx).state();
-            let now = Instant::now();
-            if this
-                .last_volume_update
-                .map(|last| now.duration_since(last) > Duration::from_millis(200))
-                .unwrap_or(true)
-            {
-                this.last_volume = audio_state.sink_volume;
-            }
-            if this
-                .last_mic_update
-                .map(|last| now.duration_since(last) > Duration::from_millis(200))
-                .unwrap_or(true)
-            {
-                this.last_mic_volume = audio_state.source_volume;
-            }
+            // Update sliders when audio state changes (without emitting events)
+            this.sink_slider.update(cx, |slider, cx| {
+                slider.update_value(audio_state.sink_volume as f32, cx);
+            });
+            this.source_slider.update(cx, |slider, cx| {
+                slider.update_value(audio_state.source_volume as f32, cx);
+            });
             cx.notify();
         })
         .detach();
@@ -132,6 +137,25 @@ impl ControlCenterWidget {
             .detach();
         cx.subscribe(&notifications, |_, _, _: &NotificationAdded, cx| {
             cx.notify()
+        })
+        .detach();
+
+        // Subscribe to slider events
+        cx.subscribe(&sink_slider, |this, _, event: &crate::ui::components::SliderEvent, cx| {
+            if let crate::ui::components::SliderEvent::Change(value) = event {
+                this.audio.update(cx, |audio, cx| {
+                    audio.set_sink_volume(*value as u8, cx);
+                });
+            }
+        })
+        .detach();
+
+        cx.subscribe(&source_slider, |this, _, event: &crate::ui::components::SliderEvent, cx| {
+            if let crate::ui::components::SliderEvent::Change(value) = event {
+                this.audio.update(cx, |audio, cx| {
+                    audio.set_source_volume(*value as u8, cx);
+                });
+            }
         })
         .detach();
 
@@ -152,10 +176,8 @@ impl ControlCenterWidget {
             system_monitor,
             sink_dropdown_open: false,
             source_dropdown_open: false,
-            last_volume: audio_state.sink_volume,
-            last_mic_volume: audio_state.source_volume,
-            last_volume_update: None,
-            last_mic_update: None,
+            sink_slider,
+            source_slider,
         }
     }
 }

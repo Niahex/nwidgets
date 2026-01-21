@@ -2,9 +2,8 @@ use crate::services::media::audio::AudioService;
 use crate::services::ui::control_center::ControlCenterSection;
 use crate::theme::{ActiveTheme, Theme};
 use crate::assets::Icon;
-use crate::ui::components::{Slider, SliderState};
+use crate::ui::components::Slider;
 use gpui::*;
-use std::time::{Duration, Instant};
 
 impl super::ControlCenterWidget {
     // Helper: render stream item (used by both sink and source)
@@ -107,54 +106,13 @@ impl super::ControlCenterWidget {
                             .h(px(20.))
                             .flex()
                             .items_center()
-                            .on_scroll_wheel(cx.listener(
-                                |this, event: &ScrollWheelEvent, window, cx| {
-                                    let delta_point = event.delta.pixel_delta(window.line_height());
-                                    let delta = if delta_point.y > px(0.0) { 5 } else { -5 };
-                                    let current = this.last_volume as i32;
-                                    let new_volume = (current + delta).clamp(0, 100) as u8;
-
-                                    if new_volume != this.last_volume {
-                                        this.last_volume = new_volume;
-                                        cx.notify();
-
-                                        let now = Instant::now();
-                                        if this
-                                            .last_volume_update
-                                            .map(|last| {
-                                                now.duration_since(last)
-                                                    >= Duration::from_millis(30)
-                                            })
-                                            .unwrap_or(true)
-                                        {
-                                            this.last_volume_update = Some(now);
-                                            this.audio.update(cx, |audio, cx| {
-                                                audio.set_sink_volume(new_volume, cx);
-                                            });
-                                        }
-                                    }
-                                },
-                            ))
-                            .child(
-                                div()
-                                    .flex_1()
-                                    .h(px(4.))
-                                    .bg(theme.hover)
-                                    .rounded(px(2.))
-                                    .child(
-                                        div()
-                                            .w(relative(self.last_volume as f32 / 100.0))
-                                            .h_full()
-                                            .bg(theme.accent)
-                                            .rounded(px(2.)),
-                                    ),
-                            ),
+                            .child(Slider::new(&self.sink_slider))
                     )
                     .child(
                         div()
                             .text_xs()
                             .text_color(theme.text)
-                            .child(format!("{}%", self.last_volume)),
+                            .child(format!("{}%", self.sink_slider.read(cx).value() as u8)),
                     )
                     .child(
                         div()
@@ -200,54 +158,13 @@ impl super::ControlCenterWidget {
                             .h(px(20.))
                             .flex()
                             .items_center()
-                            .on_scroll_wheel(cx.listener(
-                                |this, event: &ScrollWheelEvent, window, cx| {
-                                    let delta_point = event.delta.pixel_delta(window.line_height());
-                                    let delta = if delta_point.y > px(0.0) { 5 } else { -5 };
-                                    let current = this.last_mic_volume as i32;
-                                    let new_volume = (current + delta).clamp(0, 100) as u8;
-
-                                    if new_volume != this.last_mic_volume {
-                                        this.last_mic_volume = new_volume;
-                                        cx.notify();
-
-                                        let now = Instant::now();
-                                        if this
-                                            .last_mic_update
-                                            .map(|last| {
-                                                now.duration_since(last)
-                                                    >= Duration::from_millis(30)
-                                            })
-                                            .unwrap_or(true)
-                                        {
-                                            this.last_mic_update = Some(now);
-                                            this.audio.update(cx, |audio, cx| {
-                                                audio.set_source_volume(new_volume, cx);
-                                            });
-                                        }
-                                    }
-                                },
-                            ))
-                            .child(
-                                div()
-                                    .flex_1()
-                                    .h(px(4.))
-                                    .bg(theme.hover)
-                                    .rounded(px(2.))
-                                    .child(
-                                        div()
-                                            .w(relative(self.last_mic_volume as f32 / 100.0))
-                                            .h_full()
-                                            .bg(theme.accent_alt)
-                                            .rounded(px(2.)),
-                                    ),
-                            ),
+                            .child(Slider::new(&self.source_slider))
                     )
                     .child(
                         div()
                             .text_xs()
                             .text_color(theme.text)
-                            .child(format!("{}%", self.last_mic_volume)),
+                            .child(format!("{}%", self.source_slider.read(cx).value() as u8)),
                     )
                     .child(
                         div()
