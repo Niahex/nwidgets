@@ -101,9 +101,13 @@ fn send_dbus_command(method: &str) -> bool {
 }
 
 fn main() {
-    // Initialize logger with custom format
+    // Initialize logger with custom format and filters
     env_logger::Builder::from_default_env()
         .filter_level(log::LevelFilter::Info)
+        .filter_module("blade_graphics", log::LevelFilter::Warn)
+        .filter_module("naga", log::LevelFilter::Warn)
+        .filter_module("zbus::proxy", log::LevelFilter::Warn)
+        .filter_module("gpui::platform", log::LevelFilter::Warn)
         .format(|buf, record| {
             use std::io::Write;
             
