@@ -68,10 +68,13 @@ fn get_stream_display(
 }
 
 impl ControlCenterWidget {
-    fn subscribe_and_notify<E: 'static>(
+    fn subscribe_and_notify<E, Evt>(
         entity: &Entity<E>,
         cx: &mut Context<Self>,
-    ) {
+    ) where
+        E: EventEmitter<Evt> + 'static,
+        Evt: 'static,
+    {
         cx.subscribe(entity, |_, _, _, cx| cx.notify()).detach();
     }
 
