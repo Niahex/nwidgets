@@ -96,7 +96,7 @@ impl Launcher {
 
                     // Spawn in tokio runtime, not GPUI executor
                     let _ = tokio::spawn(async move {
-                        eprintln!("[nlauncher] Launching: {name} with command: {exec}");
+                        log::info!("Launching application: {name} with command: {exec}");
 
                         use std::os::unix::process::CommandExt;
                         
@@ -119,8 +119,8 @@ impl Launcher {
                                 .spawn();
 
                             match result {
-                                Ok(_) => eprintln!("[nlauncher] Successfully launched: {name}"),
-                                Err(err) => eprintln!("[nlauncher] Failed to launch {name}: {err}"),
+                                Ok(_) => log::info!("Successfully launched: {name}"),
+                                Err(err) => log::error!("Failed to launch {name}: {err}"),
                             }
                         }
                     });
@@ -133,10 +133,8 @@ impl Launcher {
                         cx.background_executor()
                             .spawn(async move {
                                 match std::process::Command::new("wl-copy").arg(&result).output() {
-                                    Ok(_) => eprintln!("[nlauncher] Copied to clipboard: {result}"),
-                                    Err(e) => {
-                                        eprintln!("[nlauncher] Failed to copy to clipboard: {e}")
-                                    }
+                                    Ok(_) => log::info!("Copied to clipboard: {result}"),
+                                    Err(e) => log::error!("Failed to copy to clipboard: {e}"),
                                 }
                             })
                             .detach();
@@ -149,10 +147,8 @@ impl Launcher {
                     cx.background_executor()
                         .spawn(async move {
                             match kill_process(pid) {
-                                Ok(_) => eprintln!("[nlauncher] Killed process: {name} (pid: {pid})"),
-                                Err(e) => {
-                                    eprintln!("[nlauncher] Failed to kill process {name} (pid: {pid}): {e}")
-                                }
+                                Ok(_) => log::info!("Killed process: {name} (pid: {pid})"),
+                                Err(e) => log::error!("Failed to kill process {name} (pid: {pid}): {e}"),
                             }
                         })
                         .detach();
@@ -393,7 +389,7 @@ impl Render for LauncherWidget {
 
                             cx.background_executor()
                                 .spawn(async move {
-                                    eprintln!("[launcher] Launching: {name} with command: '{exec}'");
+                                    log::info!("Launching: {name} with command: '{exec}'");
 
                                     use std::os::unix::process::CommandExt;
                                     unsafe {
@@ -410,8 +406,8 @@ impl Render for LauncherWidget {
                                             .spawn();
 
                                         match result {
-                                            Ok(_) => eprintln!("[launcher] Successfully spawned: {name}"),
-                                            Err(err) => eprintln!("[launcher] Failed to spawn {name}: {err}"),
+                                            Ok(_) => log::info!("Successfully spawned: {name}"),
+                                            Err(err) => log::error!("Failed to spawn {name}: {err}"),
                                         }
                                     }
                                 })
@@ -428,8 +424,8 @@ impl Render for LauncherWidget {
                                 cx.background_executor()
                                     .spawn(async move {
                                         match std::process::Command::new("wl-copy").arg(&result).output() {
-                                            Ok(_) => eprintln!("[launcher] Copied to clipboard: {result}"),
-                                            Err(e) => eprintln!("[launcher] Failed to copy to clipboard: {e}"),
+                                            Ok(_) => log::info!("Copied to clipboard: {result}"),
+                                            Err(e) => log::error!("Failed to copy to clipboard: {e}"),
                                         }
                                     })
                                     .detach();
@@ -445,10 +441,8 @@ impl Render for LauncherWidget {
                             cx.background_executor()
                                 .spawn(async move {
                                     match kill_process(pid) {
-                                        Ok(_) => eprintln!("[launcher] Killed process: {name} (pid: {pid})"),
-                                        Err(e) => {
-                                            eprintln!("[launcher] Failed to kill process {name} (pid: {pid}): {e}")
-                                        }
+                                        Ok(_) => log::info!("Killed process: {name} (pid: {pid})"),
+                                        Err(e) => log::error!("Failed to kill process {name} (pid: {pid}): {e}"),
                                     }
                                 })
                                 .detach();
@@ -462,8 +456,8 @@ impl Render for LauncherWidget {
                             cx.background_executor()
                                 .spawn(async move {
                                     match std::process::Command::new("wl-copy").arg(&content).output() {
-                                        Ok(_) => eprintln!("[launcher] Copied clipboard entry"),
-                                        Err(e) => eprintln!("[launcher] Failed to copy: {e}"),
+                                        Ok(_) => log::info!("Copied clipboard entry"),
+                                        Err(e) => log::error!("Failed to copy: {e}"),
                                     }
                                 })
                                 .detach();
