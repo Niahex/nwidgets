@@ -5,24 +5,41 @@ A high-performance Wayland widget system built with GPUI, featuring a panel, lau
 ## Features
 
 ### 🎨 Panel
+>**Features**
 - [x] **Active-window** title, class, icon display
 - [x] **Pomodoro** timer interractive
 - [x] **Workspaces** Indicator and interractive
 - [x] **MPRIS** spotify indicator and controls with mouse (vertical +/-, horizontal next/prev, click pause/play )
-- [ ] **Sytray** : (5)
+- [ ] **Sytray** 
 - [x] **Audio/Bluetooth/Network/Date-Time** indicators
 
+---
+
 ### 🚀 Launcher
+>**Features**
 - **Fast application launcher** with fuzzy search
 - [x] **Calculator** mode (type `=` to calculate)
-  - [?] remove "="
 - [x] **Process manager** (type `ps` to list/kill processes)
+  - [ ] Fix list
 - [x] **Clipboard history** integration
   - [x] text
 
 > [!NOTE]
-> Clipboard : image, keepass protect ? Cacl
-> - [ ] test
+> - [ ] SVG fn
+> - [ ] Cacl remove "="
+> - [ ] Clipboard
+>   - [ ] image
+>   - [ ] keepass protect
+> - [ ] Sh cmd
+> - [ ] Convert
+>   - [ ] money
+>   - [ ] mesure
+>   - [ ] time
+> - [ ] emoji picker
+> - [ ] nerdfont picker
+> - [ ] file manager
+> - [ ] search web
+> - [ ] Indicator footer
 
 ---
 
@@ -30,29 +47,32 @@ A high-performance Wayland widget system built with GPUI, featuring a panel, lau
 
 >**Features**
 - [x] **Custom Nord theme** CSS injection
-  - [ ] Need improve (4)
 - [x] **Fullscreen-aware** (auto-hide in fullscreen)
-- **Persistent URL** state
+- [x] **Persistent URL** state
 - [x] **Audio** : i/o
-- [-] **Screenshare** : work but force (5)
+- [-] **Screenshare** : work but force
 - [x] disable gpu rendering
-- [?] WGPU
-- [?] Blade 
 
 >**Behavior**
 - [x] **Fullscreen-aware** (auto-hide in fullscreen)
-<>
+
 > [!NOTE]
-> Gpu accel : wgpu blade ?
+> - [ ] Gpu accel
+>   - [ ] WGPU
+>   - [ ] Blade
 
 ---
 
 ### 🔔 Notifications
+>**Features**
 - [x] **Auto-dismiss** after timeout
 - [x] **History**
 
+---
+
 
 ### 🎛️ Control Center
+>**Features**
 - **Audio mixer** :
   - [x] **Sink/source**
     - [x] Modify with scroll
@@ -83,7 +103,10 @@ A high-performance Wayland widget system built with GPUI, featuring a panel, lau
   - [x] List
   - [x] Clear
 
+---
+
 ### 📊 OSD (On-Screen Display)
+>**Features**
 - [] **Sink**
   - [x] +/-
   - [ ] mute (5)
@@ -99,6 +122,7 @@ A high-performance Wayland widget system built with GPUI, featuring a panel, lau
   - [?] image 
   - [?] files
 
+---
 
 ## Architecture
 
