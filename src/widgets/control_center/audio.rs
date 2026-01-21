@@ -1,11 +1,70 @@
 use crate::services::audio::AudioService;
 use crate::services::control_center::ControlCenterSection;
-use crate::theme::ActiveTheme;
+use crate::theme::{ActiveTheme, Theme};
 use crate::utils::Icon;
 use gpui::*;
 use std::time::{Duration, Instant};
 
 impl super::ControlCenterWidget {
+    // Helper: render stream item (used by both sink and source)
+    pub(in crate::widgets::control_center) fn render_stream_item(
+        stream: &crate::services::audio::AudioStream,
+        theme: &Theme,
+        accent_color: Hsla,
+    ) -> AnyElement {
+        let stream_volume = stream.volume;
+        let (display_name, icon_name, preserve_colors) = super::get_stream_display(stream);
+
+        div()
+            .flex()
+            .flex_col()
+            .gap_1()
+            .p_2()
+            .bg(theme.surface)
+            .rounded_md()
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap_2()
+                    .child(
+                        Icon::new(icon_name)
+                            .size(px(20.))
+                            .preserve_colors(preserve_colors),
+                    )
+                    .child(
+                        div()
+                            .flex_1()
+                            .text_xs()
+                            .text_color(theme.text)
+                            .child(display_name),
+                    )
+                    .child(
+                        div()
+                            .text_xs()
+                            .text_color(theme.text_muted)
+                            .child(format!("{stream_volume}%")),
+                    ),
+            )
+            .child(
+                div().h(px(20.)).flex().items_center().child(
+                    div()
+                        .flex_1()
+                        .h(px(4.))
+                        .bg(theme.hover)
+                        .rounded(px(2.))
+                        .child(
+                            div()
+                                .w(relative(stream_volume as f32 / 100.0))
+                                .h_full()
+                                .bg(accent_color)
+                                .rounded(px(2.)),
+                        ),
+                ),
+            )
+            .into_any_element()
+    }
+
     pub(super) fn render_audio_section(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
         let audio_state = self.audio.read(cx).state();
         let cc_service = self.control_center.read(cx);
