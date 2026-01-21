@@ -151,7 +151,7 @@ pub fn initialize_cef() -> Result<()> {
         uncaught_exception_stack_size: 0,
         root_cache_path: CefString::from(cache_dir.to_string_lossy().as_ref()),
         cache_path: CefString::from(cache_dir.to_string_lossy().as_ref()),
-        log_severity: cef::LogSeverity::ERROR, // Only show errors, hide warnings
+        log_severity: cef::LogSeverity::WARNING, // Show warnings and errors only
         ..Default::default()
     };
     let mut app = AppWrapper::new(CefAppStruct {
