@@ -527,8 +527,9 @@ impl gpui::Render for BrowserView {
                             if let Some(ch) = ks.key_char.as_ref().and_then(|s| s.chars().next()) {
                                 this.send_char(ch, mods);
                             } else if ks.key.len() == 1 {
-                                let ch = ks.key.chars().next().unwrap();
-                                this.send_char(if ks.modifiers.shift && ch.is_ascii_alphabetic() { ch.to_ascii_uppercase() } else { ch }, mods);
+                                if let Some(ch) = ks.key.chars().next() {
+                                    this.send_char(if ks.modifiers.shift && ch.is_ascii_alphabetic() { ch.to_ascii_uppercase() } else { ch }, mods);
+                                }
                             }
                         }
                     }))

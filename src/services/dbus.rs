@@ -41,14 +41,23 @@ impl DbusService {
             log::info!("Starting D-Bus server");
             match Builder::session() {
                 Ok(builder) => {
-                    match builder
-                        .name("org.nwidgets.App")
-                        .unwrap()
-                        .serve_at("/org/nwidgets/App", NWidgets { tx })
-                        .unwrap()
-                        .build()
-                        .await
-                    {
+                    let builder = match builder.name("org.nwidgets.App") {
+                        Ok(b) => b,
+                        Err(e) => {
+                            log::error!("Failed to set D-Bus name: {e}");
+                            return;
+                        }
+                    };
+                    
+                    let builder = match builder.serve_at("/org/nwidgets/App", NWidgets { tx }) {
+                        Ok(b) => b,
+                        Err(e) => {
+                            log::error!("Failed to serve D-Bus at path: {e}");
+                            return;
+                        }
+                    };
+                    
+                    match builder.build().await {
                         Ok(_conn) => {
                             log::info!("D-Bus service ready on org.nwidgets.App");
                             std::future::pending::<()>().await;

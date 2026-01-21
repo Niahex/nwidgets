@@ -52,7 +52,7 @@ impl NotificationsWidget {
 
             let now = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_secs();
 
             let mut notifs = notifications_clone.write();
@@ -176,7 +176,7 @@ impl Render for NotificationsWidget {
 fn format_time_ago(timestamp: u64) -> String {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .unwrap()
+        .unwrap_or_default()
         .as_secs();
 
     let elapsed = now.saturating_sub(timestamp);
