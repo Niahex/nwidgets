@@ -1,6 +1,7 @@
 use crate::services::ui::osd::{OsdEvent, OsdService, OsdStateChanged};
 use crate::theme::ActiveTheme;
 use crate::assets::Icon;
+use crate::ui::components::{Slider, SliderState};
 use gpui::prelude::*;
 use gpui::*;
 use std::time::Duration;
@@ -10,6 +11,7 @@ pub struct OsdWidget {
     visible: bool,
     displayed_volume: f32,
     target_volume: f32,
+    volume_slider: Entity<SliderState>,
 }
 
 impl OsdWidget {
@@ -20,6 +22,13 @@ impl OsdWidget {
     ) -> Self {
         let osd = OsdService::global(cx);
         let initial_volume = Self::get_initial_volume();
+
+        let volume_slider = cx.new(|_| {
+            SliderState::new()
+                .min(0.0)
+                .max(100.0)
+                .default_value(initial_volume)
+        });
 
         cx.subscribe(&osd, move |this, _osd, event: &OsdStateChanged, cx| {
             this.current_event = event.event.clone();
@@ -44,6 +53,12 @@ impl OsdWidget {
                 if (widget.displayed_volume - widget.target_volume).abs() > 0.1 {
                     widget.displayed_volume +=
                         (widget.target_volume - widget.displayed_volume) * 0.7;
+                    
+                    // Update slider value
+                    widget.volume_slider.update(cx, |slider, cx| {
+                        slider.update_value(widget.displayed_volume, cx);
+                    });
+                    
                     cx.notify();
                 }
             });
@@ -55,6 +70,7 @@ impl OsdWidget {
             visible: initial_visible,
             displayed_volume: initial_volume,
             target_volume: initial_volume,
+            volume_slider,
         }
     }
 
@@ -99,33 +115,9 @@ impl Render for OsdWidget {
                     .items_center()
                     .child(Icon::new(icon_name).size(px(20.)).color(theme.text))
                     .child(
-                        // Barre de progression
                         div()
                             .w(px(240.))
-                            .h(px(6.))
-                            .relative()
-                            .child(
-                                // Background
-                                div()
-                                    .absolute()
-                                    .top_0()
-                                    .left_0()
-                                    .w_full()
-                                    .h_full()
-                                    .bg(theme.hover)
-                                    .rounded(px(3.)),
-                            )
-                            .child(
-                                // Foreground (filled) - animé avec valeur exacte
-                                div()
-                                    .absolute()
-                                    .top_0()
-                                    .left_0()
-                                    .w(relative(self.displayed_volume / 100.0))
-                                    .h_full()
-                                    .bg(theme.accent_alt)
-                                    .rounded(px(3.)),
-                            ),
+                            .child(Slider::new(&self.volume_slider).readonly(true))
                     )
                     .child(
                         div()

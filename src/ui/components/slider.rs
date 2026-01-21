@@ -117,6 +117,7 @@ impl SliderState {
 pub struct Slider {
     state: Entity<SliderState>,
     disabled: bool,
+    readonly: bool,
 }
 
 impl Slider {
@@ -124,11 +125,17 @@ impl Slider {
         Self {
             state: state.clone(),
             disabled: false,
+            readonly: false,
         }
     }
 
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
+        self
+    }
+
+    pub fn readonly(mut self, readonly: bool) -> Self {
+        self.readonly = readonly;
         self
     }
 }
@@ -154,7 +161,7 @@ impl RenderOnce for Slider {
                     .h(px(6.))
                     .flex()
                     .items_center()
-                    .when(!self.disabled, |this| {
+                    .when(!self.disabled && !self.readonly, |this| {
                         this.on_mouse_down(
                             MouseButton::Left,
                             window.listener_for(&self.state, move |state, e: &MouseDownEvent, window, cx| {
@@ -190,7 +197,7 @@ impl RenderOnce for Slider {
                                     .left(relative(percentage))
                                     .ml(px(-6.))
                                     .top(px(-4.))
-                                    .when(!self.disabled, |this| {
+                                    .when(!self.disabled && !self.readonly, |this| {
                                         this.cursor_pointer()
                                             .on_mouse_down(MouseButton::Left, |_, _, cx| {
                                                 cx.stop_propagation();
