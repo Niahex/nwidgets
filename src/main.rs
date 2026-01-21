@@ -110,16 +110,14 @@ fn main() {
         .filter_module("gpui::platform", log::LevelFilter::Warn)
         .format(|buf, record| {
             use std::io::Write;
-            use env_logger::fmt::Color;
             
-            // Color for log level
-            let mut style = buf.style();
-            let level_color = match record.level() {
-                log::Level::Error => style.set_color(Color::Red).set_bold(true),
-                log::Level::Warn => style.set_color(Color::Yellow).set_bold(true),
-                log::Level::Info => style.set_color(Color::Green),
-                log::Level::Debug => style.set_color(Color::Cyan),
-                log::Level::Trace => style.set_color(Color::White),
+            // ANSI color codes
+            let level_str = match record.level() {
+                log::Level::Error => "\x1b[1;31mERROR\x1b[0m", // Red bold
+                log::Level::Warn => "\x1b[1;33mWARN \x1b[0m",  // Yellow bold
+                log::Level::Info => "\x1b[32mINFO \x1b[0m",    // Green
+                log::Level::Debug => "\x1b[36mDEBUG\x1b[0m",   // Cyan
+                log::Level::Trace => "\x1b[37mTRACE\x1b[0m",   // White
             };
             
             // Extract module path and format it
@@ -140,7 +138,7 @@ fn main() {
                 buf,
                 "[{} {} {}] {}",
                 chrono::Local::now().format("%Y-%m-%dT%H:%M:%S"),
-                level_color.value(format!("{:5}", record.level())),
+                level_str,
                 category,
                 record.args()
             )
