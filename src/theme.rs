@@ -13,6 +13,7 @@ pub struct Theme {
     pub text: Hsla,        // snow3 - 0xeceff4
     pub text_muted: Hsla,  // snow2 - 0xd8dee9
     pub text_bright: Hsla, // snow1 - 0xe5e9f0
+    pub muted: Hsla,       // snow2 at 40% - 0xd8dee9
 
     // Accents
     pub accent: Hsla,     // frost1 - 0x88c0d0
@@ -42,6 +43,7 @@ impl Theme {
             text: rgb(0xeceff4).into(),
             text_muted: rgb(0xd8dee9).into(),
             text_bright: rgb(0xe5e9f0).into(),
+            muted: rgb(0xd8dee9).opacity(0.4),
             accent: rgb(0x88c0d0).into(),
             accent_alt: rgb(0x8fbcbb).into(),
             red: rgb(0xbf616a).into(),

@@ -142,13 +142,13 @@ impl RenderOnce for Button {
             (ButtonVariant::Ghost, true) => (
                 theme.accent.opacity(0.2),
                 theme.accent,
-                theme.hover,
+                theme.muted,
                 theme.accent,
             ),
             (ButtonVariant::Ghost, false) => (
                 Hsla::transparent_black(),
                 theme.text_muted.opacity(0.5),
-                theme.hover,
+                theme.muted,
                 theme.text_muted.opacity(0.8),
             ),
             (ButtonVariant::Default, _) => (
