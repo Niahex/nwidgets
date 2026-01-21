@@ -56,6 +56,9 @@ impl DateTimeModule {
 
 impl Render for DateTimeModule {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let time = self.time.clone();
+        let date = self.date.clone();
+        
         div()
             .flex()
             .flex_col()
@@ -65,13 +68,13 @@ impl Render for DateTimeModule {
                 div()
                     .text_sm()
                     .font_weight(FontWeight::SEMIBOLD)
-                    .child(self.time.clone()),
+                    .child(time),
             )
             .child(
                 div()
                     .text_xs()
                     .text_color(cx.theme().text_muted)
-                    .child(self.date.clone()),
+                    .child(date),
             )
     }
 }
