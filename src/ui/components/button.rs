@@ -124,8 +124,8 @@ impl RenderOnce for Button {
             (ButtonVariant::Accent, true) => (
                 theme.accent.opacity(0.2),
                 theme.accent,
-                theme.hover,
                 theme.accent,
+                theme.bg,
             ),
             (ButtonVariant::Accent, false) => (
                 Hsla::transparent_black(),
