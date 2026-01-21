@@ -78,11 +78,14 @@ impl OsdWidget {
 impl Render for OsdWidget {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // Si pas visible ou pas d'événement, retourner un élément vide
-        if !self.visible || self.current_event.is_none() {
+        let Some(event) = self.current_event.as_ref() else {
+            return div().into_any_element();
+        };
+        
+        if !self.visible {
             return div().into_any_element();
         }
 
-        let event = self.current_event.as_ref().unwrap();
         let theme = cx.theme();
 
         let content = match event {

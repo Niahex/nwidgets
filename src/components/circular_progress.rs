@@ -259,12 +259,12 @@ impl IntoElement for CircularProgress {
                             ),
                     )
                     // Température/valeur secondaire en bas à droite (entre les segments)
-                    .when(self.secondary_percent.is_some(), |this| {
+                    .when_some(self.secondary_percent, |this, percent| {
                         let unit = self.secondary_unit.clone();
                         let value = if let Some(val) = self.display_secondary_value {
                             format!("{val}{unit}")
                         } else {
-                            format!("{}{unit}", self.secondary_percent.unwrap())
+                            format!("{percent}{unit}")
                         };
                         this.child(
                             div()

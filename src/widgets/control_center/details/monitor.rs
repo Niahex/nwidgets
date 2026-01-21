@@ -83,19 +83,19 @@ impl super::super::ControlCenterWidget {
                                         .flex()
                                         .gap_2()
                                         .child(div().text_xs().text_color(theme.text_muted).child(metric.value.clone()))
-                                        .when(metric.secondary.is_some(), |this| {
-                                            this.child(div().text_xs().text_color(theme.text_muted).child(metric.secondary.clone().unwrap()))
+                                        .when_some(metric.secondary.clone(), |this, secondary| {
+                                            this.child(div().text_xs().text_color(theme.text_muted).child(secondary))
                                         }),
                                 ),
                         )
-                        .when(metric.percent.is_some(), |this| {
+                        .when_some(metric.percent, |this, percent| {
                             this.child(div().h(px(20.)).flex().items_center().child(
                                 div()
                                     .flex_1()
                                     .h(px(4.))
                                     .bg(theme.hover)
                                     .rounded(px(2.))
-                                    .child(div().w(relative(metric.percent.unwrap() as f32 / 100.0)).h_full().bg(theme.accent).rounded(px(2.))),
+                                    .child(div().w(relative(percent as f32 / 100.0)).h_full().bg(theme.accent).rounded(px(2.))),
                             ))
                         })
                 }))
