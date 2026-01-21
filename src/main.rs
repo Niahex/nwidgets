@@ -387,10 +387,10 @@ fn main() {
                 move |service, _event: &LauncherToggled, cx| {
                     let window = launcher_window_toggle.lock();
                     let visible = service.read(cx).visible;
-                    eprintln!("[launcher] Toggle event received, visible: {visible}");
+                    log::debug!("Launcher toggle event received, visible: {visible}");
                     let _ = window.update(cx, |launcher, window, cx| {
                         if visible {
-                            eprintln!("[launcher] Showing window");
+                            log::debug!("Showing launcher window");
                             window.resize(size(px(700.0), px(500.0)));
                             window.set_keyboard_interactivity(
                                 gpui::layer_shell::KeyboardInteractivity::Exclusive,
@@ -401,7 +401,7 @@ fn main() {
                             window.focus(launcher.focus_handle(), cx);
                             cx.activate(true);
                         } else {
-                            eprintln!("[launcher] Hiding window");
+                            log::debug!("Hiding launcher window");
                             window.resize(size(px(1.0), px(1.0)));
                             window.set_keyboard_interactivity(
                                 gpui::layer_shell::KeyboardInteractivity::None,
