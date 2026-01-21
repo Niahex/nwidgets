@@ -1,6 +1,5 @@
 use super::manager::{ConnectionType, NetworkManagerState};
 use futures::StreamExt;
-use gpui::prelude::*;
 use gpui::{App, AsyncApp, Context, Entity, EventEmitter, Global, SharedString, WeakEntity};
 use parking_lot::RwLock;
 use std::sync::Arc;

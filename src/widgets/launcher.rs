@@ -1,4 +1,3 @@
-use gio::prelude::*;
 use gpui::{
     actions, div, prelude::*, px, Animation, AnimationExt, Context, FocusHandle, KeyDownEvent,
     Render, Task, Window,
