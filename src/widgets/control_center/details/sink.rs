@@ -8,7 +8,7 @@ impl super::super::ControlCenterWidget {
         &mut self,
         cx: &mut Context<Self>,
     ) -> AnyElement {
-        let theme = cx.theme();
+        let theme = cx.theme().clone();
         let sinks = self.audio.read(cx).sinks();
         let default_sink = sinks.iter().find(|s| s.is_default).cloned();
         let is_open = self.sink_dropdown_open;
@@ -66,7 +66,7 @@ impl super::super::ControlCenterWidget {
                         streams
                             .iter()
                             .take(5)
-                            .map(|stream| Self::render_stream_item(stream, &theme, theme.accent))
+                            .map(|stream| self.render_stream_item(stream, &theme, cx))
                             .collect()
                     }
                 })),

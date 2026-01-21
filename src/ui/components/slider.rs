@@ -23,6 +23,7 @@ impl EventEmitter<SliderEvent> for SliderState {}
 pub struct SliderState {
     min: f32,
     max: f32,
+    step: f32,
     value: f32,
     percentage: f32,
     bounds: Bounds<Pixels>,
@@ -33,6 +34,7 @@ impl SliderState {
         Self {
             min: 0.0,
             max: 100.0,
+            step: 1.0,
             value: 0.0,
             percentage: 0.0,
             bounds: Bounds::default(),
@@ -48,6 +50,11 @@ impl SliderState {
     pub fn max(mut self, max: f32) -> Self {
         self.max = max;
         self.update_percentage();
+        self
+    }
+
+    pub fn step(mut self, step: f32) -> Self {
+        self.step = step;
         self
     }
 
@@ -94,8 +101,11 @@ impl SliderState {
         let total_width = self.bounds.size.width;
         let percentage = (inner_pos / total_width).clamp(0.0, 1.0);
         
-        self.percentage = percentage;
-        self.value = self.min + (self.max - self.min) * percentage;
+        let raw_value = self.min + (self.max - self.min) * percentage;
+        let stepped_value = (raw_value / self.step).round() * self.step;
+        
+        self.value = stepped_value.clamp(self.min, self.max);
+        self.update_percentage();
         
         cx.emit(SliderEvent::Change(self.value));
         cx.notify();

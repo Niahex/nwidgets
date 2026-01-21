@@ -39,7 +39,20 @@ impl AssetSource for Assets {
                 cache.insert(path.to_string(), leaked_data);
                 Ok(Some(std::borrow::Cow::Borrowed(leaked_data)))
             }
-            Err(e) => Err(e.into()),
+            Err(_) => {
+                // Fallback to none.svg if icon not found
+                if path.starts_with("icons/") && path.ends_with(".svg") {
+                    match std::fs::read(self.base.join("icons/none.svg")) {
+                        Ok(data) => {
+                            let leaked_data: &'static [u8] = Box::leak(data.into_boxed_slice());
+                            Ok(Some(std::borrow::Cow::Borrowed(leaked_data)))
+                        }
+                        Err(e) => Err(e.into()),
+                    }
+                } else {
+                    Err(anyhow::anyhow!("Asset not found: {}", path))
+                }
+            }
         }
     }
 

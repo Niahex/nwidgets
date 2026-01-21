@@ -14,6 +14,7 @@ use crate::theme::ActiveTheme;
 use crate::assets::Icon;
 use gpui::prelude::*;
 use gpui::*;
+use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 actions!(control_center, [CloseControlCenter]);
@@ -30,6 +31,7 @@ pub struct ControlCenterWidget {
     source_dropdown_open: bool,
     sink_slider: Entity<SliderState>,
     source_slider: Entity<SliderState>,
+    stream_sliders: HashMap<u32, Entity<SliderState>>,
 }
 
 fn get_stream_display(
@@ -53,7 +55,7 @@ fn get_stream_display(
     } else if title_lower.contains("vlc") {
         ("vlc", true)
     } else {
-        ("application-x-executable", false)
+        ("none", false)
     };
 
     let display_name: SharedString = if title.len() > 40 {
@@ -66,6 +68,43 @@ fn get_stream_display(
 }
 
 impl ControlCenterWidget {
+    fn get_or_create_stream_slider(
+        &mut self,
+        stream_id: u32,
+        initial_volume: u8,
+        is_sink_input: bool,
+        cx: &mut Context<Self>,
+    ) -> Entity<SliderState> {
+        self.stream_sliders
+            .entry(stream_id)
+            .or_insert_with(|| {
+                let slider = cx.new(|_| {
+                    SliderState::new()
+                        .min(0.0)
+                        .max(100.0)
+                        .step(5.0)
+                        .default_value(initial_volume as f32)
+                });
+                
+                // Subscribe to slider events
+                cx.subscribe(&slider, move |this, _, event: &crate::ui::components::SliderEvent, cx| {
+                    if let crate::ui::components::SliderEvent::Change(value) = event {
+                        this.audio.update(cx, |audio, cx| {
+                            if is_sink_input {
+                                audio.set_sink_input_volume(stream_id, *value as u8, cx);
+                            } else {
+                                audio.set_source_output_volume(stream_id, *value as u8, cx);
+                            }
+                        });
+                    }
+                })
+                .detach();
+                
+                slider
+            })
+            .clone()
+    }
+
     pub fn new(cx: &mut Context<Self>) -> Self {
         let control_center = ControlCenterService::global(cx);
         let audio = AudioService::global(cx);
@@ -85,6 +124,7 @@ impl ControlCenterWidget {
             SliderState::new()
                 .min(0.0)
                 .max(100.0)
+                .step(5.0)
                 .default_value(audio_state.sink_volume as f32)
         });
 
@@ -92,6 +132,7 @@ impl ControlCenterWidget {
             SliderState::new()
                 .min(0.0)
                 .max(100.0)
+                .step(5.0)
                 .default_value(audio_state.source_volume as f32)
         });
 
@@ -178,6 +219,7 @@ impl ControlCenterWidget {
             source_dropdown_open: false,
             sink_slider,
             source_slider,
+            stream_sliders: HashMap::new(),
         }
     }
 }

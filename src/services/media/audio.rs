@@ -41,6 +41,7 @@ pub struct AudioStream {
     pub window_title: Option<SharedString>,
     pub volume: u8,
     pub muted: bool,
+    pub is_sink_input: bool, // true = sink_input (playback), false = source_output (recording)
 }
 
 #[derive(Clone)]
@@ -381,6 +382,7 @@ impl AudioService {
                             window_title: None,
                             volume: 100,
                             muted: false,
+                            is_sink_input: true,
                         });
                     } else if info.media_class.contains("Stream/Input/Audio") {
                         new_source_outputs.push(AudioStream {
@@ -389,6 +391,7 @@ impl AudioService {
                             window_title: None,
                             volume: 100,
                             muted: false,
+                            is_sink_input: false,
                         });
                     }
                 }
@@ -442,6 +445,28 @@ impl AudioService {
                     "@DEFAULT_AUDIO_SOURCE@",
                     &format!("{volume}%"),
                 ])
+                .output()
+                .await;
+        })
+        .detach();
+    }
+
+    pub fn set_sink_input_volume(&self, stream_id: u32, volume: u8, cx: &mut Context<Self>) {
+        let volume = volume.min(100);
+        gpui_tokio::Tokio::spawn(cx, async move {
+            let _ = tokio::process::Command::new("wpctl")
+                .args(["set-volume", &stream_id.to_string(), &format!("{volume}%")])
+                .output()
+                .await;
+        })
+        .detach();
+    }
+
+    pub fn set_source_output_volume(&self, stream_id: u32, volume: u8, cx: &mut Context<Self>) {
+        let volume = volume.min(100);
+        gpui_tokio::Tokio::spawn(cx, async move {
+            let _ = tokio::process::Command::new("wpctl")
+                .args(["set-volume", &stream_id.to_string(), &format!("{volume}%")])
                 .output()
                 .await;
         })

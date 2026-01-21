@@ -8,12 +8,15 @@ use gpui::*;
 impl super::ControlCenterWidget {
     // Helper: render stream item (used by both sink and source)
     pub(in crate::widgets::control_center) fn render_stream_item(
+        &mut self,
         stream: &crate::services::media::audio::AudioStream,
         theme: &Theme,
-        accent_color: Hsla,
+        cx: &mut Context<Self>,
     ) -> AnyElement {
         let stream_volume = stream.volume;
         let (display_name, icon_name, preserve_colors) = super::get_stream_display(stream);
+        
+        let slider = self.get_or_create_stream_slider(stream.id, stream_volume, stream.is_sink_input, cx);
 
         div()
             .flex()
@@ -47,20 +50,11 @@ impl super::ControlCenterWidget {
                     ),
             )
             .child(
-                div().h(px(20.)).flex().items_center().child(
-                    div()
-                        .flex_1()
-                        .h(px(4.))
-                        .bg(theme.hover)
-                        .rounded(px(2.))
-                        .child(
-                            div()
-                                .w(relative(stream_volume as f32 / 100.0))
-                                .h_full()
-                                .bg(accent_color)
-                                .rounded(px(2.)),
-                        ),
-                ),
+                div()
+                    .h(px(20.))
+                    .flex()
+                    .items_center()
+                    .child(Slider::new(&slider))
             )
             .into_any_element()
     }

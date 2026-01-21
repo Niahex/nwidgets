@@ -8,7 +8,7 @@ impl super::super::ControlCenterWidget {
         &mut self,
         cx: &mut Context<Self>,
     ) -> AnyElement {
-        let theme = cx.theme();
+        let theme = cx.theme().clone();
         let sources = self.audio.read(cx).sources();
         let default_source = sources.iter().find(|s| s.is_default).cloned();
         let is_open = self.source_dropdown_open;
@@ -67,7 +67,7 @@ impl super::super::ControlCenterWidget {
                             .iter()
                             .take(5)
                             .map(|stream| {
-                                Self::render_stream_item(stream, &theme, theme.accent_alt)
+                                self.render_stream_item(stream, &theme, cx)
                             })
                             .collect()
                     }
