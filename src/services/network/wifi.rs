@@ -78,7 +78,9 @@ impl WifiService {
             // Get signal strength
             if conn.specific_object.as_str() != "/" {
                 if let Ok(system_conn) = Connection::system().await {
-                    if let Ok(ap) = AccessPointProxy::new(&system_conn, conn.specific_object.clone()).await {
+                    if let Ok(ap) =
+                        AccessPointProxy::new(&system_conn, conn.specific_object.clone()).await
+                    {
                         if let Ok(strength) = ap.strength().await {
                             state.signal_strength = strength;
                         }

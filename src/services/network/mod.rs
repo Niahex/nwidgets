@@ -1,11 +1,11 @@
-mod manager;
 mod ethernet;
-mod wifi;
+mod manager;
 mod vpn;
+mod wifi;
 
 pub use ethernet::{EthernetService, EthernetState, EthernetStateChanged};
-pub use wifi::{WifiService, WifiState, WifiStateChanged};
 pub use vpn::{VpnService, VpnState, VpnStateChanged};
+pub use wifi::{WifiService, WifiState, WifiStateChanged};
 
 use futures::StreamExt;
 use gpui::prelude::*;
@@ -167,36 +167,37 @@ impl NetworkService {
 /// Initialize all network services with a shared NetworkManager worker
 pub fn init_network_services(cx: &mut App) {
     let worker = NetworkManagerWorker::new();
-    
+
     // Create broadcast channels
     let (tx1, rx1) = futures::channel::mpsc::unbounded();
     let (tx2, rx2) = futures::channel::mpsc::unbounded();
     let (tx3, rx3) = futures::channel::mpsc::unbounded();
-    
+
     // Spawn the shared worker
     gpui_tokio::Tokio::spawn(cx, async move {
         let (main_tx, mut main_rx) = futures::channel::mpsc::unbounded();
-        
+
         // Spawn worker
         tokio::spawn(async move {
             worker.run(main_tx).await;
         });
-        
+
         // Broadcast to all services
         while let Some(state) = main_rx.next().await {
             let _ = tx1.unbounded_send(state.clone());
             let _ = tx2.unbounded_send(state.clone());
             let _ = tx3.unbounded_send(state);
         }
-    }).detach();
-    
+    })
+    .detach();
+
     // Initialize sub-services
     let ethernet = cx.new(|cx| EthernetService::new(cx, rx1));
     EthernetService::set_global(cx, ethernet.clone());
-    
+
     let wifi = cx.new(|cx| WifiService::new(cx, rx2));
     WifiService::set_global(cx, wifi.clone());
-    
+
     let vpn = cx.new(|cx| VpnService::new(cx, rx3));
     VpnService::set_global(cx, vpn.clone());
 

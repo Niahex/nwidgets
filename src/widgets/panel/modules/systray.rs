@@ -1,5 +1,5 @@
-use crate::theme::ActiveTheme;
 use crate::services::systray::{SystrayChanged, SystrayService};
+use crate::theme::ActiveTheme;
 use gpui::prelude::*;
 use gpui::*;
 

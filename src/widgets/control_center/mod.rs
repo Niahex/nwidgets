@@ -82,39 +82,65 @@ impl ControlCenterWidget {
 
         let audio_state = audio.read(cx).state();
 
-        cx.subscribe(&control_center, |_, _, _, cx| cx.notify()).detach();
-        cx.subscribe(&hyprland, |this, _, _: &crate::services::hyprland::WorkspaceChanged, cx| {
-            this.control_center.update(cx, |cc, cx| {
-                if cc.is_visible() {
-                    cc.close(cx);
-                }
-            });
-        }).detach();
-        cx.subscribe(&hyprland, |this, _, _: &crate::services::hyprland::FullscreenChanged, cx| {
-            this.control_center.update(cx, |cc, cx| {
-                if cc.is_visible() {
-                    cc.close(cx);
-                }
-            });
-        }).detach();
+        cx.subscribe(&control_center, |_, _, _, cx| cx.notify())
+            .detach();
+        cx.subscribe(
+            &hyprland,
+            |this, _, _: &crate::services::hyprland::WorkspaceChanged, cx| {
+                this.control_center.update(cx, |cc, cx| {
+                    if cc.is_visible() {
+                        cc.close(cx);
+                    }
+                });
+            },
+        )
+        .detach();
+        cx.subscribe(
+            &hyprland,
+            |this, _, _: &crate::services::hyprland::FullscreenChanged, cx| {
+                this.control_center.update(cx, |cc, cx| {
+                    if cc.is_visible() {
+                        cc.close(cx);
+                    }
+                });
+            },
+        )
+        .detach();
         cx.subscribe(&audio, |this, _, _, cx| {
             let audio_state = this.audio.read(cx).state();
             let now = Instant::now();
-            if this.last_volume_update.map(|last| now.duration_since(last) > Duration::from_millis(200)).unwrap_or(true) {
+            if this
+                .last_volume_update
+                .map(|last| now.duration_since(last) > Duration::from_millis(200))
+                .unwrap_or(true)
+            {
                 this.last_volume = audio_state.sink_volume;
             }
-            if this.last_mic_update.map(|last| now.duration_since(last) > Duration::from_millis(200)).unwrap_or(true) {
+            if this
+                .last_mic_update
+                .map(|last| now.duration_since(last) > Duration::from_millis(200))
+                .unwrap_or(true)
+            {
                 this.last_mic_volume = audio_state.source_volume;
             }
             cx.notify();
-        }).detach();
+        })
+        .detach();
         cx.subscribe(&bluetooth, |_, _, _, cx| cx.notify()).detach();
         cx.subscribe(&network, |_, _, _, cx| cx.notify()).detach();
-        cx.subscribe(&system_monitor, |_, _, _, cx| cx.notify()).detach();
-        cx.subscribe(&notifications, |_, _, _: &NotificationAdded, cx| cx.notify()).detach();
+        cx.subscribe(&system_monitor, |_, _, _, cx| cx.notify())
+            .detach();
+        cx.subscribe(&notifications, |_, _, _: &NotificationAdded, cx| {
+            cx.notify()
+        })
+        .detach();
 
         let vpn_service = network.read(cx).vpn();
-        cx.subscribe(&vpn_service, |_, _, _: &crate::services::network::VpnStateChanged, cx| cx.notify()).detach();
+        cx.subscribe(
+            &vpn_service,
+            |_, _, _: &crate::services::network::VpnStateChanged, cx| cx.notify(),
+        )
+        .detach();
 
         Self {
             focus_handle: cx.focus_handle(),

@@ -169,7 +169,10 @@ impl HyprlandService {
     }
 
     pub fn is_window_open(&self, class: &str) -> bool {
-        self.open_windows.read().iter().any(|w| w.to_lowercase() == class.to_lowercase())
+        self.open_windows
+            .read()
+            .iter()
+            .any(|w| w.to_lowercase() == class.to_lowercase())
     }
 
     pub fn has_fullscreen(&self) -> bool {

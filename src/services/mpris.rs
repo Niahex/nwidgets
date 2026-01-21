@@ -82,21 +82,26 @@ impl MprisService {
         let hyprland = crate::services::hyprland::HyprlandService::global(cx);
         let spotify_running_for_sub = Arc::clone(&spotify_running);
         let spotify_notify_for_sub = Arc::clone(&spotify_notify);
-        cx.subscribe(&hyprland, move |_, hyprland, _: &crate::services::hyprland::ActiveWindowChanged, _cx| {
-            let is_spotify = hyprland.read(_cx).is_window_open("spotify");
-            
-            let mut running = spotify_running_for_sub.write();
-            if *running != is_spotify {
-                *running = is_spotify;
-                spotify_notify_for_sub.notify_one();
-                log::debug!("Spotify window state changed: {}", is_spotify);
-            }
-        }).detach();
+        cx.subscribe(
+            &hyprland,
+            move |_, hyprland, _: &crate::services::hyprland::ActiveWindowChanged, _cx| {
+                let is_spotify = hyprland.read(_cx).is_window_open("spotify");
+
+                let mut running = spotify_running_for_sub.write();
+                if *running != is_spotify {
+                    *running = is_spotify;
+                    spotify_notify_for_sub.notify_one();
+                    log::debug!("Spotify window state changed: {}", is_spotify);
+                }
+            },
+        )
+        .detach();
 
         // 1. Worker Task (Tokio)
-        gpui_tokio::Tokio::spawn(cx, async move { 
-            Self::mpris_worker(ui_tx, spotify_running_clone, spotify_notify_clone).await 
-        }).detach();
+        gpui_tokio::Tokio::spawn(cx, async move {
+            Self::mpris_worker(ui_tx, spotify_running_clone, spotify_notify_clone).await
+        })
+        .detach();
 
         // 2. UI Task (GPUI)
         cx.spawn(move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
@@ -216,7 +221,10 @@ impl MprisService {
                     p
                 }
                 Err(e) => {
-                    log::warn!("Spotify MPRIS not available: {} - waiting for window close", e);
+                    log::warn!(
+                        "Spotify MPRIS not available: {} - waiting for window close",
+                        e
+                    );
                     // DBus service doesn't exist, wait for window to close then retry
                     loop {
                         if !*spotify_running.read() {

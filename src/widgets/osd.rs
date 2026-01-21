@@ -1,5 +1,5 @@
-use crate::theme::ActiveTheme;
 use crate::services::osd::{OsdEvent, OsdService, OsdStateChanged};
+use crate::theme::ActiveTheme;
 use crate::utils::Icon;
 use gpui::prelude::*;
 use gpui::*;
@@ -81,7 +81,7 @@ impl Render for OsdWidget {
         let Some(event) = self.current_event.as_ref() else {
             return div().into_any_element();
         };
-        
+
         if !self.visible {
             return div().into_any_element();
         }

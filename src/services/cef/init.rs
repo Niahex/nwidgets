@@ -42,9 +42,7 @@ impl CefService {
                         });
                     } else {
                         // 1Hz when idle to keep CEF alive
-                        cx.background_executor()
-                            .timer(Duration::from_secs(1))
-                            .await;
+                        cx.background_executor().timer(Duration::from_secs(1)).await;
                         cx.update(|_| {
                             cef::do_message_loop_work();
                         });

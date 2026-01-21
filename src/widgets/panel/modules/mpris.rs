@@ -1,5 +1,5 @@
-use crate::theme::ActiveTheme;
 use crate::services::mpris::{MprisService, MprisStateChanged, PlaybackStatus};
+use crate::theme::ActiveTheme;
 use gpui::prelude::*;
 use gpui::*;
 use std::time::{Duration, Instant};
@@ -21,7 +21,11 @@ impl MprisModule {
 
         let (title, artist, status) = if let Some(player) = mpris.read(cx).current_player() {
             (
-                player.metadata.title.unwrap_or_else(|| "No title".to_string()).into(),
+                player
+                    .metadata
+                    .title
+                    .unwrap_or_else(|| "No title".to_string())
+                    .into(),
                 player.metadata.artist.map(|a| a.into()),
                 player.status,
             )
@@ -48,7 +52,12 @@ impl MprisModule {
 
     fn update_cache(&mut self, player: Option<&crate::services::mpris::MprisPlayer>) {
         if let Some(player) = player {
-            self.cached_title = player.metadata.title.clone().unwrap_or_else(|| "No title".to_string()).into();
+            self.cached_title = player
+                .metadata
+                .title
+                .clone()
+                .unwrap_or_else(|| "No title".to_string())
+                .into();
             self.cached_artist = player.metadata.artist.clone().map(|a| a.into());
             self.cached_status = player.status.clone();
         } else {
@@ -78,9 +87,7 @@ impl Render for MprisModule {
                 .when(is_paused, |this| {
                     this.text_color(rgba(0xd8dee980)) // Dimmed when paused
                 })
-                .when(!is_paused, |this| {
-                    this.text_color(cx.theme().text)
-                })
+                .when(!is_paused, |this| this.text_color(cx.theme().text))
                 .hover(|style| style.bg(rgba(0x4c566a40)))
                 // Click to play/pause
                 .on_click(cx.listener(|this, _event, _window, cx| {

@@ -1,5 +1,5 @@
-use crate::theme::ActiveTheme;
 use crate::services::notifications::{Notification, NotificationAdded, NotificationService};
+use crate::theme::ActiveTheme;
 use crate::utils::Icon;
 use gpui::prelude::*;
 use gpui::*;

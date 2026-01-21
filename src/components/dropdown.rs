@@ -1,5 +1,5 @@
-use crate::theme::ActiveTheme;
 use super::PopoverMenu;
+use crate::theme::ActiveTheme;
 use gpui::prelude::*;
 use gpui::*;
 use std::rc::Rc;

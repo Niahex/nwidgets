@@ -275,12 +275,10 @@ impl BrowserView {
     }
 
     pub fn current_url(&self) -> Option<String> {
-        self.browser.as_ref()
-            .and_then(|b| b.main_frame())
-            .map(|f| {
-                let url: cef::CefStringUtf16 = (&f.url()).into();
-                url.to_string()
-            })
+        self.browser.as_ref().and_then(|b| b.main_frame()).map(|f| {
+            let url: cef::CefStringUtf16 = (&f.url()).into();
+            url.to_string()
+        })
     }
 
     pub fn navigate(&self, url: &str) {
@@ -321,7 +319,7 @@ impl Drop for BrowserView {
     fn drop(&mut self) {
         // Unregister this browser when dropped
         super::init::unregister_browser();
-        
+
         // Close the browser
         if let Some(browser) = &self.browser {
             if let Some(host) = browser.host() {

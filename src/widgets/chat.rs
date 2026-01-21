@@ -1,6 +1,6 @@
-use crate::theme::ActiveTheme;
 use crate::services::cef::BrowserView;
 use crate::services::chat::{ChatService, ChatToggled};
+use crate::theme::ActiveTheme;
 use gpui::prelude::*;
 use gpui::{
     div, Animation, AnimationExt, AppContext, Context, Entity, IntoElement, ParentElement, Styled,

@@ -4,7 +4,10 @@ use gpui::prelude::*;
 use gpui::*;
 
 impl super::super::ControlCenterWidget {
-    pub(in crate::widgets::control_center) fn render_monitor_details(&mut self, cx: &mut Context<Self>) -> AnyElement {
+    pub(in crate::widgets::control_center) fn render_monitor_details(
+        &mut self,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let theme = cx.theme();
         let stats = self.system_monitor.read(cx).stats();
 
@@ -26,23 +29,39 @@ impl super::super::ControlCenterWidget {
                         .bg(theme.surface)
                         .rounded_md()
                         .child({
-                            let mut progress = CircularProgress::new(px(80.)).percent(stats.cpu).label("CPU").color(theme.accent);
+                            let mut progress = CircularProgress::new(px(80.))
+                                .percent(stats.cpu)
+                                .label("CPU")
+                                .color(theme.accent);
                             if let Some(temp) = stats.cpu_temp {
-                                progress = progress.secondary_percent(temp as u8).secondary_color(theme.yellow);
+                                progress = progress
+                                    .secondary_percent(temp as u8)
+                                    .secondary_color(theme.yellow);
                             }
                             progress
                         })
                         .child({
-                            let mut progress = CircularProgress::new(px(80.)).percent(stats.gpu).label("GPU").color(theme.accent);
+                            let mut progress = CircularProgress::new(px(80.))
+                                .percent(stats.gpu)
+                                .label("GPU")
+                                .color(theme.accent);
                             if let Some(temp) = stats.gpu_temp {
-                                progress = progress.secondary_percent(temp as u8).secondary_color(theme.yellow);
+                                progress = progress
+                                    .secondary_percent(temp as u8)
+                                    .secondary_color(theme.yellow);
                             }
                             progress
                         })
                         .child({
-                            let mut progress = CircularProgress::new(px(80.)).percent(stats.ram).label("Memory").color(theme.accent);
+                            let mut progress = CircularProgress::new(px(80.))
+                                .percent(stats.ram)
+                                .label("Memory")
+                                .color(theme.accent);
                             if let Some(root_disk) = stats.disks.iter().find(|d| d.mount == "/") {
-                                progress = progress.secondary_percent(root_disk.percent).secondary_color(theme.yellow).secondary_unit("%");
+                                progress = progress
+                                    .secondary_percent(root_disk.percent)
+                                    .secondary_color(theme.yellow)
+                                    .secondary_unit("%");
                             }
                             progress
                         })
@@ -91,20 +110,39 @@ impl super::super::ControlCenterWidget {
                                             .flex()
                                             .items_center()
                                             .gap_2()
-                                            .child(div().flex_1().text_xs().text_color(theme.text).child(disk.mount.clone()))
-                                            .child(div().text_xs().text_color(theme.text_muted).child(format!("{}%", disk.percent))),
+                                            .child(
+                                                div()
+                                                    .flex_1()
+                                                    .text_xs()
+                                                    .text_color(theme.text)
+                                                    .child(disk.mount.clone()),
+                                            )
+                                            .child(
+                                                div()
+                                                    .text_xs()
+                                                    .text_color(theme.text_muted)
+                                                    .child(format!("{}%", disk.percent)),
+                                            ),
                                     )
-                                    .child(div().h(px(20.)).flex().items_center().child(
-                                        div()
-                                            .flex_1()
-                                            .h(px(4.))
-                                            .bg(theme.hover)
-                                            .rounded(px(2.))
-                                            .child(div().w(relative(disk.percent as f32 / 100.0)).h_full().bg(color).rounded(px(2.))),
-                                    ))
+                                    .child(
+                                        div().h(px(20.)).flex().items_center().child(
+                                            div()
+                                                .flex_1()
+                                                .h(px(4.))
+                                                .bg(theme.hover)
+                                                .rounded(px(2.))
+                                                .child(
+                                                    div()
+                                                        .w(relative(disk.percent as f32 / 100.0))
+                                                        .h_full()
+                                                        .bg(color)
+                                                        .rounded(px(2.)),
+                                                ),
+                                        ),
+                                    )
                             })),
                     )
-                })
+                }),
         )
         .into_any_element()
     }

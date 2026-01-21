@@ -1,6 +1,6 @@
-use crate::theme::ActiveTheme;
 use crate::services::chat::ChatService;
 use crate::services::hyprland::{ActiveWindowChanged, HyprlandService};
+use crate::theme::ActiveTheme;
 use crate::utils::Icon;
 use gpui::prelude::*;
 use gpui::*;
@@ -72,7 +72,11 @@ impl ActiveWindowModule {
         }
     }
 
-    fn update_cache(&mut self, window: Option<&crate::services::hyprland::ActiveWindow>, chat_visible: bool) {
+    fn update_cache(
+        &mut self,
+        window: Option<&crate::services::hyprland::ActiveWindow>,
+        chat_visible: bool,
+    ) {
         let (icon, class, title) = Self::compute_window_info(window, chat_visible, self.site_index);
         self.cached_icon = icon;
         self.cached_class = class;
@@ -146,10 +150,11 @@ impl Render for ActiveWindowModule {
                 }
             }))
             .child(
-                div()
-                    .size(px(32.))
-                    .flex_shrink_0()
-                    .child(Icon::new(self.cached_icon.clone()).size(px(32.)).preserve_colors(true)),
+                div().size(px(32.)).flex_shrink_0().child(
+                    Icon::new(self.cached_icon.clone())
+                        .size(px(32.))
+                        .preserve_colors(true),
+                ),
             )
             .child(
                 div()

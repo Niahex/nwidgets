@@ -58,7 +58,7 @@ impl Render for DateTimeModule {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let time = self.time.clone();
         let date = self.date.clone();
-        
+
         div()
             .flex()
             .flex_col()

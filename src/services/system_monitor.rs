@@ -25,8 +25,6 @@ pub struct SystemStats {
     pub net_total: u64,
 }
 
-
-
 #[derive(Clone)]
 pub struct SystemStatsChanged;
 
@@ -51,7 +49,8 @@ impl SystemMonitorService {
 
         gpui_tokio::Tokio::spawn(cx, async move {
             Self::monitor_worker(ui_tx, monitoring_enabled_clone, notify_clone).await
-        }).detach();
+        })
+        .detach();
 
         cx.spawn(move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
             let mut cx = cx.clone();
@@ -219,7 +218,10 @@ impl SystemMonitorService {
     async fn read_gpu() -> u8 {
         // Try NVIDIA first
         if let Ok(output) = tokio::process::Command::new("nvidia-smi")
-            .args(["--query-gpu=utilization.gpu", "--format=csv,noheader,nounits"])
+            .args([
+                "--query-gpu=utilization.gpu",
+                "--format=csv,noheader,nounits",
+            ])
             .output()
             .await
         {
@@ -275,7 +277,10 @@ impl SystemMonitorService {
     async fn read_gpu_temp() -> Option<f32> {
         // Try NVIDIA first
         if let Ok(output) = tokio::process::Command::new("nvidia-smi")
-            .args(["--query-gpu=temperature.gpu", "--format=csv,noheader,nounits"])
+            .args([
+                "--query-gpu=temperature.gpu",
+                "--format=csv,noheader,nounits",
+            ])
             .output()
             .await
         {

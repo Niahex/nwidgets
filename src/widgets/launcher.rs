@@ -33,8 +33,7 @@ impl Launcher {
         Self {
             focus_handle: cx.focus_handle(),
             core,
-            search_input: SearchInput::new("Search for apps and commands")
-                .with_theme(&theme),
+            search_input: SearchInput::new("Search for apps and commands").with_theme(&theme),
             search_results: SearchResults::new().with_theme(&theme),
             internal_results: Vec::new(),
             search_task: None,
@@ -99,7 +98,7 @@ impl Launcher {
                         log::info!("Launching application: {name} with command: {exec}");
 
                         use std::os::unix::process::CommandExt;
-                        
+
                         // Double fork to completely detach
                         unsafe {
                             let result = std::process::Command::new("sh")
@@ -148,7 +147,9 @@ impl Launcher {
                         .spawn(async move {
                             match kill_process(pid) {
                                 Ok(_) => log::info!("Killed process: {name} (pid: {pid})"),
-                                Err(e) => log::error!("Failed to kill process {name} (pid: {pid}): {e}"),
+                                Err(e) => {
+                                    log::error!("Failed to kill process {name} (pid: {pid}): {e}")
+                                }
                             }
                         })
                         .detach();
@@ -334,17 +335,21 @@ impl Render for LauncherWidget {
 
                     this.launcher.search_input.set_query(query);
                     let clipboard_history = this.clipboard_monitor.read(cx).get_history();
-                    this.launcher.update_search_results_with_clipboard(clipboard_history);
+                    this.launcher
+                        .update_search_results_with_clipboard(clipboard_history);
                     cx.notify();
                 } else if let Some(key_char) = &event.keystroke.key_char {
-                    let allowed = key_char.chars().all(|c| c.is_alphanumeric() || "+-*/()^.=".contains(c));
+                    let allowed = key_char
+                        .chars()
+                        .all(|c| c.is_alphanumeric() || "+-*/()^.=".contains(c));
 
                     if allowed {
                         let mut query = this.launcher.search_input.get_query().to_string();
                         query.push_str(key_char);
                         this.launcher.search_input.set_query(query);
                         let clipboard_history = this.clipboard_monitor.read(cx).get_history();
-                        this.launcher.update_search_results_with_clipboard(clipboard_history);
+                        this.launcher
+                            .update_search_results_with_clipboard(clipboard_history);
                         cx.notify();
                     }
                 }
@@ -355,7 +360,8 @@ impl Render for LauncherWidget {
                     query.pop();
                     this.launcher.search_input.set_query(query);
                     let clipboard_history = this.clipboard_monitor.read(cx).get_history();
-                    this.launcher.update_search_results_with_clipboard(clipboard_history);
+                    this.launcher
+                        .update_search_results_with_clipboard(clipboard_history);
                     cx.notify();
                 }
             }))
@@ -381,9 +387,13 @@ impl Render for LauncherWidget {
                             let name = app.name.clone();
 
                             // Remove desktop entry field codes
-                            exec = exec.replace("%U", "").replace("%u", "")
-                                .replace("%F", "").replace("%f", "")
-                                .replace("%i", "").replace("%c", "")
+                            exec = exec
+                                .replace("%U", "")
+                                .replace("%u", "")
+                                .replace("%F", "")
+                                .replace("%f", "")
+                                .replace("%i", "")
+                                .replace("%c", "")
                                 .replace("%k", "");
                             let exec = exec.trim().to_string();
 
@@ -407,7 +417,9 @@ impl Render for LauncherWidget {
 
                                         match result {
                                             Ok(_) => log::info!("Successfully spawned: {name}"),
-                                            Err(err) => log::error!("Failed to spawn {name}: {err}"),
+                                            Err(err) => {
+                                                log::error!("Failed to spawn {name}: {err}")
+                                            }
                                         }
                                     }
                                 })
@@ -423,9 +435,14 @@ impl Render for LauncherWidget {
                                 let result = result.clone();
                                 cx.background_executor()
                                     .spawn(async move {
-                                        match std::process::Command::new("wl-copy").arg(&result).output() {
+                                        match std::process::Command::new("wl-copy")
+                                            .arg(&result)
+                                            .output()
+                                        {
                                             Ok(_) => log::info!("Copied to clipboard: {result}"),
-                                            Err(e) => log::error!("Failed to copy to clipboard: {e}"),
+                                            Err(e) => {
+                                                log::error!("Failed to copy to clipboard: {e}")
+                                            }
                                         }
                                     })
                                     .detach();
@@ -442,20 +459,26 @@ impl Render for LauncherWidget {
                                 .spawn(async move {
                                     match kill_process(pid) {
                                         Ok(_) => log::info!("Killed process: {name} (pid: {pid})"),
-                                        Err(e) => log::error!("Failed to kill process {name} (pid: {pid}): {e}"),
+                                        Err(e) => log::error!(
+                                            "Failed to kill process {name} (pid: {pid}): {e}"
+                                        ),
                                     }
                                 })
                                 .detach();
 
                             let clipboard_history = this.clipboard_monitor.read(cx).get_history();
-                            this.launcher.update_search_results_with_clipboard(clipboard_history);
+                            this.launcher
+                                .update_search_results_with_clipboard(clipboard_history);
                             cx.notify();
                         }
                         SearchResult::Clipboard(content) => {
                             let content = content.clone();
                             cx.background_executor()
                                 .spawn(async move {
-                                    match std::process::Command::new("wl-copy").arg(&content).output() {
+                                    match std::process::Command::new("wl-copy")
+                                        .arg(&content)
+                                        .output()
+                                    {
                                         Ok(_) => log::info!("Copied clipboard entry"),
                                         Err(e) => log::error!("Failed to copy: {e}"),
                                     }
@@ -481,10 +504,11 @@ impl Render for LauncherWidget {
                     .flex()
                     .flex_col()
                     .p_4()
-                    .child(self.launcher.search_input.render_with_handlers(
-                        |_query| {},
-                        |_query| {},
-                    ))
+                    .child(
+                        self.launcher
+                            .search_input
+                            .render_with_handlers(|_query| {}, |_query| {}),
+                    )
                     .child(self.launcher.search_results.render())
                     .with_animation(
                         "launcher-fade-in",

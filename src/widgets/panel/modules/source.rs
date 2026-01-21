@@ -1,5 +1,5 @@
-use crate::theme::ActiveTheme;
 use crate::services::audio::{AudioService, AudioStateChanged};
+use crate::theme::ActiveTheme;
 use crate::utils::Icon;
 use gpui::prelude::*;
 use gpui::*;
@@ -37,8 +37,6 @@ impl Render for SourceModule {
             "source-zero"
         };
 
-        Icon::new(icon_name)
-            .size(px(16.))
-            .color(cx.theme().text)
+        Icon::new(icon_name).size(px(16.)).color(cx.theme().text)
     }
 }

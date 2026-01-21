@@ -111,7 +111,7 @@ fn main() {
         .filter_module("gpui::window", log::LevelFilter::Off)
         .format(|buf, record| {
             use std::io::Write;
-            
+
             // ANSI color codes
             let level_str = match record.level() {
                 log::Level::Error => "\x1b[1;31mERROR\x1b[0m", // Red bold
@@ -120,21 +120,37 @@ fn main() {
                 log::Level::Debug => "\x1b[36mDEBUG\x1b[0m",   // Cyan
                 log::Level::Trace => "\x1b[37mTRACE\x1b[0m",   // White
             };
-            
+
             // Extract module path and format it
             let module = record.module_path().unwrap_or("unknown");
             let category = if module.starts_with("nwidgets::services") {
-                format!("service::{}", module.strip_prefix("nwidgets::services::").unwrap_or(module))
+                format!(
+                    "service::{}",
+                    module
+                        .strip_prefix("nwidgets::services::")
+                        .unwrap_or(module)
+                )
             } else if module.starts_with("nwidgets::widgets") {
-                format!("widget::{}", module.strip_prefix("nwidgets::widgets::").unwrap_or(module))
+                format!(
+                    "widget::{}",
+                    module.strip_prefix("nwidgets::widgets::").unwrap_or(module)
+                )
             } else if module.starts_with("nwidgets::components") {
-                format!("component::{}", module.strip_prefix("nwidgets::components::").unwrap_or(module))
+                format!(
+                    "component::{}",
+                    module
+                        .strip_prefix("nwidgets::components::")
+                        .unwrap_or(module)
+                )
             } else if module.starts_with("nwidgets") {
-                module.strip_prefix("nwidgets::").unwrap_or(module).to_string()
+                module
+                    .strip_prefix("nwidgets::")
+                    .unwrap_or(module)
+                    .to_string()
             } else {
                 module.to_string()
             };
-            
+
             writeln!(
                 buf,
                 "[{} {} {}] {}",

@@ -4,7 +4,10 @@ use gpui::prelude::*;
 use gpui::*;
 
 impl super::super::ControlCenterWidget {
-    pub(in crate::widgets::control_center) fn render_source_details(&mut self, cx: &mut Context<Self>) -> AnyElement {
+    pub(in crate::widgets::control_center) fn render_source_details(
+        &mut self,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let theme = cx.theme();
         let sources = self.audio.read(cx).sources();
         let default_source = sources.iter().find(|s| s.is_default).cloned();
@@ -51,24 +54,24 @@ impl super::super::ControlCenterWidget {
                             .child("No input devices"),
                     )
                 })
-                .child(
-                    div().flex().flex_col().gap_1().mt_3().children({
-                        let streams = self.audio.read(cx).source_outputs();
-                        if streams.is_empty() {
-                            vec![div()
-                                .text_xs()
-                                .text_color(theme.text_muted)
-                                .child("No active recording")
-                                .into_any_element()]
-                        } else {
-                            streams
-                                .iter()
-                                .take(5)
-                                .map(|stream| Self::render_stream_item(stream, &theme, theme.accent_alt))
-                                .collect()
-                        }
-                    }),
-                )
+                .child(div().flex().flex_col().gap_1().mt_3().children({
+                    let streams = self.audio.read(cx).source_outputs();
+                    if streams.is_empty() {
+                        vec![div()
+                            .text_xs()
+                            .text_color(theme.text_muted)
+                            .child("No active recording")
+                            .into_any_element()]
+                    } else {
+                        streams
+                            .iter()
+                            .take(5)
+                            .map(|stream| {
+                                Self::render_stream_item(stream, &theme, theme.accent_alt)
+                            })
+                            .collect()
+                    }
+                })),
         )
         .into_any_element()
     }

@@ -48,7 +48,7 @@ impl DbusService {
                             return;
                         }
                     };
-                    
+
                     let builder = match builder.serve_at("/org/nwidgets/App", NWidgets { tx }) {
                         Ok(b) => b,
                         Err(e) => {
@@ -56,7 +56,7 @@ impl DbusService {
                             return;
                         }
                     };
-                    
+
                     match builder.build().await {
                         Ok(_conn) => {
                             log::info!("D-Bus service ready on org.nwidgets.App");
@@ -93,7 +93,10 @@ impl DbusService {
                             cx.update(|cx| {
                                 let launcher = super::launcher::LauncherService::global(cx);
                                 launcher.update(cx, |launcher, mcx| {
-                                    log::debug!("Toggling launcher, current visible: {}", launcher.visible);
+                                    log::debug!(
+                                        "Toggling launcher, current visible: {}",
+                                        launcher.visible
+                                    );
                                     launcher.toggle(mcx);
                                     log::debug!("After toggle, visible: {}", launcher.visible);
                                 });

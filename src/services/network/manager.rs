@@ -74,10 +74,7 @@ impl NetworkManagerWorker {
         Arc::clone(&self.state)
     }
 
-    pub async fn run(
-        &self,
-        tx: futures::channel::mpsc::UnboundedSender<NetworkManagerState>,
-    ) {
+    pub async fn run(&self, tx: futures::channel::mpsc::UnboundedSender<NetworkManagerState>) {
         let conn = match Connection::system().await {
             Ok(c) => c,
             Err(_) => return,
