@@ -9,13 +9,28 @@ pub struct MprisModule {
     scroll_acc_x: Pixels,
     scroll_acc_y: Pixels,
     last_track_change: Instant,
+    // Cache
+    cached_title: SharedString,
+    cached_artist: Option<SharedString>,
+    cached_status: PlaybackStatus,
 }
 
 impl MprisModule {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let mpris = MprisService::global(cx);
 
-        cx.subscribe(&mpris, |_this, _mpris, _event: &MprisStateChanged, cx| {
+        let (title, artist, status) = if let Some(player) = mpris.read(cx).current_player() {
+            (
+                player.metadata.title.unwrap_or_else(|| "No title".to_string()).into(),
+                player.metadata.artist.map(|a| a.into()),
+                player.status,
+            )
+        } else {
+            ("No title".into(), None, PlaybackStatus::Stopped)
+        };
+
+        cx.subscribe(&mpris, |this, mpris, _event: &MprisStateChanged, cx| {
+            this.update_cache(mpris.read(cx).current_player().as_ref());
             cx.notify();
         })
         .detach();
@@ -25,6 +40,21 @@ impl MprisModule {
             scroll_acc_x: px(0.0),
             scroll_acc_y: px(0.0),
             last_track_change: Instant::now(),
+            cached_title: title,
+            cached_artist: artist,
+            cached_status: status,
+        }
+    }
+
+    fn update_cache(&mut self, player: Option<&crate::services::mpris::MprisPlayer>) {
+        if let Some(player) = player {
+            self.cached_title = player.metadata.title.clone().unwrap_or_else(|| "No title".to_string()).into();
+            self.cached_artist = player.metadata.artist.clone().map(|a| a.into());
+            self.cached_status = player.status.clone();
+        } else {
+            self.cached_title = "No title".into();
+            self.cached_artist = None;
+            self.cached_status = PlaybackStatus::Stopped;
         }
     }
 }
@@ -33,13 +63,8 @@ impl Render for MprisModule {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let player = self.mpris.read(cx).current_player();
 
-        if let Some(player) = player {
-            let title = player
-                .metadata
-                .title
-                .unwrap_or_else(|| "No title".to_string());
-            let artist = player.metadata.artist;
-            let is_paused = player.status == PlaybackStatus::Paused;
+        if player.is_some() {
+            let is_paused = self.cached_status == PlaybackStatus::Paused;
 
             div()
                 .id("mpris-module")
@@ -105,9 +130,9 @@ impl Render for MprisModule {
                         .font_weight(FontWeight::SEMIBOLD)
                         .overflow_hidden()
                         .text_ellipsis()
-                        .child(title),
+                        .child(self.cached_title.clone()),
                 )
-                .when_some(artist, |this, artist_name| {
+                .when_some(self.cached_artist.clone(), |this, artist_name| {
                     this.child(
                         div()
                             .text_xs()

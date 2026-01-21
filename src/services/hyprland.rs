@@ -38,6 +38,7 @@ pub struct HyprlandService {
     active_workspace_id: Arc<RwLock<i32>>,
     active_window: Arc<RwLock<Option<ActiveWindow>>>,
     fullscreen_workspace: Arc<RwLock<Option<i32>>>,
+    open_windows: Arc<RwLock<Vec<String>>>, // Track open window classes
     executor: BackgroundExecutor,
 }
 
@@ -50,6 +51,8 @@ enum HyprlandUpdate {
     Workspace(Vec<Workspace>, i32),
     Window(Option<ActiveWindow>),
     Fullscreen(Option<i32>), // workspace id with fullscreen, or None
+    WindowOpened(String),    // window class
+    WindowClosed(String),    // window class
 }
 
 impl HyprlandService {
@@ -58,6 +61,7 @@ impl HyprlandService {
         let active_workspace_id = Arc::new(RwLock::new(1));
         let active_window = Arc::new(RwLock::new(None));
         let fullscreen_workspace = Arc::new(RwLock::new(None));
+        let open_windows = Arc::new(RwLock::new(Vec::new()));
 
         // Create channel for communication: Worker (Tokio) -> UI (GPUI)
         let (ui_tx, mut ui_rx) = futures::channel::mpsc::unbounded::<HyprlandUpdate>();
@@ -70,6 +74,7 @@ impl HyprlandService {
         let active_workspace_id_clone = Arc::clone(&active_workspace_id);
         let active_window_clone = Arc::clone(&active_window);
         let fullscreen_workspace_clone = Arc::clone(&fullscreen_workspace);
+        let open_windows_clone = Arc::clone(&open_windows);
 
         cx.spawn(move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
             let mut cx = cx.clone();
@@ -103,11 +108,22 @@ impl HyprlandService {
                                 let was_fullscreen_here = *current == Some(active_ws);
                                 let is_fullscreen_here = fs_ws == Some(active_ws);
                                 *current = fs_ws;
-                                // Only emit if fullscreen state changed on current workspace
                                 if was_fullscreen_here != is_fullscreen_here {
                                     fs_changed = Some(is_fullscreen_here);
                                 }
                             }
+                        }
+                        HyprlandUpdate::WindowOpened(class) => {
+                            let mut windows = open_windows_clone.write();
+                            if !windows.contains(&class) {
+                                windows.push(class.clone());
+                                eprintln!("[HYPRLAND] Window opened: {}", class);
+                            }
+                        }
+                        HyprlandUpdate::WindowClosed(class) => {
+                            let mut windows = open_windows_clone.write();
+                            windows.retain(|w| w != &class);
+                            eprintln!("[HYPRLAND] Window closed: {}", class);
                         }
                     }
 
@@ -135,6 +151,7 @@ impl HyprlandService {
             active_workspace_id,
             active_window,
             fullscreen_workspace,
+            open_windows,
             executor: cx.background_executor().clone(),
         }
     }
@@ -149,6 +166,10 @@ impl HyprlandService {
 
     pub fn active_window(&self) -> Option<ActiveWindow> {
         self.active_window.read().clone()
+    }
+
+    pub fn is_window_open(&self, class: &str) -> bool {
+        self.open_windows.read().iter().any(|w| w.to_lowercase() == class.to_lowercase())
     }
 
     pub fn has_fullscreen(&self) -> bool {
@@ -193,14 +214,15 @@ impl HyprlandService {
                         || line.starts_with("createworkspace>>")
                         || line.starts_with("destroyworkspace>>")
                     {
-                        let _ = socket_tx.unbounded_send(0); // workspace
-                    } else if line.starts_with("activewindow>>")
-                        || line.starts_with("closewindow>>")
-                        || line.starts_with("openwindow>>")
-                    {
-                        let _ = socket_tx.unbounded_send(1); // window
+                        let _ = socket_tx.unbounded_send((0, line)); // workspace
+                    } else if line.starts_with("activewindow>>") {
+                        let _ = socket_tx.unbounded_send((1, line)); // window
+                    } else if line.starts_with("openwindow>>") {
+                        let _ = socket_tx.unbounded_send((2, line)); // window opened
+                    } else if line.starts_with("closewindow>>") {
+                        let _ = socket_tx.unbounded_send((3, line)); // window closed
                     } else if line.starts_with("fullscreen>>") {
-                        let _ = socket_tx.unbounded_send(2); // fullscreen
+                        let _ = socket_tx.unbounded_send((4, line)); // fullscreen
                     }
                 }
             }
@@ -215,32 +237,41 @@ impl HyprlandService {
         let _ = ui_tx.unbounded_send(HyprlandUpdate::Fullscreen(fs));
 
         // Event loop
-        while let Some(ev_type) = socket_rx.next().await {
-            // Debounce/Drain similar events
-            let mut do_ws = ev_type == 0;
-            let mut do_win = ev_type == 1;
-            let mut do_fs = ev_type == 2;
-
-            while let Ok(Some(ev)) = socket_rx.try_next() {
-                match ev {
-                    0 => do_ws = true,
-                    1 => do_win = true,
-                    2 => do_fs = true,
-                    _ => {}
+        while let Some((ev_type, line)) = socket_rx.next().await {
+            match ev_type {
+                0 => {
+                    // Workspace event
+                    let (ws, id) = Self::fetch_hyprland_data().await;
+                    let _ = ui_tx.unbounded_send(HyprlandUpdate::Workspace(ws, id));
                 }
-            }
-
-            if do_ws {
-                let (ws, id) = Self::fetch_hyprland_data().await;
-                let _ = ui_tx.unbounded_send(HyprlandUpdate::Workspace(ws, id));
-            }
-            if do_win {
-                let win = Self::fetch_active_window().await;
-                let _ = ui_tx.unbounded_send(HyprlandUpdate::Window(win));
-            }
-            if do_fs {
-                let fs = Self::fetch_fullscreen_workspace().await;
-                let _ = ui_tx.unbounded_send(HyprlandUpdate::Fullscreen(fs));
+                1 => {
+                    // Active window event
+                    let win = Self::fetch_active_window().await;
+                    let _ = ui_tx.unbounded_send(HyprlandUpdate::Window(win));
+                }
+                2 => {
+                    // Window opened: openwindow>>ADDRESS,WORKSPACE,CLASS,TITLE
+                    if let Some(data) = line.strip_prefix("openwindow>>") {
+                        let parts: Vec<&str> = data.split(',').collect();
+                        if parts.len() >= 3 {
+                            let class = parts[2].to_string();
+                            let _ = ui_tx.unbounded_send(HyprlandUpdate::WindowOpened(class));
+                        }
+                    }
+                }
+                3 => {
+                    // Window closed: closewindow>>ADDRESS
+                    // We need to get the class from hyprctl since we only have address
+                    // For now, just trigger active window update
+                    let win = Self::fetch_active_window().await;
+                    let _ = ui_tx.unbounded_send(HyprlandUpdate::Window(win));
+                }
+                4 => {
+                    // Fullscreen event
+                    let fs = Self::fetch_fullscreen_workspace().await;
+                    let _ = ui_tx.unbounded_send(HyprlandUpdate::Fullscreen(fs));
+                }
+                _ => {}
             }
         }
     }

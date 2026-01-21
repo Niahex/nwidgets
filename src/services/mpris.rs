@@ -45,6 +45,7 @@ pub struct MprisStateChanged;
 pub struct MprisService {
     current_player: Arc<RwLock<Option<MprisPlayer>>>,
     executor: BackgroundExecutor,
+    spotify_running: Arc<RwLock<bool>>,
 }
 
 // D-Bus proxy for MPRIS2 Player interface
@@ -71,11 +72,28 @@ impl MprisService {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let current_player = Arc::new(RwLock::new(None));
         let current_player_clone = Arc::clone(&current_player);
+        let spotify_running = Arc::new(RwLock::new(false));
+        let spotify_running_clone = Arc::clone(&spotify_running);
 
         let (ui_tx, mut ui_rx) = futures::channel::mpsc::unbounded::<Option<MprisPlayer>>();
 
+        // Subscribe to Hyprland window changes to detect Spotify
+        let hyprland = crate::services::hyprland::HyprlandService::global(cx);
+        let spotify_running_for_sub = Arc::clone(&spotify_running);
+        cx.subscribe(&hyprland, move |_, hyprland, _: &crate::services::hyprland::ActiveWindowChanged, _cx| {
+            let is_spotify = hyprland.read(_cx).is_window_open("spotify");
+            
+            let mut running = spotify_running_for_sub.write();
+            if *running != is_spotify {
+                *running = is_spotify;
+                eprintln!("[MPRIS] Spotify window state: {}", is_spotify);
+            }
+        }).detach();
+
         // 1. Worker Task (Tokio)
-        gpui_tokio::Tokio::spawn(cx, async move { Self::mpris_worker(ui_tx).await }).detach();
+        gpui_tokio::Tokio::spawn(cx, async move { 
+            Self::mpris_worker(ui_tx, spotify_running_clone).await 
+        }).detach();
 
         // 2. UI Task (GPUI)
         cx.spawn(move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
@@ -105,6 +123,7 @@ impl MprisService {
         Self {
             current_player,
             executor: cx.background_executor().clone(),
+            spotify_running,
         }
     }
 
@@ -165,58 +184,99 @@ impl MprisService {
             .detach();
     }
 
-    async fn mpris_worker(ui_tx: futures::channel::mpsc::UnboundedSender<Option<MprisPlayer>>) {
+    async fn mpris_worker(
+        ui_tx: futures::channel::mpsc::UnboundedSender<Option<MprisPlayer>>,
+        spotify_running: Arc<RwLock<bool>>,
+    ) {
         loop {
+            // Wait for Spotify to be running
+            loop {
+                if *spotify_running.read() {
+                    eprintln!("[MPRIS] Spotify detected, connecting...");
+                    break;
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+            }
+
             // Try to connect to Spotify via D-Bus
             let connection = match Connection::session().await {
                 Ok(conn) => conn,
-                Err(_) => {
-                    // Connection failed, wait and retry
+                Err(e) => {
+                    eprintln!("[MPRIS] Failed to connect to session bus: {}", e);
                     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
                     continue;
                 }
             };
 
             let proxy = match MediaPlayer2PlayerProxy::new(&connection).await {
-                Ok(p) => p,
-                Err(_) => {
-                    // Spotify not running, set state to None
+                Ok(p) => {
+                    eprintln!("[MPRIS] Connected to Spotify MPRIS");
+                    p
+                }
+                Err(e) => {
+                    eprintln!("[MPRIS] Failed to create proxy: {}", e);
                     let _ = ui_tx.unbounded_send(None);
-                    // Wait before retrying
                     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
                     continue;
                 }
             };
 
             // Get initial state
-            if let Ok(player) = Self::fetch_player_state(&proxy).await {
-                let _ = ui_tx.unbounded_send(Some(player));
+            match Self::fetch_player_state(&proxy).await {
+                Ok(player) => {
+                    eprintln!("[MPRIS] Initial state: {:?}", player.metadata.title);
+                    let _ = ui_tx.unbounded_send(Some(player));
+                }
+                Err(e) => {
+                    eprintln!("[MPRIS] Failed to fetch initial state: {}", e);
+                    let _ = ui_tx.unbounded_send(None);
+                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                    continue;
+                }
             }
 
             // Subscribe to property changes
             let mut status_stream = proxy.receive_playback_status_changed().await;
             let mut metadata_stream = proxy.receive_metadata_changed().await;
 
-            // Event loop: listen for D-Bus property changes
+            // Event loop: listen for D-Bus property changes or Spotify closing
             loop {
                 tokio::select! {
                     status_change = status_stream.next() => {
-                        if status_change.is_none() { break; }
+                        if status_change.is_none() {
+                            eprintln!("[MPRIS] Status stream ended");
+                            break;
+                        }
                         if let Ok(player) = Self::fetch_player_state(&proxy).await {
                             let _ = ui_tx.unbounded_send(Some(player));
                         }
                     }
                     metadata_change = metadata_stream.next() => {
-                        if metadata_change.is_none() { break; }
+                        if metadata_change.is_none() {
+                            eprintln!("[MPRIS] Metadata stream ended");
+                            break;
+                        }
                         if let Ok(player) = Self::fetch_player_state(&proxy).await {
                             let _ = ui_tx.unbounded_send(Some(player));
                         }
                     }
+                    _ = async {
+                        loop {
+                            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                            if !*spotify_running.read() {
+                                eprintln!("[MPRIS] Spotify window closed");
+                                break;
+                            }
+                        }
+                    } => {
+                        break;
+                    }
                 }
             }
 
-            // Connection lost (streams ended), wait before reconnecting
-            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            // Spotify closed, clear state
+            eprintln!("[MPRIS] Clearing MPRIS state...");
+            let _ = ui_tx.unbounded_send(None);
         }
     }
 
