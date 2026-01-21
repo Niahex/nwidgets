@@ -5,122 +5,44 @@ A high-performance Wayland widget system built with GPUI, featuring a panel, lau
 ## Features
 
 ### 🎨 Panel
->**Features**
-- [x] **Active-window** title, class, icon display
-- [x] **Pomodoro** timer interractive
-- [x] **Workspaces** Indicator and interractive
-- [x] **MPRIS** spotify indicator and controls with mouse (vertical +/-, horizontal next/prev, click pause/play )
-- [ ] **Sytray** 
-- [x] **Audio/Bluetooth/Network/Date-Time** indicators
-
----
+- **Active-window** title, class, icon display
+- **Pomodoro** timer interactive
+- **Workspaces** indicator and interactive
+- **MPRIS** media controls (vertical scroll: volume, horizontal scroll: next/prev, click: pause/play)
+- **Audio/Bluetooth/Network/Date-Time** indicators
 
 ### 🚀 Launcher
->**Features**
-- **Fast application launcher** with fuzzy search
-- [x] **Calculator** mode (type `=` to calculate)
-- [x] **Process manager** (type `ps` to list/kill processes)
-  - [ ] Fix list
-- [x] **Clipboard history** integration
-  - [x] text
-
-> [!NOTE]
-> - [ ] SVG fn
-> - [ ] Cacl remove "="
-> - [ ] Clipboard
->   - [ ] image
->   - [ ] keepass protect
-> - [ ] Sh cmd
-> - [ ] Convert
->   - [ ] money
->   - [ ] mesure
->   - [ ] time
-> - [ ] emoji picker
-> - [ ] nerdfont picker
-> - [ ] file manager
-> - [ ] search web
-> - [ ] Indicator footer
-
----
+- **Apps** launcher
+- **Calculator** mode (type `=` to calculate)
+- **Process manager** (type `ps` to list/kill processes)
+- **Clipboard history** integration
 
 ### 💬 Chat
-
->**Features**
-- [x] **Custom Nord theme** CSS injection
-- [x] **Fullscreen-aware** (auto-hide in fullscreen)
-- [x] **Persistent URL** state
-- [x] **Audio** : i/o
-- [-] **Screenshare** : work but force
-- [x] disable gpu rendering
-
->**Behavior**
-- [x] **Fullscreen-aware** (auto-hide in fullscreen)
-
-> [!NOTE]
-> - [ ] Gpu accel
->   - [ ] WGPU
->   - [ ] Blade
-
----
+- **Custom Nord theme** CSS injection
+- **Fullscreen-aware** (auto-hide in fullscreen)
+- **Persistent URL** state
+- **Audio** input/output
+- GPU rendering disabled for stability
 
 ### 🔔 Notifications
->**Features**
-- [x] **Auto-dismiss** after timeout
-- [x] **History**
-
----
-
+- **Auto-dismiss** after timeout
+- **History** view
 
 ### 🎛️ Control Center
->**Features**
-- **Audio mixer** :
-  - [x] **Sink/source**
-    - [x] Modify with scroll
-    - [?] slider mouse interract (5)
-  - [] **Streams**
-    - [~] icones per site (5)
-    - [] progress bar control (4)
-    - [?] slider mouse interract (5)
-- **Quick actions** (WiFi, Bluetooth, DND, etc.)
-  - [x] Monitors
-    - [x] **CPU** : % & Temp
-    - [x] **GPU** : % & Temp
-    - [x] **Memory** : ram and primary disk 
-    - [x] **Network** : download / upload
-    - [x] **Disks** : 7
-  - [] **Bluetooth**
-    - [] on/off blutooth (5)
-    - [x] list
-    - [x] toggle connection devices
-    - [x] trust toggle devices  
-  - [] **Network manager**
-    - [] all informations (5)
-    - [] vpn (2)
-    - [] proxy (3)
-    - [] ssh (3)
-  - [] VM Manager (5)
-- [x] **Notification** 
-  - [x] List
-  - [x] Clear
+- **Audio mixer** with sink/source volume control (scroll to adjust)
+- **System monitors**: CPU, GPU, Memory, Network, Disks
+- **Bluetooth** device list with connection/trust toggle
+- **Notification** list and clear
+
+### 📊 OSD (On-Screen Display)
+- **Volume** controls with visual feedback
+- **Clipboard** text notifications
 
 ---
 
-### 📊 OSD (On-Screen Display)
->**Features**
-- [] **Sink**
-  - [x] +/-
-  - [ ] mute (5)
-  - [ ] bypass 100% (5)
-- [ ] **Source**
-  - [ ] +/- (5)
-  - [ ] mute (5)
-  - [?] in used 
-- [] Record (5)
-- [] Clipboard
-  - [x] text
-    - [?] display the first words
-  - [?] image 
-  - [?] files
+## Roadmap
+
+See the [GitHub Project](https://github.com/users/Niahex/projects/1) for planned features and priorities.
 
 ---
 
