@@ -72,11 +72,11 @@ impl NotificationServer {
         hints: HashMap<String, zbus::zvariant::Value>,
         _expire_timeout: i32,
     ) -> u32 {
-        println!("[NOTIF] 📨 Received - app: '{app_name}', summary: '{summary}'");
+        log::debug!("Notification received - app: '{app_name}', summary: '{summary}'");
 
         // Ignorer les notifications de Spotify
         if app_name.to_lowercase() == "spotify" {
-            println!("[NOTIF] 🚫 Ignoring Spotify notification");
+            log::debug!("Ignoring Spotify notification");
             let id = if replaces_id > 0 {
                 replaces_id
             } else {
@@ -120,7 +120,7 @@ impl NotificationServer {
 
         if let Some(sender) = &state.sender {
             if let Err(e) = sender.send(notification) {
-                eprintln!("[NOTIF] ❌ Failed to send to UI: {e}");
+                log::error!("Failed to send notification to UI: {e}");
             }
         }
 
@@ -184,13 +184,13 @@ impl NotificationService {
         static INIT: std::sync::Once = std::sync::Once::new();
 
         INIT.call_once(|| {
-            println!("[NOTIF] 🚀 Starting D-Bus server");
+            log::info!("Starting notification D-Bus server");
             let state_ref = Arc::clone(&STATE);
 
             // On utilise gpui_tokio pour réutiliser le runtime global
             gpui_tokio::Tokio::spawn(cx, async move {
                 if let Err(e) = Self::run_dbus_server(state_ref).await {
-                    eprintln!("[NOTIF] ❌ D-Bus Error: {e}");
+                    log::error!("Notification D-Bus error: {e}");
                 }
             })
             .detach();
@@ -212,7 +212,7 @@ impl NotificationService {
             .request_name("org.freedesktop.Notifications")
             .await?;
 
-        println!("[NOTIF] ✅ Service ready on org.freedesktop.Notifications");
+        log::info!("Notification service ready on org.freedesktop.Notifications");
         std::future::pending::<()>().await;
         Ok(())
     }
