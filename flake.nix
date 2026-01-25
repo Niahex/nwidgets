@@ -214,7 +214,7 @@
               --set NWIDGETS_ASSETS_DIR $out/share/nwidgets/assets \
               --set CEF_PATH ${cefAssets} \
               --set __EGL_VENDOR_LIBRARY_FILENAMES /run/opengl-driver/share/glvnd/egl_vendor.d/50_mesa.json:/run/opengl-driver/share/glvnd/egl_vendor.d/10_nvidia.json \
-              --run 'export VK_ICD_FILENAMES=$(find /run/opengl-driver/share/vulkan/icd.d -name "*_icd.*.json" 2>/dev/null | tr "\n" ":" | sed "s/:$//")' \
+              --run 'export VK_ICD_FILENAMES=$((find /run/opengl-driver/share/vulkan/icd.d -name "*_icd.*.json" 2>/dev/null; find ${pkgs.mesa}/share/vulkan/icd.d -name "*_icd.*.json" 2>/dev/null) | tr "\n" ":" | sed "s/:$//")' \
               --run 'if lspci 2>/dev/null | grep -qi nvidia; then export __GL_THREADED_OPTIMIZATIONS=1 __GL_YIELD=USLEEP NWIDGETS_GPU=nvidia; elif lspci 2>/dev/null | grep -qi amd; then export MESA_GLTHREAD=true RADV_PERFTEST=gpl NWIDGETS_GPU=amd; fi'
           '';
         };
@@ -266,8 +266,12 @@
           shellHook = ''
             echo "[🦀 Rust $(rustc --version)] - Ready to develop nwidgets!"
             
-            # Auto-detect available Vulkan ICDs
-            export VK_ICD_FILENAMES=$(find /run/opengl-driver/share/vulkan/icd.d -name "*_icd.*.json" 2>/dev/null | tr '\n' ':' | sed 's/:$//')
+            # Auto-detect available Vulkan ICDs (System + Nix Mesa Fallback)
+            SYSTEM_ICDS=$(find /run/opengl-driver/share/vulkan/icd.d -name "*_icd.*.json" 2>/dev/null | tr '\n' ':')
+            MESA_ICDS=$(find ${pkgs.mesa}/share/vulkan/icd.d -name "*_icd.*.json" 2>/dev/null | tr '\n' ':')
+            export VK_ICD_FILENAMES="''${SYSTEM_ICDS}''${MESA_ICDS}"
+            # Clean up trailing colon
+            export VK_ICD_FILENAMES=$(echo "$VK_ICD_FILENAMES" | sed 's/:$//')
             
             # GPU-specific optimizations
             if lspci 2>/dev/null | grep -qi nvidia; then
