@@ -14,18 +14,12 @@ live_design! {
         padding: {left: 8, right: 8}
 
         time = <Label> {
-            draw_text: {
-                color: (THEME_COLOR_TEXT_DEFAULT)
-                text_style: (THEME_FONT_BOLD) { font_size: 12.0 }
-            }
+            draw_text: { text_style: <THEME_FONT_BOLD> { font_size: 12.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
             text: "00:00"
         }
 
         date = <Label> {
-            draw_text: {
-                color: (THEME_COLOR_TEXT_MUTE)
-                text_style: (THEME_FONT_REGULAR) { font_size: 10.0 }
-            }
+            draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 10.0 }, color: (THEME_COLOR_TEXT_MUTE) }
             text: "Jan 01"
         }
     }

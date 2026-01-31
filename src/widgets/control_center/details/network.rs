@@ -17,10 +17,7 @@ live_design! {
             align: {x: 0.0, y: 0.5}
 
             title = <Label> {
-                draw_text: {
-                    color: (THEME_COLOR_TEXT_DEFAULT)
-                    text_style: (THEME_FONT_BOLD) { font_size: 14.0 }
-                }
+                draw_text: { text_style: <THEME_FONT_BOLD> { font_size: 14.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
                 text: "Network"
             }
         }
@@ -31,10 +28,7 @@ live_design! {
             spacing: 8
 
             wifi_label = <Label> {
-                draw_text: {
-                    color: (THEME_COLOR_TEXT_MUTE)
-                    text_style: (THEME_FONT_REGULAR) { font_size: 11.0 }
-                }
+                draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 11.0 }, color: (THEME_COLOR_TEXT_MUTE) }
                 text: "WiFi"
             }
 
@@ -45,10 +39,7 @@ live_design! {
                 spacing: 12
 
                 icon = <Label> {
-                    draw_text: {
-                        color: (THEME_COLOR_TEXT_DEFAULT)
-                        text_style: (THEME_FONT_REGULAR) { font_size: 16.0 }
-                    }
+                    draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 16.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
                     text: "󰤨"
                 }
 
@@ -58,18 +49,12 @@ live_design! {
                     spacing: 2
 
                     ssid = <Label> {
-                        draw_text: {
-                            color: (THEME_COLOR_TEXT_DEFAULT)
-                            text_style: (THEME_FONT_REGULAR) { font_size: 12.0 }
-                        }
+                        draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 12.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
                         text: "Not connected"
                     }
 
                     details = <Label> {
-                        draw_text: {
-                            color: (THEME_COLOR_TEXT_MUTE)
-                            text_style: (THEME_FONT_REGULAR) { font_size: 10.0 }
-                        }
+                        draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 10.0 }, color: (THEME_COLOR_TEXT_MUTE) }
                         text: ""
                     }
                 }
@@ -82,10 +67,7 @@ live_design! {
             spacing: 8
 
             ethernet_label = <Label> {
-                draw_text: {
-                    color: (THEME_COLOR_TEXT_MUTE)
-                    text_style: (THEME_FONT_REGULAR) { font_size: 11.0 }
-                }
+                draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 11.0 }, color: (THEME_COLOR_TEXT_MUTE) }
                 text: "Ethernet"
             }
 
@@ -96,10 +78,7 @@ live_design! {
                 spacing: 12
 
                 icon = <Label> {
-                    draw_text: {
-                        color: (THEME_COLOR_TEXT_DEFAULT)
-                        text_style: (THEME_FONT_REGULAR) { font_size: 16.0 }
-                    }
+                    draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 16.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
                     text: "󰈀"
                 }
 
@@ -109,10 +88,7 @@ live_design! {
                     spacing: 2
 
                     status = <Label> {
-                        draw_text: {
-                            color: (THEME_COLOR_TEXT_DEFAULT)
-                            text_style: (THEME_FONT_REGULAR) { font_size: 12.0 }
-                        }
+                        draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 12.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
                         text: "Not connected"
                     }
                 }
@@ -125,10 +101,7 @@ live_design! {
             spacing: 8
 
             vpn_label = <Label> {
-                draw_text: {
-                    color: (THEME_COLOR_TEXT_MUTE)
-                    text_style: (THEME_FONT_REGULAR) { font_size: 11.0 }
-                }
+                draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 11.0 }, color: (THEME_COLOR_TEXT_MUTE) }
                 text: "VPN"
             }
 
@@ -139,10 +112,7 @@ live_design! {
                 spacing: 12
 
                 icon = <Label> {
-                    draw_text: {
-                        color: (THEME_COLOR_TEXT_DEFAULT)
-                        text_style: (THEME_FONT_REGULAR) { font_size: 16.0 }
-                    }
+                    draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 16.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
                     text: "󰦝"
                 }
 
@@ -152,10 +122,7 @@ live_design! {
                     spacing: 2
 
                     status = <Label> {
-                        draw_text: {
-                            color: (THEME_COLOR_TEXT_DEFAULT)
-                            text_style: (THEME_FONT_REGULAR) { font_size: 12.0 }
-                        }
+                        draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 12.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
                         text: "Not connected"
                     }
                 }

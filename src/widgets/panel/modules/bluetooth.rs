@@ -10,10 +10,7 @@ live_design! {
         align: {x: 0.5, y: 0.5}
 
         icon = <Label> {
-            draw_text: {
-                color: (THEME_COLOR_TEXT_DEFAULT)
-                text_style: (THEME_FONT_REGULAR) { font_size: 16.0 }
-            }
+            draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 16.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
             text: "󰂯"
         }
     }

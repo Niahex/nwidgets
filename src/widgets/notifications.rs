@@ -28,35 +28,23 @@ live_design! {
             }
 
             app_name = <Label> {
-                draw_text: {
-                    color: (THEME_COLOR_TEXT_MUTE)
-                    text_style: (THEME_FONT_REGULAR) { font_size: 11.0 }
-                }
+                draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 11.0 }, color: (THEME_COLOR_TEXT_MUTE) }
                 text: "App"
             }
 
             time = <Label> {
-                draw_text: {
-                    color: (THEME_COLOR_TEXT_MUTE)
-                    text_style: (THEME_FONT_REGULAR) { font_size: 10.0 }
-                }
+                draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 10.0 }, color: (THEME_COLOR_TEXT_MUTE) }
                 text: "now"
             }
         }
 
         summary = <Label> {
-            draw_text: {
-                color: (THEME_COLOR_TEXT_DEFAULT)
-                text_style: (THEME_FONT_BOLD) { font_size: 12.0 }
-            }
+            draw_text: { text_style: <THEME_FONT_BOLD> { font_size: 12.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
             text: "Notification Title"
         }
 
         body = <Label> {
-            draw_text: {
-                color: (THEME_COLOR_TEXT_MUTE)
-                text_style: (THEME_FONT_REGULAR) { font_size: 11.0 }
-            }
+            draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 11.0 }, color: (THEME_COLOR_TEXT_MUTE) }
             text: "Notification body text"
         }
     }

@@ -33,18 +33,12 @@ live_design! {
             spacing: 2
 
             name = <Label> {
-                draw_text: {
-                    color: (THEME_COLOR_TEXT_DEFAULT)
-                    text_style: (THEME_FONT_REGULAR) { font_size: 13.0 }
-                }
+                draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 13.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
                 text: "Application"
             }
 
             description = <Label> {
-                draw_text: {
-                    color: (THEME_COLOR_TEXT_MUTE)
-                    text_style: (THEME_FONT_REGULAR) { font_size: 11.0 }
-                }
+                draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 11.0 }, color: (THEME_COLOR_TEXT_MUTE) }
                 text: ""
             }
         }
@@ -54,9 +48,7 @@ live_design! {
         width: 700, height: 500
 
         show_bg: true
-        draw_bg: {
-            color: (NORD_POLAR_0)
-        }
+        draw_bg: { color: (NORD_POLAR_0) }
 
         flow: Down
         padding: 16
@@ -71,16 +63,10 @@ live_design! {
             spacing: 12
 
             show_bg: true
-            draw_bg: {
-                color: (NORD_POLAR_1)
-                radius: 8.0
-            }
+            draw_bg: { color: (NORD_POLAR_1), radius: 8.0 }
 
             search_icon = <Label> {
-                draw_text: {
-                    color: (THEME_COLOR_TEXT_MUTE)
-                    text_style: (THEME_FONT_REGULAR) { font_size: 16.0 }
-                }
+                draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 16.0 }, color: (THEME_COLOR_TEXT_MUTE) }
                 text: ""
             }
 
@@ -88,10 +74,7 @@ live_design! {
                 width: Fill, height: Fit
 
                 draw_bg: { color: #0000 }
-                draw_text: {
-                    color: (THEME_COLOR_TEXT_DEFAULT)
-                    text_style: (THEME_FONT_REGULAR) { font_size: 14.0 }
-                }
+                draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 14.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
                 empty_message: "Search apps, calculator (=), processes (ps)..."
             }
         }

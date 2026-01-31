@@ -22,18 +22,12 @@ live_design! {
             spacing: 2
 
             title = <Label> {
-                draw_text: {
-                    color: (THEME_COLOR_TEXT_DEFAULT)
-                    text_style: (THEME_FONT_REGULAR) { font_size: 12.0 }
-                }
+                draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 12.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
                 text: "No window"
             }
 
             class = <Label> {
-                draw_text: {
-                    color: (THEME_COLOR_TEXT_MUTE)
-                    text_style: (THEME_FONT_REGULAR) { font_size: 10.0 }
-                }
+                draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 10.0 }, color: (THEME_COLOR_TEXT_MUTE) }
                 text: ""
             }
         }

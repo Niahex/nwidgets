@@ -8,15 +8,22 @@ live_design! {
     use link::theme::*;
     use link::widgets::*;
     use crate::theme::*;
-    use crate::widgets::panel::modules::*;
+    use crate::widgets::panel::modules::active_window::*;
+    use crate::widgets::panel::modules::workspaces::*;
+    use crate::widgets::panel::modules::pomodoro::*;
+    use crate::widgets::panel::modules::mpris::*;
+    use crate::widgets::panel::modules::systray::*;
+    use crate::widgets::panel::modules::bluetooth::*;
+    use crate::widgets::panel::modules::network::*;
+    use crate::widgets::panel::modules::sink::*;
+    use crate::widgets::panel::modules::source::*;
+    use crate::widgets::panel::modules::datetime::*;
 
     pub Panel = {{Panel}} {
         width: Fill, height: 68
 
         show_bg: true
-        draw_bg: {
-            color: (NORD_POLAR_0)
-        }
+        draw_bg: { color: (NORD_POLAR_0) }
 
         flow: Right
         align: {x: 0.0, y: 0.5}
@@ -65,6 +72,11 @@ live_design! {
             }
         }
     }
+}
+
+pub fn register_live_design(cx: &mut Cx) {
+    modules::live_design(cx);
+    live_design(cx);
 }
 
 #[derive(Live, LiveHook, Widget)]

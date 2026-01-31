@@ -1,6 +1,9 @@
 use makepad_widgets::*;
 
 live_design! {
+    use link::theme::*;
+    use link::widgets::*;
+
     pub NORD_POLAR_0 = #2E3440
     pub NORD_POLAR_1 = #3B4252
     pub NORD_POLAR_2 = #434C5E
@@ -67,77 +70,44 @@ live_design! {
     }
 
     pub NordLabel = <Label> {
-        draw_text: {
-            color: (THEME_COLOR_TEXT_DEFAULT)
-            text_style: (THEME_FONT_REGULAR) { font_size: 12.0 }
-        }
+        draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 12.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
     }
 
     pub NordLabelMuted = <Label> {
-        draw_text: {
-            color: (THEME_COLOR_TEXT_MUTE)
-            text_style: (THEME_FONT_REGULAR) { font_size: 11.0 }
-        }
+        draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 11.0 }, color: (THEME_COLOR_TEXT_MUTE) }
     }
 
     pub NordLabelBold = <Label> {
-        draw_text: {
-            color: (THEME_COLOR_TEXT_DEFAULT)
-            text_style: (THEME_FONT_BOLD) { font_size: 12.0 }
-        }
+        draw_text: { text_style: <THEME_FONT_BOLD> { font_size: 12.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
     }
 
     pub NordButton = <Button> {
-        draw_bg: {
-            color: (NORD_POLAR_2)
-        }
-        draw_text: {
-            color: (THEME_COLOR_TEXT_DEFAULT)
-            text_style: (THEME_FONT_REGULAR) { font_size: 12.0 }
-        }
+        draw_bg: { color: (NORD_POLAR_2) }
+        draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 12.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
     }
 
     pub NordButtonAccent = <Button> {
-        draw_bg: {
-            color: (NORD_FROST_1)
-        }
-        draw_text: {
-            color: (NORD_POLAR_0)
-            text_style: (THEME_FONT_BOLD) { font_size: 12.0 }
-        }
+        draw_bg: { color: (NORD_FROST_1) }
+        draw_text: { text_style: <THEME_FONT_BOLD> { font_size: 12.0 }, color: (NORD_POLAR_0) }
     }
 
     pub NordButtonDanger = <Button> {
-        draw_bg: {
-            color: (NORD_AURORA_RED)
-        }
-        draw_text: {
-            color: (NORD_SNOW_2)
-            text_style: (THEME_FONT_BOLD) { font_size: 12.0 }
-        }
+        draw_bg: { color: (NORD_AURORA_RED) }
+        draw_text: { text_style: <THEME_FONT_BOLD> { font_size: 12.0 }, color: (NORD_SNOW_2) }
     }
 
     pub NordButtonGhost = <Button> {
-        draw_bg: {
-            color: #0000
-        }
-        draw_text: {
-            color: (THEME_COLOR_TEXT_DEFAULT)
-            text_style: (THEME_FONT_REGULAR) { font_size: 12.0 }
-        }
+        draw_bg: { color: #0000 }
+        draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 12.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
     }
 
     pub NordView = <View> {
         show_bg: true
-        draw_bg: {
-            color: (THEME_COLOR_BG_APP)
-        }
+        draw_bg: { color: (THEME_COLOR_BG_APP) }
     }
 
     pub NordSurfaceView = <View> {
         show_bg: true
-        draw_bg: {
-            color: (THEME_COLOR_BG_CONTAINER)
-        }
+        draw_bg: { color: (THEME_COLOR_BG_CONTAINER) }
     }
 }

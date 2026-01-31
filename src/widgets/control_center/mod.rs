@@ -40,10 +40,7 @@ live_design! {
             align: {x: 0.0, y: 0.5}
 
             title = <Label> {
-                draw_text: {
-                    color: (THEME_COLOR_TEXT_DEFAULT)
-                    text_style: (THEME_FONT_BOLD) { font_size: 16.0 }
-                }
+                draw_text: { text_style: <THEME_FONT_BOLD> { font_size: 16.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
                 text: "Control Center"
             }
         }
@@ -76,10 +73,7 @@ live_design! {
             spacing: 8
 
             audio_label = <Label> {
-                draw_text: {
-                    color: (THEME_COLOR_TEXT_MUTE)
-                    text_style: (THEME_FONT_REGULAR) { font_size: 11.0 }
-                }
+                draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 11.0 }, color: (THEME_COLOR_TEXT_MUTE) }
                 text: "Audio"
             }
 
@@ -90,10 +84,7 @@ live_design! {
                 spacing: 12
 
                 icon = <Label> {
-                    draw_text: {
-                        color: (THEME_COLOR_TEXT_DEFAULT)
-                        text_style: (THEME_FONT_REGULAR) { font_size: 16.0 }
-                    }
+                    draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 16.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
                     text: "󰕾"
                 }
 
@@ -109,10 +100,7 @@ live_design! {
                 spacing: 12
 
                 icon = <Label> {
-                    draw_text: {
-                        color: (THEME_COLOR_TEXT_DEFAULT)
-                        text_style: (THEME_FONT_REGULAR) { font_size: 16.0 }
-                    }
+                    draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 16.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
                     text: "󰍬"
                 }
 
@@ -128,10 +116,7 @@ live_design! {
             spacing: 8
 
             system_label = <Label> {
-                draw_text: {
-                    color: (THEME_COLOR_TEXT_MUTE)
-                    text_style: (THEME_FONT_REGULAR) { font_size: 11.0 }
-                }
+                draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 11.0 }, color: (THEME_COLOR_TEXT_MUTE) }
                 text: "System"
             }
 
@@ -186,4 +171,5 @@ impl ControlCenter {
 
 pub fn register_live_design(cx: &mut Cx) {
     details::live_design(cx);
+    live_design(cx);
 }

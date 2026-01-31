@@ -7,7 +7,7 @@ live_design! {
 
     pub MprisModule = {{MprisModule}} {
         width: Fit, height: Fill
-        flow: Row
+        flow: Right
         align: {x: 0.5, y: 0.5}
         spacing: 8
         padding: {left: 8, right: 8}
@@ -17,30 +17,21 @@ live_design! {
         prev_btn = <Button> {
             width: 24, height: 24
             draw_bg: { color: #0000 }
-            draw_text: {
-                color: (THEME_COLOR_TEXT_DEFAULT)
-                text_style: (THEME_FONT_REGULAR) { font_size: 14.0 }
-            }
+            draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 14.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
             text: "󰒮"
         }
 
         play_pause_btn = <Button> {
             width: 24, height: 24
             draw_bg: { color: #0000 }
-            draw_text: {
-                color: (THEME_COLOR_TEXT_DEFAULT)
-                text_style: (THEME_FONT_REGULAR) { font_size: 16.0 }
-            }
+            draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 16.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
             text: "󰐊"
         }
 
         next_btn = <Button> {
             width: 24, height: 24
             draw_bg: { color: #0000 }
-            draw_text: {
-                color: (THEME_COLOR_TEXT_DEFAULT)
-                text_style: (THEME_FONT_REGULAR) { font_size: 14.0 }
-            }
+            draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 14.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
             text: "󰒭"
         }
 
@@ -50,18 +41,12 @@ live_design! {
             spacing: 2
 
             title = <Label> {
-                draw_text: {
-                    color: (THEME_COLOR_TEXT_DEFAULT)
-                    text_style: (THEME_FONT_REGULAR) { font_size: 11.0 }
-                }
+                draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 11.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
                 text: ""
             }
 
             artist = <Label> {
-                draw_text: {
-                    color: (THEME_COLOR_TEXT_MUTE)
-                    text_style: (THEME_FONT_REGULAR) { font_size: 10.0 }
-                }
+                draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 10.0 }, color: (THEME_COLOR_TEXT_MUTE) }
                 text: ""
             }
         }

@@ -22,10 +22,7 @@ live_design! {
         visible: false
 
         icon = <Label> {
-            draw_text: {
-                color: (THEME_COLOR_TEXT_DEFAULT)
-                text_style: (THEME_FONT_REGULAR) { font_size: 24.0 }
-            }
+            draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 24.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
             text: "󰕾"
         }
 

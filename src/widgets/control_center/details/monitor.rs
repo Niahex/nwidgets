@@ -13,32 +13,20 @@ live_design! {
         padding: 12
 
         show_bg: true
-        draw_bg: {
-            color: (NORD_POLAR_1)
-            radius: 12.0
-        }
+        draw_bg: { color: (NORD_POLAR_1), radius: 12.0 }
 
         label = <Label> {
-            draw_text: {
-                color: (THEME_COLOR_TEXT_MUTE)
-                text_style: (THEME_FONT_REGULAR) { font_size: 10.0 }
-            }
+            draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 10.0 }, color: (THEME_COLOR_TEXT_MUTE) }
             text: "CPU"
         }
 
         value = <Label> {
-            draw_text: {
-                color: (THEME_COLOR_TEXT_DEFAULT)
-                text_style: (THEME_FONT_BOLD) { font_size: 18.0 }
-            }
+            draw_text: { text_style: <THEME_FONT_BOLD> { font_size: 18.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
             text: "0%"
         }
 
         subvalue = <Label> {
-            draw_text: {
-                color: (THEME_COLOR_TEXT_MUTE)
-                text_style: (THEME_FONT_REGULAR) { font_size: 10.0 }
-            }
+            draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 10.0 }, color: (THEME_COLOR_TEXT_MUTE) }
             text: ""
         }
     }

@@ -7,7 +7,7 @@ live_design! {
 
     pub SystrayModule = {{SystrayModule}} {
         width: Fit, height: Fill
-        flow: Row
+        flow: Right
         align: {x: 0.5, y: 0.5}
         spacing: 4
         padding: {left: 4, right: 4}

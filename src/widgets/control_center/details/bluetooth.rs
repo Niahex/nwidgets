@@ -13,10 +13,7 @@ live_design! {
         spacing: 12
 
         icon = <Label> {
-            draw_text: {
-                color: (THEME_COLOR_TEXT_DEFAULT)
-                text_style: (THEME_FONT_REGULAR) { font_size: 16.0 }
-            }
+            draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 16.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
             text: "󰋋"
         }
 
@@ -26,18 +23,12 @@ live_design! {
             spacing: 2
 
             name = <Label> {
-                draw_text: {
-                    color: (THEME_COLOR_TEXT_DEFAULT)
-                    text_style: (THEME_FONT_REGULAR) { font_size: 12.0 }
-                }
+                draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 12.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
                 text: "Device Name"
             }
 
             status = <Label> {
-                draw_text: {
-                    color: (THEME_COLOR_TEXT_MUTE)
-                    text_style: (THEME_FONT_REGULAR) { font_size: 10.0 }
-                }
+                draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 10.0 }, color: (THEME_COLOR_TEXT_MUTE) }
                 text: "Connected"
             }
         }
@@ -55,10 +46,7 @@ live_design! {
             align: {x: 0.0, y: 0.5}
 
             title = <Label> {
-                draw_text: {
-                    color: (THEME_COLOR_TEXT_DEFAULT)
-                    text_style: (THEME_FONT_BOLD) { font_size: 14.0 }
-                }
+                draw_text: { text_style: <THEME_FONT_BOLD> { font_size: 14.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
                 text: "Bluetooth Devices"
             }
         }

@@ -7,25 +7,19 @@ live_design! {
 
     pub PomodoroModule = {{PomodoroModule}} {
         width: Fit, height: Fill
-        flow: Row
+        flow: Right
         align: {x: 0.5, y: 0.5}
         spacing: 6
         padding: {left: 8, right: 8}
         cursor: Hand
 
         icon = <Label> {
-            draw_text: {
-                color: (NORD_AURORA_RED)
-                text_style: (THEME_FONT_REGULAR) { font_size: 14.0 }
-            }
+            draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 14.0 }, color: (NORD_AURORA_RED) }
             text: ""
         }
 
         time = <Label> {
-            draw_text: {
-                color: (THEME_COLOR_TEXT_DEFAULT)
-                text_style: (THEME_FONT_CODE) { font_size: 12.0 }
-            }
+            draw_text: { text_style: <THEME_FONT_CODE> { font_size: 12.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
             text: "25:00"
         }
     }
