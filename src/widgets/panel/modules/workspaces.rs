@@ -1,4 +1,5 @@
 use makepad_widgets::*;
+use std::sync::{Arc, Mutex};
 
 use crate::HYPRLAND_SERVICE;
 
@@ -77,27 +78,64 @@ pub struct WorkspacesModule {
     workspace_count: usize,
     
     #[rust]
+    workspace_ids: [Option<i32>; 10],
+    
+    #[rust]
+    needs_redraw: Arc<Mutex<bool>>,
+    
+    #[rust]
     timer: Timer,
 }
 
 impl Widget for WorkspacesModule {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        if *self.needs_redraw.lock().unwrap() {
+            *self.needs_redraw.lock().unwrap() = false;
+            self.sync_from_service(cx);
+        }
         self.view.draw_walk(cx, scope, walk)
     }
 
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         if self.timer.is_event(event).is_some() {
-            self.sync_from_service(cx);
-            self.timer = cx.start_timeout(0.5);
+            if *self.needs_redraw.lock().unwrap() {
+                *self.needs_redraw.lock().unwrap() = false;
+                self.sync_from_service(cx);
+            }
+            self.timer = cx.start_timeout(0.016);
         }
 
         if let Event::Startup = event {
             ::log::info!("WorkspacesModule: Startup event received");
             self.sync_from_service(cx);
-            self.timer = cx.start_timeout(0.5);
+            
+            let needs_redraw = self.needs_redraw.clone();
+            HYPRLAND_SERVICE.on_change(move || {
+                *needs_redraw.lock().unwrap() = true;
+            });
+            
+            self.timer = cx.start_timeout(0.016);
         }
 
         self.view.handle_event(cx, event, scope);
+
+        let ws_ids = [
+            ids!(ws1), ids!(ws2), ids!(ws3), ids!(ws4), ids!(ws5),
+            ids!(ws6), ids!(ws7), ids!(ws8), ids!(ws9), ids!(ws10),
+        ];
+
+        for (idx, ws_id) in ws_ids.iter().enumerate() {
+            if let Some(workspace_id) = self.workspace_ids[idx] {
+                let button_view = self.view.view(*ws_id);
+                match event.hits(cx, button_view.area()) {
+                    Hit::FingerDown(_) => {
+                        ::log::info!("Switching to workspace {}", workspace_id);
+                        HYPRLAND_SERVICE.switch_workspace(workspace_id);
+                    }
+                    _ => {}
+                }
+            }
+        }
     }
 }
 
@@ -120,9 +158,13 @@ impl WorkspacesModule {
                 ids!(ws6), ids!(ws7), ids!(ws8), ids!(ws9), ids!(ws10),
             ];
             
+            self.workspace_ids = [None; 10];
+            
             for (idx, ws_id) in ws_ids.iter().enumerate() {
                 if let Some(ws) = workspaces.get(idx) {
                     let is_active = ws.id == active;
+                    
+                    self.workspace_ids[idx] = Some(ws.id);
                     
                     let display_name = if ws.name.parse::<i32>().is_ok() {
                         ws.name.clone()

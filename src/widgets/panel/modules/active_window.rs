@@ -1,5 +1,5 @@
 use makepad_widgets::*;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use crate::HYPRLAND_SERVICE;
 
@@ -82,24 +82,40 @@ pub struct ActiveWindowModule {
     window_class: String,
 
     #[rust]
+    needs_redraw: Arc<Mutex<bool>>,
+    
+    #[rust]
     timer: Timer,
 }
 
 impl Widget for ActiveWindowModule {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        if *self.needs_redraw.lock().unwrap() {
+            *self.needs_redraw.lock().unwrap() = false;
+            self.sync_from_service(cx);
+        }
         self.view.draw_walk(cx, scope, walk)
     }
 
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         if self.timer.is_event(event).is_some() {
-            self.sync_from_service(cx);
-            self.timer = cx.start_timeout(0.5);
+            if *self.needs_redraw.lock().unwrap() {
+                *self.needs_redraw.lock().unwrap() = false;
+                self.sync_from_service(cx);
+            }
+            self.timer = cx.start_timeout(0.016);
         }
 
         if let Event::Startup = event {
             ::log::info!("ActiveWindowModule: Startup event received");
             self.sync_from_service(cx);
-            self.timer = cx.start_timeout(0.5);
+            
+            let needs_redraw = self.needs_redraw.clone();
+            HYPRLAND_SERVICE.on_change(move || {
+                *needs_redraw.lock().unwrap() = true;
+            });
+            
+            self.timer = cx.start_timeout(0.016);
         }
 
         self.view.handle_event(cx, event, scope);

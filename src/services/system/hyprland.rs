@@ -2,10 +2,12 @@ use std::sync::Arc;
 use parking_lot::RwLock;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::UnixStream;
+use tokio::sync::Notify;
+use serde::Deserialize;
 
 use crate::TOKIO_RUNTIME;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Deserialize)]
 pub struct Workspace {
     pub id: i32,
     pub name: String,
@@ -20,9 +22,13 @@ pub struct ActiveWindow {
     pub class: String,
 }
 
+type RedrawCallback = Arc<dyn Fn() + Send + Sync>;
+
 #[derive(Clone)]
 pub struct HyprlandService {
     state: Arc<RwLock<HyprlandState>>,
+    notify: Arc<Notify>,
+    redraw_callbacks: Arc<RwLock<Vec<RedrawCallback>>>,
 }
 
 #[derive(Default)]
@@ -38,6 +44,8 @@ impl HyprlandService {
         log::info!("Initializing HyprlandService");
         let service = Self {
             state: Arc::new(RwLock::new(HyprlandState::default())),
+            notify: Arc::new(Notify::new()),
+            redraw_callbacks: Arc::new(RwLock::new(Vec::new())),
         };
 
         service.start_listener();
@@ -46,16 +54,28 @@ impl HyprlandService {
 
     fn start_listener(&self) {
         let state = self.state.clone();
+        let notify = self.notify.clone();
+        let redraw_callbacks = self.redraw_callbacks.clone();
 
         TOKIO_RUNTIME.spawn(async move {
             if let Err(e) = Self::fetch_initial_state(&state).await {
                 log::error!("Failed to fetch initial Hyprland state: {}", e);
             }
 
-            if let Err(e) = Self::listen_events(state).await {
+            notify.notify_waiters();
+            Self::trigger_redraws(&redraw_callbacks);
+
+            if let Err(e) = Self::listen_events(state, notify, redraw_callbacks).await {
                 log::error!("Hyprland listener error: {}", e);
             }
         });
+    }
+
+    fn trigger_redraws(callbacks: &Arc<RwLock<Vec<RedrawCallback>>>) {
+        let cbs = callbacks.read();
+        for callback in cbs.iter() {
+            callback();
+        }
     }
 
     async fn fetch_initial_state(state: &Arc<RwLock<HyprlandState>>) -> anyhow::Result<()> {
@@ -65,10 +85,10 @@ impl HyprlandService {
         ::log::info!("Fetching initial Hyprland state from {}", socket_path);
 
         let mut stream = UnixStream::connect(&socket_path).await?;
-        stream.write_all(b"/workspaces").await?;
+        stream.write_all(b"j/workspaces").await?;
 
         let mut response = String::new();
-        let mut buf = [0u8; 4096];
+        let mut buf = [0u8; 8192];
         loop {
             let n = tokio::io::AsyncReadExt::read(&mut stream, &mut buf).await?;
             if n == 0 {
@@ -77,49 +97,14 @@ impl HyprlandService {
             response.push_str(&String::from_utf8_lossy(&buf[..n]));
         }
 
-        let mut workspaces = Vec::new();
-        let mut current_ws: Option<Workspace> = None;
-        
-        for line in response.lines() {
-            let line = line.trim();
-            if line.starts_with("workspace ID ") {
-                if let Some(ws) = current_ws.take() {
-                    workspaces.push(ws);
-                }
-                
-                if let Some(rest) = line.strip_prefix("workspace ID ") {
-                    let parts: Vec<&str> = rest.split_whitespace().collect();
-                    if parts.len() >= 2 {
-                        if let Ok(id) = parts[0].parse::<i32>() {
-                            let name = parts[1].trim_matches(|c| c == '(' || c == ')').to_string();
-                            current_ws = Some(Workspace {
-                                id,
-                                name,
-                                monitor: String::new(),
-                                windows: 0,
-                            });
-                        }
-                    }
-                }
-            } else if let Some(ws) = current_ws.as_mut() {
-                if let Some(windows_str) = line.strip_prefix("windows: ") {
-                    ws.windows = windows_str.parse().unwrap_or(0);
-                } else if line.starts_with("monitorID: ") {
-                }
-            }
-        }
-        
-        if let Some(ws) = current_ws {
-            workspaces.push(ws);
-        }
-        
+        let mut workspaces: Vec<Workspace> = serde_json::from_str(&response)?;
         workspaces.sort_by_key(|w| w.id);
 
         let mut stream = UnixStream::connect(&socket_path).await?;
-        stream.write_all(b"/activeworkspace").await?;
+        stream.write_all(b"j/activeworkspace").await?;
 
         let mut response = String::new();
-        let mut buf = [0u8; 1024];
+        let mut buf = [0u8; 2048];
         loop {
             let n = tokio::io::AsyncReadExt::read(&mut stream, &mut buf).await?;
             if n == 0 {
@@ -128,11 +113,24 @@ impl HyprlandService {
             response.push_str(&String::from_utf8_lossy(&buf[..n]));
         }
 
-        if let Some(id_str) = response.strip_prefix("workspace ID ") {
-            if let Some(id_part) = id_str.split_whitespace().next() {
-                if let Ok(id) = id_part.parse::<i32>() {
-                    state.write().active_workspace = id;
-                }
+        #[derive(Deserialize)]
+        struct ActiveWorkspaceResponse {
+            id: i32,
+            name: String,
+        }
+
+        if let Ok(active_ws) = serde_json::from_str::<ActiveWorkspaceResponse>(&response) {
+            let active_id = active_ws.id;
+            state.write().active_workspace = active_id;
+            
+            if !workspaces.iter().any(|w| w.id == active_id) {
+                workspaces.push(Workspace {
+                    id: active_id,
+                    name: active_ws.name,
+                    monitor: String::new(),
+                    windows: 0,
+                });
+                workspaces.sort_by_key(|w| w.id);
             }
         }
 
@@ -166,7 +164,7 @@ impl HyprlandService {
         Ok(())
     }
 
-    async fn listen_events(state: Arc<RwLock<HyprlandState>>) -> anyhow::Result<()> {
+    async fn listen_events(state: Arc<RwLock<HyprlandState>>, notify: Arc<Notify>, redraw_callbacks: Arc<RwLock<Vec<RedrawCallback>>>) -> anyhow::Result<()> {
         let his = std::env::var("HYPRLAND_INSTANCE_SIGNATURE")?;
         let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/run/user/1000".to_string());
         let socket_path = format!("{}/hypr/{}/.socket2.sock", runtime_dir, his);
@@ -176,13 +174,13 @@ impl HyprlandService {
         let mut lines = reader.lines();
 
         while let Some(line) = lines.next_line().await? {
-            Self::handle_event(&state, &line);
+            Self::handle_event(&state, &line, &notify, &redraw_callbacks);
         }
 
         Ok(())
     }
 
-    fn handle_event(state: &Arc<RwLock<HyprlandState>>, event: &str) {
+    fn handle_event(state: &Arc<RwLock<HyprlandState>>, event: &str, notify: &Arc<Notify>, redraw_callbacks: &Arc<RwLock<Vec<RedrawCallback>>>) {
         let parts: Vec<&str> = event.splitn(2, ">>").collect();
         if parts.len() != 2 {
             return;
@@ -195,6 +193,8 @@ impl HyprlandService {
             "workspace" => {
                 if let Ok(id) = data.parse::<i32>() {
                     state.write().active_workspace = id;
+                    notify.notify_waiters();
+                    Self::trigger_redraws(redraw_callbacks);
                 }
             }
             "activewindow" => {
@@ -205,19 +205,51 @@ impl HyprlandService {
                     s.active_window.title = parts[1].to_string();
                     log::info!("Active window changed: {} - {}", parts[0], parts[1]);
                 }
+                notify.notify_waiters();
+                Self::trigger_redraws(redraw_callbacks);
             }
             "fullscreen" => {
                 state.write().is_fullscreen = data == "1";
+                notify.notify_waiters();
+                Self::trigger_redraws(redraw_callbacks);
             }
             "createworkspace" => {
+                if let Ok(id) = data.parse::<i32>() {
+                    let mut s = state.write();
+                    if !s.workspaces.iter().any(|w| w.id == id) {
+                        s.workspaces.push(Workspace {
+                            id,
+                            name: id.to_string(),
+                            monitor: String::new(),
+                            windows: 0,
+                        });
+                        s.workspaces.sort_by_key(|w| w.id);
+                        log::info!("Created workspace: {}", id);
+                    }
+                }
+                notify.notify_waiters();
+                Self::trigger_redraws(redraw_callbacks);
             }
             "destroyworkspace" => {
                 if let Ok(id) = data.parse::<i32>() {
                     state.write().workspaces.retain(|ws| ws.id != id);
                 }
+                notify.notify_waiters();
+                Self::trigger_redraws(redraw_callbacks);
             }
             _ => {}
         }
+    }
+
+    pub fn subscribe(&self) -> Arc<Notify> {
+        self.notify.clone()
+    }
+
+    pub fn on_change<F>(&self, callback: F)
+    where
+        F: Fn() + Send + Sync + 'static,
+    {
+        self.redraw_callbacks.write().push(Arc::new(callback));
     }
 
     pub fn get_active_workspace(&self) -> i32 {
@@ -225,7 +257,21 @@ impl HyprlandService {
     }
 
     pub fn get_workspaces(&self) -> Vec<Workspace> {
-        self.state.read().workspaces.clone()
+        let state = self.state.read();
+        let mut workspaces = state.workspaces.clone();
+        
+        let active_id = state.active_workspace;
+        if !workspaces.iter().any(|w| w.id == active_id) {
+            workspaces.push(Workspace {
+                id: active_id,
+                name: active_id.to_string(),
+                monitor: String::new(),
+                windows: 0,
+            });
+            workspaces.sort_by_key(|w| w.id);
+        }
+        
+        workspaces
     }
 
     pub fn get_active_window(&self) -> ActiveWindow {
