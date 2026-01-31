@@ -86,12 +86,15 @@ impl HyprlandService {
                 if let Some(ws) = current_ws.take() {
                     workspaces.push(ws);
                 }
-                if let Some(id_str) = line.strip_prefix("workspace ID ") {
-                    if let Some(id_part) = id_str.split_whitespace().next() {
-                        if let Ok(id) = id_part.parse::<i32>() {
+                
+                if let Some(rest) = line.strip_prefix("workspace ID ") {
+                    let parts: Vec<&str> = rest.split_whitespace().collect();
+                    if parts.len() >= 2 {
+                        if let Ok(id) = parts[0].parse::<i32>() {
+                            let name = parts[1].trim_matches(|c| c == '(' || c == ')').to_string();
                             current_ws = Some(Workspace {
                                 id,
-                                name: String::new(),
+                                name,
                                 monitor: String::new(),
                                 windows: 0,
                             });
@@ -99,12 +102,9 @@ impl HyprlandService {
                     }
                 }
             } else if let Some(ws) = current_ws.as_mut() {
-                if let Some(name) = line.strip_prefix("workspace name: ") {
-                    ws.name = name.to_string();
-                } else if let Some(monitor) = line.strip_prefix("monitor: ") {
-                    ws.monitor = monitor.to_string();
-                } else if let Some(windows) = line.strip_prefix("windows: ") {
-                    ws.windows = windows.parse().unwrap_or(0);
+                if let Some(windows_str) = line.strip_prefix("windows: ") {
+                    ws.windows = windows_str.parse().unwrap_or(0);
+                } else if line.starts_with("monitorID: ") {
                 }
             }
         }
@@ -112,6 +112,8 @@ impl HyprlandService {
         if let Some(ws) = current_ws {
             workspaces.push(ws);
         }
+        
+        workspaces.sort_by_key(|w| w.id);
 
         let mut stream = UnixStream::connect(&socket_path).await?;
         stream.write_all(b"/activeworkspace").await?;
