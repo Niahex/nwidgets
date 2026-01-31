@@ -41,20 +41,18 @@ impl LiveRegister for App {
 
 impl MatchEvent for App {
     fn handle_startup(&mut self, cx: &mut Cx) {
-        makepad_widgets::log!("nwidgets started (Makepad port)");
+        let config = LayerShellConfig {
+            layer: LayerShellLayer::Top,
+            anchor: LayerShellAnchor::TOP | LayerShellAnchor::LEFT | LayerShellAnchor::RIGHT,
+            exclusive_zone: Some(68),
+            namespace: "nwidgets-panel".to_string(),
+            keyboard_interactivity: LayerShellKeyboardInteractivity::None,
+            margin: (0, 0, 0, 0),
+        };
         
-        if let Some(mut window) = self.ui.window(&[id!(ui)]).borrow_mut() {
-            let config = LayerShellConfig {
-                layer: LayerShellLayer::Top,
-                anchor: LayerShellAnchor::TOP | LayerShellAnchor::LEFT | LayerShellAnchor::RIGHT,
-                exclusive_zone: Some(68),
-                namespace: "nwidgets-panel".to_string(),
-                keyboard_interactivity: LayerShellKeyboardInteractivity::None,
-                margin: (0, 0, 0, 0),
-            };
+        if let Some(mut window) = self.ui.borrow_mut::<Window>() {
             window.set_layer_shell(cx, config);
             self.layer_shell_configured = true;
-            makepad_widgets::log!("Layer-shell configured for panel");
         }
     }
 
