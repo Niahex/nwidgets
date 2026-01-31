@@ -8,6 +8,7 @@ use crate::services::system::hyprland::HyprlandService;
 
 pub mod app;
 pub mod theme;
+pub mod logger;
 
 pub mod services;
 pub mod ui;

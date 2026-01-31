@@ -36,6 +36,7 @@ struct HyprlandState {
 
 impl HyprlandService {
     pub fn new() -> Self {
+        log::info!("Initializing HyprlandService");
         let service = Self {
             state: Arc::new(RwLock::new(HyprlandState::default())),
         };
@@ -61,6 +62,7 @@ impl HyprlandService {
     async fn fetch_initial_state(state: &Arc<RwLock<HyprlandState>>) -> anyhow::Result<()> {
         let his = std::env::var("HYPRLAND_INSTANCE_SIGNATURE")?;
         let socket_path = format!("/tmp/hypr/{}/.socket.sock", his);
+        log::info!("Fetching initial Hyprland state from {}", socket_path);
 
         let mut stream = UnixStream::connect(&socket_path).await?;
         stream.write_all(b"/workspaces").await?;
@@ -102,21 +104,44 @@ impl HyprlandService {
         if let Some(id_str) = response.strip_prefix("workspace ID ") {
             if let Some(id_part) = id_str.split_whitespace().next() {
                 if let Ok(id) = id_part.parse::<i32>() {
-                    let mut s = state.write();
-                    s.active_workspace = id;
-                    s.occupied_workspaces = occupied;
-                    return Ok(());
+                    state.write().active_workspace = id;
                 }
             }
         }
 
+        let mut stream = UnixStream::connect(&socket_path).await?;
+        stream.write_all(b"/activewindow").await?;
+
+        let mut response = String::new();
+        let mut buf = [0u8; 4096];
+        loop {
+            let n = tokio::io::AsyncReadExt::read(&mut stream, &mut buf).await?;
+            if n == 0 {
+                break;
+            }
+            response.push_str(&String::from_utf8_lossy(&buf[..n]));
+        }
+
+        for line in response.lines() {
+            if let Some(class_str) = line.strip_prefix("class: ") {
+                state.write().active_window.class = class_str.to_string();
+            } else if let Some(title_str) = line.strip_prefix("title: ") {
+                state.write().active_window.title = title_str.to_string();
+            }
+        }
+
         state.write().occupied_workspaces = occupied;
+        log::info!("Initial state loaded: workspace={}, window={} - {}", 
+            state.read().active_workspace,
+            state.read().active_window.class,
+            state.read().active_window.title);
         Ok(())
     }
 
     async fn listen_events(state: Arc<RwLock<HyprlandState>>) -> anyhow::Result<()> {
         let his = std::env::var("HYPRLAND_INSTANCE_SIGNATURE")?;
-        let socket_path = format!("/tmp/hypr/{}/.socket2.sock", his);
+        let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/run/user/1000".to_string());
+        let socket_path = format!("{}/hypr/{}/.socket2.sock", runtime_dir, his);
 
         let stream = UnixStream::connect(&socket_path).await?;
         let reader = BufReader::new(stream);
@@ -150,6 +175,7 @@ impl HyprlandService {
                     let mut s = state.write();
                     s.active_window.class = parts[0].to_string();
                     s.active_window.title = parts[1].to_string();
+                    log::info!("Active window changed: {} - {}", parts[0], parts[1]);
                 }
             }
             "fullscreen" => {
@@ -178,7 +204,9 @@ impl HyprlandService {
     }
 
     pub fn get_active_window(&self) -> ActiveWindow {
-        self.state.read().active_window.clone()
+        let window = self.state.read().active_window.clone();
+        log::debug!("get_active_window: {} - {}", window.class, window.title);
+        window
     }
 
     pub fn is_fullscreen(&self) -> bool {
@@ -195,7 +223,8 @@ impl HyprlandService {
 
     async fn do_switch_workspace(workspace: i32) -> anyhow::Result<()> {
         let his = std::env::var("HYPRLAND_INSTANCE_SIGNATURE")?;
-        let socket_path = format!("/tmp/hypr/{}/.socket.sock", his);
+        let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/run/user/1000".to_string());
+        let socket_path = format!("{}/hypr/{}/.socket.sock", runtime_dir, his);
 
         let mut stream = UnixStream::connect(&socket_path).await?;
         let command = format!("/dispatch workspace {}", workspace);

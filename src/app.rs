@@ -1,5 +1,7 @@
 use makepad_widgets::*;
 
+use crate::HYPRLAND_SERVICE;
+
 live_design! {
     use link::theme::*;
     use link::widgets::*;
@@ -41,6 +43,8 @@ impl LiveRegister for App {
 
 impl MatchEvent for App {
     fn handle_startup(&mut self, cx: &mut Cx) {
+        let _ = &*HYPRLAND_SERVICE;
+        
         let config = LayerShellConfig {
             layer: LayerShellLayer::Top,
             anchor: LayerShellAnchor::TOP | LayerShellAnchor::LEFT | LayerShellAnchor::RIGHT,
