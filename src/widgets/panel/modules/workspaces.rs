@@ -1,5 +1,7 @@
 use makepad_widgets::*;
 
+use crate::HYPRLAND_SERVICE;
+
 live_design! {
     use link::theme::*;
     use link::widgets::*;
@@ -59,10 +61,13 @@ pub struct WorkspacesModule {
     view: View,
 
     #[rust]
-    active_workspace: usize,
+    active_workspace: i32,
 
     #[rust]
-    occupied_workspaces: Vec<usize>,
+    occupied_workspaces: Vec<i32>,
+    
+    #[rust]
+    timer: Timer,
 }
 
 impl Widget for WorkspacesModule {
@@ -71,16 +76,69 @@ impl Widget for WorkspacesModule {
     }
 
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        if self.timer.is_event(event).is_some() {
+            self.sync_from_service(cx);
+            self.timer = cx.start_timeout(0.5);
+        }
+
+        if let Event::Startup = event {
+            ::log::info!("WorkspacesModule: Startup event received");
+            self.sync_from_service(cx);
+            self.timer = cx.start_timeout(0.5);
+        }
+
         self.view.handle_event(cx, event, scope);
     }
 }
 
 impl WorkspacesModule {
-    pub fn set_active(&mut self, _cx: &mut Cx, workspace: usize) {
+    fn sync_from_service(&mut self, cx: &mut Cx) {
+        let active = HYPRLAND_SERVICE.get_active_workspace();
+        let occupied = HYPRLAND_SERVICE.get_occupied_workspaces();
+        
+        let occupied_vec: Vec<i32> = occupied.iter().copied().collect();
+        
+        if active != self.active_workspace || occupied_vec != self.occupied_workspaces {
+            self.active_workspace = active;
+            self.occupied_workspaces = occupied_vec;
+            
+            ::log::info!("WorkspacesModule: active={}, occupied={:?}", active, self.occupied_workspaces);
+            
+            for i in 1..=10 {
+                let ws_id = match i {
+                    1 => ids!(ws1),
+                    2 => ids!(ws2),
+                    3 => ids!(ws3),
+                    4 => ids!(ws4),
+                    5 => ids!(ws5),
+                    6 => ids!(ws6),
+                    7 => ids!(ws7),
+                    8 => ids!(ws8),
+                    9 => ids!(ws9),
+                    10 => ids!(ws10),
+                    _ => continue,
+                };
+                
+                let is_active = i == active;
+                let is_occupied = self.occupied_workspaces.contains(&i);
+                
+                self.view.view(ws_id).apply_over(cx, live!{
+                    draw_bg: {
+                        active: (if is_active { 1.0 } else { 0.0 })
+                        occupied: (if is_occupied { 1.0 } else { 0.0 })
+                    }
+                });
+            }
+            
+            cx.redraw_all();
+        }
+    }
+    
+    pub fn set_active(&mut self, _cx: &mut Cx, workspace: i32) {
         self.active_workspace = workspace;
     }
 
-    pub fn set_occupied(&mut self, _cx: &mut Cx, workspaces: Vec<usize>) {
+    pub fn set_occupied(&mut self, _cx: &mut Cx, workspaces: Vec<i32>) {
         self.occupied_workspaces = workspaces;
     }
 }
