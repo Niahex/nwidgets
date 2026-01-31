@@ -5,8 +5,8 @@ edition = "2021"
 include = ["src/**/*", "Cargo.toml", "assets/**/*"]
 
 [dependencies]
-# Makepad framework - EXACT version from ndown
-makepad-widgets = { git = "https://github.com/makepad/makepad", rev = "774a07c" }
+# Makepad framework - forked with layer-shell support
+makepad-widgets = { git = "https://github.com/Niahex/makepad", branch = "layer-shell" }
 
 # Async & Concurrency
 anyhow = "1.0"
