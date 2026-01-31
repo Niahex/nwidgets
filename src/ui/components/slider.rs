@@ -85,7 +85,6 @@ pub struct NwSlider {
 
 impl Widget for NwSlider {
     fn draw_walk(&mut self, cx: &mut Cx2d, _scope: &mut Scope, walk: Walk) -> DrawStep {
-        self.draw_bg.set_uniform(cx, id!(value), &[self.normalized_value()]);
         self.draw_bg.draw_walk(cx, walk);
         DrawStep::done()
     }
@@ -124,8 +123,8 @@ impl NwSlider {
 
     fn update_value_from_pos(&mut self, cx: &mut Cx, abs_x: f64) {
         let rect = self.draw_bg.area().rect(cx);
-        let rel_x = (abs_x as f32 - rect.pos.x).max(0.0).min(rect.size.x);
-        let normalized = rel_x / rect.size.x;
+        let rel_x = (abs_x - rect.pos.x).max(0.0).min(rect.size.x);
+        let normalized = (rel_x / rect.size.x) as f32;
         let new_value = self.min + normalized * (self.max - self.min);
         let stepped = (new_value / self.step).round() * self.step;
         self.value = stepped.max(self.min).min(self.max);

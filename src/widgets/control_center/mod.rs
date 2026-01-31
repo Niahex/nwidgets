@@ -184,6 +184,6 @@ impl ControlCenter {
     }
 }
 
-pub fn live_design(cx: &mut Cx) {
+pub fn register_live_design(cx: &mut Cx) {
     details::live_design(cx);
 }

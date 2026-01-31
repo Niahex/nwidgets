@@ -36,7 +36,7 @@ pub struct PomodoroModule {
     #[deref]
     view: View,
 
-    #[rust(25 * 60)]
+    #[rust]
     remaining_seconds: u32,
 
     #[rust]

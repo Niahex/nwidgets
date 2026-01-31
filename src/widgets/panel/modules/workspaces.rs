@@ -57,7 +57,7 @@ pub struct WorkspacesModule {
     #[deref]
     view: View,
 
-    #[rust(1)]
+    #[rust]
     active_workspace: usize,
 
     #[rust]

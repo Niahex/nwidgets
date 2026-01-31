@@ -59,8 +59,6 @@ pub struct NwCircularProgress {
 
 impl Widget for NwCircularProgress {
     fn draw_walk(&mut self, cx: &mut Cx2d, _scope: &mut Scope, walk: Walk) -> DrawStep {
-        self.draw_bg.set_uniform(cx, id!(value), &[self.value]);
-        self.draw_bg.set_uniform(cx, id!(secondary_value), &[self.secondary_value]);
         self.draw_bg.draw_walk(cx, walk);
         DrawStep::done()
     }

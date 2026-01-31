@@ -55,7 +55,7 @@ impl ApplicationService {
 
         for path in Iter::new(locales) {
             if let Ok(bytes) = std::fs::read_to_string(&path) {
-                if let Ok(entry) = DesktopEntry::from_str(&path, &bytes, None::<&[&str]>) {
+                if let Ok(entry) = DesktopEntry::decode(&path, &bytes) {
                     if entry.no_display() {
                         continue;
                     }

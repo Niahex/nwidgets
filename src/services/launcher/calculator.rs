@@ -1,5 +1,5 @@
 use numbat::module_importer::BuiltinModuleImporter;
-use numbat::Context;
+use numbat::{Context, CodeSource};
 
 pub struct CalculatorService {
     context: Context,
@@ -10,21 +10,18 @@ impl CalculatorService {
         let importer = BuiltinModuleImporter::default();
         let mut context = Context::new(importer);
 
-        let _ = context.interpret("", 1);
+        let _ = context.interpret("", CodeSource::Internal);
 
         Self { context }
     }
 
     pub fn evaluate(&mut self, expression: &str) -> Result<String, String> {
-        let result = self.context.interpret(expression, 1);
+        let result = self.context.interpret(expression, CodeSource::Text);
 
         match result {
-            Ok((statements, result)) => {
-                if let Some(value) = result.to_markup(statements.last(), true, true) {
-                    Ok(value.to_string())
-                } else {
-                    Err("No result".to_string())
-                }
+            Ok((_statements, result)) => {
+                let markup = result.to_markup(&self.context.dimension_registry(), true, true);
+                Ok(markup.to_string())
             }
             Err(e) => Err(e.to_string()),
         }

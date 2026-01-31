@@ -35,6 +35,7 @@ impl ClipboardService {
 
     pub fn add_entry(&self, content: String) {
         let mut state = self.state.write();
+        let max_entries = state.max_entries;
 
         let entry = ClipboardEntry {
             id: chrono::Utc::now().timestamp_millis() as u64,
@@ -44,8 +45,8 @@ impl ClipboardService {
 
         state.history.insert(0, entry);
 
-        if state.history.len() > state.max_entries {
-            state.history.truncate(state.max_entries);
+        if state.history.len() > max_entries {
+            state.history.truncate(max_entries);
         }
     }
 

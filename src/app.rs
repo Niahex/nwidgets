@@ -1,8 +1,5 @@
 use makepad_widgets::*;
 
-use crate::widgets::panel::*;
-use crate::widgets::launcher::*;
-
 live_design! {
     use link::theme::*;
     use link::widgets::*;
@@ -42,7 +39,7 @@ impl LiveRegister for App {
 
 impl MatchEvent for App {
     fn handle_startup(&mut self, _cx: &mut Cx) {
-        log::info!("nwidgets started (Makepad port)");
+        makepad_widgets::log!("nwidgets started (Makepad port)");
     }
 
     fn handle_actions(&mut self, _cx: &mut Cx, _actions: &Actions) {
