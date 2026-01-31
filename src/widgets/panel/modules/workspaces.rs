@@ -8,30 +8,40 @@ live_design! {
     use makepad_draw::shader::std::*;
     use crate::theme::*;
 
-    WorkspaceIndicator = <View> {
-        width: 8, height: 8
+    WorkspaceButton = <View> {
+        width: Fit, height: Fit
+        padding: {left: 8, right: 8, top: 4, bottom: 4}
+        cursor: Hand
 
         show_bg: true
         draw_bg: {
             instance active: 0.0
-            instance occupied: 0.0
 
             fn pixel(self) -> vec4 {
                 let sdf = Sdf2d::viewport(self.pos * self.rect_size);
-                let center = self.rect_size * 0.5;
-                let radius = min(center.x, center.y);
-
+                
                 let color = mix(
-                    mix(#4C566A, #88C0D0, self.occupied),
+                    #4C566A,
                     #88C0D0,
                     self.active
                 );
 
-                sdf.circle(center.x, center.y, radius);
+                sdf.box(
+                    1.0,
+                    1.0,
+                    self.rect_size.x - 2.0,
+                    self.rect_size.y - 2.0,
+                    2.0
+                );
                 sdf.fill(color);
 
                 return sdf.result;
             }
+        }
+
+        label = <Label> {
+            draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 11.0 }, color: #ECEFF4 }
+            text: "1"
         }
     }
 
@@ -39,19 +49,19 @@ live_design! {
         width: Fit, height: Fill
         flow: Right
         align: {x: 0.5, y: 0.5}
-        spacing: 6
+        spacing: 4
         padding: {left: 8, right: 8}
 
-        ws1 = <WorkspaceIndicator> {}
-        ws2 = <WorkspaceIndicator> {}
-        ws3 = <WorkspaceIndicator> {}
-        ws4 = <WorkspaceIndicator> {}
-        ws5 = <WorkspaceIndicator> {}
-        ws6 = <WorkspaceIndicator> {}
-        ws7 = <WorkspaceIndicator> {}
-        ws8 = <WorkspaceIndicator> {}
-        ws9 = <WorkspaceIndicator> {}
-        ws10 = <WorkspaceIndicator> {}
+        ws1 = <WorkspaceButton> {}
+        ws2 = <WorkspaceButton> {}
+        ws3 = <WorkspaceButton> {}
+        ws4 = <WorkspaceButton> {}
+        ws5 = <WorkspaceButton> {}
+        ws6 = <WorkspaceButton> {}
+        ws7 = <WorkspaceButton> {}
+        ws8 = <WorkspaceButton> {}
+        ws9 = <WorkspaceButton> {}
+        ws10 = <WorkspaceButton> {}
     }
 }
 
@@ -64,7 +74,7 @@ pub struct WorkspacesModule {
     active_workspace: i32,
 
     #[rust]
-    occupied_workspaces: Vec<i32>,
+    workspace_count: usize,
     
     #[rust]
     timer: Timer,
@@ -94,51 +104,52 @@ impl Widget for WorkspacesModule {
 impl WorkspacesModule {
     fn sync_from_service(&mut self, cx: &mut Cx) {
         let active = HYPRLAND_SERVICE.get_active_workspace();
-        let occupied = HYPRLAND_SERVICE.get_occupied_workspaces();
+        let workspaces = HYPRLAND_SERVICE.get_workspaces();
         
-        let occupied_vec: Vec<i32> = occupied.iter().copied().collect();
-        
-        if active != self.active_workspace || occupied_vec != self.occupied_workspaces {
+        if active != self.active_workspace || workspaces.len() != self.workspace_count {
             self.active_workspace = active;
-            self.occupied_workspaces = occupied_vec;
+            self.workspace_count = workspaces.len();
             
-            ::log::info!("WorkspacesModule: active={}, occupied={:?}", active, self.occupied_workspaces);
+            ::log::info!("WorkspacesModule: active={}, workspaces={:?}", 
+                active, 
+                workspaces.iter().map(|w| format!("{}:{}", w.id, w.name)).collect::<Vec<_>>()
+            );
             
-            for i in 1..=10 {
-                let ws_id = match i {
-                    1 => ids!(ws1),
-                    2 => ids!(ws2),
-                    3 => ids!(ws3),
-                    4 => ids!(ws4),
-                    5 => ids!(ws5),
-                    6 => ids!(ws6),
-                    7 => ids!(ws7),
-                    8 => ids!(ws8),
-                    9 => ids!(ws9),
-                    10 => ids!(ws10),
-                    _ => continue,
-                };
-                
-                let is_active = i == active;
-                let is_occupied = self.occupied_workspaces.contains(&i);
-                
-                self.view.view(ws_id).apply_over(cx, live!{
-                    draw_bg: {
-                        active: (if is_active { 1.0 } else { 0.0 })
-                        occupied: (if is_occupied { 1.0 } else { 0.0 })
-                    }
-                });
+            let ws_ids = [
+                ids!(ws1), ids!(ws2), ids!(ws3), ids!(ws4), ids!(ws5),
+                ids!(ws6), ids!(ws7), ids!(ws8), ids!(ws9), ids!(ws10),
+            ];
+            
+            for (idx, ws_id) in ws_ids.iter().enumerate() {
+                if let Some(ws) = workspaces.get(idx) {
+                    let is_active = ws.id == active;
+                    
+                    let display_name = if ws.name.parse::<i32>().is_ok() {
+                        ws.name.clone()
+                    } else {
+                        ws.name
+                            .chars()
+                            .next()
+                            .unwrap_or('?')
+                            .to_uppercase()
+                            .to_string()
+                    };
+                    
+                    self.view.view(*ws_id).apply_over(cx, live!{
+                        visible: true
+                        draw_bg: {
+                            active: (if is_active { 1.0 } else { 0.0 })
+                        }
+                    });
+                    self.view.view(*ws_id).label(ids!(label)).set_text(cx, &display_name);
+                } else {
+                    self.view.view(*ws_id).apply_over(cx, live!{
+                        visible: false
+                    });
+                }
             }
             
             cx.redraw_all();
         }
-    }
-    
-    pub fn set_active(&mut self, _cx: &mut Cx, workspace: i32) {
-        self.active_workspace = workspace;
-    }
-
-    pub fn set_occupied(&mut self, _cx: &mut Cx, workspaces: Vec<i32>) {
-        self.occupied_workspaces = workspaces;
     }
 }

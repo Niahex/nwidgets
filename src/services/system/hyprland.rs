@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::sync::Arc;
 use parking_lot::RwLock;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -28,7 +27,7 @@ pub struct HyprlandService {
 
 #[derive(Default)]
 struct HyprlandState {
-    occupied_workspaces: HashSet<i32>,
+    workspaces: Vec<Workspace>,
     active_workspace: i32,
     active_window: ActiveWindow,
     is_fullscreen: bool,
@@ -61,8 +60,9 @@ impl HyprlandService {
 
     async fn fetch_initial_state(state: &Arc<RwLock<HyprlandState>>) -> anyhow::Result<()> {
         let his = std::env::var("HYPRLAND_INSTANCE_SIGNATURE")?;
-        let socket_path = format!("/tmp/hypr/{}/.socket.sock", his);
-        log::info!("Fetching initial Hyprland state from {}", socket_path);
+        let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/run/user/1000".to_string());
+        let socket_path = format!("{}/hypr/{}/.socket.sock", runtime_dir, his);
+        ::log::info!("Fetching initial Hyprland state from {}", socket_path);
 
         let mut stream = UnixStream::connect(&socket_path).await?;
         stream.write_all(b"/workspaces").await?;
@@ -77,15 +77,40 @@ impl HyprlandService {
             response.push_str(&String::from_utf8_lossy(&buf[..n]));
         }
 
-        let mut occupied = HashSet::new();
+        let mut workspaces = Vec::new();
+        let mut current_ws: Option<Workspace> = None;
+        
         for line in response.lines() {
-            if let Some(id_str) = line.strip_prefix("workspace ID ") {
-                if let Some(id_part) = id_str.split_whitespace().next() {
-                    if let Ok(id) = id_part.parse::<i32>() {
-                        occupied.insert(id);
+            let line = line.trim();
+            if line.starts_with("workspace ID ") {
+                if let Some(ws) = current_ws.take() {
+                    workspaces.push(ws);
+                }
+                if let Some(id_str) = line.strip_prefix("workspace ID ") {
+                    if let Some(id_part) = id_str.split_whitespace().next() {
+                        if let Ok(id) = id_part.parse::<i32>() {
+                            current_ws = Some(Workspace {
+                                id,
+                                name: String::new(),
+                                monitor: String::new(),
+                                windows: 0,
+                            });
+                        }
                     }
                 }
+            } else if let Some(ws) = current_ws.as_mut() {
+                if let Some(name) = line.strip_prefix("workspace name: ") {
+                    ws.name = name.to_string();
+                } else if let Some(monitor) = line.strip_prefix("monitor: ") {
+                    ws.monitor = monitor.to_string();
+                } else if let Some(windows) = line.strip_prefix("windows: ") {
+                    ws.windows = windows.parse().unwrap_or(0);
+                }
             }
+        }
+        
+        if let Some(ws) = current_ws {
+            workspaces.push(ws);
         }
 
         let mut stream = UnixStream::connect(&socket_path).await?;
@@ -130,9 +155,10 @@ impl HyprlandService {
             }
         }
 
-        state.write().occupied_workspaces = occupied;
-        log::info!("Initial state loaded: workspace={}, window={} - {}", 
+        state.write().workspaces = workspaces;
+        ::log::info!("Initial state loaded: workspace={}, workspaces={:?}, window={} - {}", 
             state.read().active_workspace,
+            state.read().workspaces.iter().map(|w| format!("{}:{}", w.id, w.name)).collect::<Vec<_>>(),
             state.read().active_window.class,
             state.read().active_window.title);
         Ok(())
@@ -182,13 +208,10 @@ impl HyprlandService {
                 state.write().is_fullscreen = data == "1";
             }
             "createworkspace" => {
-                if let Ok(id) = data.parse::<i32>() {
-                    state.write().occupied_workspaces.insert(id);
-                }
             }
             "destroyworkspace" => {
                 if let Ok(id) = data.parse::<i32>() {
-                    state.write().occupied_workspaces.remove(&id);
+                    state.write().workspaces.retain(|ws| ws.id != id);
                 }
             }
             _ => {}
@@ -199,13 +222,13 @@ impl HyprlandService {
         self.state.read().active_workspace
     }
 
-    pub fn get_occupied_workspaces(&self) -> HashSet<i32> {
-        self.state.read().occupied_workspaces.clone()
+    pub fn get_workspaces(&self) -> Vec<Workspace> {
+        self.state.read().workspaces.clone()
     }
 
     pub fn get_active_window(&self) -> ActiveWindow {
         let window = self.state.read().active_window.clone();
-        log::debug!("get_active_window: {} - {}", window.class, window.title);
+        ::log::debug!("get_active_window: {} - {}", window.class, window.title);
         window
     }
 
