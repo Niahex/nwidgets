@@ -1,5 +1,5 @@
 {
-  description = "nwidgets - A GPUI-based application launcher";
+  description = "nwidgets - A Makepad-based Wayland widget system";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
@@ -33,7 +33,7 @@
         overlays = [(import rust-overlay)];
         pkgs = import nixpkgs {inherit system overlays;};
 
-        # Rust toolchain configuration
+        # Rust toolchain configuration - matching ndown
         rustToolchain = pkgs.rust-bin.stable."1.88.0".default.override {
           extensions = ["rust-src"];
         };
@@ -49,6 +49,8 @@
                 file:
                   pkgs.lib.any file.hasExt [
                     "svg"
+                    "ttf"
+                    "png"
                   ]
               )
               unfilteredRoot)
@@ -56,130 +58,47 @@
           ];
         };
 
-        # CEF Configuration
-        cefVersion = "143.0.14+gdd46a37+chromium-143.0.7499.193";
-        cefPlatform = "linux64";
-        cefSrc = pkgs.fetchurl {
-          url = "https://cef-builds.spotifycdn.com/cef_binary_${pkgs.lib.strings.escapeURL cefVersion}_${cefPlatform}_minimal.tar.bz2";
-          name = "cef_binary_${pkgs.lib.strings.escapeURL cefVersion}_${cefPlatform}_minimal.tar.bz2";
-          hash = "sha256-BPlAGOHOxIkgpX+yMHUDxy+xk2FXgyXf1Ex9Uibn7cM=";
-        };
-
-        cefDeps = with pkgs; [
-          glib
-          nss
-          nspr
-          at-spi2-atk
-          libdrm
-          expat
-          mesa
-          alsa-lib
-          dbus
-          cups
-          libxkbcommon
-          pango
-          cairo
-          udev
-          xorg.libX11
-          xorg.libXcomposite
-          xorg.libXdamage
-          xorg.libXext
-          xorg.libXfixes
-          xorg.libXrandr
-          xorg.libXcursor
-          xorg.libXrender
-          xorg.libXScrnSaver
-          xorg.libXtst
-          xorg.libxcb
-          libglvnd
+        # Dependencies for building the application
+        buildInputs = with pkgs; [
+          wayland
           vulkan-loader
-          libayatana-appindicator
-          gtk3
+          mesa
+          libglvnd
+          xorg.libxcb
+          xorg.libX11
+          xorg.libXcursor
+          xorg.libXi
+          libxkbcommon
+          fontconfig
+          openssl
+          freetype
+          alsa-lib
+          libpulseaudio
+          dbus
+          nerd-fonts.ubuntu
+          nerd-fonts.ubuntu-mono
+          nerd-fonts.ubuntu-sans
         ];
 
-        cefAssets =
-          pkgs.runCommand "cef-assets" {
-            nativeBuildInputs = [pkgs.autoPatchelfHook];
-            buildInputs = cefDeps;
-          } ''
-            mkdir -p $out
-            mkdir temp
-            tar -xf ${cefSrc} --strip-components=1 -C temp
-
-            # Mimic extract_target_archive from download-cef/src/lib.rs
-            # 1. Move everything from Release to $out
-            cp -r temp/Release/* $out/
-
-            # 2. Move everything from Resources to $out
-            cp -r temp/Resources/* $out/
-
-            # 3. Move include and cmake and libcef_dll to $out (needed for build)
-            cp -r temp/include $out/
-            cp -r temp/cmake $out/
-            cp -r temp/libcef_dll $out/
-            cp temp/CMakeLists.txt $out/
-
-            # Generate archive.json which is required by cef-rs
-            echo '{"type":"minimal","name":"cef_binary_${cefVersion}_${cefPlatform}_minimal.tar.bz2","sha1":""}' > $out/archive.json
-
-            # Remove chrome-sandbox before patching (it requires setuid and can't be patched)
-            rm -f $out/chrome-sandbox
-
-            # Patch binaries in $out
-            autoPatchelf $out
-          '';
-
-        # Dependencies for building the application
-        buildInputs = with pkgs;
-          [
-            wayland
-            vulkan-loader
-            vulkan-validation-layers
-            vulkan-tools
-            mesa
-            xorg.libxcb
-            xorg.libX11
-            libxkbcommon
-            fontconfig
-            dbus
-            openssl
-            freetype
-            expat
-            libnotify
-            alsa-lib
-            udev
-            pipewire
-          ]
-          ++ cefDeps;
-
         # Dependencies needed only at runtime
-        runtimeDependencies = with pkgs;
-          [
-            wayland
-            vulkan-loader
-            mesa
-            libxkbcommon
-            wayland
-          ]
-          ++ cefDeps;
+        runtimeDependencies = with pkgs; [
+          wayland
+          vulkan-loader
+          mesa
+          libxkbcommon
+        ];
 
         nativeBuildInputs = with pkgs; [
           pkg-config
           makeWrapper
-          autoPatchelfHook
           clang
-          cmake
-          ninja
-          rustPlatform.bindgenHook
-          mold # Fast linker to handle long argument lists
+          mold
         ];
 
         envVars = {
           RUST_BACKTRACE = "full";
           LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
-          CEF_PATH = cefAssets;
-          # Use mold linker with rpaths for AMD/NVIDIA Vulkan support
-          RUSTFLAGS = "-C linker=clang -C link-arg=-fuse-ld=mold -C link-arg=-Wl,-rpath,${pkgs.lib.makeLibraryPath [pkgs.vulkan-loader pkgs.wayland]} -C link-arg=-Wl,-rpath,${cefAssets} -C link-arg=-L${cefAssets}";
+          RUSTFLAGS = "-C linker=clang -C link-arg=-fuse-ld=mold -C link-arg=-Wl,-rpath,${pkgs.lib.makeLibraryPath [pkgs.vulkan-loader pkgs.wayland]}";
           NIX_LDFLAGS = "-rpath ${pkgs.lib.makeLibraryPath [pkgs.vulkan-loader pkgs.wayland]}";
         };
 
@@ -202,19 +121,13 @@
           postFixup = ''
             # Copy assets to the output
             mkdir -p $out/share/nwidgets
-            cp -r ${src}/assets $out/share/nwidgets/
-
-            # Copy CEF runtime assets to bin (where the executable is)
-            # We copy everything from cefAssets except include/cmake/libcef_dll
-            find ${cefAssets} -maxdepth 1 -type f -exec cp {} $out/bin/ \;
-            cp -r ${cefAssets}/locales $out/bin/ || true
+            cp -r ${src}/assets $out/share/nwidgets/ || true
 
             wrapProgram $out/bin/nwidgets \
-              --prefix LD_LIBRARY_PATH : /run/opengl-driver/lib:${pkgs.lib.makeLibraryPath (buildInputs ++ runtimeDependencies)}:${cefAssets} \
+              --prefix LD_LIBRARY_PATH : /run/opengl-driver/lib:${pkgs.lib.makeLibraryPath (buildInputs ++ runtimeDependencies)} \
               --set NWIDGETS_ASSETS_DIR $out/share/nwidgets/assets \
-              --set CEF_PATH ${cefAssets} \
               --set __EGL_VENDOR_LIBRARY_FILENAMES /run/opengl-driver/share/glvnd/egl_vendor.d/50_mesa.json:/run/opengl-driver/share/glvnd/egl_vendor.d/10_nvidia.json \
-              --run 'export VK_ICD_FILENAMES=$((find /run/opengl-driver/share/vulkan/icd.d -name "*_icd.*.json" 2>/dev/null; find ${pkgs.mesa}/share/vulkan/icd.d -name "*_icd.*.json" 2>/dev/null) | tr "\n" ":" | sed "s/:$//")' \
+              --run 'export VK_ICD_FILENAMES=$(find /run/opengl-driver/share/vulkan/icd.d -name "*_icd.*.json" 2>/dev/null | tr "\n" ":" | sed "s/:$//")' \
               --run 'if lspci 2>/dev/null | grep -qi nvidia; then export __GL_THREADED_OPTIMIZATIONS=1 __GL_YIELD=USLEEP NWIDGETS_GPU=nvidia; elif lspci 2>/dev/null | grep -qi amd; then export MESA_GLTHREAD=true RADV_PERFTEST=gpl NWIDGETS_GPU=amd; fi'
           '';
         };
@@ -255,24 +168,17 @@
           nativeBuildInputs = devTools;
           env = envVars;
 
-          # Vulkan libs first, then system GL, then CEF
-          LD_LIBRARY_PATH = "/run/opengl-driver/lib:${pkgs.lib.makeLibraryPath (buildInputs ++ runtimeDependencies)}:${cefAssets}";
+          # Vulkan libs first, then system GL
+          LD_LIBRARY_PATH = "/run/opengl-driver/lib:${pkgs.lib.makeLibraryPath (buildInputs ++ runtimeDependencies)}";
           __EGL_VENDOR_LIBRARY_FILENAMES = "/run/opengl-driver/share/glvnd/egl_vendor.d/50_mesa.json:/run/opengl-driver/share/glvnd/egl_vendor.d/10_nvidia.json";
           FONTCONFIG_FILE = pkgs.makeFontsConf {fontDirectories = buildInputs;};
 
-          # Force GPUI to use Vulkan backend (auto-detects AMD/NVIDIA/Intel)
-          GPUI_BACKEND = "vulkan";
-
           shellHook = ''
-            echo "[🦀 Rust $(rustc --version)] - Ready to develop nwidgets!"
-            
-            # Auto-detect available Vulkan ICDs (System + Nix Mesa Fallback)
-            SYSTEM_ICDS=$(find /run/opengl-driver/share/vulkan/icd.d -name "*_icd.*.json" 2>/dev/null | tr '\n' ':')
-            MESA_ICDS=$(find ${pkgs.mesa}/share/vulkan/icd.d -name "*_icd.*.json" 2>/dev/null | tr '\n' ':')
-            export VK_ICD_FILENAMES="''${SYSTEM_ICDS}''${MESA_ICDS}"
-            # Clean up trailing colon
-            export VK_ICD_FILENAMES=$(echo "$VK_ICD_FILENAMES" | sed 's/:$//')
-            
+            echo "[🦀 Rust $(rustc --version)] - Ready to develop nwidgets (Makepad)!"
+
+            # Auto-detect available Vulkan ICDs
+            export VK_ICD_FILENAMES=$(find /run/opengl-driver/share/vulkan/icd.d -name "*_icd.*.json" 2>/dev/null | tr '\n' ':' | sed 's/:$//')
+
             # GPU-specific optimizations
             if lspci 2>/dev/null | grep -qi nvidia; then
               export __GL_THREADED_OPTIMIZATIONS=1
@@ -287,11 +193,10 @@
             else
               echo "GPU: Auto-detected (AMD/NVIDIA/Intel)"
             fi
-            
+
             echo "Vulkan ICD: $VK_ICD_FILENAMES"
             echo "Available Vulkan devices:"
             vulkaninfo --summary 2>/dev/null | grep -A 2 "GPU" || echo "  Run 'vulkaninfo' for details"
-            export CEF_PATH="${cefAssets}"
           '';
         };
 
