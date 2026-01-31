@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::HashSet;
 use std::sync::Arc;
 use parking_lot::RwLock;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -28,7 +28,7 @@ pub struct HyprlandService {
 
 #[derive(Default)]
 struct HyprlandState {
-    workspaces: HashMap<i32, Workspace>,
+    occupied_workspaces: HashSet<i32>,
     active_workspace: i32,
     active_window: ActiveWindow,
     is_fullscreen: bool,
@@ -48,10 +48,70 @@ impl HyprlandService {
         let state = self.state.clone();
 
         TOKIO_RUNTIME.spawn(async move {
+            if let Err(e) = Self::fetch_initial_state(&state).await {
+                log::error!("Failed to fetch initial Hyprland state: {}", e);
+            }
+
             if let Err(e) = Self::listen_events(state).await {
                 log::error!("Hyprland listener error: {}", e);
             }
         });
+    }
+
+    async fn fetch_initial_state(state: &Arc<RwLock<HyprlandState>>) -> anyhow::Result<()> {
+        let his = std::env::var("HYPRLAND_INSTANCE_SIGNATURE")?;
+        let socket_path = format!("/tmp/hypr/{}/.socket.sock", his);
+
+        let mut stream = UnixStream::connect(&socket_path).await?;
+        stream.write_all(b"/workspaces").await?;
+
+        let mut response = String::new();
+        let mut buf = [0u8; 4096];
+        loop {
+            let n = tokio::io::AsyncReadExt::read(&mut stream, &mut buf).await?;
+            if n == 0 {
+                break;
+            }
+            response.push_str(&String::from_utf8_lossy(&buf[..n]));
+        }
+
+        let mut occupied = HashSet::new();
+        for line in response.lines() {
+            if let Some(id_str) = line.strip_prefix("workspace ID ") {
+                if let Some(id_part) = id_str.split_whitespace().next() {
+                    if let Ok(id) = id_part.parse::<i32>() {
+                        occupied.insert(id);
+                    }
+                }
+            }
+        }
+
+        let mut stream = UnixStream::connect(&socket_path).await?;
+        stream.write_all(b"/activeworkspace").await?;
+
+        let mut response = String::new();
+        let mut buf = [0u8; 1024];
+        loop {
+            let n = tokio::io::AsyncReadExt::read(&mut stream, &mut buf).await?;
+            if n == 0 {
+                break;
+            }
+            response.push_str(&String::from_utf8_lossy(&buf[..n]));
+        }
+
+        if let Some(id_str) = response.strip_prefix("workspace ID ") {
+            if let Some(id_part) = id_str.split_whitespace().next() {
+                if let Ok(id) = id_part.parse::<i32>() {
+                    let mut s = state.write();
+                    s.active_workspace = id;
+                    s.occupied_workspaces = occupied;
+                    return Ok(());
+                }
+            }
+        }
+
+        state.write().occupied_workspaces = occupied;
+        Ok(())
     }
 
     async fn listen_events(state: Arc<RwLock<HyprlandState>>) -> anyhow::Result<()> {
@@ -95,7 +155,15 @@ impl HyprlandService {
             "fullscreen" => {
                 state.write().is_fullscreen = data == "1";
             }
-            "createworkspace" | "destroyworkspace" => {
+            "createworkspace" => {
+                if let Ok(id) = data.parse::<i32>() {
+                    state.write().occupied_workspaces.insert(id);
+                }
+            }
+            "destroyworkspace" => {
+                if let Ok(id) = data.parse::<i32>() {
+                    state.write().occupied_workspaces.remove(&id);
+                }
             }
             _ => {}
         }
@@ -103,6 +171,10 @@ impl HyprlandService {
 
     pub fn get_active_workspace(&self) -> i32 {
         self.state.read().active_workspace
+    }
+
+    pub fn get_occupied_workspaces(&self) -> HashSet<i32> {
+        self.state.read().occupied_workspaces.clone()
     }
 
     pub fn get_active_window(&self) -> ActiveWindow {
@@ -113,7 +185,15 @@ impl HyprlandService {
         self.state.read().is_fullscreen
     }
 
-    pub async fn switch_workspace(workspace: i32) -> anyhow::Result<()> {
+    pub fn switch_workspace(&self, workspace: i32) {
+        TOKIO_RUNTIME.spawn(async move {
+            if let Err(e) = Self::do_switch_workspace(workspace).await {
+                log::error!("Failed to switch workspace: {}", e);
+            }
+        });
+    }
+
+    async fn do_switch_workspace(workspace: i32) -> anyhow::Result<()> {
         let his = std::env::var("HYPRLAND_INSTANCE_SIGNATURE")?;
         let socket_path = format!("/tmp/hypr/{}/.socket.sock", his);
 

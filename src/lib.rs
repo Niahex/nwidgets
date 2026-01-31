@@ -4,6 +4,7 @@ use once_cell::sync::Lazy;
 use tokio::runtime::Runtime;
 
 use crate::services::media::pomodoro::PomodoroService;
+use crate::services::system::hyprland::HyprlandService;
 
 pub mod app;
 pub mod theme;
@@ -17,6 +18,7 @@ pub static TOKIO_RUNTIME: Lazy<Runtime> = Lazy::new(|| {
 });
 
 pub static POMODORO_SERVICE: Lazy<PomodoroService> = Lazy::new(PomodoroService::new);
+pub static HYPRLAND_SERVICE: Lazy<HyprlandService> = Lazy::new(HyprlandService::new);
 
 pub fn live_design(cx: &mut Cx) {
     makepad_widgets::live_design(cx);
