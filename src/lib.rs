@@ -3,6 +3,8 @@ use makepad_widgets::*;
 use once_cell::sync::Lazy;
 use tokio::runtime::Runtime;
 
+use crate::services::media::pomodoro::PomodoroService;
+
 pub mod app;
 pub mod theme;
 
@@ -13,6 +15,8 @@ pub mod widgets;
 pub static TOKIO_RUNTIME: Lazy<Runtime> = Lazy::new(|| {
     Runtime::new().expect("Failed to create Tokio runtime")
 });
+
+pub static POMODORO_SERVICE: Lazy<PomodoroService> = Lazy::new(PomodoroService::new);
 
 pub fn live_design(cx: &mut Cx) {
     makepad_widgets::live_design(cx);
