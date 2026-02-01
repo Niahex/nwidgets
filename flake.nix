@@ -75,6 +75,8 @@
           alsa-lib
           libpulseaudio
           dbus
+          pipewire
+          wireplumber
           nerd-fonts.ubuntu
           nerd-fonts.ubuntu-mono
           nerd-fonts.ubuntu-sans
@@ -98,8 +100,8 @@
         envVars = {
           RUST_BACKTRACE = "full";
           LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
-          RUSTFLAGS = "-C linker=clang -C link-arg=-fuse-ld=mold -C link-arg=-Wl,-rpath,${pkgs.lib.makeLibraryPath [pkgs.vulkan-loader pkgs.wayland]}";
-          NIX_LDFLAGS = "-rpath ${pkgs.lib.makeLibraryPath [pkgs.vulkan-loader pkgs.wayland]}";
+          RUSTFLAGS = "-C linker=clang -C link-arg=-fuse-ld=mold -C link-arg=-Wl,-rpath,${pkgs.lib.makeLibraryPath [pkgs.vulkan-loader pkgs.wayland pkgs.pipewire]}";
+          NIX_LDFLAGS = "-rpath ${pkgs.lib.makeLibraryPath [pkgs.vulkan-loader pkgs.wayland pkgs.pipewire]}";
         };
 
         # Build artifacts

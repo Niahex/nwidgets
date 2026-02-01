@@ -34,6 +34,9 @@ nucleo = "0.3.0"
 numbat = "1.10.0"
 libc = "0.2"
 
+# Audio dependencies
+pipewire = "0.9.2"
+
 [workspace]
 
 [profile.dev]
