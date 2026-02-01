@@ -8,14 +8,75 @@ live_design! {
     use link::widgets::*;
     use crate::theme::*;
 
-    AppIcon = {{AppIcon}} {
+    AppIconNone = <Icon> {
         width: 24, height: 24
-        
         draw_icon: {
-            svg_file: dep("crate://self/assets/none.svg")
-            fn get_color(self) -> vec4 {
-                return #fff
-            }
+            svg_file: dep("crate://self/assets/icons/none.svg")
+            fn get_color(self) -> vec4 { return #fff }
+        }
+    }
+    
+    AppIconKitty = <Icon> {
+        width: 24, height: 24
+        draw_icon: {
+            svg_file: dep("crate://self/assets/icons/kitty.svg")
+            fn get_color(self) -> vec4 { return #fff }
+        }
+    }
+    
+    AppIconFirefox = <Icon> {
+        width: 24, height: 24
+        draw_icon: {
+            svg_file: dep("crate://self/assets/icons/firefox-white.svg")
+            fn get_color(self) -> vec4 { return #fff }
+        }
+    }
+    
+    AppIconBrave = <Icon> {
+        width: 24, height: 24
+        draw_icon: {
+            svg_file: dep("crate://self/assets/icons/brave.svg")
+            fn get_color(self) -> vec4 { return #fff }
+        }
+    }
+    
+    AppIconDiscord = <Icon> {
+        width: 24, height: 24
+        draw_icon: {
+            svg_file: dep("crate://self/assets/icons/discord.svg")
+            fn get_color(self) -> vec4 { return #fff }
+        }
+    }
+    
+    AppIconSpotify = <Icon> {
+        width: 24, height: 24
+        draw_icon: {
+            svg_file: dep("crate://self/assets/icons/spotify.svg")
+            fn get_color(self) -> vec4 { return #fff }
+        }
+    }
+    
+    AppIconZed = <Icon> {
+        width: 24, height: 24
+        draw_icon: {
+            svg_file: dep("crate://self/assets/icons/dev.zed.zed.svg")
+            fn get_color(self) -> vec4 { return #fff }
+        }
+    }
+    
+    AppIconVlc = <Icon> {
+        width: 24, height: 24
+        draw_icon: {
+            svg_file: dep("crate://self/assets/icons/vlc.svg")
+            fn get_color(self) -> vec4 { return #fff }
+        }
+    }
+    
+    AppIconSteam = <Icon> {
+        width: 24, height: 24
+        draw_icon: {
+            svg_file: dep("crate://self/assets/icons/steam_tray.svg")
+            fn get_color(self) -> vec4 { return #fff }
         }
     }
 
@@ -25,7 +86,19 @@ live_design! {
         align: {x: 0.0, y: 0.5}
         spacing: 8
 
-        icon = <AppIcon> {}
+        icon_container = <View> {
+            width: 24, height: 24
+            
+            icon_none = <AppIconNone> { visible: true }
+            icon_kitty = <AppIconKitty> { visible: false }
+            icon_firefox = <AppIconFirefox> { visible: false }
+            icon_brave = <AppIconBrave> { visible: false }
+            icon_discord = <AppIconDiscord> { visible: false }
+            icon_spotify = <AppIconSpotify> { visible: false }
+            icon_zed = <AppIconZed> { visible: false }
+            icon_vlc = <AppIconVlc> { visible: false }
+            icon_steam = <AppIconSteam> { visible: false }
+        }
 
         info = <View> {
             width: Fit, height: Fit
@@ -42,31 +115,6 @@ live_design! {
                 text: ""
             }
         }
-    }
-}
-
-#[derive(Live, LiveHook, Widget)]
-pub struct AppIcon {
-    #[redraw]
-    #[live]
-    draw_icon: DrawIcon,
-    
-    #[walk]
-    walk: Walk,
-}
-
-impl Widget for AppIcon {
-    fn handle_event(&mut self, _cx: &mut Cx, _event: &Event, _scope: &mut Scope) {}
-    
-    fn draw_walk(&mut self, cx: &mut Cx2d, _scope: &mut Scope, walk: Walk) -> DrawStep {
-        self.draw_icon.draw_walk(cx, walk);
-        DrawStep::done()
-    }
-}
-
-impl AppIcon {
-    pub fn set_icon_path(&mut self, path: &str) {
-        self.draw_icon.svg_path = ArcStringMut::String(path.to_string());
     }
 }
 
@@ -123,39 +171,36 @@ impl Widget for ActiveWindowModule {
 }
 
 impl ActiveWindowModule {
-    fn get_icon_path(class: &str) -> &'static str {
+    fn get_icon_id(class: &str) -> &'static str {
         if class.is_empty() {
-            return "crate://self/assets/none.svg";
+            return "icon_none";
         }
         
         let class_lower = class.to_lowercase();
         
         match class_lower.as_str() {
-            "kitty" => "crate://self/assets/kitty.svg",
-            "firefox" => "crate://self/assets/firefox-white.svg",
-            "brave-browser" | "brave" => "crate://self/assets/brave.svg",
-            "discord" => "crate://self/assets/discord.svg",
-            "spotify" => "crate://self/assets/spotify.svg",
-            "code" | "code-oss" | "vscode" | "zed" => "crate://self/assets/dev.zed.zed.svg",
-            "vlc" => "crate://self/assets/vlc.svg",
-            "steam" => "crate://self/assets/steam_tray.svg",
-            "lutris" => "crate://self/assets/lutris.svg",
-            "org.gnome.nautilus" | "nautilus" => "crate://self/assets/org.gnome.nautilus.svg",
-            "org.inkscape.inkscape" | "inkscape" => "crate://self/assets/org.inkscape.inkscape.svg",
-            "org.keepassxc.keepassxc" | "keepassxc" => "crate://self/assets/org.keepassxc.keepassxc.svg",
-            "element" => "crate://self/assets/element.svg",
-            "neochat" => "crate://self/assets/neochat.svg",
-            "calibre-gui" | "calibre" => "crate://self/assets/calibre-gui.svg",
-            "qbittorrent" => "crate://self/assets/qbittorrent.svg",
-            "resolve" | "davinci-resolve" => "crate://self/assets/resolve.svg",
-            "twitch" => "crate://self/assets/twitch.svg",
-            "zen-twilight" => "crate://self/assets/zen-twilight.svg",
-            "libreoffice-writer" => "crate://self/assets/libreoffice-writer.svg",
-            "libreoffice-calc" => "crate://self/assets/libreoffice-calc.svg",
-            "libreoffice-draw" => "crate://self/assets/libreoffice-draw.svg",
-            "libreoffice-math" => "crate://self/assets/libreoffice-math.svg",
-            _ => "crate://self/assets/none.svg",
+            "kitty" => "icon_kitty",
+            "firefox" => "icon_firefox",
+            "brave-browser" | "brave" => "icon_brave",
+            "discord" => "icon_discord",
+            "spotify" => "icon_spotify",
+            "code" | "code-oss" | "vscode" | "zed" => "icon_zed",
+            "vlc" => "icon_vlc",
+            "steam" => "icon_steam",
+            _ => "icon_none",
         }
+    }
+    
+    fn hide_all_icons(&mut self, cx: &mut Cx) {
+        self.view.view(ids!(icon_container.icon_none)).set_visible(cx, false);
+        self.view.view(ids!(icon_container.icon_kitty)).set_visible(cx, false);
+        self.view.view(ids!(icon_container.icon_firefox)).set_visible(cx, false);
+        self.view.view(ids!(icon_container.icon_brave)).set_visible(cx, false);
+        self.view.view(ids!(icon_container.icon_discord)).set_visible(cx, false);
+        self.view.view(ids!(icon_container.icon_spotify)).set_visible(cx, false);
+        self.view.view(ids!(icon_container.icon_zed)).set_visible(cx, false);
+        self.view.view(ids!(icon_container.icon_vlc)).set_visible(cx, false);
+        self.view.view(ids!(icon_container.icon_steam)).set_visible(cx, false);
     }
 
     fn sync_from_service(&mut self, cx: &mut Cx) {
@@ -174,12 +219,24 @@ impl ActiveWindowModule {
             self.view.label(ids!(info.title)).set_text(cx, title);
             self.view.label(ids!(info.class)).set_text(cx, &window.class);
             
-            let icon_path = Self::get_icon_path(&window.class);
-            ::log::info!("ActiveWindowModule: class='{}' -> icon path={}", window.class, icon_path);
+            let icon_id = Self::get_icon_id(&window.class);
+            ::log::info!("ActiveWindowModule: class='{}' -> icon_id={}", window.class, icon_id);
             
-            if let Some(mut app_icon) = self.view.app_icon(ids!(icon)).borrow_mut() {
-                app_icon.set_icon_path(icon_path);
+            self.hide_all_icons(cx);
+            
+            match icon_id {
+                "icon_none" => self.view.view(ids!(icon_container.icon_none)).set_visible(cx, true),
+                "icon_kitty" => self.view.view(ids!(icon_container.icon_kitty)).set_visible(cx, true),
+                "icon_firefox" => self.view.view(ids!(icon_container.icon_firefox)).set_visible(cx, true),
+                "icon_brave" => self.view.view(ids!(icon_container.icon_brave)).set_visible(cx, true),
+                "icon_discord" => self.view.view(ids!(icon_container.icon_discord)).set_visible(cx, true),
+                "icon_spotify" => self.view.view(ids!(icon_container.icon_spotify)).set_visible(cx, true),
+                "icon_zed" => self.view.view(ids!(icon_container.icon_zed)).set_visible(cx, true),
+                "icon_vlc" => self.view.view(ids!(icon_container.icon_vlc)).set_visible(cx, true),
+                "icon_steam" => self.view.view(ids!(icon_container.icon_steam)).set_visible(cx, true),
+                _ => self.view.view(ids!(icon_container.icon_none)).set_visible(cx, true),
             }
+            
             cx.redraw_all();
         }
     }
