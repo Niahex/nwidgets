@@ -185,14 +185,22 @@ impl OSD {
     pub fn show_clipboard(&mut self, cx: &mut Cx, text: &str) {
         self.osd_type = OSDType::Clipboard;
 
-        self.view.label(ids!(icon)).set_text(cx, "󰅎");
+        let icon_path = "./assets/icons/clipboard.svg";
+        
+        ::log::info!("OSD: Clipboard copied: {} bytes", text.len());
+        
+        if let Some(mut icon) = self.view.icon(ids!(capslock_icon)).borrow_mut() {
+            icon.set_icon_from_path(cx, icon_path);
+        }
+        
+        self.view.label(ids!(icon)).set_text(cx, "");
         self.view.label(ids!(text_label)).set_text(cx, "");
         
         self.view.apply_over(cx, live! { 
             visible: true
             capslock_icon = {
-                width: 0, height: 0
-                icon_walk: { width: 0, height: 0 }
+                width: 32, height: 32
+                icon_walk: { width: 32, height: 32 }
             }
             progress_bar = {
                 visible: false
