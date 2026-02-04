@@ -30,6 +30,25 @@ live_design! {
             draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 24.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
             text: "󰕾"
         }
+        
+        capslock_icon = <Icon> {
+            width: 32, height: 32
+            icon_walk: { width: 32, height: 32 }
+            draw_icon: {
+                svg_file: dep("crate://self/assets/icons/capslock-off.svg")
+                brightness: 1.0
+                curve: 0.6
+                color: #fff
+                preserve_colors: true
+            }
+            visible: false
+        }
+        
+        text_label = <Label> {
+            draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 14.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
+            text: ""
+            visible: false
+        }
 
         progress_bar = <View> {
             width: Fill, height: 8
@@ -116,7 +135,17 @@ impl OSD {
         self.view.label(ids!(icon)).set_text(cx, icon);
         self.view.apply_over(cx, live! { 
             visible: true
+            icon = {
+                visible: true
+            }
+            capslock_icon = {
+                visible: false
+            }
+            text_label = {
+                visible: false
+            }
             progress_bar = {
+                visible: true
                 draw_bg: {
                     value: (volume)
                 }
@@ -155,6 +184,15 @@ impl OSD {
         self.view.label(ids!(icon)).set_text(cx, "󰅎");
         self.view.apply_over(cx, live! { 
             visible: true
+            icon = {
+                visible: true
+            }
+            capslock_icon = {
+                visible: false
+            }
+            text_label = {
+                visible: false
+            }
             progress_bar = {
                 visible: false
             }
@@ -170,14 +208,33 @@ impl OSD {
     pub fn show_capslock(&mut self, cx: &mut Cx, enabled: bool) {
         self.osd_type = OSDType::CapsLock;
 
-        let icon = if enabled { "" } else { "" };
+        let icon_path = if enabled {
+            "./assets/icons/capslock-on.svg"
+        } else {
+            "./assets/icons/capslock-off.svg"
+        };
+        
         let text = if enabled { "Caps Lock ON" } else { "Caps Lock OFF" };
 
-        ::log::info!("OSD: Caps Lock {}", if enabled { "enabled" } else { "disabled" });
+        ::log::info!("OSD: Caps Lock {} - icon: {}", if enabled { "enabled" } else { "disabled" }, icon_path);
 
-        self.view.label(ids!(icon)).set_text(cx, icon);
+        if let Some(mut icon) = self.view.icon(ids!(capslock_icon)).borrow_mut() {
+            icon.set_icon_from_path(cx, icon_path);
+        }
+        
+        self.view.label(ids!(text_label)).set_text(cx, text);
+        
         self.view.apply_over(cx, live! { 
             visible: true
+            icon = {
+                visible: false
+            }
+            capslock_icon = {
+                visible: true
+            }
+            text_label = {
+                visible: true
+            }
             progress_bar = {
                 visible: false
             }
