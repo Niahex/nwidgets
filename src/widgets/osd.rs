@@ -18,7 +18,7 @@ live_design! {
             }
         }
 
-        flow: Row
+        flow: Right
         align: {x: 0.5, y: 0.5}
         padding: 16
         spacing: 16
