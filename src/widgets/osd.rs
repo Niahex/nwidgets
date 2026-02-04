@@ -113,15 +113,25 @@ impl Widget for OSD {
 }
 
 impl OSD {
+    fn get_volume_icon_path(volume: f32, muted: bool) -> &'static str {
+        if muted {
+            "./assets/icons/sink-muted.svg"
+        } else if volume == 0.0 {
+            "./assets/icons/sink-zero.svg"
+        } else if volume > 0.66 {
+            "./assets/icons/sink-high.svg"
+        } else if volume > 0.33 {
+            "./assets/icons/sink-medium.svg"
+        } else {
+            "./assets/icons/sink-low.svg"
+        }
+    }
+    
     pub fn show_volume(&mut self, cx: &mut Cx, volume: f32, muted: bool) {
         self.osd_type = OSDType::Volume;
         self.value = volume;
 
-        let icon_path = if muted {
-            "./assets/icons/sink-muted.svg"
-        } else {
-            "./assets/icons/sink-muted.svg"
-        };
+        let icon_path = Self::get_volume_icon_path(volume, muted);
 
         ::log::info!("OSD: Setting volume icon to {} and volume to {}", icon_path, volume);
         
