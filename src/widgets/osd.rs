@@ -110,6 +110,8 @@ impl OSD {
             "󰝟"
         };
 
+        ::log::info!("OSD: Setting icon to {} and volume to {}", icon, volume);
+        
         self.view.label(ids!(icon)).set_text(cx, icon);
         self.view.apply_over(cx, live! { 
             visible: true
@@ -122,6 +124,9 @@ impl OSD {
 
         self.hide_timer = cx.start_timeout(2.0);
         self.view.redraw(cx);
+        cx.redraw_all();
+        
+        ::log::info!("OSD: show_volume completed");
     }
 
     pub fn show_brightness(&mut self, cx: &mut Cx, brightness: f32) {

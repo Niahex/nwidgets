@@ -26,7 +26,7 @@ live_design! {
         }
         
         osd_window: <Window> {
-            window: {inner_size: vec2(300, 80), position: vec2(810, 500)},
+            window: {inner_size: vec2(300, 80)},
             pass: {clear_color: #0000},
             
             <View> {
