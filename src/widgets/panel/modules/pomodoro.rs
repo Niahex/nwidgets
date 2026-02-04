@@ -10,15 +10,27 @@ live_design! {
 
     pub PomodoroModule = {{PomodoroModule}} {
         width: Fit, height: Fill
-        flow: Right
         align: {x: 0.5, y: 0.5}
-        spacing: 6
         padding: {left: 8, right: 8}
         cursor: Hand
 
-        content = <Label> {
-            draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 14.0 }, color: (POMODORO_COLOR_DEFAULT) }
-            text: "󰐊"
+        <View> {
+            width: Fit, height: Fit
+            
+            icon_idle = <Label> {
+                draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 14.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
+                text: "󰐊"
+            }
+
+            timer_work = <Label> {
+                draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 14.0 }, color: (THEME_COLOR_RED) }
+                text: ""
+            }
+
+            timer_break = <Label> {
+                draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 14.0 }, color: (THEME_COLOR_GREEN) }
+                text: ""
+            }
         }
     }
 }
@@ -77,18 +89,22 @@ impl PomodoroModule {
             let secs = state.remaining_seconds % 60;
             let time_str = format!("{:02}:{:02}", minutes, secs);
             
-            let color = match state.phase {
-                PomodoroPhase::Work => live!{
-                    draw_text: { color: (POMODORO_COLOR_WORK) }
+            self.view.label(ids!(icon_idle)).set_text(cx, "");
+            
+            match state.phase {
+                PomodoroPhase::Work => {
+                    self.view.label(ids!(timer_work)).set_text(cx, &time_str);
+                    self.view.label(ids!(timer_break)).set_text(cx, "");
                 },
-                PomodoroPhase::ShortBreak | PomodoroPhase::LongBreak => live!{
-                    draw_text: { color: (POMODORO_COLOR_BREAK) }
+                PomodoroPhase::ShortBreak | PomodoroPhase::LongBreak => {
+                    self.view.label(ids!(timer_work)).set_text(cx, "");
+                    self.view.label(ids!(timer_break)).set_text(cx, &time_str);
                 },
             };
-            
-            self.view.label(ids!(content)).set_text(cx, &time_str);
-            self.view.label(ids!(content)).apply_over(cx, color);
         } else {
+            self.view.label(ids!(timer_work)).set_text(cx, "");
+            self.view.label(ids!(timer_break)).set_text(cx, "");
+            
             let icon_text = if state.has_started {
                 "󰏤"
             } else {
@@ -98,10 +114,7 @@ impl PomodoroModule {
                 }
             };
             
-            self.view.label(ids!(content)).set_text(cx, icon_text);
-            self.view.label(ids!(content)).apply_over(cx, live!{
-                draw_text: { color: (POMODORO_COLOR_DEFAULT) }
-            });
+            self.view.label(ids!(icon_idle)).set_text(cx, icon_text);
         }
 
         self.view.redraw(cx);
