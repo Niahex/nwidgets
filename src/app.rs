@@ -54,6 +54,8 @@ pub struct App {
     #[rust]
     last_audio_state: Option<crate::services::media::audio::AudioState>,
     #[rust]
+    last_capslock_state: Option<bool>,
+    #[rust]
     timer: Timer,
 }
 
@@ -128,6 +130,22 @@ impl AppMain for App {
             self.timer = cx.start_timeout(0.1);
         }
         
+        if let Event::KeyDown(ke) = event {
+            if ke.key_code == KeyCode::CapsLock {
+                let capslock_enabled = ke.modifiers.contains(KeyModifiers::CAPS_LOCK);
+                
+                if self.last_capslock_state != Some(capslock_enabled) {
+                    ::log::info!("OSD: CapsLock changed to {}", capslock_enabled);
+                    
+                    if let Some(mut osd) = self.osd_window.osd(ids!(osd)).borrow_mut() {
+                        osd.show_capslock(cx, capslock_enabled);
+                    }
+                    
+                    self.last_capslock_state = Some(capslock_enabled);
+                }
+            }
+        }
+        
         self.match_event(cx, event);
         self.ui.handle_event(cx, event, &mut Scope::empty());
         self.osd_window.handle_event(cx, event, &mut Scope::empty());
@@ -142,6 +160,7 @@ impl Default for App {
             layer_shell_configured: false,
             osd_layer_shell_configured: false,
             last_audio_state: None,
+            last_capslock_state: None,
             timer: Timer::default(),
         }
     }

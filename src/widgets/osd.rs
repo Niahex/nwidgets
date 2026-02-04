@@ -77,6 +77,7 @@ pub enum OSDType {
     Volume,
     Brightness,
     Clipboard,
+    CapsLock,
 }
 
 impl Widget for OSD {
@@ -163,6 +164,30 @@ impl OSD {
 
         self.hide_timer = cx.start_timeout(2.0);
         self.view.redraw(cx);
+        cx.redraw_all();
+    }
+
+    pub fn show_capslock(&mut self, cx: &mut Cx, enabled: bool) {
+        self.osd_type = OSDType::CapsLock;
+
+        let icon = if enabled { "" } else { "" };
+        let text = if enabled { "Caps Lock ON" } else { "Caps Lock OFF" };
+
+        ::log::info!("OSD: Caps Lock {}", if enabled { "enabled" } else { "disabled" });
+
+        self.view.label(ids!(icon)).set_text(cx, icon);
+        self.view.apply_over(cx, live! { 
+            visible: true
+            progress_bar = {
+                visible: false
+            }
+        });
+
+        self.hide_timer = cx.start_timeout(2.0);
+        self.view.redraw(cx);
+        cx.redraw_all();
+
+        ::log::info!("OSD: show_capslock completed");
     }
 
     fn hide(&mut self, cx: &mut Cx) {
