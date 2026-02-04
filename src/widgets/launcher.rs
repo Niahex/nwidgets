@@ -56,12 +56,26 @@ live_design! {
         width: 700, height: 500
 
         show_bg: true
-        draw_bg: { color: (NORD_POLAR_0) }
+        draw_bg: {
+            fn pixel(self) -> vec4 {
+                let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+                sdf.box(0.0, 0.0, self.rect_size.x, self.rect_size.y, 16.0);
+                sdf.fill((NORD_POLAR_0));
+                return sdf.result;
+            }
+        }
 
         flow: Down
+        align: {x: 0.5, y: 0.5}
         padding: 16
+        spacing: 16
 
         visible: false
+
+        test_label = <Label> {
+            draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 24.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
+            text: "LAUNCHER TEST"
+        }
 
         search_container = <View> {
             width: Fill, height: 48
@@ -82,7 +96,7 @@ live_design! {
 
             search_icon = <Label> {
                 draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 16.0 }, color: (THEME_COLOR_TEXT_MUTE) }
-                text: ""
+                text: "🔍"
             }
 
             search_input = <TextInput> {
@@ -130,19 +144,14 @@ pub enum LauncherResultType {
 
 impl Widget for Launcher {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        ::log::info!("Launcher draw_walk called");
-        self.view.draw_walk(cx, scope, walk)
+        ::log::info!("Launcher draw_walk called, visible: {:?}", self.view.visible);
+        let result = self.view.draw_walk(cx, scope, walk);
+        ::log::info!("Launcher draw_walk completed, result: {:?}", result);
+        result
     }
 
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        self.view.handle_event(cx, event, scope);
-        
-        for action in cx.capture_actions(|cx| self.view.handle_event(cx, event, scope)) {
-            if let TextInputAction::Changed(new_text) = action.as_widget_action().cast() {
-                self.search(cx, &new_text);
-            }
-        }
-
+        // Handle keyboard events BEFORE view event handling
         if let Event::KeyDown(ke) = event {
             match ke.key_code {
                 KeyCode::Escape => {
@@ -174,6 +183,13 @@ impl Widget for Launcher {
                     }
                 }
                 _ => {}
+            }
+        }
+        
+        // Single event handling with action capture
+        for action in cx.capture_actions(|cx| self.view.handle_event(cx, event, scope)) {
+            if let TextInputAction::Changed(new_text) = action.as_widget_action().cast() {
+                self.search(cx, &new_text);
             }
         }
     }
@@ -250,12 +266,20 @@ impl Launcher {
     }
 
     pub fn show(&mut self, cx: &mut Cx) {
+        ::log::info!("Launcher::show() called");
         self.view.apply_over(cx, live! { visible: true });
-        self.view.text_input(ids!(search_container.search_input)).set_key_focus(cx);
+        self.query.clear();
+        self.results.clear();
+        self.selected_index = 0;
+        
+        let text_input = self.view.text_input(ids!(search_input));
+        text_input.set_key_focus(cx);
+        
         self.view.redraw(cx);
     }
 
     pub fn hide(&mut self, cx: &mut Cx) {
+        ::log::info!("Launcher::hide() called");
         self.view.apply_over(cx, live! { visible: false });
         self.query.clear();
         self.results.clear();

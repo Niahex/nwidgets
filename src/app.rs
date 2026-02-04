@@ -112,7 +112,7 @@ impl MatchEvent for App {
             window.set_layer_shell(cx, panel_config);
             self.layer_shell_configured = true;
         }
-        
+
         let osd_config = LayerShellConfig {
             layer: LayerShellLayer::Overlay,
             anchor: LayerShellAnchor::BOTTOM,
@@ -121,34 +121,34 @@ impl MatchEvent for App {
             keyboard_interactivity: LayerShellKeyboardInteractivity::None,
             margin: (0, 0, 100, 0),
         };
-        
+
         if let Some(mut window) = self.osd_window.borrow_mut::<Window>() {
             window.set_layer_shell(cx, osd_config);
             self.osd_layer_shell_configured = true;
         }
-        
+
         let launcher_config = LayerShellConfig {
-            layer: LayerShellLayer::Overlay,
+            layer: LayerShellLayer::Background,
             anchor: LayerShellAnchor::NONE,
             exclusive_zone: None,
             namespace: "nwidgets-launcher".to_string(),
             keyboard_interactivity: LayerShellKeyboardInteractivity::None,
             margin: (0, 0, 0, 0),
         };
-        
+
         if let Some(mut window) = self.launcher_window.borrow_mut::<Window>() {
             window.set_layer_shell(cx, launcher_config);
             self.launcher_layer_shell_configured = true;
         }
 
         let launcher_toggle_requested = self.launcher_toggle_requested.clone();
-        
+
         DBUS_LAUNCHER_SERVICE.on_toggle(move || {
             let mut toggle = launcher_toggle_requested.write();
             *toggle = true;
             ::log::info!("Launcher toggle requested via D-Bus");
         });
-        
+
         self.timer = cx.start_timeout(0.1);
     }
 
@@ -162,9 +162,10 @@ impl AppMain for App {
             if *self.launcher_toggle_requested.read() {
                 *self.launcher_toggle_requested.write() = false;
                 self.launcher_visible = !self.launcher_visible;
-                
+
                 if self.launcher_visible {
-                    ::log::info!("Showing launcher");
+                    ::log::info!("Showing launcher - setting layer to Overlay and keyboard to Exclusive");
+
                     if let Some(mut window) = self.launcher_window.borrow_mut::<Window>() {
                         window.set_layer_shell(cx, LayerShellConfig {
                             layer: LayerShellLayer::Overlay,
@@ -174,39 +175,46 @@ impl AppMain for App {
                             keyboard_interactivity: LayerShellKeyboardInteractivity::Exclusive,
                             margin: (0, 0, 0, 0),
                         });
+                        window.set_input_region(cx, true);
                     }
+
                     if let Some(mut launcher) = self.launcher_window.launcher(ids!(launcher)).borrow_mut() {
                         launcher.show(cx);
                     }
+
                     self.launcher_window.redraw(cx);
                     cx.redraw_all();
                 } else {
-                    ::log::info!("Hiding launcher");
+                    ::log::info!("Hiding launcher - setting layer to Background and keyboard to None");
+
                     if let Some(mut launcher) = self.launcher_window.launcher(ids!(launcher)).borrow_mut() {
                         launcher.hide(cx);
                     }
+
                     if let Some(mut window) = self.launcher_window.borrow_mut::<Window>() {
                         window.set_layer_shell(cx, LayerShellConfig {
-                            layer: LayerShellLayer::Bottom,
+                            layer: LayerShellLayer::Background,
                             anchor: LayerShellAnchor::NONE,
                             exclusive_zone: None,
                             namespace: "nwidgets-launcher".to_string(),
                             keyboard_interactivity: LayerShellKeyboardInteractivity::None,
                             margin: (0, 0, 0, 0),
                         });
+                        window.set_input_region(cx, false);
                     }
+
                     self.launcher_window.redraw(cx);
                     cx.redraw_all();
                 }
             }
-            
+
             let current_state = AUDIO_SERVICE.state();
 
             if let Some(last_state) = &self.last_audio_state {
-                if current_state.sink_volume != last_state.sink_volume 
+                if current_state.sink_volume != last_state.sink_volume
                     || current_state.sink_muted != last_state.sink_muted {
                     ::log::info!("OSD: Volume changed to {}% (muted: {})", current_state.sink_volume, current_state.sink_muted);
-                    
+
                     if let Some(mut window) = self.osd_window.borrow_mut::<Window>() {
                         window.set_layer_shell(cx, LayerShellConfig {
                             layer: LayerShellLayer::Overlay,
@@ -231,7 +239,7 @@ impl AppMain for App {
             let capslock_state = CAPSLOCK_SERVICE.is_enabled();
             if self.last_capslock_state != Some(capslock_state) {
                 ::log::info!("OSD: CapsLock changed to {}", capslock_state);
-                
+
                 if let Some(mut window) = self.osd_window.borrow_mut::<Window>() {
                     window.set_layer_shell(cx, LayerShellConfig {
                         layer: LayerShellLayer::Overlay,
@@ -246,14 +254,14 @@ impl AppMain for App {
                 if let Some(mut osd) = self.osd_window.osd(ids!(osd)).borrow_mut() {
                     osd.show_capslock(cx, capslock_state);
                 }
-                
+
                 self.last_capslock_state = Some(capslock_state);
             }
 
             let clipboard_content = CLIPBOARD_SERVICE.get_last_content();
             if !clipboard_content.is_empty() && clipboard_content != self.last_clipboard_content {
                 ::log::info!("OSD: Clipboard changed: {} bytes", clipboard_content.len());
-                
+
                 if let Some(mut window) = self.osd_window.borrow_mut::<Window>() {
                     window.set_layer_shell(cx, LayerShellConfig {
                         layer: LayerShellLayer::Overlay,
@@ -268,7 +276,7 @@ impl AppMain for App {
                 if let Some(mut osd) = self.osd_window.osd(ids!(osd)).borrow_mut() {
                     osd.show_clipboard(cx, &clipboard_content);
                 }
-                
+
                 self.last_clipboard_content = clipboard_content;
             }
 
@@ -280,14 +288,31 @@ impl AppMain for App {
             for action in actions {
                 match action.as_widget_action().cast::<LauncherAction>() {
                     LauncherAction::Close => {
+                        ::log::info!("Launcher close action - hiding launcher");
                         self.launcher_visible = false;
+                        
                         if let Some(mut launcher) = self.launcher_window.launcher(ids!(launcher)).borrow_mut() {
                             launcher.hide(cx);
                         }
+                        
+                        if let Some(mut window) = self.launcher_window.borrow_mut::<Window>() {
+                            window.set_layer_shell(cx, LayerShellConfig {
+                                layer: LayerShellLayer::Background,
+                                anchor: LayerShellAnchor::NONE,
+                                exclusive_zone: None,
+                                namespace: "nwidgets-launcher".to_string(),
+                                keyboard_interactivity: LayerShellKeyboardInteractivity::None,
+                                margin: (0, 0, 0, 0),
+                            });
+                            window.set_input_region(cx, false);
+                        }
+                        
+                        self.launcher_window.redraw(cx);
+                        cx.redraw_all();
                     }
                     LauncherAction::Launch(id) => {
                         ::log::info!("Launching: {}", id);
-                        
+
                         if id.starts_with("calc:") {
                             ::log::info!("Calculator result: {}", id);
                         } else if id.starts_with("ps:") {
@@ -299,11 +324,26 @@ impl AppMain for App {
                                 ::log::info!("Successfully launched application: {}", id);
                             }
                         }
-                        
+
                         self.launcher_visible = false;
                         if let Some(mut launcher) = self.launcher_window.launcher(ids!(launcher)).borrow_mut() {
                             launcher.hide(cx);
                         }
+                        
+                        if let Some(mut window) = self.launcher_window.borrow_mut::<Window>() {
+                            window.set_layer_shell(cx, LayerShellConfig {
+                                layer: LayerShellLayer::Background,
+                                anchor: LayerShellAnchor::NONE,
+                                exclusive_zone: None,
+                                namespace: "nwidgets-launcher".to_string(),
+                                keyboard_interactivity: LayerShellKeyboardInteractivity::None,
+                                margin: (0, 0, 0, 0),
+                            });
+                            window.set_input_region(cx, false);
+                        }
+                        
+                        self.launcher_window.redraw(cx);
+                        cx.redraw_all();
                     }
                     LauncherAction::QueryChanged(query) => {
                         ::log::info!("Query changed: {}", query);
