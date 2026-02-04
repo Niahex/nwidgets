@@ -50,6 +50,8 @@ pub struct App {
     #[rust]
     layer_shell_configured: bool,
     #[rust]
+    osd_layer_shell_configured: bool,
+    #[rust]
     last_audio_state: Option<crate::services::media::audio::AudioState>,
     #[rust]
     timer: Timer,
@@ -67,7 +69,7 @@ impl MatchEvent for App {
         let _ = &*AUDIO_SERVICE;
         let _ = &*CLIPBOARD_SERVICE;
         
-        let config = LayerShellConfig {
+        let panel_config = LayerShellConfig {
             layer: LayerShellLayer::Top,
             anchor: LayerShellAnchor::TOP | LayerShellAnchor::LEFT | LayerShellAnchor::RIGHT,
             exclusive_zone: Some(68),
@@ -77,8 +79,22 @@ impl MatchEvent for App {
         };
         
         if let Some(mut window) = self.ui.borrow_mut::<Window>() {
-            window.set_layer_shell(cx, config);
+            window.set_layer_shell(cx, panel_config);
             self.layer_shell_configured = true;
+        }
+        
+        let osd_config = LayerShellConfig {
+            layer: LayerShellLayer::Top,
+            anchor: LayerShellAnchor::BOTTOM,
+            exclusive_zone: None,
+            namespace: "nwidgets-osd".to_string(),
+            keyboard_interactivity: LayerShellKeyboardInteractivity::None,
+            margin: (0, 0, 100, 0),
+        };
+        
+        if let Some(mut window) = self.osd_window.borrow_mut::<Window>() {
+            window.set_layer_shell(cx, osd_config);
+            self.osd_layer_shell_configured = true;
         }
         
         self.timer = cx.start_timeout(0.1);
@@ -120,6 +136,7 @@ impl Default for App {
             ui: WidgetRef::default(),
             osd_window: WidgetRef::default(),
             layer_shell_configured: false,
+            osd_layer_shell_configured: false,
             last_audio_state: None,
             timer: Timer::default(),
         }
