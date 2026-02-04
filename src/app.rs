@@ -112,10 +112,14 @@ impl AppMain for App {
             if let Some(last_state) = &self.last_audio_state {
                 if current_state.sink_volume != last_state.sink_volume 
                     || current_state.sink_muted != last_state.sink_muted {
-                    let osd_ref = self.osd_window.view(ids!(osd));
-                    if let Some(mut osd) = osd_ref.osd(ids!(osd)).borrow_mut() {
+                    ::log::info!("OSD: Volume changed to {}% (muted: {})", current_state.sink_volume, current_state.sink_muted);
+                    
+                    if let Some(mut osd) = self.osd_window.osd(id!(osd)).borrow_mut() {
                         let volume = current_state.sink_volume as f32 / 100.0;
+                        ::log::info!("OSD: Calling show_volume");
                         osd.show_volume(cx, volume, current_state.sink_muted);
+                    } else {
+                        ::log::warn!("OSD: Failed to borrow OSD widget");
                     }
                 }
             }
