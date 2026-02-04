@@ -56,6 +56,8 @@ pub struct App {
     #[rust]
     last_capslock_state: Option<bool>,
     #[rust]
+    last_clipboard_content: String,
+    #[rust]
     timer: Timer,
 }
 
@@ -138,6 +140,17 @@ impl AppMain for App {
                 self.last_capslock_state = Some(capslock_state);
             }
             
+            let clipboard_content = CLIPBOARD_SERVICE.get_last_content();
+            if !clipboard_content.is_empty() && clipboard_content != self.last_clipboard_content {
+                ::log::info!("OSD: Clipboard changed: {} bytes", clipboard_content.len());
+                
+                if let Some(mut osd) = self.osd_window.osd(ids!(osd)).borrow_mut() {
+                    osd.show_clipboard(cx, &clipboard_content);
+                }
+                
+                self.last_clipboard_content = clipboard_content;
+            }
+            
             self.last_audio_state = Some(current_state);
             self.timer = cx.start_timeout(0.1);
         }
@@ -157,6 +170,7 @@ impl Default for App {
             osd_layer_shell_configured: false,
             last_audio_state: None,
             last_capslock_state: None,
+            last_clipboard_content: String::new(),
             timer: Timer::default(),
         }
     }
