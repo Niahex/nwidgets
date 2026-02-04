@@ -184,6 +184,10 @@ impl AppMain for App {
 
                     self.launcher_window.redraw(cx);
                     cx.redraw_all();
+                    
+                    if let Some(mut launcher) = self.launcher_window.launcher(ids!(launcher)).borrow_mut() {
+                        launcher.set_text_input_focus(cx);
+                    }
                 } else {
                     ::log::info!("Hiding launcher - setting layer to Background and keyboard to None");
 

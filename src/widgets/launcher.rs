@@ -123,6 +123,9 @@ pub struct Launcher {
 
     #[rust]
     results: Vec<LauncherResult>,
+    
+    #[rust]
+    frames_until_focus: u8,
 }
 
 #[derive(Clone, Debug)]
@@ -144,14 +147,32 @@ pub enum LauncherResultType {
 
 impl Widget for Launcher {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        ::log::info!("Launcher draw_walk called, visible: {:?}", self.view.visible);
-        let result = self.view.draw_walk(cx, scope, walk);
-        ::log::info!("Launcher draw_walk completed, result: {:?}", result);
-        result
+        self.view.draw_walk(cx, scope, walk)
     }
 
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        // Handle keyboard events BEFORE view event handling
+        // Handle frame countdown for focus
+        if let Event::NextFrame(_) = event {
+            if self.frames_until_focus > 0 && self.view.visible {
+                self.frames_until_focus -= 1;
+                if self.frames_until_focus == 0 {
+                    ::log::info!("Setting key focus on text input after 2 frames delay");
+                    let text_input = self.view.text_input(ids!(search_input));
+                    text_input.set_key_focus(cx);
+                } else {
+                    cx.new_next_frame();
+                }
+            }
+        }
+        
+        // Let view handle events first and capture actions
+        for action in cx.capture_actions(|cx| self.view.handle_event(cx, event, scope)) {
+            if let TextInputAction::Changed(new_text) = action.as_widget_action().cast() {
+                self.search(cx, &new_text);
+            }
+        }
+        
+        // Handle special keyboard events for navigation
         if let Event::KeyDown(ke) = event {
             match ke.key_code {
                 KeyCode::Escape => {
@@ -183,13 +204,6 @@ impl Widget for Launcher {
                     }
                 }
                 _ => {}
-            }
-        }
-        
-        // Single event handling with action capture
-        for action in cx.capture_actions(|cx| self.view.handle_event(cx, event, scope)) {
-            if let TextInputAction::Changed(new_text) = action.as_widget_action().cast() {
-                self.search(cx, &new_text);
             }
         }
     }
@@ -271,10 +285,13 @@ impl Launcher {
         self.query.clear();
         self.results.clear();
         self.selected_index = 0;
-        
-        let text_input = self.view.text_input(ids!(search_input));
-        text_input.set_key_focus(cx);
-        
+        self.frames_until_focus = 2;
+        cx.new_next_frame();
+        self.view.redraw(cx);
+    }
+    
+    pub fn set_text_input_focus(&mut self, cx: &mut Cx) {
+        self.frames_until_focus = 2;
         self.view.redraw(cx);
     }
 
