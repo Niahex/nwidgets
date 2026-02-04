@@ -142,8 +142,11 @@ pub enum LauncherResultType {
 
 impl Widget for Launcher {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        ::log::info!("Launcher draw_walk called, results: {}", self.results.len());
         while let Some(item) = self.view.draw_walk(cx, scope, walk).step() {
+            ::log::info!("Launcher drawing item");
             if let Some(mut list) = item.as_portal_list().borrow_mut() {
+                ::log::info!("Drawing portal list with {} results", self.results.len());
                 list.set_item_range(cx, 0, self.results.len());
 
                 while let Some(item_id) = list.next_visible_item(cx) {
@@ -164,6 +167,7 @@ impl Widget for Launcher {
                 }
             }
         }
+        ::log::info!("Launcher draw_walk done");
         DrawStep::done()
     }
 
