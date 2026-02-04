@@ -3,6 +3,7 @@ use makepad_widgets::*;
 live_design! {
     use link::theme::*;
     use link::widgets::*;
+    use makepad_draw::shader::std::*;
     use crate::theme::*;
 
     SearchResultItem = <View> {
@@ -22,9 +23,16 @@ live_design! {
             }
         }
 
-        icon = <View> {
+        icon = <Icon> {
             width: 32, height: 32
-            align: {x: 0.5, y: 0.5}
+            icon_walk: { width: 32, height: 32 }
+            draw_icon: {
+                svg_file: dep("crate://self/assets/icons/none.svg")
+                brightness: 1.0
+                curve: 0.6
+                color: #fff
+                preserve_colors: true
+            }
         }
 
         info = <View> {
@@ -63,7 +71,14 @@ live_design! {
             spacing: 12
 
             show_bg: true
-            draw_bg: { color: (NORD_POLAR_1), radius: 8.0 }
+            draw_bg: {
+                fn pixel(self) -> vec4 {
+                    let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+                    sdf.box(0.0, 0.0, self.rect_size.x, self.rect_size.y, 8.0);
+                    sdf.fill((NORD_POLAR_1));
+                    return sdf.result;
+                }
+            }
 
             search_icon = <Label> {
                 draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 16.0 }, color: (THEME_COLOR_TEXT_MUTE) }
@@ -75,7 +90,7 @@ live_design! {
 
                 draw_bg: { color: #0000 }
                 draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 14.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
-                empty_message: "Search apps, calculator (=), processes (ps)..."
+                empty_text: "Search apps, calculator (=), processes (ps)..."
             }
         }
 
@@ -113,6 +128,7 @@ pub struct LauncherResult {
     pub id: String,
     pub name: String,
     pub description: String,
+    pub icon_path: Option<String>,
     pub result_type: LauncherResultType,
 }
 
@@ -137,6 +153,11 @@ impl Widget for Launcher {
 
                         item.label(ids!(info.name)).set_text(cx, &result.name);
                         item.label(ids!(info.description)).set_text(cx, &result.description);
+                        
+                        let icon_path = result.icon_path.as_deref().unwrap_or("./assets/icons/none.svg");
+                        if let Some(mut icon) = item.icon(ids!(icon)).borrow_mut() {
+                            icon.set_icon_from_path(cx, icon_path);
+                        }
 
                         item.draw_all(cx, &mut Scope::empty());
                     }
@@ -148,6 +169,12 @@ impl Widget for Launcher {
 
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
         self.view.handle_event(cx, event, scope);
+        
+        for action in cx.capture_actions(|cx| self.view.handle_event(cx, event, scope)) {
+            if let TextInputAction::Changed(new_text) = action.as_widget_action().cast() {
+                self.search(cx, &new_text);
+            }
+        }
 
         if let Event::KeyDown(ke) = event {
             match ke.key_code {
@@ -186,6 +213,64 @@ impl Widget for Launcher {
 }
 
 impl Launcher {
+    fn search(&mut self, cx: &mut Cx, query: &str) {
+        use crate::APPLICATIONS_SERVICE;
+        
+        self.query = query.to_string();
+        self.selected_index = 0;
+        
+        let mut results = Vec::new();
+        
+        if query.starts_with('=') {
+            let expr = &query[1..];
+            if !expr.is_empty() {
+                results.push(LauncherResult {
+                    id: format!("calc:{}", expr),
+                    name: format!("= {}", expr),
+                    description: "Calculator".to_string(),
+                    icon_path: Some("./assets/icons/calculator.svg".to_string()),
+                    result_type: LauncherResultType::Calculator,
+                });
+            }
+        } else if query.starts_with("ps") {
+            results.push(LauncherResult {
+                id: "ps:list".to_string(),
+                name: "Process Manager".to_string(),
+                description: "List running processes".to_string(),
+                icon_path: Some("./assets/icons/process.svg".to_string()),
+                result_type: LauncherResultType::Process,
+            });
+        } else if !query.is_empty() {
+            let apps = APPLICATIONS_SERVICE.get_all();
+            let query_lower = query.to_lowercase();
+            
+            for app in apps {
+                if app.name.to_lowercase().contains(&query_lower) 
+                    || app.comment.as_ref().map(|c| c.to_lowercase().contains(&query_lower)).unwrap_or(false)
+                    || app.generic_name.as_ref().map(|g| g.to_lowercase().contains(&query_lower)).unwrap_or(false) {
+                    
+                    let description = app.comment
+                        .or(app.generic_name)
+                        .unwrap_or_else(|| "Application".to_string());
+                    
+                    results.push(LauncherResult {
+                        id: app.id.clone(),
+                        name: app.name.clone(),
+                        description,
+                        icon_path: app.icon.clone(),
+                        result_type: LauncherResultType::Application,
+                    });
+                    
+                    if results.len() >= 10 {
+                        break;
+                    }
+                }
+            }
+        }
+        
+        self.set_results(cx, results);
+    }
+    
     pub fn set_query(&mut self, _cx: &mut Cx, query: &str) {
         self.query = query.to_string();
         self.selected_index = 0;
@@ -199,6 +284,7 @@ impl Launcher {
 
     pub fn show(&mut self, cx: &mut Cx) {
         self.view.apply_over(cx, live! { visible: true });
+        self.view.text_input(ids!(search_container.search_input)).set_key_focus(cx);
         self.view.redraw(cx);
     }
 
@@ -207,6 +293,7 @@ impl Launcher {
         self.query.clear();
         self.results.clear();
         self.selected_index = 0;
+        self.view.text_input(ids!(search_container.search_input)).set_text(cx, "");
         self.view.redraw(cx);
     }
 }
