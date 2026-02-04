@@ -114,7 +114,7 @@ impl AppMain for App {
                     || current_state.sink_muted != last_state.sink_muted {
                     ::log::info!("OSD: Volume changed to {}% (muted: {})", current_state.sink_volume, current_state.sink_muted);
                     
-                    if let Some(mut osd) = self.osd_window.osd(id!(osd)).borrow_mut() {
+                    if let Some(mut osd) = self.osd_window.osd(ids!(osd)).borrow_mut() {
                         let volume = current_state.sink_volume as f32 / 100.0;
                         ::log::info!("OSD: Calling show_volume");
                         osd.show_volume(cx, volume, current_state.sink_muted);
