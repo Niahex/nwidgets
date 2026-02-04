@@ -2,23 +2,11 @@ use makepad_widgets::*;
 use std::sync::{Arc, Mutex};
 
 use crate::HYPRLAND_SERVICE;
-use crate::ui::components::icon::NwIconWidgetExt;
 
 live_design! {
     use link::theme::*;
     use link::widgets::*;
     use crate::theme::*;
-    use crate::ui::components::*;
-
-    AppIcon = <NwIcon> {
-        width: 24, height: 24
-        icon_walk: { width: 24, height: 24 }
-        draw_icon: {
-            brightness: 1.0
-            curve: 0.6
-            color: #fff
-        }
-    }
 
     pub ActiveWindowModule = {{ActiveWindowModule}} {
         width: Fit, height: Fill
@@ -26,9 +14,15 @@ live_design! {
         align: {x: 0.0, y: 0.5}
         spacing: 8
 
-        icon = <AppIcon> {
+        icon = <Icon> {
+            width: 32, height: 32
+            icon_walk: { width: 32, height: 32 }
             draw_icon: {
                 svg_file: dep("crate://self/assets/icons/none.svg")
+                brightness: 1.0
+                curve: 0.6
+                color: #fff
+                preserve_colors: true
             }
         }
 
@@ -105,63 +99,59 @@ impl Widget for ActiveWindowModule {
 impl ActiveWindowModule {
     fn get_icon_path(class: &str) -> &'static str {
         if class.is_empty() {
-            return "crate://self/assets/icons/none.svg";
+            return "./assets/icons/none.svg";
         }
         
         let class_lower = class.to_lowercase();
         
         match class_lower.as_str() {
-            "kitty" => "crate://self/assets/icons/kitty.svg",
-            "firefox" => "crate://self/assets/icons/firefox-white.svg",
-            "brave-browser" | "brave" => "crate://self/assets/icons/brave.svg",
-            "discord" => "crate://self/assets/icons/discord.svg",
-            "spotify" => "crate://self/assets/icons/spotify.svg",
-            "code" | "code-oss" | "vscode" | "zed" => "crate://self/assets/icons/dev.zed.zed.svg",
-            "vlc" => "crate://self/assets/icons/vlc.svg",
-            "steam" => "crate://self/assets/icons/steam_tray.svg",
-            "lutris" => "crate://self/assets/icons/lutris.svg",
-            "org.gnome.nautilus" | "nautilus" => "crate://self/assets/icons/org.gnome.nautilus.svg",
-            "org.inkscape.inkscape" | "inkscape" => "crate://self/assets/icons/org.inkscape.inkscape.svg",
-            "org.keepassxc.keepassxc" | "keepassxc" => "crate://self/assets/icons/org.keepassxc.keepassxc.svg",
-            "element" => "crate://self/assets/icons/element.svg",
-            "neochat" => "crate://self/assets/icons/neochat.svg",
-            "calibre-gui" | "calibre" => "crate://self/assets/icons/calibre-gui.svg",
-            "qbittorrent" => "crate://self/assets/icons/qbittorrent.svg",
-            "resolve" | "davinci-resolve" => "crate://self/assets/icons/resolve.svg",
-            "twitch" => "crate://self/assets/icons/twitch.svg",
-            "zen-twilight" => "crate://self/assets/icons/zen-twilight.svg",
-            "libreoffice-writer" => "crate://self/assets/icons/libreoffice-writer.svg",
-            "libreoffice-calc" => "crate://self/assets/icons/libreoffice-calc.svg",
-            "libreoffice-draw" => "crate://self/assets/icons/libreoffice-draw.svg",
-            "libreoffice-math" => "crate://self/assets/icons/libreoffice-math.svg",
-            _ => "crate://self/assets/icons/none.svg",
+            "kitty" => "./assets/icons/kitty.svg",
+            "firefox" => "./assets/icons/firefox-white.svg",
+            "brave-browser" | "brave" => "./assets/icons/brave.svg",
+            "discord" => "./assets/icons/discord.svg",
+            "spotify" => "./assets/icons/spotify.svg",
+            "code" | "code-oss" | "vscode" | "zed" | "dev.zed.zed" => "./assets/icons/dev.zed.zed.svg",
+            "vlc" => "./assets/icons/vlc.svg",
+            "steam" => "./assets/icons/steam_tray.svg",
+            "lutris" => "./assets/icons/lutris.svg",
+            "org.gnome.nautilus" | "nautilus" => "./assets/icons/org.gnome.nautilus.svg",
+            "org.inkscape.inkscape" | "inkscape" => "./assets/icons/org.inkscape.inkscape.svg",
+            "org.keepassxc.keepassxc" | "keepassxc" => "./assets/icons/org.keepassxc.keepassxc.svg",
+            "element" => "./assets/icons/element.svg",
+            "neochat" => "./assets/icons/neochat.svg",
+            "calibre-gui" | "calibre" => "./assets/icons/calibre-gui.svg",
+            "qbittorrent" => "./assets/icons/qbittorrent.svg",
+            "resolve" | "davinci-resolve" => "./assets/icons/resolve.svg",
+            "twitch" => "./assets/icons/twitch.svg",
+            "zen-twilight" => "./assets/icons/zen-twilight.svg",
+            "libreoffice-writer" => "./assets/icons/libreoffice-writer.svg",
+            "libreoffice-calc" => "./assets/icons/libreoffice-calc.svg",
+            "libreoffice-draw" => "./assets/icons/libreoffice-draw.svg",
+            "libreoffice-math" => "./assets/icons/libreoffice-math.svg",
+            _ => "./assets/icons/none.svg",
         }
     }
 
     fn sync_from_service(&mut self, cx: &mut Cx) {
         let window = HYPRLAND_SERVICE.get_active_window();
-        
-        if window.title != self.window_title || window.class != self.window_class {
-            self.window_title = window.title.clone();
-            self.window_class = window.class.clone();
-            
-            let title = if window.title.is_empty() {
-                "No window"
-            } else {
-                &window.title
-            };
-            
-            self.view.label(ids!(info.title)).set_text(cx, title);
-            self.view.label(ids!(info.class)).set_text(cx, &window.class);
-            
-            let icon_path = Self::get_icon_path(&window.class);
-            ::log::info!("ActiveWindowModule: class='{}' -> icon_path={}", window.class, icon_path);
-            
-            if let Some(mut icon) = self.view.nw_icon(ids!(icon)).borrow_mut() {
-                icon.draw_icon.svg_path = ArcStringMut::String(icon_path.to_string());
+        let title = window.title.clone();
+        let class = window.class.clone();
+
+        if self.window_title != title || self.window_class != class {
+            self.window_title = title.clone();
+            self.window_class = class.clone();
+
+            self.view.label(ids!(info.title)).set_text(cx, &title);
+            self.view.label(ids!(info.class)).set_text(cx, &class);
+
+            let icon_path = Self::get_icon_path(&class);
+            ::log::info!("ActiveWindowModule: class='{}' -> icon_path={}", class, icon_path);
+
+            if let Some(mut icon) = self.view.icon(ids!(icon)).borrow_mut() {
+                icon.set_icon_from_path(cx, icon_path);
             }
-            
-            cx.redraw_all();
+
+            self.view.redraw(cx);
         }
     }
 }

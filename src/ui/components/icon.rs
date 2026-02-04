@@ -4,7 +4,11 @@ live_design! {
     use link::theme::*;
     use link::shaders::*;
 
-    pub NwIconBase = {{NwIcon}} {}
+    pub NwIconBase = {{NwIcon}} {
+        draw_icon: {
+            svg_path: ""
+        }
+    }
 
     pub NwIcon = <NwIconBase> {
         width: Fit,
@@ -63,6 +67,11 @@ impl Widget for NwIcon {
 }
 
 impl NwIcon {
+    pub fn set_svg_path(&mut self, cx: &mut Cx, path: &str) {
+        self.draw_icon.svg_path.as_mut_empty().push_str(path);
+        self.draw_bg.redraw(cx);
+    }
+    
     pub fn set_color(&mut self, color: Vec4) {
         self.draw_icon.color = color;
     }
@@ -75,3 +84,4 @@ impl NwIcon {
         self.draw_icon.scale = scale;
     }
 }
+
