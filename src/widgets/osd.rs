@@ -55,7 +55,7 @@ live_design! {
     }
 }
 
-#[derive(Live, LiveHook, Widget, WidgetRef)]
+#[derive(Live, LiveHook, Widget)]
 pub struct OSD {
     #[deref]
     view: View,

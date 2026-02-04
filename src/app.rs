@@ -1,6 +1,7 @@
 use makepad_widgets::*;
 
 use crate::{AUDIO_SERVICE, CLIPBOARD_SERVICE, HYPRLAND_SERVICE};
+use crate::widgets::osd::OSD;
 
 live_design! {
     use link::theme::*;
@@ -96,7 +97,7 @@ impl AppMain for App {
                 if current_state.sink_volume != last_state.sink_volume 
                     || current_state.sink_muted != last_state.sink_muted {
                     let osd_ref = self.osd_window.view(ids!(osd));
-                    if let Some(mut osd) = osd_ref.as_osd().borrow_mut() {
+                    if let Some(mut osd) = osd_ref.osd(ids!(osd)).borrow_mut() {
                         let volume = current_state.sink_volume as f32 / 100.0;
                         osd.show_volume(cx, volume, current_state.sink_muted);
                     }
