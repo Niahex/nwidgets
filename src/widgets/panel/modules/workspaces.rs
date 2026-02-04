@@ -13,18 +13,24 @@ live_design! {
         width: Fit, height: Fit
         padding: {left: 8, right: 8, top: 4, bottom: 4}
         cursor: Hand
+        align: {x: 0.5, y: 0.5}
 
         show_bg: true
         draw_bg: {
             instance active: 0.0
+            instance hover: 0.0
 
             fn pixel(self) -> vec4 {
                 let sdf = Sdf2d::viewport(self.pos * self.rect_size);
                 
-                let color = mix(
-                    #4C566A,
-                    #88C0D0,
-                    self.active
+                let bg_color = mix(
+                    vec4(0.0, 0.0, 0.0, 0.0),
+                    mix(
+                        (THEME_COLOR_TEXT_MUTE),
+                        (COLOR_ACCENT),
+                        self.active
+                    ),
+                    max(self.hover, self.active)
                 );
 
                 sdf.box(
@@ -32,17 +38,34 @@ live_design! {
                     1.0,
                     self.rect_size.x - 2.0,
                     self.rect_size.y - 2.0,
-                    2.0
+                    4.0
                 );
-                sdf.fill(color);
+                sdf.fill(bg_color);
 
                 return sdf.result;
             }
         }
 
         label = <Label> {
-            draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 11.0 }, color: #ECEFF4 }
-            text: "1"
+            draw_text: {
+                text_style: <THEME_FONT_REGULAR> { font_size: 11.0 }
+                
+                instance active: 0.0
+                instance hover: 0.0
+                
+                fn get_color(self) -> vec4 {
+                    return mix(
+                        (THEME_COLOR_TEXT_MUTE),
+                        mix(
+                            (THEME_COLOR_BG_APP),
+                            (THEME_COLOR_ACCENT_ALT),
+                            self.active
+                        ),
+                        max(self.hover, self.active)
+                    );
+                }
+            }
+            text: ""
         }
     }
 
@@ -79,6 +102,9 @@ pub struct WorkspacesModule {
     
     #[rust]
     workspace_ids: [Option<i32>; 10],
+    
+    #[rust]
+    hovered_workspace: Option<usize>,
     
     #[rust]
     needs_redraw: Arc<Mutex<bool>>,
@@ -132,6 +158,16 @@ impl Widget for WorkspacesModule {
                         ::log::info!("Switching to workspace {}", workspace_id);
                         HYPRLAND_SERVICE.switch_workspace(workspace_id);
                     }
+                    Hit::FingerHoverIn(_) => {
+                        self.hovered_workspace = Some(idx);
+                        self.update_workspace_hover(cx, idx, true);
+                    }
+                    Hit::FingerHoverOut(_) => {
+                        if self.hovered_workspace == Some(idx) {
+                            self.hovered_workspace = None;
+                            self.update_workspace_hover(cx, idx, false);
+                        }
+                    }
                     _ => {}
                 }
             }
@@ -140,6 +176,32 @@ impl Widget for WorkspacesModule {
 }
 
 impl WorkspacesModule {
+    fn update_workspace_hover(&mut self, cx: &mut Cx, idx: usize, is_hovering: bool) {
+        let ws_ids = [
+            ids!(ws1), ids!(ws2), ids!(ws3), ids!(ws4), ids!(ws5),
+            ids!(ws6), ids!(ws7), ids!(ws8), ids!(ws9), ids!(ws10),
+        ];
+        
+        if let Some(ws_id) = ws_ids.get(idx) {
+            if let Some(workspace_id) = self.workspace_ids[idx] {
+                let is_active = workspace_id == self.active_workspace;
+                
+                self.view.view(*ws_id).apply_over(cx, live!{
+                    draw_bg: {
+                        hover: (if is_hovering { 1.0 } else { 0.0 })
+                    }
+                    label = {
+                        draw_text: {
+                            hover: (if is_hovering { 1.0 } else { 0.0 })
+                        }
+                    }
+                });
+                
+                cx.redraw_all();
+            }
+        }
+    }
+    
     fn sync_from_service(&mut self, cx: &mut Cx) {
         let active = HYPRLAND_SERVICE.get_active_workspace();
         let workspaces = HYPRLAND_SERVICE.get_workspaces();
@@ -182,7 +244,13 @@ impl WorkspacesModule {
                         draw_bg: {
                             active: (if is_active { 1.0 } else { 0.0 })
                         }
+                        label = {
+                            draw_text: {
+                                active: (if is_active { 1.0 } else { 0.0 })
+                            }
+                        }
                     });
+                    
                     self.view.view(*ws_id).label(ids!(label)).set_text(cx, &display_name);
                 } else {
                     self.view.view(*ws_id).apply_over(cx, live!{
