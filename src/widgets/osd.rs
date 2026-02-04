@@ -255,6 +255,7 @@ impl OSD {
     fn hide(&mut self, cx: &mut Cx) {
         self.view.apply_over(cx, live! { visible: false });
         self.view.redraw(cx);
+        cx.redraw_all();
     }
 }
 

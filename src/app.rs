@@ -112,21 +112,21 @@ impl MatchEvent for App {
             window.set_layer_shell(cx, panel_config);
             self.layer_shell_configured = true;
         }
-
+        
         let osd_config = LayerShellConfig {
-            layer: LayerShellLayer::Top,
+            layer: LayerShellLayer::Overlay,
             anchor: LayerShellAnchor::BOTTOM,
             exclusive_zone: None,
             namespace: "nwidgets-osd".to_string(),
             keyboard_interactivity: LayerShellKeyboardInteractivity::None,
             margin: (0, 0, 100, 0),
         };
-
+        
         if let Some(mut window) = self.osd_window.borrow_mut::<Window>() {
             window.set_layer_shell(cx, osd_config);
             self.osd_layer_shell_configured = true;
         }
-
+        
         let launcher_config = LayerShellConfig {
             layer: LayerShellLayer::Overlay,
             anchor: LayerShellAnchor::NONE,
@@ -135,7 +135,7 @@ impl MatchEvent for App {
             keyboard_interactivity: LayerShellKeyboardInteractivity::None,
             margin: (0, 0, 0, 0),
         };
-
+        
         if let Some(mut window) = self.launcher_window.borrow_mut::<Window>() {
             window.set_layer_shell(cx, launcher_config);
             self.launcher_layer_shell_configured = true;
@@ -165,9 +165,6 @@ impl AppMain for App {
                 
                 if self.launcher_visible {
                     ::log::info!("Showing launcher");
-                    if let Some(mut launcher) = self.launcher_window.launcher(ids!(launcher)).borrow_mut() {
-                        launcher.show(cx);
-                    }
                     if let Some(mut window) = self.launcher_window.borrow_mut::<Window>() {
                         window.set_layer_shell(cx, LayerShellConfig {
                             layer: LayerShellLayer::Overlay,
@@ -178,6 +175,9 @@ impl AppMain for App {
                             margin: (0, 0, 0, 0),
                         });
                     }
+                    if let Some(mut launcher) = self.launcher_window.launcher(ids!(launcher)).borrow_mut() {
+                        launcher.show(cx);
+                    }
                     self.launcher_window.redraw(cx);
                     cx.redraw_all();
                 } else {
@@ -187,7 +187,7 @@ impl AppMain for App {
                     }
                     if let Some(mut window) = self.launcher_window.borrow_mut::<Window>() {
                         window.set_layer_shell(cx, LayerShellConfig {
-                            layer: LayerShellLayer::Overlay,
+                            layer: LayerShellLayer::Bottom,
                             anchor: LayerShellAnchor::NONE,
                             exclusive_zone: None,
                             namespace: "nwidgets-launcher".to_string(),
@@ -203,9 +203,20 @@ impl AppMain for App {
             let current_state = AUDIO_SERVICE.state();
 
             if let Some(last_state) = &self.last_audio_state {
-                if current_state.sink_volume != last_state.sink_volume
+                if current_state.sink_volume != last_state.sink_volume 
                     || current_state.sink_muted != last_state.sink_muted {
                     ::log::info!("OSD: Volume changed to {}% (muted: {})", current_state.sink_volume, current_state.sink_muted);
+                    
+                    if let Some(mut window) = self.osd_window.borrow_mut::<Window>() {
+                        window.set_layer_shell(cx, LayerShellConfig {
+                            layer: LayerShellLayer::Overlay,
+                            anchor: LayerShellAnchor::BOTTOM,
+                            exclusive_zone: None,
+                            namespace: "nwidgets-osd".to_string(),
+                            keyboard_interactivity: LayerShellKeyboardInteractivity::None,
+                            margin: (0, 0, 100, 0),
+                        });
+                    }
 
                     if let Some(mut osd) = self.osd_window.osd(ids!(osd)).borrow_mut() {
                         let volume = current_state.sink_volume as f32 / 100.0;
@@ -220,22 +231,44 @@ impl AppMain for App {
             let capslock_state = CAPSLOCK_SERVICE.is_enabled();
             if self.last_capslock_state != Some(capslock_state) {
                 ::log::info!("OSD: CapsLock changed to {}", capslock_state);
+                
+                if let Some(mut window) = self.osd_window.borrow_mut::<Window>() {
+                    window.set_layer_shell(cx, LayerShellConfig {
+                        layer: LayerShellLayer::Overlay,
+                        anchor: LayerShellAnchor::BOTTOM,
+                        exclusive_zone: None,
+                        namespace: "nwidgets-osd".to_string(),
+                        keyboard_interactivity: LayerShellKeyboardInteractivity::None,
+                        margin: (0, 0, 100, 0),
+                    });
+                }
 
                 if let Some(mut osd) = self.osd_window.osd(ids!(osd)).borrow_mut() {
                     osd.show_capslock(cx, capslock_state);
                 }
-
+                
                 self.last_capslock_state = Some(capslock_state);
             }
 
             let clipboard_content = CLIPBOARD_SERVICE.get_last_content();
             if !clipboard_content.is_empty() && clipboard_content != self.last_clipboard_content {
                 ::log::info!("OSD: Clipboard changed: {} bytes", clipboard_content.len());
+                
+                if let Some(mut window) = self.osd_window.borrow_mut::<Window>() {
+                    window.set_layer_shell(cx, LayerShellConfig {
+                        layer: LayerShellLayer::Overlay,
+                        anchor: LayerShellAnchor::BOTTOM,
+                        exclusive_zone: None,
+                        namespace: "nwidgets-osd".to_string(),
+                        keyboard_interactivity: LayerShellKeyboardInteractivity::None,
+                        margin: (0, 0, 100, 0),
+                    });
+                }
 
                 if let Some(mut osd) = self.osd_window.osd(ids!(osd)).borrow_mut() {
                     osd.show_clipboard(cx, &clipboard_content);
                 }
-
+                
                 self.last_clipboard_content = clipboard_content;
             }
 
