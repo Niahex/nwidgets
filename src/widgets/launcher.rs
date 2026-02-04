@@ -93,18 +93,6 @@ live_design! {
                 empty_text: "Search apps, calculator (=), processes (ps)..."
             }
         }
-
-        results_container = <View> {
-            width: Fill, height: Fill
-            flow: Down
-            padding: {top: 12}
-
-            results_list = <PortalList> {
-                width: Fill, height: Fill
-
-                SearchResultItem = <SearchResultItem> {}
-            }
-        }
     }
 }
 
@@ -142,33 +130,8 @@ pub enum LauncherResultType {
 
 impl Widget for Launcher {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        ::log::info!("Launcher draw_walk called, results: {}", self.results.len());
-        
-        while let Some(view_item) = self.view.draw_walk(cx, scope, walk).step() {
-            if let Some(mut list) = view_item.as_portal_list().borrow_mut() {
-                ::log::info!("Drawing portal list with {} results", self.results.len());
-                list.set_item_range(cx, 0, self.results.len());
-                
-                while let Some(item_id) = list.next_visible_item(cx) {
-                    if item_id < self.results.len() {
-                        let result = &self.results[item_id];
-                        let item = list.item(cx, item_id, live_id!(SearchResultItem));
-                        
-                        item.label(ids!(info.name)).set_text(cx, &result.name);
-                        item.label(ids!(info.description)).set_text(cx, &result.description);
-                        
-                        let icon_path = result.icon_path.as_deref().unwrap_or("./assets/icons/none.svg");
-                        if let Some(mut icon) = item.icon(ids!(icon)).borrow_mut() {
-                            icon.set_icon_from_path(cx, icon_path);
-                        }
-                        
-                        item.draw_all(cx, &mut Scope::empty());
-                    }
-                }
-            }
-        }
-        
-        DrawStep::done()
+        ::log::info!("Launcher draw_walk called");
+        self.view.draw_walk(cx, scope, walk)
     }
 
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
