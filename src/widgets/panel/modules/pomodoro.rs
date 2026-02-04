@@ -79,10 +79,10 @@ impl PomodoroModule {
             
             let color = match state.phase {
                 PomodoroPhase::Work => live!{
-                    draw_text: { color: (NORD_AURORA_RED) }
+                    draw_text: { color: (THEME_COLOR_RED) }
                 },
                 PomodoroPhase::ShortBreak | PomodoroPhase::LongBreak => live!{
-                    draw_text: { color: (NORD_AURORA_GREEN) }
+                    draw_text: { color: (THEME_COLOR_GREEN) }
                 },
             };
             
