@@ -10,8 +10,12 @@ live_design! {
 
         show_bg: true
         draw_bg: {
-            color: (NORD_POLAR_0)
-            radius: 16.0
+            fn pixel(self) -> vec4 {
+                let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+                sdf.box(0.0, 0.0, self.rect_size.x, self.rect_size.y, 16.0);
+                sdf.fill((NORD_POLAR_0));
+                return sdf.result;
+            }
         }
 
         flow: Row
@@ -38,11 +42,11 @@ live_design! {
                     let radius = self.rect_size.y * 0.5;
 
                     sdf.box(0.0, 0.0, self.rect_size.x, self.rect_size.y, radius);
-                    sdf.fill(#4C566A);
+                    sdf.fill((NORD_POLAR_3));
 
                     let filled = self.rect_size.x * self.value;
                     sdf.box(0.0, 0.0, filled, self.rect_size.y, radius);
-                    sdf.fill(#88C0D0);
+                    sdf.fill((NORD_FROST_1));
 
                     return sdf.result;
                 }
@@ -106,7 +110,14 @@ impl OSD {
         };
 
         self.view.label(ids!(icon)).set_text(cx, icon);
-        self.view.apply_over(cx, live! { visible: true });
+        self.view.apply_over(cx, live! { 
+            visible: true
+            progress_bar = {
+                draw_bg: {
+                    value: (volume)
+                }
+            }
+        });
 
         self.hide_timer = cx.start_timeout(2.0);
         self.view.redraw(cx);
@@ -135,7 +146,12 @@ impl OSD {
         self.osd_type = OSDType::Clipboard;
 
         self.view.label(ids!(icon)).set_text(cx, "󰅎");
-        self.view.apply_over(cx, live! { visible: true });
+        self.view.apply_over(cx, live! { 
+            visible: true
+            progress_bar = {
+                visible: false
+            }
+        });
 
         let _ = text;
 
