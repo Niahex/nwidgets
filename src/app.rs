@@ -143,11 +143,6 @@ impl AppMain for App {
                 self.last_capslock_state = Some(new_capslock_state);
             }
         }
-                    
-                    self.last_capslock_state = Some(capslock_enabled);
-                }
-            }
-        }
         
         self.match_event(cx, event);
         self.ui.handle_event(cx, event, &mut Scope::empty());
