@@ -44,6 +44,5 @@ cargo update
 ```
 
 ## Prochaines Étapes Optionnelles
-1. Augmenter taille icônes active_windows à 32x32
-2. Vérifier si le bruit sur Spotify persiste (peut nécessiter ajustement format pixel)
-3. Optimiser mémoire (caching des textures SVG)
+1. Vérifier si le bruit sur Spotify persiste (peut nécessiter ajustement format pixel)
+2. Optimiser mémoire (caching des textures SVG)
