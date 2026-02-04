@@ -69,6 +69,7 @@ live_design! {
                     return sdf.result;
                 }
             }
+            visible: true
         }
     }
 }
@@ -116,30 +117,29 @@ impl OSD {
         self.osd_type = OSDType::Volume;
         self.value = volume;
 
-        let icon = if muted {
-            "󰖁"
-        } else if volume > 0.66 {
-            "󰕾"
-        } else if volume > 0.33 {
-            "󰖀"
-        } else if volume > 0.0 {
-            "󰕿"
+        let icon_path = if muted {
+            "./assets/icons/sink-muted.svg"
         } else {
-            "󰝟"
+            "./assets/icons/sink-muted.svg"
         };
 
-        ::log::info!("OSD: Setting icon to {} and volume to {}", icon, volume);
+        ::log::info!("OSD: Setting volume icon to {} and volume to {}", icon_path, volume);
         
-        self.view.label(ids!(icon)).set_text(cx, icon);
+        if let Some(mut icon) = self.view.icon(ids!(capslock_icon)).borrow_mut() {
+            icon.set_icon_from_path(cx, icon_path);
+        }
+        
+        self.view.label(ids!(icon)).set_text(cx, "");
         self.view.label(ids!(text_label)).set_text(cx, "");
         
         self.view.apply_over(cx, live! { 
             visible: true
             capslock_icon = {
-                width: 0, height: 0
-                icon_walk: { width: 0, height: 0 }
+                width: 32, height: 32
+                icon_walk: { width: 32, height: 32 }
             }
             progress_bar = {
+                visible: true
                 draw_bg: {
                     value: (volume)
                 }
@@ -185,7 +185,7 @@ impl OSD {
                 icon_walk: { width: 0, height: 0 }
             }
             progress_bar = {
-                width: 0, height: 0
+                visible: false
             }
         });
 
@@ -223,7 +223,7 @@ impl OSD {
                 icon_walk: { width: 32, height: 32 }
             }
             progress_bar = {
-                width: 0, height: 0
+                visible: false
             }
         });
 
