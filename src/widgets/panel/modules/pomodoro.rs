@@ -17,7 +17,7 @@ live_design! {
         cursor: Hand
 
         content = <Label> {
-            draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 14.0 }, color: #ECEFF4 }
+            draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 14.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
             text: "󰐊"
         }
     }
@@ -79,10 +79,10 @@ impl PomodoroModule {
             
             let color = match state.phase {
                 PomodoroPhase::Work => live!{
-                    draw_text: { color: #BF616A }
+                    draw_text: { color: (NORD_AURORA_RED) }
                 },
                 PomodoroPhase::ShortBreak | PomodoroPhase::LongBreak => live!{
-                    draw_text: { color: #A3BE8C }
+                    draw_text: { color: (NORD_AURORA_GREEN) }
                 },
             };
             
@@ -100,7 +100,7 @@ impl PomodoroModule {
             
             self.view.label(ids!(content)).set_text(cx, icon_text);
             self.view.label(ids!(content)).apply_over(cx, live!{
-                draw_text: { color: #ECEFF4 }
+                draw_text: { color: (THEME_COLOR_TEXT_DEFAULT) }
             });
         }
 
