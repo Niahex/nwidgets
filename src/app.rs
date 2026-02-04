@@ -131,15 +131,18 @@ impl AppMain for App {
         }
         
         if let Event::KeyDown(ke) = event {
-            if ke.key_code == KeyCode::CapsLock {
-                let capslock_enabled = ke.modifiers.contains(KeyModifiers::CAPS_LOCK);
+            if ke.key_code == KeyCode::Capslock {
+                let new_capslock_state = !self.last_capslock_state.unwrap_or(false);
                 
-                if self.last_capslock_state != Some(capslock_enabled) {
-                    ::log::info!("OSD: CapsLock changed to {}", capslock_enabled);
-                    
-                    if let Some(mut osd) = self.osd_window.osd(ids!(osd)).borrow_mut() {
-                        osd.show_capslock(cx, capslock_enabled);
-                    }
+                ::log::info!("OSD: CapsLock toggled to {}", new_capslock_state);
+                
+                if let Some(mut osd) = self.osd_window.osd(ids!(osd)).borrow_mut() {
+                    osd.show_capslock(cx, new_capslock_state);
+                }
+                
+                self.last_capslock_state = Some(new_capslock_state);
+            }
+        }
                     
                     self.last_capslock_state = Some(capslock_enabled);
                 }
