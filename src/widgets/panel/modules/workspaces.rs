@@ -183,8 +183,7 @@ impl WorkspacesModule {
         ];
         
         if let Some(ws_id) = ws_ids.get(idx) {
-            if let Some(workspace_id) = self.workspace_ids[idx] {
-                let is_active = workspace_id == self.active_workspace;
+            if let Some(_workspace_id) = self.workspace_ids[idx] {
                 
                 self.view.view(*ws_id).apply_over(cx, live!{
                     draw_bg: {

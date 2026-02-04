@@ -1,7 +1,7 @@
 use makepad_widgets::*;
 
 use crate::{AUDIO_SERVICE, CLIPBOARD_SERVICE, HYPRLAND_SERVICE};
-use crate::widgets::osd::OSD;
+use crate::widgets::osd::{OSD, OSDWidgetRefExt};
 
 live_design! {
     use link::theme::*;
