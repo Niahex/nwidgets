@@ -1,6 +1,6 @@
 use makepad_widgets::*;
 
-use crate::{AUDIO_SERVICE, CLIPBOARD_SERVICE, HYPRLAND_SERVICE};
+use crate::{AUDIO_SERVICE, CAPSLOCK_SERVICE, CLIPBOARD_SERVICE, HYPRLAND_SERVICE};
 use crate::widgets::osd::{OSD, OSDWidgetRefExt};
 
 live_design! {
@@ -70,6 +70,7 @@ impl MatchEvent for App {
         let _ = &*HYPRLAND_SERVICE;
         let _ = &*AUDIO_SERVICE;
         let _ = &*CLIPBOARD_SERVICE;
+        let _ = &*CAPSLOCK_SERVICE;
         
         let panel_config = LayerShellConfig {
             layer: LayerShellLayer::Top,
@@ -126,22 +127,19 @@ impl AppMain for App {
                 }
             }
             
-            self.last_audio_state = Some(current_state);
-            self.timer = cx.start_timeout(0.1);
-        }
-        
-        if let Event::KeyDown(ke) = event {
-            if ke.key_code == KeyCode::Capslock {
-                let new_capslock_state = !self.last_capslock_state.unwrap_or(false);
-                
-                ::log::info!("OSD: CapsLock toggled to {}", new_capslock_state);
+            let capslock_state = CAPSLOCK_SERVICE.is_enabled();
+            if self.last_capslock_state != Some(capslock_state) {
+                ::log::info!("OSD: CapsLock changed to {}", capslock_state);
                 
                 if let Some(mut osd) = self.osd_window.osd(ids!(osd)).borrow_mut() {
-                    osd.show_capslock(cx, new_capslock_state);
+                    osd.show_capslock(cx, capslock_state);
                 }
                 
-                self.last_capslock_state = Some(new_capslock_state);
+                self.last_capslock_state = Some(capslock_state);
             }
+            
+            self.last_audio_state = Some(current_state);
+            self.timer = cx.start_timeout(0.1);
         }
         
         self.match_event(cx, event);
