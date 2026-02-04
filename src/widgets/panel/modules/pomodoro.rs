@@ -1,6 +1,7 @@
 use makepad_widgets::*;
 
 use crate::POMODORO_SERVICE;
+use crate::services::media::pomodoro::PomodoroPhase;
 
 live_design! {
     use link::theme::*;
@@ -15,14 +16,9 @@ live_design! {
         padding: {left: 8, right: 8}
         cursor: Hand
 
-        icon = <Label> {
-            draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 14.0 }, color: (NORD_AURORA_RED) }
-            text: ""
-        }
-
-        time = <Label> {
-            draw_text: { text_style: <THEME_FONT_CODE> { font_size: 12.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
-            text: "25:00"
+        content = <Label> {
+            draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 14.0 }, color: #ECEFF4 }
+            text: "󰐊"
         }
     }
 }
@@ -76,19 +72,39 @@ impl PomodoroModule {
     fn sync_from_service(&mut self, cx: &mut Cx) {
         let state = POMODORO_SERVICE.get_state();
         
-        let minutes = state.remaining_seconds / 60;
-        let secs = state.remaining_seconds % 60;
-        let time_str = format!("{:02}:{:02}", minutes, secs);
-        self.view.label(ids!(time)).set_text(cx, &time_str);
-
-        let icon = if state.is_running {
-            ""
-        } else if state.remaining_seconds < state.work_duration {
-            ""
+        if state.is_running {
+            let minutes = state.remaining_seconds / 60;
+            let secs = state.remaining_seconds % 60;
+            let time_str = format!("{:02}:{:02}", minutes, secs);
+            
+            let color = match state.phase {
+                PomodoroPhase::Work => live!{
+                    draw_text: { color: #BF616A }
+                },
+                PomodoroPhase::ShortBreak | PomodoroPhase::LongBreak => live!{
+                    draw_text: { color: #A3BE8C }
+                },
+            };
+            
+            self.view.label(ids!(content)).set_text(cx, &time_str);
+            self.view.label(ids!(content)).apply_over(cx, color);
         } else {
-            ""
-        };
-        self.view.label(ids!(icon)).set_text(cx, icon);
+            let icon_text = if state.has_started {
+                "󰏤"
+            } else {
+                match state.phase {
+                    PomodoroPhase::Work => "󰐊",
+                    PomodoroPhase::ShortBreak | PomodoroPhase::LongBreak => "󰝛",
+                }
+            };
+            
+            self.view.label(ids!(content)).set_text(cx, icon_text);
+            self.view.label(ids!(content)).apply_over(cx, live!{
+                draw_text: { color: #ECEFF4 }
+            });
+        }
+
+        self.view.redraw(cx);
     }
 }
 
