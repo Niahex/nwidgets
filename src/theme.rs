@@ -45,6 +45,10 @@ live_design! {
     pub THEME_COLOR_GREEN = (NORD_AURORA_GREEN)
     pub THEME_COLOR_PURPLE = (NORD_AURORA_PURPLE)
 
+    pub POMODORO_COLOR_WORK = (THEME_COLOR_RED)
+    pub POMODORO_COLOR_BREAK = (THEME_COLOR_GREEN)
+    pub POMODORO_COLOR_DEFAULT = (THEME_COLOR_TEXT_DEFAULT)
+
     pub THEME_FONT_REGULAR = {
         font_family: {
             latin = font("crate://self/assets/fonts/UbuntuNerdFont-Regular.ttf", 0.0, 0.0),
