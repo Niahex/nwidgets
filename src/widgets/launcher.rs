@@ -113,16 +113,21 @@ live_design! {
                 empty_text: "Search apps, calculator (=), processes (ps)..."
             }
         }
-
-        list = <PortalList> {
+        
+        list = <crate::ui::components::list::List> {
             height: Fill, width: Fill
             flow: Down
-
-            capture_overload: false
-            grab_key_focus: false
-            drag_scrolling: false
-
-            SearchResultItem = <SearchResultItem> {}
+            
+            item0 = <SearchResultItem> {visible: false}
+            item1 = <SearchResultItem> {visible: false}
+            item2 = <SearchResultItem> {visible: false}
+            item3 = <SearchResultItem> {visible: false}
+            item4 = <SearchResultItem> {visible: false}
+            item5 = <SearchResultItem> {visible: false}
+            item6 = <SearchResultItem> {visible: false}
+            item7 = <SearchResultItem> {visible: false}
+            item8 = <SearchResultItem> {visible: false}
+            item9 = <SearchResultItem> {visible: false}
         }
     }
 }
@@ -145,6 +150,7 @@ pub struct Launcher {
     frames_until_focus: u8,
 }
 
+
 #[derive(Clone, Debug)]
 pub struct LauncherResult {
     pub id: String,
@@ -164,12 +170,8 @@ pub enum LauncherResultType {
 
 impl Widget for Launcher {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        while let Some(step) = self.view.draw_walk(cx, scope, walk).step() {
-            if let Some(mut list) = step.as_portal_list().borrow_mut() {
-                self.draw_results(cx, &mut *list);
-            }
-        }
-        DrawStep::done()
+        self.draw_results(cx);
+        self.view.draw_walk(cx, scope, walk)
     }
 
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
@@ -290,21 +292,27 @@ impl Launcher {
         self.set_results(cx, results);
     }
 
-    fn draw_results(&mut self, cx: &mut Cx2d, list: &mut PortalList) {
-        list.set_item_range(cx, 0, self.results.len());
+    fn draw_results(&mut self, cx: &mut Cx2d) {
+        let item_ids = [
+            ids!(list.item0), ids!(list.item1), ids!(list.item2), ids!(list.item3), ids!(list.item4),
+            ids!(list.item5), ids!(list.item6), ids!(list.item7), ids!(list.item8), ids!(list.item9)
+        ];
 
-        while let Some(item_id) = list.next_visible_item(cx) {
-            if let Some(result) = self.results.get(item_id) {
-                let item = list.item(cx, item_id, live_id!(SearchResultItem));
-
-                let selected = if item_id == self.selected_index { 1.0 } else { 0.0 };
+        for (i, item_id) in item_ids.iter().enumerate() {
+            let item = self.view.view(*item_id);
+            
+            if i < self.results.len() {
+                let result = &self.results[i];
+                item.set_visible(cx, true);
+                
+                let selected = if i == self.selected_index { 1.0 } else { 0.0 };
                 item.apply_over(cx, live!{
                     draw_bg: { selected: (selected) }
                 });
-
+                
                 item.label(ids!(info.name)).set_text(cx, &result.name);
                 item.label(ids!(info.description)).set_text(cx, &result.description);
-
+                
                 if let Some(path) = &result.icon_path {
                      if std::path::Path::new(path).exists() {
                          if let Some(mut icon) = item.icon(ids!(icon)).borrow_mut() {
@@ -312,8 +320,8 @@ impl Launcher {
                          }
                      }
                 }
-
-                item.draw_all(cx, &mut Scope::empty());
+            } else {
+                item.set_visible(cx, false);
             }
         }
     }
