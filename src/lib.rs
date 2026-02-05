@@ -10,7 +10,6 @@ use crate::services::system::hyprland::HyprlandService;
 use crate::services::system::dbus_launcher::DbusLauncherService;
 use crate::services::ui::clipboard::ClipboardService;
 use crate::services::launcher::applications::ApplicationService;
-use crate::services::layershell::LayerShellService;
 
 pub mod app;
 pub mod theme;
@@ -31,7 +30,6 @@ pub static CLIPBOARD_SERVICE: Lazy<ClipboardService> = Lazy::new(ClipboardServic
 pub static CAPSLOCK_SERVICE: Lazy<CapsLockService> = Lazy::new(CapsLockService::new);
 pub static DBUS_LAUNCHER_SERVICE: Lazy<DbusLauncherService> = Lazy::new(DbusLauncherService::new);
 pub static APPLICATIONS_SERVICE: Lazy<ApplicationService> = Lazy::new(ApplicationService::new);
-pub static LAYERSHELL_SERVICE: Lazy<LayerShellService> = Lazy::new(LayerShellService::new);
 
 pub fn live_design(cx: &mut Cx) {
     makepad_widgets::live_design(cx);

@@ -5,8 +5,8 @@ edition = "2021"
 include = ["src/**/*", "Cargo.toml", "assets/**/*"]
 
 [dependencies]
-# Makepad framework - using dev branch
-makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "dev" }
+# Makepad framework - using fork with layer shell support
+makepad-widgets = { git = "https://github.com/Niahex/makepad", branch = "layershell" }
 
 # Async & Concurrency
 anyhow = "1.0"
