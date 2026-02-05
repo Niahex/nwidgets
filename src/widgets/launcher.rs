@@ -67,16 +67,10 @@ live_design! {
         }
 
         flow: Down
-        align: {x: 0.5, y: 0.5}
         padding: 16
         spacing: 16
 
         visible: false
-
-        test_label = <Label> {
-            draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 24.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
-            text: "LAUNCHER TEST"
-        }
 
         search_container = <View> {
             width: Fill, height: 48
