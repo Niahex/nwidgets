@@ -45,7 +45,7 @@ live_design! {
             pass: {clear_color: #0000},
 
             <View> {
-                width: Fill, height: Fill
+                width: Fit, height: Fit
                 align: {x: 0.5, y: 0.5}
 
                 launcher = <Launcher> {}
