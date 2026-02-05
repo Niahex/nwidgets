@@ -163,20 +163,20 @@ impl AppMain for App {
                 *self.launcher_toggle_requested.write() = false;
                 self.launcher_visible = !self.launcher_visible;
 
-                if self.launcher_visible {
-                    ::log::info!("Showing launcher - setting layer to Overlay and keyboard to Exclusive");
+                    if self.launcher_visible {
+                        ::log::info!("Showing launcher - setting layer to Overlay and keyboard to Exclusive");
 
-                    if let Some(mut window) = self.launcher_window.borrow_mut::<Window>() {
-                        window.set_layer_shell(cx, LayerShellConfig {
-                            layer: LayerShellLayer::Overlay,
-                            anchor: LayerShellAnchor::NONE,
-                            exclusive_zone: None,
-                            namespace: "nwidgets-launcher".to_string(),
-                            keyboard_interactivity: LayerShellKeyboardInteractivity::Exclusive,
-                            margin: (0, 0, 0, 0),
-                        });
-                        window.set_input_region(cx, true);
-                    }
+                        if let Some(mut window) = self.launcher_window.borrow_mut::<Window>() {
+                            window.set_layer_shell(cx, LayerShellConfig {
+                                layer: LayerShellLayer::Overlay,
+                                anchor: LayerShellAnchor::TOP | LayerShellAnchor::BOTTOM | LayerShellAnchor::LEFT | LayerShellAnchor::RIGHT,
+                                exclusive_zone: None,
+                                namespace: "nwidgets-launcher".to_string(),
+                                keyboard_interactivity: LayerShellKeyboardInteractivity::Exclusive,
+                                margin: (0, 0, 0, 0),
+                            });
+                            window.set_input_region(cx, true);
+                        }
 
                     if let Some(mut launcher) = self.launcher_window.launcher(ids!(launcher)).borrow_mut() {
                         launcher.show(cx);
