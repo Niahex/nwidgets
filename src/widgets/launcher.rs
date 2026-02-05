@@ -98,7 +98,7 @@ live_design! {
                 width: 24, height: 24
                 icon_walk: { width: 24, height: 24 }
                 draw_icon: {
-                    svg_file: dep("crate://self/assets/icons/search-clean.svg")
+                    svg_file: dep("crate://self/assets/icons/search.svg")
                     brightness: 1.0
                     curve: 0.6
                     color: #fff
@@ -113,15 +113,15 @@ live_design! {
                 empty_text: "Search apps, calculator (=), processes (ps)..."
             }
         }
-        
+
         list = <PortalList> {
             height: Fill, width: Fill
             flow: Down
-            
+
             capture_overload: false
             grab_key_focus: false
             drag_scrolling: false
-            
+
             SearchResultItem = <SearchResultItem> {}
         }
     }
@@ -292,25 +292,27 @@ impl Launcher {
 
     fn draw_results(&mut self, cx: &mut Cx2d, list: &mut PortalList) {
         list.set_item_range(cx, 0, self.results.len());
-        
+
         while let Some(item_id) = list.next_visible_item(cx) {
             if let Some(result) = self.results.get(item_id) {
                 let item = list.item(cx, item_id, live_id!(SearchResultItem));
-                
+
                 let selected = if item_id == self.selected_index { 1.0 } else { 0.0 };
                 item.apply_over(cx, live!{
                     draw_bg: { selected: (selected) }
                 });
-                
+
                 item.label(ids!(info.name)).set_text(cx, &result.name);
                 item.label(ids!(info.description)).set_text(cx, &result.description);
-                
+
                 if let Some(path) = &result.icon_path {
-                     if let Some(mut icon) = item.icon(ids!(icon)).borrow_mut() {
-                        icon.set_icon_from_path(cx, path);
+                     if std::path::Path::new(path).exists() {
+                         if let Some(mut icon) = item.icon(ids!(icon)).borrow_mut() {
+                            icon.set_icon_from_path(cx, path);
+                         }
                      }
                 }
-                
+
                 item.draw_all(cx, &mut Scope::empty());
             }
         }

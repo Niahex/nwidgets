@@ -1,8 +1,9 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use parking_lot::RwLock;
 use freedesktop_desktop_entry::{DesktopEntry, Iter};
+use freedesktop_icons::lookup;
 
 use crate::TOKIO_RUNTIME;
 
@@ -70,13 +71,24 @@ impl ApplicationService {
                         .unwrap_or("")
                         .to_string();
 
+                    let raw_icon = entry.icon().map(|s| s.to_string());
+                    let resolved_icon = if let Some(icon_name) = &raw_icon {
+                        if Path::new(icon_name).exists() {
+                             Some(icon_name.clone())
+                        } else {
+                             lookup(icon_name).find().map(|p| p.to_string_lossy().to_string())
+                        }
+                    } else {
+                        None
+                    };
+
                     let app = Application {
                         id: id.clone(),
                         name,
                         generic_name: entry.generic_name(None).map(|s| s.to_string()),
                         comment: entry.comment(None).map(|s| s.to_string()),
                         exec: entry.exec().unwrap_or("").to_string(),
-                        icon: entry.icon().map(|s| s.to_string()),
+                        icon: resolved_icon,
                         categories: entry.categories()
                             .map(|s| s.split(';').map(|s| s.to_string()).collect())
                             .unwrap_or_default(),
