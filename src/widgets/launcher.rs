@@ -108,13 +108,13 @@ live_design! {
                 empty_text: "Search apps, calculator (=), processes (ps)..."
             }
         }
-        
+
         list = <List> {
             height: Fill, width: Fill
             flow: Down
-            
+
             clip_x: true, clip_y: true
-            
+
             item0 = <SearchResultItem> {visible: false}
             item1 = <SearchResultItem> {visible: false}
             item2 = <SearchResultItem> {visible: false}
@@ -167,7 +167,6 @@ pub enum LauncherResultType {
 
 impl Widget for Launcher {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        self.draw_results(cx);
         self.view.draw_walk(cx, scope, walk)
     }
 
@@ -190,6 +189,7 @@ impl Widget for Launcher {
         for action in cx.capture_actions(|cx| self.view.handle_event(cx, event, scope)) {
             if let TextInputAction::Changed(new_text) = action.as_widget_action().cast() {
                 self.search(cx, &new_text);
+                self.update_results(cx);
             }
         }
 
@@ -206,12 +206,14 @@ impl Widget for Launcher {
                 KeyCode::ArrowUp => {
                     if self.selected_index > 0 {
                         self.selected_index -= 1;
+                        self.update_results(cx);
                         self.view.redraw(cx);
                     }
                 }
                 KeyCode::ArrowDown => {
                     if self.selected_index < self.results.len().saturating_sub(1) {
                         self.selected_index += 1;
+                        self.update_results(cx);
                         self.view.redraw(cx);
                     }
                 }
@@ -290,30 +292,30 @@ impl Launcher {
         self.set_results(cx, results);
     }
 
-    fn draw_results(&mut self, cx: &mut Cx2d) {
+    fn update_results(&mut self, cx: &mut Cx) {
         let item_ids = [
-            ids!(list.item0), ids!(list.item1), ids!(list.item2), ids!(list.item3), ids!(list.item4),
-            ids!(list.item5), ids!(list.item6), ids!(list.item7), ids!(list.item8), ids!(list.item9)
+            id!(item0), id!(item1), id!(item2), id!(item3), id!(item4),
+            id!(item5), id!(item6), id!(item7), id!(item8), id!(item9)
         ];
 
         for (i, item_id) in item_ids.iter().enumerate() {
-            let item = self.view.view(*item_id);
-            
+            let item = self.view.view(&[id!(list), *item_id]);
+
             if i < self.results.len() {
                 let result = &self.results[i];
                 item.set_visible(cx, true);
-                
+
                 let selected = if i == self.selected_index { 1.0 } else { 0.0 };
                 item.apply_over(cx, live!{
                     draw_bg: { selected: (selected) }
                 });
-                
-                item.label(ids!(info.name)).set_text(cx, &result.name);
-                item.label(ids!(info.description)).set_text(cx, &result.description);
-                
+
+                item.label(&[id!(info), id!(name)]).set_text(cx, &result.name);
+                item.label(&[id!(info), id!(description)]).set_text(cx, &result.description);
+
                 if let Some(path) = &result.icon_path {
                      if std::path::Path::new(path).exists() {
-                         if let Some(mut icon) = item.icon(ids!(icon)).borrow_mut() {
+                         if let Some(mut icon) = item.icon(&[id!(icon)]).borrow_mut() {
                             icon.set_icon_from_path(cx, path);
                          }
                      }
@@ -332,19 +334,20 @@ impl Launcher {
     pub fn set_results(&mut self, cx: &mut Cx, results: Vec<LauncherResult>) {
         self.results = results;
         self.selected_index = 0;
+        self.update_results(cx);
         self.view.redraw(cx);
     }
 
     pub fn show(&mut self, cx: &mut Cx) {
         ::log::info!("Launcher::show() called");
         self.view.apply_over(cx, live! { visible: true });
-        
+
         self.query.clear();
         self.selected_index = 0;
         self.frames_until_focus = 2;
-        
+
         self.search(cx, "");
-        
+
         cx.new_next_frame();
         self.view.redraw(cx);
     }
