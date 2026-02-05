@@ -134,7 +134,6 @@ impl OSD {
         let icon_path = Self::get_volume_icon_path(volume, muted);
         
         if let Some(mut icon) = self.view.icon(ids!(capslock_icon)).borrow_mut() {
-            icon.set_icon_from_path(cx, icon_path);
         }
         
         self.view.label(ids!(icon)).set_text(cx, "");
@@ -184,7 +183,6 @@ impl OSD {
         let icon_path = "./assets/icons/clipboard.svg";
         
         if let Some(mut icon) = self.view.icon(ids!(capslock_icon)).borrow_mut() {
-            icon.set_icon_from_path(cx, icon_path);
         }
         
         self.view.label(ids!(icon)).set_text(cx, "");
@@ -220,7 +218,6 @@ impl OSD {
         let text = if enabled { "Caps Lock ON" } else { "Caps Lock OFF" };
 
         if let Some(mut icon) = self.view.icon(ids!(capslock_icon)).borrow_mut() {
-            icon.set_icon_from_path(cx, icon_path);
         }
         
         self.view.label(ids!(icon)).set_text(cx, "");

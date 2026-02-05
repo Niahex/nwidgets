@@ -5,11 +5,15 @@ edition = "2021"
 include = ["src/**/*", "Cargo.toml", "assets/**/*"]
 
 [dependencies]
-# Makepad framework - forked with layer-shell support
-makepad-widgets = { git = "https://github.com/Niahex/makepad", branch = "layer-shell" }
+# Makepad framework - using dev branch
+makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "dev" }
 
 # Async & Concurrency
 anyhow = "1.0"
+wayland-client = "0.31"
+wayland-protocols = { version = "0.31", features = ["client", "unstable", "staging"] }
+wayland-protocols-wlr = { version = "0.3", features = ["client"] }
+wayland-protocols-hyprland = { version = "1.1", features = ["client"] }
 log = "0.4"
 env_logger = "0.11"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "fs", "io-util", "process", "net"] }

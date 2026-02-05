@@ -1,6 +1,7 @@
 use makepad_widgets::*;
 
-use crate::{AUDIO_SERVICE, CAPSLOCK_SERVICE, CLIPBOARD_SERVICE, HYPRLAND_SERVICE, DBUS_LAUNCHER_SERVICE, APPLICATIONS_SERVICE};
+use crate::{AUDIO_SERVICE, CAPSLOCK_SERVICE, CLIPBOARD_SERVICE, HYPRLAND_SERVICE, DBUS_LAUNCHER_SERVICE, APPLICATIONS_SERVICE, LAYERSHELL_SERVICE};
+use crate::services::layershell::{LayerShellConfig, LayerShellLayer, LayerShellAnchor, LayerShellKeyboardInteractivity};
 use crate::widgets::osd::{OSD, OSDWidgetRefExt};
 use crate::widgets::launcher::{Launcher, LauncherAction, LauncherWidgetRefExt};
 use std::sync::Arc;
@@ -93,6 +94,7 @@ impl MatchEvent for App {
         let _ = &*CAPSLOCK_SERVICE;
         let _ = &*DBUS_LAUNCHER_SERVICE;
         let _ = &*APPLICATIONS_SERVICE;
+        let _ = &*LAYERSHELL_SERVICE;
 
         let panel_config = LayerShellConfig {
             layer: LayerShellLayer::Top,
@@ -104,7 +106,7 @@ impl MatchEvent for App {
         };
 
         if let Some(mut window) = self.ui.borrow_mut::<Window>() {
-            window.set_layer_shell(cx, panel_config);
+            // window.set_layer_shell(cx, panel_config);
             self.layer_shell_configured = true;
         }
 
@@ -118,7 +120,7 @@ impl MatchEvent for App {
         };
 
         if let Some(mut window) = self.osd_window.borrow_mut::<Window>() {
-            window.set_layer_shell(cx, osd_config);
+            // window.set_layer_shell(cx, osd_config);
             self.osd_layer_shell_configured = true;
         }
 
@@ -132,7 +134,7 @@ impl MatchEvent for App {
         };
 
         if let Some(mut window) = self.launcher_window.borrow_mut::<Window>() {
-            window.set_layer_shell(cx, launcher_config);
+            // window.set_layer_shell(cx, launcher_config);
             self.launcher_layer_shell_configured = true;
         }
 
@@ -159,6 +161,7 @@ impl AppMain for App {
 
                     if self.launcher_visible {
                         if let Some(mut window) = self.launcher_window.borrow_mut::<Window>() {
+                            /*
                             window.set_layer_shell(cx, LayerShellConfig {
                                 layer: LayerShellLayer::Overlay,
                                 anchor: LayerShellAnchor::NONE,
@@ -167,8 +170,10 @@ impl AppMain for App {
                                 keyboard_interactivity: LayerShellKeyboardInteractivity::Exclusive,
                                 margin: (0, 0, 0, 0),
                             });
-                            window.set_input_region(cx, true);
+                            */
                         }
+                        
+                        LAYERSHELL_SERVICE.set_input_region(true);
 
                     if let Some(mut launcher) = self.launcher_window.launcher(ids!(launcher)).borrow_mut() {
                         launcher.show(cx);
@@ -185,17 +190,28 @@ impl AppMain for App {
                         launcher.hide(cx);
                     }
 
-                    if let Some(mut window) = self.launcher_window.borrow_mut::<Window>() {
-                        window.set_layer_shell(cx, LayerShellConfig {
-                            layer: LayerShellLayer::Background,
-                            anchor: LayerShellAnchor::NONE,
-                            exclusive_zone: None,
-                            namespace: "nwidgets-launcher".to_string(),
-                            keyboard_interactivity: LayerShellKeyboardInteractivity::None,
-                            margin: (0, 0, 0, 0),
-                        });
-                        window.set_input_region(cx, false);
-                    }
+                        if let Some(mut window) = self.launcher_window.borrow_mut::<Window>() {
+                            /*
+                            window.set_layer_shell(cx, LayerShellConfig {
+                                layer: LayerShellLayer::Background,
+                                anchor: LayerShellAnchor::NONE,
+                                exclusive_zone: None,
+                                namespace: "nwidgets-launcher".to_string(),
+                                keyboard_interactivity: LayerShellKeyboardInteractivity::None,
+                                margin: (0, 0, 0, 0),
+                            });
+                            */
+                        }
+                        
+                        LAYERSHELL_SERVICE.set_input_region(false);
+                        
+                        LAYERSHELL_SERVICE.set_input_region(false);
+                        
+                        LAYERSHELL_SERVICE.set_input_region(false);
+                        
+                        LAYERSHELL_SERVICE.set_input_region(false);
+                    
+                    LAYERSHELL_SERVICE.set_input_region(false);
 
                     self.launcher_window.redraw(cx);
                     cx.redraw_all();
@@ -208,6 +224,7 @@ impl AppMain for App {
                 if current_state.sink_volume != last_state.sink_volume
                     || current_state.sink_muted != last_state.sink_muted {
                     if let Some(mut window) = self.osd_window.borrow_mut::<Window>() {
+                        /*
                         window.set_layer_shell(cx, LayerShellConfig {
                             layer: LayerShellLayer::Overlay,
                             anchor: LayerShellAnchor::BOTTOM,
@@ -216,6 +233,7 @@ impl AppMain for App {
                             keyboard_interactivity: LayerShellKeyboardInteractivity::None,
                             margin: (0, 0, 100, 0),
                         });
+                        */
                     }
 
                     if let Some(mut osd) = self.osd_window.osd(ids!(osd)).borrow_mut() {
@@ -228,6 +246,7 @@ impl AppMain for App {
             let capslock_state = CAPSLOCK_SERVICE.is_enabled();
             if self.last_capslock_state != Some(capslock_state) {
                 if let Some(mut window) = self.osd_window.borrow_mut::<Window>() {
+                    /*
                     window.set_layer_shell(cx, LayerShellConfig {
                         layer: LayerShellLayer::Overlay,
                         anchor: LayerShellAnchor::BOTTOM,
@@ -236,6 +255,7 @@ impl AppMain for App {
                         keyboard_interactivity: LayerShellKeyboardInteractivity::None,
                         margin: (0, 0, 100, 0),
                     });
+                    */
                 }
 
                 if let Some(mut osd) = self.osd_window.osd(ids!(osd)).borrow_mut() {
@@ -248,6 +268,7 @@ impl AppMain for App {
             let clipboard_content = CLIPBOARD_SERVICE.get_last_content();
             if !clipboard_content.is_empty() && clipboard_content != self.last_clipboard_content {
                 if let Some(mut window) = self.osd_window.borrow_mut::<Window>() {
+                    /*
                     window.set_layer_shell(cx, LayerShellConfig {
                         layer: LayerShellLayer::Overlay,
                         anchor: LayerShellAnchor::BOTTOM,
@@ -256,6 +277,7 @@ impl AppMain for App {
                         keyboard_interactivity: LayerShellKeyboardInteractivity::None,
                         margin: (0, 0, 100, 0),
                     });
+                    */
                 }
 
                 if let Some(mut osd) = self.osd_window.osd(ids!(osd)).borrow_mut() {
@@ -278,6 +300,7 @@ impl AppMain for App {
                         }
 
                         if let Some(mut window) = self.launcher_window.borrow_mut::<Window>() {
+                            /*
                             window.set_layer_shell(cx, LayerShellConfig {
                                 layer: LayerShellLayer::Background,
                                 anchor: LayerShellAnchor::NONE,
@@ -286,8 +309,10 @@ impl AppMain for App {
                                 keyboard_interactivity: LayerShellKeyboardInteractivity::None,
                                 margin: (0, 0, 0, 0),
                             });
-                            window.set_input_region(cx, false);
+                            */
                         }
+                        
+                        LAYERSHELL_SERVICE.set_input_region(false);
 
                         self.launcher_window.redraw(cx);
                         cx.redraw_all();
@@ -307,6 +332,7 @@ impl AppMain for App {
                         }
 
                         if let Some(mut window) = self.launcher_window.borrow_mut::<Window>() {
+                            /*
                             window.set_layer_shell(cx, LayerShellConfig {
                                 layer: LayerShellLayer::Background,
                                 anchor: LayerShellAnchor::NONE,
@@ -315,8 +341,10 @@ impl AppMain for App {
                                 keyboard_interactivity: LayerShellKeyboardInteractivity::None,
                                 margin: (0, 0, 0, 0),
                             });
-                            window.set_input_region(cx, false);
+                            */
                         }
+                        
+                        LAYERSHELL_SERVICE.set_input_region(false);
 
                         self.launcher_window.redraw(cx);
                         cx.redraw_all();

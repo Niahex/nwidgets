@@ -14,16 +14,9 @@ live_design! {
         align: {x: 0.0, y: 0.5}
         spacing: 8
 
-        icon = <Icon> {
+        icon = <Image> {
             width: 32, height: 32
-            icon_walk: { width: 32, height: 32 }
-            draw_icon: {
-                svg_file: dep("crate://self/assets/icons/none.svg")
-                brightness: 1.0
-                curve: 0.6
-                color: #fff
-                preserve_colors: true
-            }
+            source: dep("crate://self/assets/icons/png/help.png")
         }
 
         info = <View> {
@@ -98,36 +91,36 @@ impl Widget for ActiveWindowModule {
 impl ActiveWindowModule {
     fn get_icon_path(class: &str) -> &'static str {
         if class.is_empty() {
-            return "./assets/icons/none.svg";
+            return "crate://self/assets/icons/png/help.png";
         }
         
         let class_lower = class.to_lowercase();
         
         match class_lower.as_str() {
-            "kitty" => "./assets/icons/kitty.svg",
-            "firefox" => "./assets/icons/firefox-white.svg",
-            "brave-browser" | "brave" => "./assets/icons/brave.svg",
-            "discord" => "./assets/icons/discord.svg",
-            "spotify" => "./assets/icons/spotify.svg",
-            "code" | "code-oss" | "vscode" | "zed" | "dev.zed.zed" => "./assets/icons/dev.zed.zed.svg",
-            "vlc" => "./assets/icons/vlc.svg",
-            "steam" => "./assets/icons/steam_tray.svg",
-            "lutris" => "./assets/icons/lutris.svg",
-            "org.gnome.nautilus" | "nautilus" => "./assets/icons/org.gnome.nautilus.svg",
-            "org.inkscape.inkscape" | "inkscape" => "./assets/icons/org.inkscape.inkscape.svg",
-            "org.keepassxc.keepassxc" | "keepassxc" => "./assets/icons/org.keepassxc.keepassxc.svg",
-            "element" => "./assets/icons/element.svg",
-            "neochat" => "./assets/icons/neochat.svg",
-            "calibre-gui" | "calibre" => "./assets/icons/calibre-gui.svg",
-            "qbittorrent" => "./assets/icons/qbittorrent.svg",
-            "resolve" | "davinci-resolve" => "./assets/icons/resolve.svg",
-            "twitch" => "./assets/icons/twitch.svg",
-            "zen-twilight" => "./assets/icons/zen-twilight.svg",
-            "libreoffice-writer" => "./assets/icons/libreoffice-writer.svg",
-            "libreoffice-calc" => "./assets/icons/libreoffice-calc.svg",
-            "libreoffice-draw" => "./assets/icons/libreoffice-draw.svg",
-            "libreoffice-math" => "./assets/icons/libreoffice-math.svg",
-            _ => "./assets/icons/none.svg",
+            "kitty" | "alacritty" | "terminal" => "crate://self/assets/icons/png/terminal.png",
+            "firefox" => "crate://self/assets/icons/png/firefox.png",
+            "brave-browser" | "brave" => "crate://self/assets/icons/png/help.png",
+            "discord" => "crate://self/assets/icons/png/help.png",
+            "spotify" => "crate://self/assets/icons/png/spotify.png",
+            "code" | "code-oss" | "vscode" | "zed" | "dev.zed.zed" => "crate://self/assets/icons/png/zed.png",
+            "vlc" => "crate://self/assets/icons/png/vlc.png",
+            "steam" => "crate://self/assets/icons/png/steam.png",
+            "lutris" => "crate://self/assets/icons/png/help.png",
+            "org.gnome.nautilus" | "nautilus" => "crate://self/assets/icons/png/help.png",
+            "org.inkscape.inkscape" | "inkscape" => "crate://self/assets/icons/png/inkscape.png",
+            "org.keepassxc.keepassxc" | "keepassxc" => "crate://self/assets/icons/png/keepass.png",
+            "element" => "crate://self/assets/icons/png/help.png",
+            "neochat" => "crate://self/assets/icons/png/help.png",
+            "calibre-gui" | "calibre" => "crate://self/assets/icons/png/help.png",
+            "qbittorrent" => "crate://self/assets/icons/png/help.png",
+            "resolve" | "davinci-resolve" => "crate://self/assets/icons/png/davinci-resolve.png",
+            "twitch" => "crate://self/assets/icons/png/help.png",
+            "zen-twilight" => "crate://self/assets/icons/png/help.png",
+            "libreoffice-writer" => "crate://self/assets/icons/png/help.png",
+            "libreoffice-calc" => "crate://self/assets/icons/png/help.png",
+            "libreoffice-draw" => "crate://self/assets/icons/png/help.png",
+            "libreoffice-math" => "crate://self/assets/icons/png/help.png",
+            _ => "crate://self/assets/icons/png/help.png",
         }
     }
 
@@ -145,8 +138,7 @@ impl ActiveWindowModule {
 
             let icon_path = Self::get_icon_path(&class);
 
-            if let Some(mut icon) = self.view.icon(ids!(icon)).borrow_mut() {
-                icon.set_icon_from_path(cx, icon_path);
+            if let Some(mut image) = self.view.image(ids!(icon)).borrow_mut() {
             }
 
             self.view.redraw(cx);

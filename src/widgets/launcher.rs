@@ -305,16 +305,13 @@ impl Launcher {
                 if let Some(path) = &result.icon_path {
                     if std::path::Path::new(path).exists() {
                         if let Some(mut icon) = item.icon(&[id!(icon)]).borrow_mut() {
-                            icon.set_icon_from_path(cx, path);
                         }
                     } else {
                         if let Some(mut icon) = item.icon(&[id!(icon)]).borrow_mut() {
-                            icon.set_icon_from_path(cx, "./assets/icons/none.svg");
                         }
                     }
                 } else {
                     if let Some(mut icon) = item.icon(&[id!(icon)]).borrow_mut() {
-                        icon.set_icon_from_path(cx, "./assets/icons/none.svg");
                     }
                 }
             } else {
