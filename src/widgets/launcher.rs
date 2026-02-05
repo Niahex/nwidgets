@@ -94,9 +94,15 @@ live_design! {
                 }
             }
 
-            search_icon = <Label> {
-                draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 16.0 }, color: (THEME_COLOR_TEXT_MUTE) }
-                text: "🔍"
+            search_icon = <Icon> {
+                width: 24, height: 24
+                icon_walk: { width: 24, height: 24 }
+                draw_icon: {
+                    svg_file: dep("crate://self/assets/icons/search-clean.svg")
+                    brightness: 1.0
+                    curve: 0.6
+                    color: #fff
+                }
             }
 
             search_input = <TextInput> {
@@ -106,6 +112,12 @@ live_design! {
                 draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 14.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
                 empty_text: "Search apps, calculator (=), processes (ps)..."
             }
+        }
+        
+        list = <PortalList> {
+            height: Fill, width: Fill
+            flow: Down
+            SearchResultItem = <SearchResultItem> {}
         }
     }
 }
@@ -123,7 +135,7 @@ pub struct Launcher {
 
     #[rust]
     results: Vec<LauncherResult>,
-    
+
     #[rust]
     frames_until_focus: u8,
 }
@@ -147,7 +159,12 @@ pub enum LauncherResultType {
 
 impl Widget for Launcher {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        self.view.draw_walk(cx, scope, walk)
+        while let Some(step) = self.view.draw_walk(cx, scope, walk).step() {
+            if let Some(mut list) = step.as_portal_list().borrow_mut() {
+                self.draw_results(cx, &mut *list);
+            }
+        }
+        DrawStep::done()
     }
 
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
@@ -164,14 +181,14 @@ impl Widget for Launcher {
                 }
             }
         }
-        
+
         // Let view handle events first and capture actions
         for action in cx.capture_actions(|cx| self.view.handle_event(cx, event, scope)) {
             if let TextInputAction::Changed(new_text) = action.as_widget_action().cast() {
                 self.search(cx, &new_text);
             }
         }
-        
+
         // Handle special keyboard events for navigation
         if let Event::KeyDown(ke) = event {
             match ke.key_code {
@@ -212,12 +229,12 @@ impl Widget for Launcher {
 impl Launcher {
     fn search(&mut self, cx: &mut Cx, query: &str) {
         use crate::APPLICATIONS_SERVICE;
-        
+
         self.query = query.to_string();
         self.selected_index = 0;
-        
+
         let mut results = Vec::new();
-        
+
         if query.starts_with('=') {
             let expr = &query[1..];
             if !expr.is_empty() {
@@ -240,16 +257,16 @@ impl Launcher {
         } else if !query.is_empty() {
             let apps = APPLICATIONS_SERVICE.get_all();
             let query_lower = query.to_lowercase();
-            
+
             for app in apps {
-                if app.name.to_lowercase().contains(&query_lower) 
+                if app.name.to_lowercase().contains(&query_lower)
                     || app.comment.as_ref().map(|c| c.to_lowercase().contains(&query_lower)).unwrap_or(false)
                     || app.generic_name.as_ref().map(|g| g.to_lowercase().contains(&query_lower)).unwrap_or(false) {
-                    
+
                     let description = app.comment
                         .or(app.generic_name)
                         .unwrap_or_else(|| "Application".to_string());
-                    
+
                     results.push(LauncherResult {
                         id: app.id.clone(),
                         name: app.name.clone(),
@@ -257,17 +274,43 @@ impl Launcher {
                         icon_path: app.icon.clone(),
                         result_type: LauncherResultType::Application,
                     });
-                    
+
                     if results.len() >= 10 {
                         break;
                     }
                 }
             }
         }
-        
+
         self.set_results(cx, results);
     }
-    
+
+    fn draw_results(&mut self, cx: &mut Cx2d, list: &mut PortalList) {
+        list.set_item_range(cx, 0, self.results.len());
+        
+        while let Some(item_id) = list.next_visible_item(cx) {
+            if let Some(result) = self.results.get(item_id) {
+                let item = list.item(cx, item_id, live_id!(SearchResultItem));
+                
+                let selected = if item_id == self.selected_index { 1.0 } else { 0.0 };
+                item.apply_over(cx, live!{
+                    draw_bg: { selected: (selected) }
+                });
+                
+                item.label(ids!(info.name)).set_text(cx, &result.name);
+                item.label(ids!(info.description)).set_text(cx, &result.description);
+                
+                if let Some(path) = &result.icon_path {
+                     if let Some(mut icon) = item.icon(ids!(icon)).borrow_mut() {
+                        icon.set_icon_from_path(cx, path);
+                     }
+                }
+                
+                item.draw_all(cx, &mut Scope::empty());
+            }
+        }
+    }
+
     pub fn set_query(&mut self, _cx: &mut Cx, query: &str) {
         self.query = query.to_string();
         self.selected_index = 0;
@@ -289,7 +332,7 @@ impl Launcher {
         cx.new_next_frame();
         self.view.redraw(cx);
     }
-    
+
     pub fn set_text_input_focus(&mut self, cx: &mut Cx) {
         self.frames_until_focus = 2;
         self.view.redraw(cx);
