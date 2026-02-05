@@ -117,6 +117,11 @@ live_design! {
         list = <PortalList> {
             height: Fill, width: Fill
             flow: Down
+            
+            capture_overload: false
+            grab_key_focus: false
+            drag_scrolling: false
+            
             SearchResultItem = <SearchResultItem> {}
         }
     }
