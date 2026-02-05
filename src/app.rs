@@ -44,12 +44,7 @@ live_design! {
             window: {inner_size: vec2(700, 500)},
             pass: {clear_color: #0000},
 
-            <View> {
-                width: Fit, height: Fit
-                align: {x: 0.5, y: 0.5}
-
-                launcher = <Launcher> {}
-            }
+            launcher = <Launcher> {}
         }
     }
 }
