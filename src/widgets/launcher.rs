@@ -11,8 +11,8 @@ live_design! {
         width: Fill, height: Fit
         flow: Right
         align: {x: 0.0, y: 0.5}
-        padding: {top: 8, bottom: 8, left: 12, right: 12}
-        spacing: 12
+        padding: {top: 6, bottom: 6, left: 8, right: 8}
+        spacing: 8
 
         show_bg: true
         draw_bg: {
@@ -36,20 +36,9 @@ live_design! {
             }
         }
 
-        info = <View> {
-            width: Fill, height: Fit
-            flow: Down
-            spacing: 2
-
-            name = <Label> {
-                draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 13.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
-                text: "Application"
-            }
-
-            description = <Label> {
-                draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 11.0 }, color: (THEME_COLOR_TEXT_MUTE) }
-                text: ""
-            }
+        name = <Label> {
+            draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 13.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
+            text: "Application"
         }
     }
 
@@ -73,11 +62,11 @@ live_design! {
         visible: false
 
         search_container = <View> {
-            width: Fill, height: 48
+            width: Fill, height: 40
             flow: Right
             align: {x: 0.0, y: 0.5}
-            padding: {left: 16, right: 16}
-            spacing: 12
+            padding: {left: 12, right: 12}
+            spacing: 8
 
             show_bg: true
             draw_bg: {
@@ -90,8 +79,8 @@ live_design! {
             }
 
             search_icon = <Icon> {
-                width: 24, height: 24
-                icon_walk: { width: 24, height: 24 }
+                width: 20, height: 20
+                icon_walk: { width: 20, height: 20 }
                 draw_icon: {
                     svg_file: dep("crate://self/assets/icons/search.svg")
                     brightness: 1.0
@@ -314,8 +303,7 @@ impl Launcher {
                     draw_bg: { selected: (selected) }
                 });
 
-                item.label(&[id!(info), id!(name)]).set_text(cx, &result.name);
-                item.label(&[id!(info), id!(description)]).set_text(cx, &result.description);
+                item.label(&[id!(name)]).set_text(cx, &result.name);
 
                 if let Some(path) = &result.icon_path {
                      if std::path::Path::new(path).exists() {
