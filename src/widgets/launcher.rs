@@ -110,7 +110,7 @@ live_design! {
         }
 
         list = <List> {
-            height: Fill, width: Fill
+            height: 400, width: Fill
             flow: Down
             spacing: 0
 
