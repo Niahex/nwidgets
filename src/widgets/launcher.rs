@@ -8,10 +8,10 @@ live_design! {
     use crate::ui::components::list::List;
 
     SearchResultItem = <View> {
-        width: Fill, height: 40
+        width: Fill, height: Fit
         flow: Right
         align: {x: 0.0, y: 0.5}
-        padding: {left: 12, right: 12}
+        padding: {top: 8, bottom: 8, left: 12, right: 12}
         spacing: 12
 
         show_bg: true
