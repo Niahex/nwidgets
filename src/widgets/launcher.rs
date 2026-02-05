@@ -8,7 +8,7 @@ live_design! {
     use crate::ui::components::list::List;
 
     SearchResultItem = <View> {
-        width: Fill, height: 48
+        width: Fill, height: 40
         flow: Right
         align: {x: 0.0, y: 0.5}
         padding: {left: 12, right: 12}
@@ -25,8 +25,8 @@ live_design! {
         }
 
         icon = <Icon> {
-            width: 32, height: 32
-            icon_walk: { width: 32, height: 32 }
+            width: 24, height: 24
+            icon_walk: { width: 24, height: 24 }
             draw_icon: {
                 svg_file: dep("crate://self/assets/icons/none.svg")
                 brightness: 1.0
@@ -118,6 +118,8 @@ live_design! {
         list = <List> {
             height: Fill, width: Fill
             flow: Down
+            
+            clip_x: true, clip_y: true
             
             item0 = <SearchResultItem> {visible: false}
             item1 = <SearchResultItem> {visible: false}
