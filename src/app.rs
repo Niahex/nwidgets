@@ -169,7 +169,7 @@ impl AppMain for App {
                         if let Some(mut window) = self.launcher_window.borrow_mut::<Window>() {
                             window.set_layer_shell(cx, LayerShellConfig {
                                 layer: LayerShellLayer::Overlay,
-                                anchor: LayerShellAnchor::TOP | LayerShellAnchor::BOTTOM | LayerShellAnchor::LEFT | LayerShellAnchor::RIGHT,
+                                anchor: LayerShellAnchor::NONE,
                                 exclusive_zone: None,
                                 namespace: "nwidgets-launcher".to_string(),
                                 keyboard_interactivity: LayerShellKeyboardInteractivity::Exclusive,
