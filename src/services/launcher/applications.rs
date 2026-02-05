@@ -73,10 +73,17 @@ impl ApplicationService {
 
                     let raw_icon = entry.icon().map(|s| s.to_string());
                     let resolved_icon = if let Some(icon_name) = &raw_icon {
-                        if Path::new(icon_name).exists() {
+                        if Path::new(icon_name).exists() && Self::is_valid_svg(icon_name) {
                              Some(icon_name.clone())
+                        } else if let Some(found_path) = lookup(icon_name).find() {
+                            let path_str = found_path.to_string_lossy().to_string();
+                            if Self::is_valid_svg(&path_str) {
+                                Some(path_str)
+                            } else {
+                                None
+                            }
                         } else {
-                             lookup(icon_name).find().map(|p| p.to_string_lossy().to_string())
+                            None
                         }
                     } else {
                         None
@@ -145,5 +152,18 @@ impl ApplicationService {
             .spawn()?;
 
         Ok(())
+    }
+
+    fn is_valid_svg(path: &str) -> bool {
+        if !path.ends_with(".svg") {
+            return true;
+        }
+
+        if let Ok(content) = std::fs::read_to_string(path) {
+            !content.contains("xlink:href=\"data:image") && 
+            !content.contains("<image")
+        } else {
+            false
+        }
     }
 }
