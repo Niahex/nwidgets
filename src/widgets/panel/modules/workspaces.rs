@@ -132,7 +132,6 @@ impl Widget for WorkspacesModule {
         }
 
         if let Event::Startup = event {
-            ::log::info!("WorkspacesModule: Startup event received");
             self.sync_from_service(cx);
             
             let needs_redraw = self.needs_redraw.clone();
@@ -155,7 +154,6 @@ impl Widget for WorkspacesModule {
                 let button_view = self.view.view(*ws_id);
                 match event.hits(cx, button_view.area()) {
                     Hit::FingerDown(_) => {
-                        ::log::info!("Switching to workspace {}", workspace_id);
                         HYPRLAND_SERVICE.switch_workspace(workspace_id);
                     }
                     Hit::FingerHoverIn(_) => {
@@ -208,11 +206,6 @@ impl WorkspacesModule {
         if active != self.active_workspace || workspaces.len() != self.workspace_count {
             self.active_workspace = active;
             self.workspace_count = workspaces.len();
-            
-            ::log::info!("WorkspacesModule: active={}, workspaces={:?}", 
-                active, 
-                workspaces.iter().map(|w| format!("{}:{}", w.id, w.name)).collect::<Vec<_>>()
-            );
             
             let ws_ids = [
                 ids!(ws1), ids!(ws2), ids!(ws3), ids!(ws4), ids!(ws5),

@@ -81,7 +81,6 @@ impl Widget for ActiveWindowModule {
         }
 
         if let Event::Startup = event {
-            ::log::info!("ActiveWindowModule: Startup event received");
             self.sync_from_service(cx);
             
             let needs_redraw = self.needs_redraw.clone();
@@ -145,7 +144,6 @@ impl ActiveWindowModule {
             self.view.label(ids!(info.class)).set_text(cx, &class);
 
             let icon_path = Self::get_icon_path(&class);
-            ::log::info!("ActiveWindowModule: class='{}' -> icon_path={}", class, icon_path);
 
             if let Some(mut icon) = self.view.icon(ids!(icon)).borrow_mut() {
                 icon.set_icon_from_path(cx, icon_path);

@@ -56,7 +56,6 @@ impl ClipboardService {
                     if !content.is_empty() {
                         let mut last = last_content.write();
                         if *last != content {
-                            ::log::info!("Clipboard changed: {} bytes", content.len());
                             *last = content.clone();
                             
                             let mut state_guard = state.write();

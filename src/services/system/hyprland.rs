@@ -82,7 +82,6 @@ impl HyprlandService {
         let his = std::env::var("HYPRLAND_INSTANCE_SIGNATURE")?;
         let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/run/user/1000".to_string());
         let socket_path = format!("{}/hypr/{}/.socket.sock", runtime_dir, his);
-        ::log::info!("Fetching initial Hyprland state from {}", socket_path);
 
         let mut stream = UnixStream::connect(&socket_path).await?;
         stream.write_all(b"j/workspaces").await?;
@@ -156,11 +155,6 @@ impl HyprlandService {
         }
 
         state.write().workspaces = workspaces;
-        ::log::info!("Initial state loaded: workspace={}, workspaces={:?}, window={} - {}", 
-            state.read().active_workspace,
-            state.read().workspaces.iter().map(|w| format!("{}:{}", w.id, w.name)).collect::<Vec<_>>(),
-            state.read().active_window.class,
-            state.read().active_window.title);
         Ok(())
     }
 
@@ -275,9 +269,7 @@ impl HyprlandService {
     }
 
     pub fn get_active_window(&self) -> ActiveWindow {
-        let window = self.state.read().active_window.clone();
-        ::log::debug!("get_active_window: {} - {}", window.class, window.title);
-        window
+        self.state.read().active_window.clone()
     }
 
     pub fn is_fullscreen(&self) -> bool {

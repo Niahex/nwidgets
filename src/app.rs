@@ -141,7 +141,6 @@ impl MatchEvent for App {
         DBUS_LAUNCHER_SERVICE.on_toggle(move || {
             let mut toggle = launcher_toggle_requested.write();
             *toggle = true;
-            ::log::info!("Launcher toggle requested via D-Bus");
         });
 
         self.timer = cx.start_timeout(0.1);
@@ -159,10 +158,7 @@ impl AppMain for App {
                 self.launcher_visible = !self.launcher_visible;
 
                     if self.launcher_visible {
-                        ::log::info!("Showing launcher - setting layer to Overlay and keyboard to Exclusive");
-
                         if let Some(mut window) = self.launcher_window.borrow_mut::<Window>() {
-                            ::log::info!("[APP] Setting layer shell config with anchor: NONE");
                             window.set_layer_shell(cx, LayerShellConfig {
                                 layer: LayerShellLayer::Overlay,
                                 anchor: LayerShellAnchor::NONE,
@@ -172,7 +168,6 @@ impl AppMain for App {
                                 margin: (0, 0, 0, 0),
                             });
                             window.set_input_region(cx, true);
-                            ::log::info!("[APP] Layer shell config applied");
                         }
 
                     if let Some(mut launcher) = self.launcher_window.launcher(ids!(launcher)).borrow_mut() {
@@ -186,8 +181,6 @@ impl AppMain for App {
                         launcher.set_text_input_focus(cx);
                     }
                 } else {
-                    ::log::info!("Hiding launcher - setting layer to Background and keyboard to None");
-
                     if let Some(mut launcher) = self.launcher_window.launcher(ids!(launcher)).borrow_mut() {
                         launcher.hide(cx);
                     }
@@ -214,8 +207,6 @@ impl AppMain for App {
             if let Some(last_state) = &self.last_audio_state {
                 if current_state.sink_volume != last_state.sink_volume
                     || current_state.sink_muted != last_state.sink_muted {
-                    ::log::info!("OSD: Volume changed to {}% (muted: {})", current_state.sink_volume, current_state.sink_muted);
-
                     if let Some(mut window) = self.osd_window.borrow_mut::<Window>() {
                         window.set_layer_shell(cx, LayerShellConfig {
                             layer: LayerShellLayer::Overlay,
@@ -229,18 +220,13 @@ impl AppMain for App {
 
                     if let Some(mut osd) = self.osd_window.osd(ids!(osd)).borrow_mut() {
                         let volume = current_state.sink_volume as f32 / 100.0;
-                        ::log::info!("OSD: Calling show_volume");
                         osd.show_volume(cx, volume, current_state.sink_muted);
-                    } else {
-                        ::log::warn!("OSD: Failed to borrow OSD widget");
                     }
                 }
             }
 
             let capslock_state = CAPSLOCK_SERVICE.is_enabled();
             if self.last_capslock_state != Some(capslock_state) {
-                ::log::info!("OSD: CapsLock changed to {}", capslock_state);
-
                 if let Some(mut window) = self.osd_window.borrow_mut::<Window>() {
                     window.set_layer_shell(cx, LayerShellConfig {
                         layer: LayerShellLayer::Overlay,
@@ -261,8 +247,6 @@ impl AppMain for App {
 
             let clipboard_content = CLIPBOARD_SERVICE.get_last_content();
             if !clipboard_content.is_empty() && clipboard_content != self.last_clipboard_content {
-                ::log::info!("OSD: Clipboard changed: {} bytes", clipboard_content.len());
-
                 if let Some(mut window) = self.osd_window.borrow_mut::<Window>() {
                     window.set_layer_shell(cx, LayerShellConfig {
                         layer: LayerShellLayer::Overlay,
@@ -289,9 +273,6 @@ impl AppMain for App {
             for action in actions {
                 match action.as_widget_action().cast::<LauncherAction>() {
                     LauncherAction::Close => {
-                        ::log::info!("Launcher close action - hiding launcher");
-                        self.launcher_visible = false;
-
                         if let Some(mut launcher) = self.launcher_window.launcher(ids!(launcher)).borrow_mut() {
                             launcher.hide(cx);
                         }
@@ -312,17 +293,11 @@ impl AppMain for App {
                         cx.redraw_all();
                     }
                     LauncherAction::Launch(id) => {
-                        ::log::info!("Launching: {}", id);
-
                         if id.starts_with("calc:") {
-                            ::log::info!("Calculator result: {}", id);
                         } else if id.starts_with("ps:") {
-                            ::log::info!("Process manager: {}", id);
                         } else {
                             if let Err(e) = APPLICATIONS_SERVICE.launch(&id) {
                                 ::log::error!("Failed to launch application {}: {}", id, e);
-                            } else {
-                                ::log::info!("Successfully launched application: {}", id);
                             }
                         }
 
@@ -346,8 +321,7 @@ impl AppMain for App {
                         self.launcher_window.redraw(cx);
                         cx.redraw_all();
                     }
-                    LauncherAction::QueryChanged(query) => {
-                        ::log::info!("Query changed: {}", query);
+                    LauncherAction::QueryChanged(_query) => {
                     }
                     _ => {}
                 }

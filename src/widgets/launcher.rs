@@ -157,9 +157,7 @@ pub enum LauncherResultType {
 
 impl Widget for Launcher {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        ::log::info!("[LAUNCHER] draw_walk called - walk: {:?}", walk);
         let result = self.view.draw_walk(cx, scope, walk);
-        ::log::info!("[LAUNCHER] draw_walk completed - rect_size: {:?}", cx.turtle().rect().size);
         result
     }
 
@@ -169,7 +167,6 @@ impl Widget for Launcher {
             if self.frames_until_focus > 0 && self.view.visible {
                 self.frames_until_focus -= 1;
                 if self.frames_until_focus == 0 {
-                    ::log::info!("Setting key focus on text input after 2 frames delay");
                     let text_input = self.view.text_input(ids!(search_input));
                     text_input.set_key_focus(cx);
                 } else {
@@ -339,7 +336,6 @@ impl Launcher {
     }
 
     pub fn show(&mut self, cx: &mut Cx) {
-        ::log::info!("Launcher::show() called");
         self.view.apply_over(cx, live! { visible: true });
 
         self.query.clear();
@@ -350,8 +346,6 @@ impl Launcher {
 
         cx.new_next_frame();
         self.view.redraw(cx);
-        
-        ::log::info!("[LAUNCHER] show() completed - view visible set to true");
     }
 
     pub fn set_text_input_focus(&mut self, cx: &mut Cx) {
@@ -360,7 +354,6 @@ impl Launcher {
     }
 
     pub fn hide(&mut self, cx: &mut Cx) {
-        ::log::info!("Launcher::hide() called");
         self.view.apply_over(cx, live! { visible: false });
         self.query.clear();
         self.results.clear();

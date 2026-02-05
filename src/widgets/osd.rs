@@ -132,8 +132,6 @@ impl OSD {
         self.value = volume;
 
         let icon_path = Self::get_volume_icon_path(volume, muted);
-
-        ::log::info!("OSD: Setting volume icon to {} and volume to {}", icon_path, volume);
         
         if let Some(mut icon) = self.view.icon(ids!(capslock_icon)).borrow_mut() {
             icon.set_icon_from_path(cx, icon_path);
@@ -159,8 +157,6 @@ impl OSD {
         self.hide_timer = cx.start_timeout(2.0);
         self.view.redraw(cx);
         cx.redraw_all();
-        
-        ::log::info!("OSD: show_volume completed");
     }
 
     pub fn show_brightness(&mut self, cx: &mut Cx, brightness: f32) {
@@ -186,8 +182,6 @@ impl OSD {
         self.osd_type = OSDType::Clipboard;
 
         let icon_path = "./assets/icons/clipboard.svg";
-        
-        ::log::info!("OSD: Clipboard copied: {} bytes", text.len());
         
         if let Some(mut icon) = self.view.icon(ids!(capslock_icon)).borrow_mut() {
             icon.set_icon_from_path(cx, icon_path);
@@ -224,8 +218,6 @@ impl OSD {
         };
         
         let text = if enabled { "Caps Lock ON" } else { "Caps Lock OFF" };
-
-        ::log::info!("OSD: Caps Lock {} - icon: {}", if enabled { "enabled" } else { "disabled" }, icon_path);
 
         if let Some(mut icon) = self.view.icon(ids!(capslock_icon)).borrow_mut() {
             icon.set_icon_from_path(cx, icon_path);

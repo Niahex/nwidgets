@@ -43,7 +43,6 @@ impl CapsLockService {
                 if name_str.contains("capslock") {
                     let brightness_path = entry.path().join("brightness");
                     if brightness_path.exists() {
-                        ::log::info!("Found CapsLock LED at: {:?}", brightness_path);
                         return Some(brightness_path);
                     }
                 }
@@ -60,7 +59,6 @@ impl CapsLockService {
                 let mut current_state = state.write();
                 
                 if *current_state != is_on {
-                    ::log::info!("CapsLock state changed: {}", is_on);
                     *current_state = is_on;
                 }
             }
