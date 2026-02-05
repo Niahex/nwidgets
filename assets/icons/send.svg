@@ -1,43 +1,46 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
 <svg
-   viewBox="0 0 24 24"
-   version="1.1"
-   id="svg1"
-   sodipodi:docname="bluetooth-active (Copy).svg"
-   inkscape:version="1.4.2 (ebf0e940d0, 2025-05-08)"
-   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
-   xmlns="http://www.w3.org/2000/svg"
-   xmlns:svg="http://www.w3.org/2000/svg">
-  <defs
-     id="defs1" />
+    viewBox="0 0 24 24"
+    version="1.1"
+    id="svg1"
+    sodipodi:docname="bluetooth-active (Copy).svg"
+    inkscape:version="1.4.2 (ebf0e940d0, 2025-05-08)"
+    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+    xmlns="http://www.w3.org/2000/svg"
+    xmlns:svg="http://www.w3.org/2000/svg"
+>
+  <defs id="defs1" />
   <sodipodi:namedview
-     id="namedview1"
-     pagecolor="#505050"
-     bordercolor="#eeeeee"
-     borderopacity="1"
-     inkscape:showpageshadow="0"
-     inkscape:pageopacity="0"
-     inkscape:pagecheckerboard="0"
-     inkscape:deskcolor="#505050"
-     showguides="false"
-     inkscape:zoom="10.145833"
-     inkscape:cx="9.0677618"
-     inkscape:cy="21.979466"
-     inkscape:window-width="3041"
-     inkscape:window-height="1368"
-     inkscape:window-x="0"
-     inkscape:window-y="0"
-     inkscape:window-maximized="1"
-     inkscape:current-layer="svg1" />
+        id="namedview1"
+        pagecolor="#505050"
+        bordercolor="#eeeeee"
+        borderopacity="1"
+        inkscape:showpageshadow="0"
+        inkscape:pageopacity="0"
+        inkscape:pagecheckerboard="0"
+        inkscape:deskcolor="#505050"
+        showguides="false"
+        inkscape:zoom="10.145833"
+        inkscape:cx="9.0677618"
+        inkscape:cy="21.979466"
+        inkscape:window-width="3041"
+        inkscape:window-height="1368"
+        inkscape:window-x="0"
+        inkscape:window-y="0"
+        inkscape:window-maximized="1"
+        inkscape:current-layer="svg1"
+    />
   <g
-     id="icons_Q2"
-     data-name="icons Q2"
-     transform="matrix(0.42828366,0,0,0.42828366,1.2868654,1.2929085)"
-     style="line-height:1;fill:#d8dee9;fill-opacity:1">
+        id="icons_Q2"
+        data-name="icons Q2"
+        transform="matrix(0.42828366,0,0,0.42828366,1.2868654,1.2929085)"
+        style="line-height:1;fill:#d8dee9;fill-opacity:1"
+    >
     <path
-       d="M 44.9,23.2 6.9,5.2 6,5 A 2,2 0 0 0 4,7 L 9.3,23 H 24 a 2.1,2.1 0 0 1 2,2 2,2 0 0 1 -2,2 H 9.3 L 4,43 a 2,2 0 0 0 2,2 l 0.9,-0.2 38,-18 a 2,2 0 0 0 0,-3.6 z"
-       id="path1-70"
-       style="fill:#d8dee9;fill-opacity:1" />
+            d="M 44.9,23.2 6.9,5.2 6,5 A 2,2 0 0 0 4,7 L 9.3,23 H 24 a 2.1,2.1 0 0 1 2,2 2,2 0 0 1 -2,2 H 9.3 L 4,43 a 2,2 0 0 0 2,2 l 0.9,-0.2 38,-18 a 2,2 0 0 0 0,-3.6 z"
+            id="path1-70"
+            style="fill:#d8dee9;fill-opacity:1"
+        />
   </g>
 </svg>
