@@ -112,6 +112,7 @@ live_design! {
         list = <List> {
             height: Fill, width: Fill
             flow: Down
+            spacing: 0
 
             clip_x: true, clip_y: true
 
