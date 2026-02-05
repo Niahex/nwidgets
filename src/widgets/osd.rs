@@ -35,11 +35,10 @@ live_design! {
             width: 0, height: 0
             icon_walk: { width: 0, height: 0 }
             draw_icon: {
-                svg_file: dep("crate://self/assets/icons/capslock-off.svg")
+                svg_file: dep("crate://self/assets/icons/svg/capslock-off.svg")
                 brightness: 1.0
                 curve: 0.6
                 color: #fff
-                preserve_colors: true
             }
         }
         
@@ -115,15 +114,15 @@ impl Widget for OSD {
 impl OSD {
     fn get_volume_icon_path(volume: f32, muted: bool) -> &'static str {
         if muted {
-            "./assets/icons/sink-muted.svg"
+            "./assets/icons/svg/sink-muted.svg"
         } else if volume == 0.0 {
-            "./assets/icons/sink-zero.svg"
+            "./assets/icons/svg/sink-zero.svg"
         } else if volume > 0.66 {
-            "./assets/icons/sink-high.svg"
+            "./assets/icons/svg/sink-high.svg"
         } else if volume > 0.33 {
-            "./assets/icons/sink-medium.svg"
+            "./assets/icons/svg/sink-medium.svg"
         } else {
-            "./assets/icons/sink-low.svg"
+            "./assets/icons/svg/sink-low.svg"
         }
     }
     
@@ -180,7 +179,7 @@ impl OSD {
     pub fn show_clipboard(&mut self, cx: &mut Cx, text: &str) {
         self.osd_type = OSDType::Clipboard;
 
-        let icon_path = "./assets/icons/clipboard.svg";
+        let icon_path = "./assets/icons/svg/clipboard.svg";
         
         if let Some(mut icon) = self.view.icon(ids!(capslock_icon)).borrow_mut() {
         }
@@ -210,9 +209,9 @@ impl OSD {
         self.osd_type = OSDType::CapsLock;
 
         let icon_path = if enabled {
-            "./assets/icons/capslock-on.svg"
+            "./assets/icons/svg/capslock-on.svg"
         } else {
-            "./assets/icons/capslock-off.svg"
+            "./assets/icons/svg/capslock-off.svg"
         };
         
         let text = if enabled { "Caps Lock ON" } else { "Caps Lock OFF" };

@@ -28,11 +28,10 @@ live_design! {
             width: 24, height: 24
             icon_walk: { width: 24, height: 24 }
             draw_icon: {
-                svg_file: dep("crate://self/assets/icons/none.svg")
+                svg_file: dep("crate://self/assets/icons/svg/search.svg")
                 brightness: 1.0
                 curve: 0.6
                 color: #fff
-                preserve_colors: true
             }
         }
 
@@ -82,7 +81,7 @@ live_design! {
                 width: 20, height: 20
                 icon_walk: { width: 20, height: 20 }
                 draw_icon: {
-                    svg_file: dep("crate://self/assets/icons/search.svg")
+                    svg_file: dep("crate://self/assets/icons/svg/search.svg")
                     brightness: 1.0
                     curve: 0.6
                     color: #fff
@@ -238,7 +237,7 @@ impl Launcher {
                     id: format!("calc:{}", expr),
                     name: format!("= {}", expr),
                     description: "Calculator".to_string(),
-                    icon_path: Some("./assets/icons/calculator.svg".to_string()),
+                    icon_path: Some("./assets/icons/svg/search.svg".to_string()),
                     result_type: LauncherResultType::Calculator,
                 });
             }
@@ -247,7 +246,7 @@ impl Launcher {
                 id: "ps:list".to_string(),
                 name: "Process Manager".to_string(),
                 description: "List running processes".to_string(),
-                icon_path: Some("./assets/icons/process.svg".to_string()),
+                icon_path: Some("./assets/icons/svg/search.svg".to_string()),
                 result_type: LauncherResultType::Process,
             });
         } else {
