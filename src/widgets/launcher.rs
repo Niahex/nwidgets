@@ -262,12 +262,13 @@ impl Launcher {
                 icon_path: Some("./assets/icons/process.svg".to_string()),
                 result_type: LauncherResultType::Process,
             });
-        } else if !query.is_empty() {
+        } else {
             let apps = APPLICATIONS_SERVICE.get_all();
             let query_lower = query.to_lowercase();
 
             for app in apps {
-                if app.name.to_lowercase().contains(&query_lower)
+                if query.is_empty()
+                    || app.name.to_lowercase().contains(&query_lower)
                     || app.comment.as_ref().map(|c| c.to_lowercase().contains(&query_lower)).unwrap_or(false)
                     || app.generic_name.as_ref().map(|g| g.to_lowercase().contains(&query_lower)).unwrap_or(false) {
 
@@ -341,10 +342,13 @@ impl Launcher {
     pub fn show(&mut self, cx: &mut Cx) {
         ::log::info!("Launcher::show() called");
         self.view.apply_over(cx, live! { visible: true });
+        
         self.query.clear();
-        self.results.clear();
         self.selected_index = 0;
         self.frames_until_focus = 2;
+        
+        self.search(cx, "");
+        
         cx.new_next_frame();
         self.view.redraw(cx);
     }
