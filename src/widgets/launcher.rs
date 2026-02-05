@@ -168,7 +168,10 @@ pub enum LauncherResultType {
 
 impl Widget for Launcher {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
-        self.view.draw_walk(cx, scope, walk)
+        ::log::info!("[LAUNCHER] draw_walk called - walk: {:?}", walk);
+        let result = self.view.draw_walk(cx, scope, walk);
+        ::log::info!("[LAUNCHER] draw_walk completed - rect_size: {:?}", cx.turtle().rect().size);
+        result
     }
 
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
@@ -351,6 +354,8 @@ impl Launcher {
 
         cx.new_next_frame();
         self.view.redraw(cx);
+        
+        ::log::info!("[LAUNCHER] show() completed - view visible set to true");
     }
 
     pub fn set_text_input_focus(&mut self, cx: &mut Cx) {

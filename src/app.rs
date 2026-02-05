@@ -167,6 +167,7 @@ impl AppMain for App {
                         ::log::info!("Showing launcher - setting layer to Overlay and keyboard to Exclusive");
 
                         if let Some(mut window) = self.launcher_window.borrow_mut::<Window>() {
+                            ::log::info!("[APP] Setting layer shell config with anchor: NONE");
                             window.set_layer_shell(cx, LayerShellConfig {
                                 layer: LayerShellLayer::Overlay,
                                 anchor: LayerShellAnchor::NONE,
@@ -176,6 +177,7 @@ impl AppMain for App {
                                 margin: (0, 0, 0, 0),
                             });
                             window.set_input_region(cx, true);
+                            ::log::info!("[APP] Layer shell config applied");
                         }
 
                     if let Some(mut launcher) = self.launcher_window.launcher(ids!(launcher)).borrow_mut() {
@@ -184,7 +186,7 @@ impl AppMain for App {
 
                     self.launcher_window.redraw(cx);
                     cx.redraw_all();
-                    
+
                     if let Some(mut launcher) = self.launcher_window.launcher(ids!(launcher)).borrow_mut() {
                         launcher.set_text_input_focus(cx);
                     }
@@ -294,11 +296,11 @@ impl AppMain for App {
                     LauncherAction::Close => {
                         ::log::info!("Launcher close action - hiding launcher");
                         self.launcher_visible = false;
-                        
+
                         if let Some(mut launcher) = self.launcher_window.launcher(ids!(launcher)).borrow_mut() {
                             launcher.hide(cx);
                         }
-                        
+
                         if let Some(mut window) = self.launcher_window.borrow_mut::<Window>() {
                             window.set_layer_shell(cx, LayerShellConfig {
                                 layer: LayerShellLayer::Background,
@@ -310,7 +312,7 @@ impl AppMain for App {
                             });
                             window.set_input_region(cx, false);
                         }
-                        
+
                         self.launcher_window.redraw(cx);
                         cx.redraw_all();
                     }
@@ -333,7 +335,7 @@ impl AppMain for App {
                         if let Some(mut launcher) = self.launcher_window.launcher(ids!(launcher)).borrow_mut() {
                             launcher.hide(cx);
                         }
-                        
+
                         if let Some(mut window) = self.launcher_window.borrow_mut::<Window>() {
                             window.set_layer_shell(cx, LayerShellConfig {
                                 layer: LayerShellLayer::Background,
@@ -345,7 +347,7 @@ impl AppMain for App {
                             });
                             window.set_input_region(cx, false);
                         }
-                        
+
                         self.launcher_window.redraw(cx);
                         cx.redraw_all();
                     }
