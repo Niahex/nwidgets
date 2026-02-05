@@ -5,6 +5,7 @@ live_design! {
     use link::widgets::*;
     use makepad_draw::shader::std::*;
     use crate::theme::*;
+    use crate::ui::components::list::List;
 
     SearchResultItem = <View> {
         width: Fill, height: 48
@@ -114,7 +115,7 @@ live_design! {
             }
         }
         
-        list = <crate::ui::components::list::List> {
+        list = <List> {
             height: Fill, width: Fill
             flow: Down
             
