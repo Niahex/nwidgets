@@ -102,7 +102,7 @@ impl ActiveWindowModule {
             "brave-browser" | "brave" => "crate://self/assets/icons/png/help.png",
             "discord" => "crate://self/assets/icons/png/help.png",
             "spotify" => "crate://self/assets/icons/png/spotify.png",
-            "code" | "code-oss" | "vscode" | "zed" | "dev.zed.zed" => "crate://self/assets/icons/png/zed.png",
+            "code" | "code-oss" | "vscode" | "zed" | "dev.zed.zed" => "crate://self/assets/icons/png/dev.zed.zed.png",
             "vlc" => "crate://self/assets/icons/png/vlc.png",
             "steam" => "crate://self/assets/icons/png/steam.png",
             "lutris" => "crate://self/assets/icons/png/help.png",
