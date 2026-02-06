@@ -11,16 +11,19 @@ live_design! {
         width: Fill, height: Fit
         flow: Right
         align: {x: 0.0, y: 0.5}
-        padding: {top: 6, bottom: 6, left: 8, right: 8}
-        spacing: 8
+        padding: {top: 8, bottom: 8, left: 12, right: 12}
+        spacing: 12
 
         show_bg: true
         draw_bg: {
             instance selected: 0.0
 
             fn pixel(self) -> vec4 {
-                let color = mix(#0000, #4C566A40, self.selected);
-                return color;
+                let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+                sdf.box(0.0, 0.0, self.rect_size.x, self.rect_size.y, 6.0);
+                let color = mix(#0000, (NORD_POLAR_2), self.selected);
+                sdf.fill(color);
+                return sdf.result;
             }
         }
 
@@ -48,15 +51,18 @@ live_design! {
         draw_bg: {
             fn pixel(self) -> vec4 {
                 let sdf = Sdf2d::viewport(self.pos * self.rect_size);
-                sdf.box(0.0, 0.0, self.rect_size.x, self.rect_size.y, 16.0);
+                sdf.box(0.0, 0.0, self.rect_size.x, self.rect_size.y, 12.0);
                 sdf.fill((NORD_POLAR_0));
+                
+                sdf.stroke((NORD_FROST_1), 1.0);
+                
                 return sdf.result;
             }
         }
 
         flow: Down
         padding: 16
-        spacing: 16
+        spacing: 12
 
         visible: false
 
@@ -64,14 +70,14 @@ live_design! {
             width: Fill, height: 40
             flow: Right
             align: {x: 0.0, y: 0.5}
-            padding: {left: 12, right: 12}
+            padding: {left: 8, right: 8, top: 8, bottom: 8}
             spacing: 8
 
             show_bg: true
             draw_bg: {
                 fn pixel(self) -> vec4 {
                     let sdf = Sdf2d::viewport(self.pos * self.rect_size);
-                    sdf.box(0.0, 0.0, self.rect_size.x, self.rect_size.y, 8.0);
+                    sdf.box(0.0, 0.0, self.rect_size.x, self.rect_size.y, 6.0);
                     sdf.fill((NORD_POLAR_1));
                     return sdf.result;
                 }
@@ -103,6 +109,7 @@ live_design! {
             spacing: 0
 
             clip_x: true, clip_y: true
+            scroll_bars: <ScrollBars> {show_scroll_x: false, show_scroll_y: false}
 
             item0 = <SearchResultItem> {visible: false}
             item1 = <SearchResultItem> {visible: false}
@@ -192,16 +199,25 @@ impl Widget for Launcher {
                 KeyCode::ArrowUp => {
                     if self.selected_index > 0 {
                         self.selected_index -= 1;
+                        
+                        if self.selected_index >= 3 && self.all_results.len() > 10 {
+                            self.load_more_results(cx);
+                        }
+                        
                         self.update_results(cx);
                         self.view.redraw(cx);
                     }
                     return;
                 }
                 KeyCode::ArrowDown => {
-                    if self.selected_index < self.results.len().saturating_sub(1) {
+                    if self.selected_index < self.all_results.len().saturating_sub(1) {
                         self.selected_index += 1;
                         
-                        if self.selected_index >= self.visible_count.saturating_sub(2) && self.visible_count < self.all_results.len() {
+                        ::log::info!("ArrowDown: selected={}, visible_count={}, all_results={}", 
+                            self.selected_index, self.visible_count, self.all_results.len());
+                        
+                        if self.selected_index >= 7 {
+                            ::log::info!("Loading more results!");
                             self.load_more_results(cx);
                         }
                         
@@ -235,11 +251,14 @@ impl Widget for Launcher {
 
 impl Launcher {
     fn load_more_results(&mut self, cx: &mut Cx) {
-        let new_count = (self.visible_count + 10).min(self.all_results.len()).min(10);
-        if new_count > self.visible_count {
-            self.visible_count = new_count;
-            self.results = self.all_results[..self.visible_count].to_vec();
-        }
+        let start_index = self.selected_index.saturating_sub(5);
+        let end_index = (start_index + 10).min(self.all_results.len());
+        
+        ::log::info!("load_more_results: selected={}, start={}, end={}, all_results={}", 
+            self.selected_index, start_index, end_index, self.all_results.len());
+        
+        self.results = self.all_results[start_index..end_index].to_vec();
+        self.visible_count = self.results.len();
     }
     
     fn search(&mut self, cx: &mut Cx, query: &str) {
@@ -297,6 +316,8 @@ impl Launcher {
     self.all_results = results;
     self.visible_count = 10.min(self.all_results.len());
     self.results = self.all_results[..self.visible_count].to_vec();
+    ::log::info!("search complete: all_results={}, visible_count={}", 
+        self.all_results.len(), self.visible_count);
     self.update_results(cx);
 }
 
@@ -305,15 +326,19 @@ impl Launcher {
             id!(item0), id!(item1), id!(item2), id!(item3), id!(item4),
             id!(item5), id!(item6), id!(item7), id!(item8), id!(item9)
         ];
+        
+        let start_index = self.selected_index.saturating_sub(5);
+        let display_offset = self.selected_index - start_index;
 
         for (i, item_id) in item_ids.iter().enumerate() {
             let item = self.view.view(&[id!(list), *item_id]);
+            let result_index = start_index + i;
 
-            if i < self.results.len() {
-                let result = &self.results[i];
+            if result_index < self.all_results.len() {
+                let result = &self.all_results[result_index];
                 item.set_visible(cx, true);
 
-                let selected = if i == self.selected_index { 1.0 } else { 0.0 };
+                let selected = if i == display_offset { 1.0 } else { 0.0 };
                 item.apply_over(cx, live!{
                     draw_bg: { selected: (selected) }
                 });
