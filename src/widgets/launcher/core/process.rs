@@ -1,14 +1,5 @@
-use serde::{Deserialize, Serialize};
+use crate::widgets::launcher::types::ProcessInfo;
 use std::process::Command;
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ProcessInfo {
-    pub pid: u32,
-    pub name: String,
-    pub command: String,
-    pub cpu_usage: f32,
-    pub memory_mb: f32,
-}
 
 pub fn get_running_processes() -> Vec<ProcessInfo> {
     let output = Command::new("ps").args(["aux", "--no-headers"]).output();

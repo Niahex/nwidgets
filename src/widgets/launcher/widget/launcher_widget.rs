@@ -4,11 +4,12 @@ use gpui::{
 };
 use std::time::Duration;
 
-use crate::widgets::launcher::{SearchInput, SearchResult, SearchResults};
+use crate::widgets::launcher::widget::{SearchInput, SearchResults};
+use crate::widgets::launcher::types::{SearchResult, SearchResultType};
 use crate::services::system::clipboard::{ClipboardEntry, ClipboardMonitor};
-use crate::widgets::launcher::{
-    process, LauncherCore, LauncherService, LauncherToggled, SearchResultType,
-};
+use crate::widgets::launcher::core::{process, LauncherCore};
+use crate::widgets::launcher::service::LauncherService;
+use crate::widgets::launcher::types::LauncherToggled;
 use crate::theme::Theme;
 use process::kill_process;
 
@@ -252,7 +253,7 @@ impl LauncherWidget {
                 // Scan sur le background executor (thread pool)
                 let apps = cx
                     .background_executor()
-                    .spawn(async { crate::widgets::launcher::applications::scan_applications() })
+                    .spawn(async { crate::widgets::launcher::core::applications::scan_applications() })
                     .await;
 
                 // Update UI thread
@@ -268,7 +269,7 @@ impl LauncherWidget {
                 // Save cache in background
                 cx.background_executor()
                     .spawn(async move {
-                        let _ = crate::widgets::launcher::applications::save_to_cache(&apps);
+                        let _ = crate::widgets::launcher::core::applications::save_to_cache(&apps);
                     })
                     .detach();
             }

@@ -1,20 +1,12 @@
-use crate::widgets::launcher::search_results::SearchResult;
-use crate::widgets::launcher::{
-    applications, calculator, fuzzy::FuzzyMatcher, process, state::ApplicationInfo,
-};
+use crate::widgets::launcher::types::{ApplicationInfo, ProcessInfo, SearchResult, SearchResultType};
+use crate::widgets::launcher::core::{applications, calculator, fuzzy::FuzzyMatcher, process};
 use crate::services::system::clipboard::ClipboardEntry;
 use applications::load_from_cache;
 use calculator::{is_calculator_query, Calculator};
 use parking_lot::RwLock;
-use process::{get_running_processes, is_process_query, ProcessInfo};
+use process::{get_running_processes, is_process_query};
 use std::sync::Arc;
 
-pub enum SearchResultType {
-    Application(usize),
-    Calculation(String),
-    Process(ProcessInfo),
-    Clipboard(ClipboardEntry),
-}
 
 pub struct LauncherCore {
     pub applications: Arc<RwLock<Vec<ApplicationInfo>>>,
