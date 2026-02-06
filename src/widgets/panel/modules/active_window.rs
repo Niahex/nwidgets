@@ -94,7 +94,8 @@ impl ActiveWindowModule {
             return "crate://self/assets/icons/png/help.png".to_string();
         }
         
-        let icon_filename = format!("{}.png", class);
+        let normalized_class = class.to_lowercase().replace('.', "-");
+        let icon_filename = format!("{}.png", normalized_class);
         let icon_path = format!("crate://self/assets/icons/png/{}", icon_filename);
         let fs_path = format!("./assets/icons/png/{}", icon_filename);
         
