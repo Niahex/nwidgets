@@ -54,7 +54,7 @@ impl OsdWindowManager {
             )
             .ok();
 
-        self.window_handle = window;
+        self.window_handle = window.map(|w| w.into());
     }
 
     pub fn show_window(&mut self, cx: &mut App) {

@@ -103,11 +103,11 @@ impl Render for OsdWidget {
             return div().into_any_element();
         }
 
-        let theme = cx.theme();
+        let theme = cx.theme().clone();
 
         let content = match event {
             OsdEvent::Volume(icon_name, _level, _muted) => {
-                volume_renderer::render_volume(icon_name, self.displayed_volume, &self.volume_slider, cx)
+                volume_renderer::render_volume(icon_name, self.displayed_volume, &self.volume_slider, &theme)
                     .into_any_element()
             }
             OsdEvent::Microphone(muted) => {
@@ -128,8 +128,8 @@ impl Render for OsdWidget {
                     )
                     .into_any_element()
             }
-            OsdEvent::CapsLock(enabled) => capslock_renderer::render_capslock(*enabled, cx).into_any_element(),
-            OsdEvent::Clipboard => clipboard_renderer::render_clipboard(cx).into_any_element(),
+            OsdEvent::CapsLock(enabled) => capslock_renderer::render_capslock(*enabled, &theme).into_any_element(),
+            OsdEvent::Clipboard => clipboard_renderer::render_clipboard(&theme).into_any_element(),
         };
 
         div()
