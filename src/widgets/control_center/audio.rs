@@ -1,5 +1,5 @@
 use crate::services::media::audio::AudioService;
-use crate::services::ui::control_center::ControlCenterSection;
+use crate::widgets::control_center::ControlCenterSection;
 use crate::theme::{ActiveTheme, Theme};
 use crate::assets::Icon;
 use crate::ui::components::Slider;

@@ -2,11 +2,12 @@ mod audio;
 mod details;
 mod notifications;
 mod quick_actions;
+pub mod service;
 
 use crate::ui::components::{CircularProgress, Dropdown, DropdownOption, SliderState, Toggle};
 use crate::services::media::audio::AudioService;
 use crate::services::hardware::bluetooth::BluetoothService;
-use crate::services::ui::control_center::{ControlCenterSection, ControlCenterService};
+use crate::widgets::control_center::service::{ControlCenterSection, ControlCenterService};
 use crate::services::network::NetworkService;
 use crate::widgets::notifications::{NotificationAdded, NotificationService};
 use crate::services::hardware::system_monitor::SystemMonitorService;
@@ -16,6 +17,8 @@ use gpui::prelude::*;
 use gpui::*;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
+
+pub use service::{ControlCenterSection as Section, ControlCenterService};
 
 actions!(control_center, [CloseControlCenter]);
 
