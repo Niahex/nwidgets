@@ -116,15 +116,7 @@ impl MatchEvent for App {
         }
 
         if let Some(mut window) = self.launcher_window.borrow_mut::<Window>() {
-            window.set_layer_shell(cx, LayerShellConfig {
-                layer: LayerShellLayer::Background,
-                anchor: LayerShellAnchor::NONE,
-                exclusive_zone: None,
-                namespace: "nwidgets-launcher".to_string(),
-                keyboard_interactivity: LayerShellKeyboardInteractivity::None,
-                margin: (0, 0, 0, 0),
-                input_region: None,
-            });
+            self.set_window_hidden(cx, &mut window, "nwidgets-launcher");
         }
 
         let launcher_toggle_requested = self.launcher_toggle_requested.clone();
@@ -141,19 +133,25 @@ impl MatchEvent for App {
     }
 }
 
+impl App {
+    fn set_window_hidden(&self, cx: &mut Cx, window: &mut Window, namespace: &str) {
+        window.set_layer_shell(cx, LayerShellConfig {
+            layer: LayerShellLayer::Background,
+            anchor: LayerShellAnchor::NONE,
+            exclusive_zone: None,
+            namespace: namespace.to_string(),
+            keyboard_interactivity: LayerShellKeyboardInteractivity::None,
+            margin: (0, 0, 0, 0),
+            input_region: None,
+        });
+    }
+}
+
 impl AppMain for App {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
         if self.osd_hide_timer.is_event(event).is_some() {
             if let Some(mut window) = self.osd_window.borrow_mut::<Window>() {
-                window.set_layer_shell(cx, LayerShellConfig {
-                    layer: LayerShellLayer::Overlay,
-                    anchor: LayerShellAnchor::BOTTOM,
-                    exclusive_zone: None,
-                    namespace: "nwidgets-osd".to_string(),
-                    keyboard_interactivity: LayerShellKeyboardInteractivity::None,
-                    margin: (0, 0, 100, 0),
-                    input_region: None,
-                });
+                self.set_window_hidden(cx, &mut window, "nwidgets-osd");
             }
         }
         
@@ -187,15 +185,7 @@ impl AppMain for App {
                     }
                 } else {
                     if let Some(mut window) = self.launcher_window.borrow_mut::<Window>() {
-                        window.set_layer_shell(cx, LayerShellConfig {
-                            layer: LayerShellLayer::Background,
-                            anchor: LayerShellAnchor::NONE,
-                            exclusive_zone: None,
-                            namespace: "nwidgets-launcher".to_string(),
-                            keyboard_interactivity: LayerShellKeyboardInteractivity::None,
-                            margin: (0, 0, 0, 0),
-                            input_region: None,
-                        });
+                        self.set_window_hidden(cx, &mut window, "nwidgets-launcher");
                     }
 
                     if let Some(mut launcher) = self.launcher_window.launcher(ids!(launcher)).borrow_mut() {
@@ -290,15 +280,7 @@ impl AppMain for App {
                         }
 
                         if let Some(mut window) = self.launcher_window.borrow_mut::<Window>() {
-                            window.set_layer_shell(cx, LayerShellConfig {
-                                layer: LayerShellLayer::Background,
-                                anchor: LayerShellAnchor::NONE,
-                                exclusive_zone: None,
-                                namespace: "nwidgets-launcher".to_string(),
-                                keyboard_interactivity: LayerShellKeyboardInteractivity::None,
-                                margin: (0, 0, 0, 0),
-                                input_region: None,
-                            });
+                            self.set_window_hidden(cx, &mut window, "nwidgets-launcher");
                         }
 
                         self.launcher_window.redraw(cx);
@@ -319,15 +301,7 @@ impl AppMain for App {
                         }
 
                         if let Some(mut window) = self.launcher_window.borrow_mut::<Window>() {
-                            window.set_layer_shell(cx, LayerShellConfig {
-                                layer: LayerShellLayer::Background,
-                                anchor: LayerShellAnchor::NONE,
-                                exclusive_zone: None,
-                                namespace: "nwidgets-launcher".to_string(),
-                                keyboard_interactivity: LayerShellKeyboardInteractivity::None,
-                                margin: (0, 0, 0, 0),
-                                input_region: None,
-                            });
+                            self.set_window_hidden(cx, &mut window, "nwidgets-launcher");
                         }
 
                         self.launcher_window.redraw(cx);
