@@ -6,7 +6,7 @@ pub fn run(cx: &mut App) {
     let (clipboard, _osd) = crate::app::init::initialize_all(cx);
     let (chat_service, launcher_service, notif_service) = crate::app::init::get_globals(cx);
     
-    crate::windows::panel::open(cx);
+    crate::widgets::panel::window::open(cx);
     crate::windows::chat::open(cx);
     crate::widgets::launcher::window::open(cx, launcher_service.clone(), clipboard);
     

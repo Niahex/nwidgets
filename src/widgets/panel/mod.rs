@@ -1,5 +1,6 @@
 use crate::theme::ActiveTheme;
 mod modules;
+pub mod window;
 
 pub use modules::{
     ActiveWindowModule, BluetoothModule, DateTimeModule, MprisModule, NetworkModule,
