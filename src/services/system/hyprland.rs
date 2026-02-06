@@ -196,7 +196,6 @@ impl HyprlandService {
                     let mut s = state.write();
                     s.active_window.class = parts[0].to_string();
                     s.active_window.title = parts[1].to_string();
-                    log::info!("Active window changed: {} - {}", parts[0], parts[1]);
                 }
                 notify.notify_waiters();
                 Self::trigger_redraws(redraw_callbacks);
@@ -217,7 +216,6 @@ impl HyprlandService {
                             windows: 0,
                         });
                         s.workspaces.sort_by_key(|w| w.id);
-                        log::info!("Created workspace: {}", id);
                     }
                 }
                 notify.notify_waiters();
