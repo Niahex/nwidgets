@@ -8,7 +8,7 @@ use crate::services::media::audio::AudioService;
 use crate::services::hardware::bluetooth::BluetoothService;
 use crate::services::ui::control_center::{ControlCenterSection, ControlCenterService};
 use crate::services::network::NetworkService;
-use crate::services::ui::notifications::{NotificationAdded, NotificationService};
+use crate::widgets::notifications::{NotificationAdded, NotificationService};
 use crate::services::hardware::system_monitor::SystemMonitorService;
 use crate::theme::ActiveTheme;
 use crate::assets::Icon;

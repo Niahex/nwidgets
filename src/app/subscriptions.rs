@@ -3,7 +3,7 @@ use gpui::*;
 use crate::services::system::{HyprlandService};
 use crate::widgets::chat::ChatService;
 use crate::widgets::launcher::LauncherService;
-use crate::services::ui::{NotificationAdded, NotificationService};
+use crate::widgets::notifications::{NotificationAdded, NotificationService};
 use crate::widgets::notifications::{NotificationsStateChanged, NotificationsWindowManager};
 
 use crate::widgets::chat::window;
