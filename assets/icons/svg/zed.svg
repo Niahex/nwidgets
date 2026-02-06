@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="512"
+   height="512"
+   viewBox="0 0 135.46666 135.46667"
+   version="1.1"
+   id="svg1"
+   xml:space="preserve"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"><defs
+     id="defs1"><linearGradient
+       id="swatch59"><stop
+         style="stop-color:#92bcba;stop-opacity:1;"
+         offset="0"
+         id="stop59" /></linearGradient><filter
+       id="filter1178-36"
+       x="-0.047999482"
+       y="-0.047999482"
+       width="1.095999"
+       height="1.095999"
+       color-interpolation-filters="sRGB"><feGaussianBlur
+         stdDeviation="0.30691668"
+         id="feGaussianBlur20" /></filter><style
+       id="style1-6">
+      .cls-1 {
+        fill: none;
+        stroke: #20808d;
+        stroke-miterlimit: 10;
+      }
+
+      .cls-2 {
+        fill: #13343b;
+        stroke-width: 0px;
+      }
+    </style></defs><g
+     id="layer1"
+     transform="translate(2662.4027,8189.632)"><g
+       id="g67"
+       transform="matrix(8.004254,0,0,7.9892628,18354.132,75335.856)"><g
+         transform="matrix(1.0000197,0,0,1.0000197,-2625.6755,-10454.752)"
+         id="g20-6"><rect
+           transform="matrix(0.99138,0,0,1,0.072989,0.0019055)"
+           x="0.79374999"
+           y="0.90544999"
+           width="15.346"
+           height="15.346"
+           rx="3.0525999"
+           ry="3.0525999"
+           filter="url(#filter1178-36)"
+           opacity="0.15"
+           stroke-linecap="round"
+           stroke-linejoin="round"
+           stroke-width="1.2489"
+           style="mix-blend-mode:normal"
+           id="rect20-0" /></g><rect
+         x="-2625.6707"
+         y="-10454.718"
+         width="16.924334"
+         height="16.927334"
+         fill="none"
+         opacity="0.15"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1.05202"
+         id="rect22" /><rect
+         x="-2624.7566"
+         y="-10453.798"
+         width="15.081298"
+         height="15.081298"
+         rx="3.0000591"
+         ry="3.0000591"
+         fill="url(#linearGradient1340-5)"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1.22742"
+         id="rect21"
+         style="fill:#3b4252;fill-opacity:1" /><path
+         fill-rule="evenodd"
+         clip-rule="evenodd"
+         d="m -2620.9781,-10450.308 c -0.1599,0 -0.2894,0.129 -0.2894,0.289 v 6.366 h -0.5788 v -6.366 c 0,-0.48 0.3887,-0.868 0.8682,-0.868 h 7.7535 c 0.3867,0 0.5804,0.467 0.307,0.741 l -4.7755,4.775 h 1.3452 v -0.597 h 0.5788 v 0.742 c 0,0.24 -0.1944,0.434 -0.4341,0.434 h -2.0687 l -0.9947,0.995 h 4.5103 v -3.618 h 0.5788 v 3.618 c 0,0.319 -0.2591,0.578 -0.5788,0.578 h -5.0891 l -1.0129,1.014 h 7.4043 c 0.1598,0 0.2893,-0.13 0.2893,-0.29 v -6.366 h 0.5788 v 6.366 c 0,0.48 -0.3887,0.868 -0.8681,0.868 h -7.7536 c -0.3867,0 -0.5804,-0.467 -0.3069,-0.741 l 4.7573,-4.757 h -1.3271 v 0.579 h -0.5788 v -0.724 c 0,-0.24 0.1944,-0.434 0.4341,-0.434 h 2.0506 l 1.0129,-1.013 h -4.5104 v 3.617 h -0.5788 v -3.617 c 0,-0.319 0.2592,-0.579 0.5788,-0.579 h 5.0891 l 1.0129,-1.012 z"
+         fill="#000000"
+         id="path1-12"
+         style="fill:#d8dee9;fill-opacity:1;stroke-width:0.102893" /></g><!-- Styles et D�finitions --><!-- Fond --><!-- Titre Principal --><!-- Axe Transversal : M�tacognition --><!-- Ligne de l'Entrelacement --><!-- �tapes du Processus --><!-- �tape 1 --><!-- �tape 2 --><!-- �tape 3 --><!-- �tape 4 --><!-- �tape 5 --><!-- Section Points Cl�s Bas de Page --><!-- Fl�ches de progression --><style
+       id="style1-36">.st1{fill:#ffce00}</style><style
+       id="style1-09">.st1{fill:#ffce00}</style></g><style
+     type="text/css"
+     id="style1">
+	.st0{fill:#000000;}
+</style><style
+     type="text/css"
+     id="style1-2">
+	.st0{fill:#000000;}
+</style><style
+     type="text/css"
+     id="style1-3">
+	.st0{fill:#000000;}
+</style><style
+     type="text/css"
+     id="style1-29">
+	.st0{fill:#000000;}
+</style><style
+     type="text/css"
+     id="style1-0">
+	.st0{fill:#000000;}
+</style><style
+     type="text/css"
+     id="style6">.st0 { fill:#323232; }</style><style
+     type="text/css"
+     id="style6-2">.st0{fill:#F05133;}</style></svg>

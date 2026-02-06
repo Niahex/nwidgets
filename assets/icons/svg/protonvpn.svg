@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="512.00098"
+   height="511.99808"
+   viewBox="0 0 135.46692 135.46616"
+   version="1.1"
+   id="svg1"
+   xml:space="preserve"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"><defs
+     id="defs1"><linearGradient
+       id="swatch59"><stop
+         style="stop-color:#92bcba;stop-opacity:1;"
+         offset="0"
+         id="stop59" /></linearGradient><style
+       id="style1-6">
+      .cls-1 {
+        fill: none;
+        stroke: #20808d;
+        stroke-miterlimit: 10;
+      }
+
+      .cls-2 {
+        fill: #13343b;
+        stroke-width: 0px;
+      }
+    </style><filter
+       id="filter1178-63"
+       x="-0.047999482"
+       y="-0.047999482"
+       width="1.095999"
+       height="1.095999"
+       color-interpolation-filters="sRGB"><feGaussianBlur
+         stdDeviation="0.30691668"
+         id="feGaussianBlur1-94" /></filter><linearGradient
+       id="linearGradient2367"
+       x1="161.21001"
+       x2="161.28999"
+       y1="36.005001"
+       y2="24.836"
+       gradientUnits="userSpaceOnUse"><stop
+         stop-color="#88c0d0"
+         offset="0"
+         id="stop1-812" /><stop
+         stop-color="#5e81ac"
+         offset="1"
+         id="stop2-93" /></linearGradient><linearGradient
+       id="linearGradient2470"
+       x1="154.09"
+       x2="167.49001"
+       y1="20.386"
+       y2="32.143002"
+       gradientUnits="userSpaceOnUse"><stop
+         stop-color="#5e81ac"
+         offset="0"
+         id="stop3-90" /><stop
+         stop-color="#eceff4"
+         offset="1"
+         id="stop4-88" /></linearGradient><radialGradient
+       id="radialGradient2476"
+       cx="53.748001"
+       cy="64.420998"
+       r="28.5"
+       gradientTransform="matrix(1.8033,-1.7344,2.2089,2.2966,-170.64,19.05)"
+       gradientUnits="userSpaceOnUse"><stop
+         stop-color="#8fbcbb"
+         offset="0"
+         id="stop5-50" /><stop
+         stop-color="#2e3440"
+         offset=".57932"
+         id="stop6-96" /><stop
+         stop-color="#2e3440"
+         offset="1"
+         id="stop7-38" /></radialGradient></defs><g
+     id="layer1"
+     transform="translate(2991.4364,7866.8778)"><!-- Styles et D�finitions --><!-- Fond --><!-- Titre Principal --><!-- Axe Transversal : M�tacognition --><!-- Ligne de l'Entrelacement --><!-- �tapes du Processus --><!-- �tape 1 --><!-- �tape 2 --><!-- �tape 3 --><!-- �tape 4 --><!-- �tape 5 --><!-- Section Points Cl�s Bas de Page --><!-- Fl�ches de progression --><style
+       id="style1-36">.st1{fill:#ffce00}</style><style
+       id="style1-09">.st1{fill:#ffce00}</style><g
+       style="fill:none"
+       id="g147"
+       transform="matrix(2.1495312,0,0,2.1309875,-2992.4876,-7867.3363)"><rect
+         transform="matrix(3.747,0,0,3.7796,0.2749,-0.42313)"
+         x="0.79374999"
+         y="0.90544999"
+         width="15.346"
+         height="15.346"
+         rx="3.0525999"
+         ry="3.0525999"
+         fill="#000000"
+         filter="url(#filter1178)"
+         opacity="0.15"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1.2489"
+         style="mix-blend-mode:normal;filter:url(#filter1178-63)"
+         id="rect1" /><path
+         d="M 47.266,3.508 H 16.734 C 9.425,3.508 3.5,9.4331 3.5,16.742 v 30.532 c 0,7.309 5.9251,13.234 13.234,13.234 h 30.532 c 7.309,0 13.234,-5.9252 13.234,-13.234 V 16.742 C 60.5,9.433 54.5748,3.508 47.266,3.508 Z"
+         fill="url(#radialGradient2476)"
+         stroke-width="1.0179"
+         id="path1-65"
+         style="fill:url(#radialGradient2476)" /><g
+         transform="matrix(2.1244,0,0,2.1244,-314.57,-28.706)"
+         id="g8-56"><path
+           d="m 155.37,21.227 a 1.3939,1.5391 0 0 0 -1.3945,1.5391 1.3939,1.5391 0 0 0 0.1836,0.75391 l -0.002,0.0039 0.0352,0.06445 a 1.3939,1.5391 0 0 0 0.01,0.01563 l 7.3965,13.172 a 1.449,1.6494 0 0 0 0.28516,0.50977 l 0.008,0.01367 h 0.004 a 1.449,1.6494 0 0 0 1.043,0.50781 1.449,1.6494 0 0 0 1.0449,-0.50781 1.449,1.6494 0 0 0 0.008,-0.0078 1.449,1.6494 0 0 0 0.17578,-0.26172 l 7.7383,-11.402 a 1.449,1.6494 0 0 0 0.38086,-1.1152 1.449,1.6494 0 0 0 -1.4492,-1.6504 l -15.197,-1.6055 -0.006,-0.002 a 1.3939,1.5391 0 0 0 -0.15235,-0.02149 h -0.002 a 1.3939,1.5391 0 0 0 -0.10938,-0.0059 z"
+           fill="url(#linearGradient2470)"
+           stroke-width="0.11178"
+           id="path7-1"
+           style="fill:url(#linearGradient2470)" /><path
+           d="m 154.41,23.961 6.8809,12.256 5.875,-8.6602 a 1.2278,1.3975 0 0 0 0.32422,-0.94531 1.2278,1.3975 0 0 0 -1.2285,-1.3984 z"
+           fill="url(#linearGradient2367)"
+           stroke-width="0.099969"
+           id="path8-1"
+           style="fill:url(#linearGradient2367)" /></g></g></g><style
+     type="text/css"
+     id="style1">
+	.st0{fill:#000000;}
+</style><style
+     type="text/css"
+     id="style1-2">
+	.st0{fill:#000000;}
+</style><style
+     type="text/css"
+     id="style1-3">
+	.st0{fill:#000000;}
+</style><style
+     type="text/css"
+     id="style1-29">
+	.st0{fill:#000000;}
+</style><style
+     type="text/css"
+     id="style1-0">
+	.st0{fill:#000000;}
+</style><style
+     type="text/css"
+     id="style6">.st0 { fill:#323232; }</style><style
+     type="text/css"
+     id="style6-2">.st0{fill:#F05133;}</style><style
+     type="text/css"
+     id="style1-4">
+	.st0{fill:#000000;}
+</style><style
+     type="text/css"
+     id="style1-2-3">
+	.st0{fill:#000000;}
+</style><style
+     type="text/css"
+     id="style1-3-0">
+	.st0{fill:#000000;}
+</style><style
+     type="text/css"
+     id="style1-29-7">
+	.st0{fill:#000000;}
+</style><style
+     type="text/css"
+     id="style1-0-8">
+	.st0{fill:#000000;}
+</style></svg>
