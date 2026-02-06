@@ -161,7 +161,6 @@ impl Widget for Launcher {
     }
 
     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
-        // Handle frame countdown for focus
         if let Event::NextFrame(_) = event {
             if self.frames_until_focus > 0 && self.view.visible {
                 self.frames_until_focus -= 1;
@@ -174,15 +173,6 @@ impl Widget for Launcher {
             }
         }
 
-        // Let view handle events first and capture actions
-        for action in cx.capture_actions(|cx| self.view.handle_event(cx, event, scope)) {
-            if let TextInputAction::Changed(new_text) = action.as_widget_action().cast() {
-                self.search(cx, &new_text);
-                self.update_results(cx);
-            }
-        }
-
-        // Handle special keyboard events for navigation
         if let Event::KeyDown(ke) = event {
             match ke.key_code {
                 KeyCode::Escape => {
@@ -191,6 +181,7 @@ impl Widget for Launcher {
                         &HeapLiveIdPath::default(),
                         LauncherAction::Close,
                     );
+                    return;
                 }
                 KeyCode::ArrowUp => {
                     if self.selected_index > 0 {
@@ -198,6 +189,7 @@ impl Widget for Launcher {
                         self.update_results(cx);
                         self.view.redraw(cx);
                     }
+                    return;
                 }
                 KeyCode::ArrowDown => {
                     if self.selected_index < self.results.len().saturating_sub(1) {
@@ -205,6 +197,7 @@ impl Widget for Launcher {
                         self.update_results(cx);
                         self.view.redraw(cx);
                     }
+                    return;
                 }
                 KeyCode::ReturnKey => {
                     if let Some(result) = self.results.get(self.selected_index) {
@@ -217,6 +210,13 @@ impl Widget for Launcher {
                     return;
                 }
                 _ => {}
+            }
+        }
+
+        for action in cx.capture_actions(|cx| self.view.handle_event(cx, event, scope)) {
+            if let TextInputAction::Changed(new_text) = action.as_widget_action().cast() {
+                self.search(cx, &new_text);
+                self.update_results(cx);
             }
         }
     }
