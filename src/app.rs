@@ -359,6 +359,7 @@ impl Default for App {
             last_capslock_state: None,
             last_clipboard_content: String::new(),
             timer: Timer::default(),
+            osd_hide_timer: Timer::default(),
         }
     }
 }
