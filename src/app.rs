@@ -18,7 +18,7 @@ live_design! {
 
     App = {{App}} {
         ui: <Window> {
-            window: {inner_size: vec2(1920, 68)},
+            window: {inner_size: vec2(3440, 68)},
             pass: {clear_color: #0000},
 
             body = <NordView> {
@@ -97,7 +97,7 @@ impl MatchEvent for App {
                 namespace: "nwidgets-panel".to_string(),
                 keyboard_interactivity: LayerShellKeyboardInteractivity::None,
                 margin: (0, 0, 0, 0),
-                input_region: Some((0, 0, 1920, 68)),
+                input_region: Some((0, 0, 3440, 68)),
             });
         }
 
