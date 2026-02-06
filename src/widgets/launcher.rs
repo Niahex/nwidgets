@@ -131,6 +131,12 @@ pub struct Launcher {
 
     #[rust]
     results: Vec<LauncherResult>,
+    
+    #[rust]
+    all_results: Vec<LauncherResult>,
+    
+    #[rust]
+    visible_count: usize,
 
     #[rust]
     frames_until_focus: u8,
@@ -194,6 +200,11 @@ impl Widget for Launcher {
                 KeyCode::ArrowDown => {
                     if self.selected_index < self.results.len().saturating_sub(1) {
                         self.selected_index += 1;
+                        
+                        if self.selected_index >= self.visible_count.saturating_sub(2) && self.visible_count < self.all_results.len() {
+                            self.load_more_results(cx);
+                        }
+                        
                         self.update_results(cx);
                         self.view.redraw(cx);
                     }
@@ -223,6 +234,14 @@ impl Widget for Launcher {
 }
 
 impl Launcher {
+    fn load_more_results(&mut self, cx: &mut Cx) {
+        let new_count = (self.visible_count + 10).min(self.all_results.len()).min(10);
+        if new_count > self.visible_count {
+            self.visible_count = new_count;
+            self.results = self.all_results[..self.visible_count].to_vec();
+        }
+    }
+    
     fn search(&mut self, cx: &mut Cx, query: &str) {
         use crate::APPLICATIONS_SERVICE;
 
@@ -268,19 +287,18 @@ impl Launcher {
                         id: app.id.clone(),
                         name: app.name.clone(),
                         description,
-                        icon_path: app.icon.clone(),
-                        result_type: LauncherResultType::Application,
-                    });
-
-                    if results.len() >= 10 {
-                        break;
-                    }
-                }
+                    icon_path: app.icon.clone(),
+                    result_type: LauncherResultType::Application,
+                });
             }
         }
-
-        self.set_results(cx, results);
     }
+
+    self.all_results = results;
+    self.visible_count = 10.min(self.all_results.len());
+    self.results = self.all_results[..self.visible_count].to_vec();
+    self.update_results(cx);
+}
 
     fn update_results(&mut self, cx: &mut Cx) {
         let item_ids = [
@@ -345,6 +363,8 @@ impl Launcher {
         self.view.apply_over(cx, live! { visible: false });
         self.query.clear();
         self.results.clear();
+        self.all_results.clear();
+        self.visible_count = 0;
         self.selected_index = 0;
         self.view.text_input(ids!(search_container.search_input)).set_text(cx, "");
         
