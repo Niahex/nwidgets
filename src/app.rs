@@ -97,6 +97,7 @@ impl MatchEvent for App {
                 namespace: "nwidgets-panel".to_string(),
                 keyboard_interactivity: LayerShellKeyboardInteractivity::None,
                 margin: (0, 0, 0, 0),
+                input_region: Some((0, 0, 1920, 68)),
             });
         }
 
@@ -108,6 +109,7 @@ impl MatchEvent for App {
                 namespace: "nwidgets-osd".to_string(),
                 keyboard_interactivity: LayerShellKeyboardInteractivity::None,
                 margin: (0, 0, 100, 0),
+                input_region: None,
             });
         }
 
@@ -119,6 +121,7 @@ impl MatchEvent for App {
                 namespace: "nwidgets-launcher".to_string(),
                 keyboard_interactivity: LayerShellKeyboardInteractivity::None,
                 margin: (0, 0, 0, 0),
+                input_region: None,
             });
         }
 
@@ -152,6 +155,7 @@ impl AppMain for App {
                             namespace: "nwidgets-launcher".to_string(),
                             keyboard_interactivity: LayerShellKeyboardInteractivity::Exclusive,
                             margin: (0, 0, 0, 0),
+                            input_region: Some((0, 0, 700, 500)),
                         });
                     }
 
@@ -174,6 +178,7 @@ impl AppMain for App {
                             namespace: "nwidgets-launcher".to_string(),
                             keyboard_interactivity: LayerShellKeyboardInteractivity::None,
                             margin: (0, 0, 0, 0),
+                            input_region: None,
                         });
                     }
 
@@ -199,6 +204,7 @@ impl AppMain for App {
                             namespace: "nwidgets-osd".to_string(),
                             keyboard_interactivity: LayerShellKeyboardInteractivity::None,
                             margin: (0, 0, 100, 0),
+                            input_region: Some((0, 0, 300, 80)),
                         });
                     }
 
@@ -219,6 +225,7 @@ impl AppMain for App {
                         namespace: "nwidgets-osd".to_string(),
                         keyboard_interactivity: LayerShellKeyboardInteractivity::None,
                         margin: (0, 0, 100, 0),
+                        input_region: Some((0, 0, 300, 80)),
                     });
                 }
 
@@ -239,6 +246,7 @@ impl AppMain for App {
                         namespace: "nwidgets-osd".to_string(),
                         keyboard_interactivity: LayerShellKeyboardInteractivity::None,
                         margin: (0, 0, 100, 0),
+                        input_region: Some((0, 0, 300, 80)),
                     });
                 }
 
@@ -269,6 +277,7 @@ impl AppMain for App {
                                 namespace: "nwidgets-launcher".to_string(),
                                 keyboard_interactivity: LayerShellKeyboardInteractivity::None,
                                 margin: (0, 0, 0, 0),
+                                input_region: None,
                             });
                         }
 
@@ -297,6 +306,7 @@ impl AppMain for App {
                                 namespace: "nwidgets-launcher".to_string(),
                                 keyboard_interactivity: LayerShellKeyboardInteractivity::None,
                                 margin: (0, 0, 0, 0),
+                                input_region: None,
                             });
                         }
 
