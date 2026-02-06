@@ -8,7 +8,6 @@ mod theme;
 mod types;
 mod ui;
 mod widgets;
-mod windows;
 
 use gpui::*;
 
