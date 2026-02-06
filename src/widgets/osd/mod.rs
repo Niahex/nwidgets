@@ -1,7 +1,10 @@
-pub mod lock_state;
+pub mod monitors;
 pub mod service;
+pub mod types;
 pub mod widget;
+pub mod window;
 
-pub use lock_state::{LockMonitor, LockStateChanged, LockType};
-pub use service::{OsdEvent, OsdService, OsdStateChanged};
+pub use monitors::{LockMonitor, LockStateChanged, LockType};
+pub use service::OsdService;
+pub use types::{OsdEvent, OsdStateChanged};
 pub use widget::OsdWidget;
