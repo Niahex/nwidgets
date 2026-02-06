@@ -1,7 +1,7 @@
 mod active_window;
 mod bluetooth;
 mod datetime;
-mod mpris;
+pub mod mpris;
 mod network;
 pub mod pomodoro;
 mod sink;
@@ -12,7 +12,7 @@ mod workspaces;
 pub use active_window::ActiveWindowModule;
 pub use bluetooth::BluetoothModule;
 pub use datetime::DateTimeModule;
-pub use mpris::MprisModule;
+pub use mpris::{MprisModule, MprisService};
 pub use network::NetworkModule;
 pub use pomodoro::{PomodoroModule, PomodoroService};
 pub use sink::SinkModule;

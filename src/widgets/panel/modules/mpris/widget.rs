@@ -1,4 +1,5 @@
-use crate::services::media::mpris::{MprisService, MprisStateChanged, PlaybackStatus};
+use crate::widgets::panel::modules::mpris::{MprisService, MprisStateChanged};
+use super::service::PlaybackStatus;
 use crate::theme::ActiveTheme;
 use gpui::prelude::*;
 use gpui::*;
