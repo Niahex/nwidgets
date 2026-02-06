@@ -41,7 +41,6 @@ struct HyprlandState {
 
 impl HyprlandService {
     pub fn new() -> Self {
-        log::info!("Initializing HyprlandService");
         let service = Self {
             state: Arc::new(RwLock::new(HyprlandState::default())),
             notify: Arc::new(Notify::new()),
