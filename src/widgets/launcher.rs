@@ -333,19 +333,10 @@ impl Launcher {
 
     pub fn show(&mut self, cx: &mut Cx) {
         self.view.apply_over(cx, live! { visible: true });
-
-        self.query.clear();
-        self.selected_index = 0;
-        self.frames_until_focus = 2;
-
         self.search(cx, "");
 
+        cx.widget_action(self.view.widget_uid(), &Scope::empty().path, LauncherAction::Shown);
         cx.new_next_frame();
-        self.view.redraw(cx);
-    }
-
-    pub fn set_text_input_focus(&mut self, cx: &mut Cx) {
-        self.frames_until_focus = 2;
         self.view.redraw(cx);
     }
 
@@ -355,6 +346,13 @@ impl Launcher {
         self.results.clear();
         self.selected_index = 0;
         self.view.text_input(ids!(search_container.search_input)).set_text(cx, "");
+        
+        cx.widget_action(self.view.widget_uid(), &Scope::empty().path, LauncherAction::Hidden);
+        self.view.redraw(cx);
+    }
+
+    pub fn set_text_input_focus(&mut self, cx: &mut Cx) {
+        self.frames_until_focus = 2;
         self.view.redraw(cx);
     }
 }
@@ -365,4 +363,6 @@ pub enum LauncherAction {
     Close,
     Launch(String),
     QueryChanged(String),
+    Shown,
+    Hidden,
 }

@@ -1,5 +1,12 @@
 use makepad_widgets::*;
 
+#[derive(Clone, Debug, DefaultNone)]
+pub enum OSDAction {
+    Shown,
+    Hidden,
+    None,
+}
+
 live_design! {
     use link::theme::*;
     use link::widgets::*;
@@ -155,6 +162,8 @@ impl OSD {
         self.hide_timer = cx.start_timeout(2.0);
         self.view.redraw(cx);
         cx.redraw_all();
+        
+        cx.widget_action(self.view.widget_uid(), &Scope::empty().path, OSDAction::Shown);
     }
 
     pub fn show_brightness(&mut self, cx: &mut Cx, brightness: f32) {
@@ -174,6 +183,8 @@ impl OSD {
 
         self.hide_timer = cx.start_timeout(2.0);
         self.view.redraw(cx);
+        
+        cx.widget_action(self.view.widget_uid(), &Scope::empty().path, OSDAction::Shown);
     }
 
     pub fn show_clipboard(&mut self, cx: &mut Cx, text: &str) {
@@ -203,6 +214,8 @@ impl OSD {
         self.hide_timer = cx.start_timeout(2.0);
         self.view.redraw(cx);
         cx.redraw_all();
+        
+        cx.widget_action(self.view.widget_uid(), &Scope::empty().path, OSDAction::Shown);
     }
 
     pub fn show_capslock(&mut self, cx: &mut Cx, enabled: bool) {
@@ -238,12 +251,16 @@ impl OSD {
         cx.redraw_all();
 
         ::log::info!("OSD: show_capslock completed");
+        
+        cx.widget_action(self.view.widget_uid(), &Scope::empty().path, OSDAction::Shown);
     }
 
     fn hide(&mut self, cx: &mut Cx) {
         self.view.apply_over(cx, live! { visible: false });
         self.view.redraw(cx);
         cx.redraw_all();
+        
+        cx.widget_action(self.view.widget_uid(), &Scope::empty().path, OSDAction::Hidden);
     }
 }
 

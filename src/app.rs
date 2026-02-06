@@ -2,7 +2,7 @@ use makepad_widgets::*;
 
 use crate::{AUDIO_SERVICE, CAPSLOCK_SERVICE, CLIPBOARD_SERVICE, HYPRLAND_SERVICE, DBUS_LAUNCHER_SERVICE, APPLICATIONS_SERVICE};
 use makepad_widgets::{LayerShellConfig, LayerShellLayer, LayerShellAnchor, LayerShellKeyboardInteractivity};
-use crate::widgets::osd::{OSD, OSDWidgetRefExt};
+use crate::widgets::osd::{OSD, OSDAction, OSDWidgetRefExt};
 use crate::widgets::launcher::{Launcher, LauncherAction, LauncherWidgetRefExt};
 use std::sync::Arc;
 use parking_lot::RwLock;
@@ -72,8 +72,6 @@ pub struct App {
     last_clipboard_content: String,
     #[rust]
     timer: Timer,
-    #[rust]
-    osd_hide_timer: Timer,
 }
 
 impl LiveRegister for App {
@@ -149,51 +147,23 @@ impl App {
 
 impl AppMain for App {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
-        if self.osd_hide_timer.is_event(event).is_some() {
-            if let Some(mut window) = self.osd_window.borrow_mut::<Window>() {
-                self.set_window_hidden(cx, &mut window, "nwidgets-osd");
-            }
-        }
-        
         if self.timer.is_event(event).is_some() {
             if *self.launcher_toggle_requested.read() {
                 *self.launcher_toggle_requested.write() = false;
                 self.launcher_visible = !self.launcher_visible;
 
                     if self.launcher_visible {
-                    if let Some(mut window) = self.launcher_window.borrow_mut::<Window>() {
-                        window.set_layer_shell(cx, LayerShellConfig {
-                            layer: LayerShellLayer::Overlay,
-                            anchor: LayerShellAnchor::NONE,
-                            exclusive_zone: None,
-                            namespace: "nwidgets-launcher".to_string(),
-                            keyboard_interactivity: LayerShellKeyboardInteractivity::Exclusive,
-                            margin: (0, 0, 0, 0),
-                            input_region: Some((0, 0, 700, 500)),
-                        });
-                    }
-
                     if let Some(mut launcher) = self.launcher_window.launcher(ids!(launcher)).borrow_mut() {
                         launcher.show(cx);
                     }
-
-                    self.launcher_window.redraw(cx);
-                    cx.redraw_all();
 
                     if let Some(mut launcher) = self.launcher_window.launcher(ids!(launcher)).borrow_mut() {
                         launcher.set_text_input_focus(cx);
                     }
                 } else {
-                    if let Some(mut window) = self.launcher_window.borrow_mut::<Window>() {
-                        self.set_window_hidden(cx, &mut window, "nwidgets-launcher");
-                    }
-
                     if let Some(mut launcher) = self.launcher_window.launcher(ids!(launcher)).borrow_mut() {
                         launcher.hide(cx);
                     }
-
-                    self.launcher_window.redraw(cx);
-                    cx.redraw_all();
                 }
             }
 
@@ -202,69 +172,29 @@ impl AppMain for App {
             if let Some(last_state) = &self.last_audio_state {
                 if current_state.sink_volume != last_state.sink_volume
                     || current_state.sink_muted != last_state.sink_muted {
-                    if let Some(mut window) = self.osd_window.borrow_mut::<Window>() {
-                        window.set_layer_shell(cx, LayerShellConfig {
-                            layer: LayerShellLayer::Overlay,
-                            anchor: LayerShellAnchor::BOTTOM,
-                            exclusive_zone: None,
-                            namespace: "nwidgets-osd".to_string(),
-                            keyboard_interactivity: LayerShellKeyboardInteractivity::None,
-                            margin: (0, 0, 100, 0),
-                            input_region: Some((0, 0, 300, 80)),
-                        });
-                    }
-
                     if let Some(mut osd) = self.osd_window.osd(ids!(osd)).borrow_mut() {
                         let volume = current_state.sink_volume as f32 / 100.0;
                         osd.show_volume(cx, volume, current_state.sink_muted);
                     }
-                    
-                    self.osd_hide_timer = cx.start_timeout(2.0);
                 }
             }
 
             let capslock_state = CAPSLOCK_SERVICE.is_enabled();
             if self.last_capslock_state != Some(capslock_state) {
-                if let Some(mut window) = self.osd_window.borrow_mut::<Window>() {
-                    window.set_layer_shell(cx, LayerShellConfig {
-                        layer: LayerShellLayer::Overlay,
-                        anchor: LayerShellAnchor::BOTTOM,
-                        exclusive_zone: None,
-                        namespace: "nwidgets-osd".to_string(),
-                        keyboard_interactivity: LayerShellKeyboardInteractivity::None,
-                        margin: (0, 0, 100, 0),
-                        input_region: Some((0, 0, 300, 80)),
-                    });
-                }
-
                 if let Some(mut osd) = self.osd_window.osd(ids!(osd)).borrow_mut() {
                     osd.show_capslock(cx, capslock_state);
                 }
 
                 self.last_capslock_state = Some(capslock_state);
-                self.osd_hide_timer = cx.start_timeout(2.0);
             }
 
             let clipboard_content = CLIPBOARD_SERVICE.get_last_content();
             if !clipboard_content.is_empty() && clipboard_content != self.last_clipboard_content {
-                if let Some(mut window) = self.osd_window.borrow_mut::<Window>() {
-                    window.set_layer_shell(cx, LayerShellConfig {
-                        layer: LayerShellLayer::Overlay,
-                        anchor: LayerShellAnchor::BOTTOM,
-                        exclusive_zone: None,
-                        namespace: "nwidgets-osd".to_string(),
-                        keyboard_interactivity: LayerShellKeyboardInteractivity::None,
-                        margin: (0, 0, 100, 0),
-                        input_region: Some((0, 0, 300, 80)),
-                    });
-                }
-
                 if let Some(mut osd) = self.osd_window.osd(ids!(osd)).borrow_mut() {
                     osd.show_clipboard(cx, &clipboard_content);
                 }
 
                 self.last_clipboard_content = clipboard_content;
-                self.osd_hide_timer = cx.start_timeout(2.0);
             }
 
             self.last_audio_state = Some(current_state);
@@ -274,17 +204,33 @@ impl AppMain for App {
         if let Event::Actions(actions) = event {
             for action in actions {
                 match action.as_widget_action().cast::<LauncherAction>() {
+                    LauncherAction::Shown => {
+                        if let Some(mut window) = self.launcher_window.borrow_mut::<Window>() {
+                            window.set_layer_shell(cx, LayerShellConfig {
+                                layer: LayerShellLayer::Overlay,
+                                anchor: LayerShellAnchor::NONE,
+                                exclusive_zone: None,
+                                namespace: "nwidgets-launcher".to_string(),
+                                keyboard_interactivity: LayerShellKeyboardInteractivity::Exclusive,
+                                margin: (0, 0, 0, 0),
+                                input_region: Some((0, 0, 700, 500)),
+                            });
+                        }
+                        self.launcher_window.redraw(cx);
+                        cx.redraw_all();
+                    }
+                    LauncherAction::Hidden => {
+                        if let Some(mut window) = self.launcher_window.borrow_mut::<Window>() {
+                            self.set_window_hidden(cx, &mut window, "nwidgets-launcher");
+                        }
+                        self.launcher_visible = false;
+                        self.launcher_window.redraw(cx);
+                        cx.redraw_all();
+                    }
                     LauncherAction::Close => {
                         if let Some(mut launcher) = self.launcher_window.launcher(ids!(launcher)).borrow_mut() {
                             launcher.hide(cx);
                         }
-
-                        if let Some(mut window) = self.launcher_window.borrow_mut::<Window>() {
-                            self.set_window_hidden(cx, &mut window, "nwidgets-launcher");
-                        }
-
-                        self.launcher_window.redraw(cx);
-                        cx.redraw_all();
                     }
                     LauncherAction::Launch(id) => {
                         if id.starts_with("calc:") {
@@ -295,19 +241,37 @@ impl AppMain for App {
                             }
                         }
 
-                        self.launcher_visible = false;
                         if let Some(mut launcher) = self.launcher_window.launcher(ids!(launcher)).borrow_mut() {
                             launcher.hide(cx);
                         }
-
-                        if let Some(mut window) = self.launcher_window.borrow_mut::<Window>() {
-                            self.set_window_hidden(cx, &mut window, "nwidgets-launcher");
-                        }
-
-                        self.launcher_window.redraw(cx);
-                        cx.redraw_all();
                     }
                     LauncherAction::QueryChanged(_query) => {
+                    }
+                    _ => {}
+                }
+                
+                match action.as_widget_action().cast::<OSDAction>() {
+                    OSDAction::Shown => {
+                        if let Some(mut window) = self.osd_window.borrow_mut::<Window>() {
+                            window.set_layer_shell(cx, LayerShellConfig {
+                                layer: LayerShellLayer::Overlay,
+                                anchor: LayerShellAnchor::BOTTOM,
+                                exclusive_zone: None,
+                                namespace: "nwidgets-osd".to_string(),
+                                keyboard_interactivity: LayerShellKeyboardInteractivity::None,
+                                margin: (0, 0, 100, 0),
+                                input_region: Some((0, 0, 300, 80)),
+                            });
+                        }
+                        self.osd_window.redraw(cx);
+                        cx.redraw_all();
+                    }
+                    OSDAction::Hidden => {
+                        if let Some(mut window) = self.osd_window.borrow_mut::<Window>() {
+                            self.set_window_hidden(cx, &mut window, "nwidgets-osd");
+                        }
+                        self.osd_window.redraw(cx);
+                        cx.redraw_all();
                     }
                     _ => {}
                 }
@@ -333,7 +297,6 @@ impl Default for App {
             last_capslock_state: None,
             last_clipboard_content: String::new(),
             timer: Timer::default(),
-            osd_hide_timer: Timer::default(),
         }
     }
 }
