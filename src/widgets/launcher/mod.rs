@@ -35,7 +35,7 @@ impl LauncherService {
 
         // Close control center when launcher opens
         if self.visible {
-            let cc = crate::services::ui::control_center::ControlCenterService::global(cx);
+            let cc = crate::widgets::control_center::ControlCenterService::global(cx);
             cc.update(cx, |cc, cx| {
                 if cc.is_visible() {
                     cc.toggle(cx);

@@ -7,7 +7,6 @@ pub mod service;
 use crate::ui::components::{CircularProgress, Dropdown, DropdownOption, SliderState, Toggle};
 use crate::services::media::audio::AudioService;
 use crate::services::hardware::bluetooth::BluetoothService;
-use crate::widgets::control_center::service::{ControlCenterSection, ControlCenterService};
 use crate::services::network::NetworkService;
 use crate::widgets::notifications::{NotificationAdded, NotificationService};
 use crate::services::hardware::system_monitor::SystemMonitorService;
@@ -18,7 +17,9 @@ use gpui::*;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
-pub use service::{ControlCenterSection as Section, ControlCenterService};
+pub use service::{ControlCenterSection, ControlCenterService};
+
+use service::ControlCenterSection as Section;
 
 actions!(control_center, [CloseControlCenter]);
 
