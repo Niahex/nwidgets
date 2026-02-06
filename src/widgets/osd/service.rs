@@ -1,6 +1,6 @@
 use crate::services::media::audio::{AudioService, AudioStateChanged};
 use crate::services::system::clipboard::{ClipboardEvent, ClipboardMonitor};
-use crate::services::system::lock_state::{LockMonitor, LockStateChanged};
+use crate::widgets::osd::lock_state::{LockMonitor, LockStateChanged};
 use gpui::layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions};
 use gpui::*;
 use std::time::Duration;

@@ -3,11 +3,12 @@ use gpui::*;
 use crate::services::hardware::{BluetoothService, SystemMonitorService};
 use crate::services::media::{AudioService, MprisService, PomodoroService};
 use crate::services::system::{ClipboardMonitor, DbusService, HyprlandService};
-use crate::services::ui::{ControlCenterService, OsdService, SystrayService};
+use crate::services::ui::{ControlCenterService, SystrayService};
 use crate::services::CefService;
 use crate::widgets::chat::ChatService;
 use crate::widgets::launcher::LauncherService;
 use crate::widgets::notifications::NotificationService;
+use crate::widgets::osd::OsdService;
 
 pub fn initialize_all(cx: &mut App) -> (Entity<ClipboardMonitor>, Entity<OsdService>) {
     HyprlandService::init(cx);

@@ -1,4 +1,4 @@
-use crate::services::ui::osd::{OsdEvent, OsdService, OsdStateChanged};
+use crate::widgets::osd::service::{OsdEvent, OsdService, OsdStateChanged};
 use crate::theme::ActiveTheme;
 use crate::assets::Icon;
 use crate::ui::components::{Slider, SliderState};
