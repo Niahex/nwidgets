@@ -1,3 +1,2 @@
-pub mod systray;
+// UI services module - currently empty after systray moved to widgets
 
-pub use systray::SystrayService;

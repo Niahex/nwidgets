@@ -1,4 +1,4 @@
-use crate::services::ui::systray::{SystrayChanged, SystrayService};
+use crate::widgets::panel::modules::systray::{SystrayChanged, SystrayService};
 use crate::theme::ActiveTheme;
 use gpui::prelude::*;
 use gpui::*;

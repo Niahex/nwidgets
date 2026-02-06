@@ -6,7 +6,7 @@ mod network;
 pub mod pomodoro;
 mod sink;
 mod source;
-mod systray;
+pub mod systray;
 mod workspaces;
 
 pub use active_window::ActiveWindowModule;
@@ -17,5 +17,5 @@ pub use network::NetworkModule;
 pub use pomodoro::{PomodoroModule, PomodoroService};
 pub use sink::SinkModule;
 pub use source::SourceModule;
-pub use systray::SystrayModule;
+pub use systray::{SystrayModule, SystrayService};
 pub use workspaces::WorkspacesModule;
