@@ -14,7 +14,7 @@ impl super::ControlCenterWidget {
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let stream_volume = stream.volume;
-        let (display_name, icon_name, preserve_colors) = super::get_stream_display(stream);
+        let (display_name, icon_name, preserve_colors) = super::control_center_widget::get_stream_display(stream);
         
         let slider = self.get_or_create_stream_slider(stream.id, stream_volume, stream.is_sink_input, cx);
 

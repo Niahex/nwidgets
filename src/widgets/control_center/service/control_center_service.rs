@@ -3,17 +3,7 @@ use gpui::*;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ControlCenterSection {
-    Volume,
-    Mic,
-    Bluetooth,
-    Network,
-    Monitor,
-}
-
-#[derive(Clone)]
-pub struct ControlCenterStateChanged;
+use crate::widgets::control_center::types::{ControlCenterSection, ControlCenterStateChanged};
 
 #[derive(Clone)]
 pub struct ControlCenterService {
@@ -119,7 +109,7 @@ impl ControlCenterService {
                 ..Default::default()
             },
             |_window, cx| {
-                use crate::widgets::control_center::ControlCenterWidget;
+                use crate::widgets::control_center::widget::ControlCenterWidget;
                 cx.new(ControlCenterWidget::new)
             },
         );
