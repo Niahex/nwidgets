@@ -70,7 +70,7 @@ live_design! {
             width: Fill, height: 40
             flow: Right
             align: {x: 0.0, y: 0.5}
-            padding: {left: 8, right: 8, top: 8, bottom: 8}
+            padding: {left: 12, right: 12}
             spacing: 8
 
             show_bg: true
@@ -84,13 +84,10 @@ live_design! {
             }
 
             search_icon = <Icon> {
-                width: 20, height: 20
-                icon_walk: { width: 20, height: 20 }
+                icon_walk: { width: 16.0 }
                 draw_icon: {
                     svg_file: dep("crate://self/assets/icons/svg/search.svg")
-                    brightness: 1.0
-                    curve: 0.6
-                    color: #fff
+                    color: (THEME_COLOR_TEXT_MUTE)
                 }
             }
 
@@ -98,7 +95,13 @@ live_design! {
                 width: Fill, height: Fit
 
                 draw_bg: { color: #0000 }
-                draw_text: { text_style: <THEME_FONT_REGULAR> { font_size: 14.0 }, color: (THEME_COLOR_TEXT_DEFAULT) }
+                draw_text: { 
+                    text_style: <THEME_FONT_REGULAR> { font_size: 14.0 }, 
+                    color: (THEME_COLOR_TEXT_DEFAULT) 
+                }
+                draw_cursor: {
+                    color: (NORD_FROST_1)
+                }
                 empty_text: "Search apps, calculator (=), processes (ps)..."
             }
         }
