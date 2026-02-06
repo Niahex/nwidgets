@@ -1,11 +1,8 @@
 use crate::assets::Icon;
-use crate::theme::ActiveTheme;
 use gpui::prelude::*;
 use gpui::*;
 
-pub fn render_clipboard(cx: &mut App) -> impl IntoElement {
-    let theme = cx.theme();
-
+pub fn render_clipboard(theme: &crate::theme::Theme) -> impl IntoElement {
     div()
         .flex()
         .gap_3()

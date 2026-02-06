@@ -1,10 +1,8 @@
 use crate::assets::Icon;
-use crate::theme::ActiveTheme;
 use gpui::prelude::*;
 use gpui::*;
 
-pub fn render_capslock(enabled: bool, cx: &mut App) -> impl IntoElement {
-    let theme = cx.theme();
+pub fn render_capslock(enabled: bool, theme: &crate::theme::Theme) -> impl IntoElement {
     let icon_name = if enabled {
         "capslock-on"
     } else {

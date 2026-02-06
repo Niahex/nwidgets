@@ -1,6 +1,5 @@
 use crate::assets::Icon;
 use crate::components::{Slider, SliderState};
-use crate::theme::ActiveTheme;
 use gpui::prelude::*;
 use gpui::*;
 
@@ -8,9 +7,8 @@ pub fn render_volume(
     icon_name: &str,
     displayed_volume: f32,
     volume_slider: &Entity<SliderState>,
-    cx: &mut App,
+    theme: &crate::theme::Theme,
 ) -> impl IntoElement {
-    let theme = cx.theme();
     let display_val = ((displayed_volume / 5.0).round() * 5.0) as u8;
 
     div()

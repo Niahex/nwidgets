@@ -52,17 +52,14 @@ impl OsdService {
         )
         .detach();
 
-        let mut this = Self {
+        Self {
             current_event: None,
             visible: false,
             window_manager: OsdWindowManager::new(),
             hide_task: None,
             _lock_monitor: lock_monitor,
             _clipboard_monitor: clipboard_monitor,
-        };
-
-        this.window_manager.open_window(cx);
-        this
+        }
     }
 
     fn get_volume_icon(volume: u8, muted: bool) -> &'static str {

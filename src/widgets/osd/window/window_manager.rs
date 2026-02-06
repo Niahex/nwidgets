@@ -41,6 +41,7 @@ impl OsdWindowManager {
                         namespace: "nwidgets-osd".to_string(),
                         layer: Layer::Background,
                         anchor: Anchor::BOTTOM,
+                        margin: Some((px(0.0), px(0.0), px(80.0), px(0.0))),
                         keyboard_interactivity: KeyboardInteractivity::None,
                         ..Default::default()
                     }),
