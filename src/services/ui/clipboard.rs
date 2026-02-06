@@ -1,4 +1,5 @@
 use crate::services::system::hyprland::HyprlandService;
+use chrono::{DateTime, Local};
 use futures::StreamExt;
 use gpui::prelude::*;
 use gpui::{App, AsyncApp, Entity, EventEmitter};
@@ -7,13 +8,19 @@ use std::process::Stdio;
 use tokio::io::{AsyncBufReadExt, BufReader};
 
 #[derive(Clone)]
+pub struct ClipboardEntry {
+    pub content: String,
+    pub timestamp: DateTime<Local>,
+}
+
+#[derive(Clone)]
 pub struct ClipboardEvent {
     #[allow(dead_code)]
     pub content: String,
 }
 
 pub struct ClipboardMonitor {
-    history: VecDeque<String>,
+    history: VecDeque<ClipboardEntry>,
     last_content: Option<String>,
 }
 
@@ -84,7 +91,11 @@ impl ClipboardMonitor {
 
                         if !should_exclude && this.last_content.as_ref() != Some(&content) {
                             this.last_content = Some(content.clone());
-                            this.history.push_front(content.clone());
+                            let entry = ClipboardEntry {
+                                content: content.clone(),
+                                timestamp: Local::now(),
+                            };
+                            this.history.push_front(entry);
                             if this.history.len() > 50 {
                                 this.history.pop_back();
                             }
@@ -99,7 +110,7 @@ impl ClipboardMonitor {
         model
     }
 
-    pub fn get_history(&self) -> Vec<String> {
+    pub fn get_history(&self) -> Vec<ClipboardEntry> {
         self.history.iter().cloned().collect()
     }
 }

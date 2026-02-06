@@ -167,7 +167,7 @@ impl Render for ActiveWindowModule {
                         div()
                             .text_xs()
                             .font_weight(FontWeight::SEMIBOLD)
-                            .text_color(rgba(0xd8dee966))
+                            .text_color(theme.muted)
                             .overflow_hidden()
                             .whitespace_nowrap()
                             .child(self.cached_class.clone()),

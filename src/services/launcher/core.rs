@@ -2,6 +2,7 @@ use crate::ui::components::SearchResult;
 use crate::services::launcher::{
     applications, calculator, fuzzy::FuzzyMatcher, process, state::ApplicationInfo,
 };
+use crate::services::ui::clipboard::ClipboardEntry;
 use applications::load_from_cache;
 use calculator::{is_calculator_query, Calculator};
 use parking_lot::RwLock;
@@ -12,7 +13,7 @@ pub enum SearchResultType {
     Application(usize),
     Calculation(String),
     Process(ProcessInfo),
-    Clipboard(String),
+    Clipboard(ClipboardEntry),
 }
 
 pub struct LauncherCore {
@@ -37,7 +38,7 @@ impl LauncherCore {
         }
     }
 
-    pub fn search(&mut self, query: &str, clipboard_history: Vec<String>) -> Vec<SearchResultType> {
+    pub fn search(&mut self, query: &str, clipboard_history: Vec<ClipboardEntry>) -> Vec<SearchResultType> {
         let mut results = Vec::new();
 
         if query.starts_with("clip") {
@@ -48,7 +49,7 @@ impl LauncherCore {
             };
 
             for entry in clipboard_history {
-                if search_term.is_empty() || entry.to_lowercase().contains(&search_term) {
+                if search_term.is_empty() || entry.content.to_lowercase().contains(&search_term) {
                     results.push(SearchResultType::Clipboard(entry));
                 }
             }

@@ -5,7 +5,7 @@ use gpui::{
 use std::time::Duration;
 
 use crate::ui::components::{SearchInput, SearchResult, SearchResults};
-use crate::services::ui::clipboard::ClipboardMonitor;
+use crate::services::ui::clipboard::{ClipboardEntry, ClipboardMonitor};
 use crate::services::launcher::{
     process, LauncherCore, LauncherService, LauncherToggled, SearchResultType,
 };
@@ -45,7 +45,7 @@ impl Launcher {
         self.update_search_results_with_clipboard(Vec::new());
     }
 
-    fn update_search_results_with_clipboard(&mut self, clipboard_history: Vec<String>) {
+    fn update_search_results_with_clipboard(&mut self, clipboard_history: Vec<ClipboardEntry>) {
         self.search_task = None;
 
         let query_str = self.search_input.get_query();
@@ -471,8 +471,8 @@ impl Render for LauncherWidget {
                                 .update_search_results_with_clipboard(clipboard_history);
                             cx.notify();
                         }
-                        SearchResult::Clipboard(content) => {
-                            let content = content.clone();
+                        SearchResult::Clipboard(entry) => {
+                            let content = entry.content.clone();
                             cx.background_executor()
                                 .spawn(async move {
                                     match std::process::Command::new("wl-copy")

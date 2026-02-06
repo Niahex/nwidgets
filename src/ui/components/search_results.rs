@@ -1,4 +1,5 @@
 use crate::services::launcher::{process::ProcessInfo, state::ApplicationInfo};
+use crate::services::ui::clipboard::ClipboardEntry;
 use crate::theme::Theme;
 use gpui::{div, img, prelude::*};
 
@@ -7,7 +8,7 @@ pub enum SearchResult {
     Application(ApplicationInfo),
     Calculation(String),
     Process(ProcessInfo),
-    Clipboard(String),
+    Clipboard(ClipboardEntry),
 }
 
 pub struct SearchResults {
@@ -50,10 +51,21 @@ impl SearchResults {
     pub fn move_selection_down(&mut self) {
         if !self.results.is_empty() && self.selected_index + 1 < self.results.len() {
             self.selected_index += 1;
-            let visible_items = 10;
+            let visible_items = self.get_visible_items();
             if self.selected_index >= self.scroll_offset + visible_items {
                 self.scroll_offset = self.selected_index - visible_items + 1;
             }
+        }
+    }
+
+    fn get_visible_items(&self) -> usize {
+        if self.results.is_empty() {
+            return 10;
+        }
+
+        match &self.results[0] {
+            SearchResult::Process(_) | SearchResult::Clipboard(_) => 7,
+            _ => 10,
         }
     }
 
@@ -62,7 +74,7 @@ impl SearchResults {
     }
 
     pub fn render(&self) -> impl IntoElement {
-        let visible_items = 10;
+        let visible_items = self.get_visible_items();
         let theme = self.theme.clone();
         let selected_index = self.selected_index;
 
@@ -113,6 +125,7 @@ impl SearchResults {
                                         .flex()
                                         .items_center()
                                         .justify_center()
+                                        .text_color(theme.surface)
                                         .child("="),
                                 )
                                 .child(format!("= {calc_result}")),
@@ -130,6 +143,7 @@ impl SearchResults {
                                         .flex()
                                         .items_center()
                                         .justify_center()
+                                        .text_color(theme.surface)
                                         .child("⚡"),
                                 )
                                 .child(
@@ -145,12 +159,15 @@ impl SearchResults {
                                         )),
                                 ),
                         ),
-                        SearchResult::Clipboard(content) => {
-                            let preview = if content.len() > 60 {
-                                format!("{}...", &content[..60])
+                        SearchResult::Clipboard(entry) => {
+                            let content_single_line = entry.content.replace('\n', " ").replace('\r', " ");
+                            let preview = if content_single_line.chars().count() > 60 {
+                                let truncated: String = content_single_line.chars().take(60).collect();
+                                format!("{}...", truncated)
                             } else {
-                                content.clone()
+                                content_single_line
                             };
+                            let timestamp = entry.timestamp.format("%H:%M:%S").to_string();
                             item.child(
                                 div()
                                     .flex()
@@ -164,9 +181,16 @@ impl SearchResults {
                                             .flex()
                                             .items_center()
                                             .justify_center()
+                                            .text_color(theme.bg)
                                             .child("📋"),
                                     )
-                                    .child(preview),
+                                    .child(
+                                        div()
+                                            .flex()
+                                            .flex_col()
+                                            .child(preview)
+                                            .child(div().text_xs().text_color(theme.text_muted).child(timestamp)),
+                                    ),
                             )
                         }
                     }

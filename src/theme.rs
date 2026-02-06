@@ -1,4 +1,4 @@
-use gpui::*;
+use gpui::{App, Context, Global, Hsla, rgb};
 
 #[allow(dead_code)]
 #[derive(Clone)]
@@ -18,6 +18,12 @@ pub struct Theme {
     // Accents
     pub accent: Hsla,     // frost1 - 0x88c0d0
     pub accent_alt: Hsla, // frost3 - 0x8fbcbb
+    pub accent_10: Hsla,  // frost1 - 10 %
+    pub accent_15: Hsla,
+    pub accent_20: Hsla,
+    pub accent_25: Hsla,
+    pub accent_50: Hsla,
+    pub accent_75: Hsla,
 
     // Status colors
     pub red: Hsla,    // red - 0xbf616a
@@ -46,6 +52,12 @@ impl Theme {
             muted: Hsla::from(rgb(0xd8dee9)).opacity(0.4),
             accent: rgb(0x88c0d0).into(),
             accent_alt: rgb(0x8fbcbb).into(),
+            accent_10: Hsla::from(rgb(0x8fbcbb)).opacity(0.1),
+            accent_15: Hsla::from(rgb(0x8fbcbb)).opacity(0.15),
+            accent_20: Hsla::from(rgb(0x8fbcbb)).opacity(0.20),
+            accent_25: Hsla::from(rgb(0x8fbcbb)).opacity(0.25),
+            accent_50: Hsla::from(rgb(0x8fbcbb)).opacity(0.50),
+            accent_75: Hsla::from(rgb(0x8fbcbb)).opacity(0.75),
             red: rgb(0xbf616a).into(),
             orange: rgb(0xd08770).into(),
             yellow: rgb(0xebcb8b).into(),
