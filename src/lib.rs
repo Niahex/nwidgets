@@ -8,9 +8,10 @@ use crate::services::media::pomodoro::PomodoroService;
 use crate::services::system::capslock::CapsLockService;
 use crate::services::system::hyprland::HyprlandService;
 use crate::services::system::dbus_launcher::DbusLauncherService;
+use crate::services::system::dbus_tasker::DbusTaskerService;
 use crate::services::ui::clipboard::ClipboardService;
 use crate::services::launcher::applications::ApplicationService;
-use crate::services::project::ProjectService;
+use crate::services::tasker::TaskerService;
 
 pub mod app;
 pub mod theme;
@@ -30,8 +31,9 @@ pub static AUDIO_SERVICE: Lazy<AudioService> = Lazy::new(AudioService::new);
 pub static CLIPBOARD_SERVICE: Lazy<ClipboardService> = Lazy::new(ClipboardService::new);
 pub static CAPSLOCK_SERVICE: Lazy<CapsLockService> = Lazy::new(CapsLockService::new);
 pub static DBUS_LAUNCHER_SERVICE: Lazy<DbusLauncherService> = Lazy::new(DbusLauncherService::new);
+pub static DBUS_TASKER_SERVICE: Lazy<DbusTaskerService> = Lazy::new(DbusTaskerService::new);
 pub static APPLICATIONS_SERVICE: Lazy<ApplicationService> = Lazy::new(ApplicationService::new);
-pub static PROJECT_SERVICE: Lazy<ProjectService> = Lazy::new(ProjectService::new);
+pub static TASKER_SERVICE: Lazy<TaskerService> = Lazy::new(TaskerService::new);
 
 pub fn live_design(cx: &mut Cx) {
     makepad_widgets::live_design(cx);

@@ -6,7 +6,7 @@ live_design! {
     use makepad_draw::shader::std::*;
     use crate::theme::*;
 
-    pub ProjectManager = {{ProjectManager}} {
+    pub Tasker = {{Tasker}} {
         width: 800, height: 600
 
         show_bg: true
@@ -37,7 +37,7 @@ live_design! {
                     text_style: <THEME_FONT_BOLD> { font_size: 18.0 }, 
                     color: (THEME_COLOR_TEXT_DEFAULT) 
                 }
-                text: "Project Manager"
+                text: "Tasker"
             }
         }
 
@@ -56,12 +56,12 @@ live_design! {
 }
 
 #[derive(Live, LiveHook, Widget)]
-pub struct ProjectManager {
+pub struct Tasker {
     #[deref]
     view: View,
 }
 
-impl Widget for ProjectManager {
+impl Widget for Tasker {
     fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
         self.view.draw_walk(cx, scope, walk)
     }
@@ -78,7 +78,7 @@ impl Widget for ProjectManager {
     }
 }
 
-impl ProjectManager {
+impl Tasker {
     pub fn show(&mut self, cx: &mut Cx) {
         self.view.apply_over(cx, live! { visible: true });
         self.view.redraw(cx);
@@ -91,7 +91,7 @@ impl ProjectManager {
 }
 
 #[derive(Clone, Debug, DefaultNone)]
-pub enum ProjectManagerAction {
+pub enum TaskerAction {
     None,
     Close,
     ProjectSelected(String),

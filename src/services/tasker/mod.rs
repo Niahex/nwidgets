@@ -27,19 +27,19 @@ pub struct Task {
 }
 
 #[derive(Clone)]
-pub struct ProjectService {
-    state: Arc<RwLock<ProjectState>>,
+pub struct TaskerService {
+    state: Arc<RwLock<TaskerState>>,
 }
 
 #[derive(Default)]
-struct ProjectState {
+struct TaskerState {
     projects: HashMap<String, Project>,
 }
 
-impl ProjectService {
+impl TaskerService {
     pub fn new() -> Self {
         let service = Self {
-            state: Arc::new(RwLock::new(ProjectState::default())),
+            state: Arc::new(RwLock::new(TaskerState::default())),
         };
         
         service.load_from_disk();
@@ -164,6 +164,6 @@ impl ProjectService {
     fn get_data_path() -> std::path::PathBuf {
         let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
         std::path::PathBuf::from(home)
-            .join(".local/share/nwidgets/projects.json")
+            .join(".local/share/nwidgets/tasker.json")
     }
 }

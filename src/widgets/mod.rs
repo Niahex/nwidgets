@@ -5,7 +5,7 @@ pub mod launcher;
 pub mod control_center;
 pub mod notifications;
 pub mod osd;
-pub mod project_manager;
+pub mod tasker;
 
 pub fn live_design(cx: &mut Cx) {
     panel::register_live_design(cx);
@@ -13,4 +13,5 @@ pub fn live_design(cx: &mut Cx) {
     control_center::register_live_design(cx);
     notifications::live_design(cx);
     osd::live_design(cx);
+    tasker::live_design(cx);
 }
