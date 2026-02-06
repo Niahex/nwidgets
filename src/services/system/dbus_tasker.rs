@@ -60,7 +60,10 @@ impl TaskerInterface {
     fn toggle_tasker(&self) {
         log::info!("Toggle tasker requested via D-Bus");
         if let Some(cb) = self.callback.read().as_ref() {
+            log::info!("Calling tasker toggle callback");
             cb();
+        } else {
+            log::warn!("No callback registered for tasker toggle");
         }
     }
 }

@@ -81,11 +81,16 @@ impl Widget for Tasker {
 impl Tasker {
     pub fn show(&mut self, cx: &mut Cx) {
         self.view.apply_over(cx, live! { visible: true });
+        
+        cx.widget_action(self.view.widget_uid(), &Scope::empty().path, TaskerAction::Shown);
+        cx.new_next_frame();
         self.view.redraw(cx);
     }
 
     pub fn hide(&mut self, cx: &mut Cx) {
         self.view.apply_over(cx, live! { visible: false });
+        
+        cx.widget_action(self.view.widget_uid(), &Scope::empty().path, TaskerAction::Hidden);
         self.view.redraw(cx);
     }
 }
@@ -94,6 +99,8 @@ impl Tasker {
 pub enum TaskerAction {
     None,
     Close,
+    Shown,
+    Hidden,
     ProjectSelected(String),
     TaskToggled(String),
 }

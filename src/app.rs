@@ -147,6 +147,7 @@ impl MatchEvent for App {
         let tasker_toggle_requested = self.tasker_toggle_requested.clone();
 
         DBUS_TASKER_SERVICE.on_toggle(move || {
+            ::log::info!("DBus tasker toggle callback triggered");
             let mut toggle = tasker_toggle_requested.write();
             *toggle = true;
         });
@@ -197,13 +198,19 @@ impl AppMain for App {
             if *self.tasker_toggle_requested.read() {
                 *self.tasker_toggle_requested.write() = false;
                 self.tasker_visible = !self.tasker_visible;
+                
+                ::log::info!("Tasker toggle: visible={}", self.tasker_visible);
 
                 if self.tasker_visible {
                     if let Some(mut tasker) = self.tasker_window.tasker(ids!(tasker)).borrow_mut() {
+                        ::log::info!("Showing tasker window");
                         tasker.show(cx);
+                    } else {
+                        ::log::error!("Failed to get tasker widget");
                     }
                 } else {
                     if let Some(mut tasker) = self.tasker_window.tasker(ids!(tasker)).borrow_mut() {
+                        ::log::info!("Hiding tasker window");
                         tasker.hide(cx);
                     }
                 }
@@ -319,6 +326,29 @@ impl AppMain for App {
                 }
 
                 match action.as_widget_action().cast::<TaskerAction>() {
+                    TaskerAction::Shown => {
+                        if let Some(mut window) = self.tasker_window.borrow_mut::<Window>() {
+                            window.set_layer_shell(cx, LayerShellConfig {
+                                layer: LayerShellLayer::Overlay,
+                                anchor: LayerShellAnchor::NONE,
+                                exclusive_zone: None,
+                                namespace: "nwidgets-tasker".to_string(),
+                                keyboard_interactivity: LayerShellKeyboardInteractivity::Exclusive,
+                                margin: (0, 0, 0, 0),
+                                input_region: Some((0, 0, 800, 600)),
+                            });
+                        }
+                        self.tasker_window.redraw(cx);
+                        cx.redraw_all();
+                    }
+                    TaskerAction::Hidden => {
+                        if let Some(mut window) = self.tasker_window.borrow_mut::<Window>() {
+                            self.set_window_hidden(cx, &mut window, "nwidgets-tasker");
+                        }
+                        self.tasker_visible = false;
+                        self.tasker_window.redraw(cx);
+                        cx.redraw_all();
+                    }
                     TaskerAction::Close => {
                         if let Some(mut tasker) = self.tasker_window.tasker(ids!(tasker)).borrow_mut() {
                             tasker.hide(cx);
