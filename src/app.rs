@@ -1,9 +1,10 @@
 use makepad_widgets::*;
 
-use crate::{AUDIO_SERVICE, CAPSLOCK_SERVICE, CLIPBOARD_SERVICE, HYPRLAND_SERVICE, DBUS_LAUNCHER_SERVICE, APPLICATIONS_SERVICE};
+use crate::{AUDIO_SERVICE, CAPSLOCK_SERVICE, CLIPBOARD_SERVICE, HYPRLAND_SERVICE, DBUS_LAUNCHER_SERVICE, DBUS_TASKER_SERVICE, APPLICATIONS_SERVICE};
 use makepad_widgets::{LayerShellConfig, LayerShellLayer, LayerShellAnchor, LayerShellKeyboardInteractivity};
 use crate::widgets::osd::{OSD, OSDAction, OSDWidgetRefExt};
 use crate::widgets::launcher::{Launcher, LauncherAction, LauncherWidgetRefExt};
+use crate::widgets::tasker::{Tasker, TaskerAction, TaskerWidgetRefExt};
 use std::sync::Arc;
 use parking_lot::RwLock;
 
@@ -15,6 +16,7 @@ live_design! {
     use crate::widgets::panel::*;
     use crate::widgets::launcher::*;
     use crate::widgets::osd::*;
+    use crate::widgets::tasker::*;
 
     App = {{App}} {
         ui: <Window> {
@@ -47,6 +49,13 @@ live_design! {
 
             launcher = <Launcher> {}
         }
+
+        tasker_window: <Window> {
+            window: {inner_size: vec2(800, 600)},
+            pass: {clear_color: #0000},
+
+            tasker = <Tasker> {}
+        }
     }
 }
 
@@ -60,10 +69,16 @@ pub struct App {
     osd_window: WidgetRef,
     #[live]
     launcher_window: WidgetRef,
+    #[live]
+    tasker_window: WidgetRef,
     #[rust]
     launcher_visible: bool,
     #[rust]
     launcher_toggle_requested: Arc<RwLock<bool>>,
+    #[rust]
+    tasker_visible: bool,
+    #[rust]
+    tasker_toggle_requested: Arc<RwLock<bool>>,
     #[rust]
     last_audio_state: Option<crate::services::media::audio::AudioState>,
     #[rust]
@@ -87,6 +102,7 @@ impl MatchEvent for App {
         let _ = &*CLIPBOARD_SERVICE;
         let _ = &*CAPSLOCK_SERVICE;
         let _ = &*DBUS_LAUNCHER_SERVICE;
+        let _ = &*DBUS_TASKER_SERVICE;
         let _ = &*APPLICATIONS_SERVICE;
 
         if let Some(mut window) = self.ui.borrow_mut::<Window>() {
@@ -117,10 +133,21 @@ impl MatchEvent for App {
             self.set_window_hidden(cx, &mut window, "nwidgets-launcher");
         }
 
+        if let Some(mut window) = self.tasker_window.borrow_mut::<Window>() {
+            self.set_window_hidden(cx, &mut window, "nwidgets-tasker");
+        }
+
         let launcher_toggle_requested = self.launcher_toggle_requested.clone();
 
         DBUS_LAUNCHER_SERVICE.on_toggle(move || {
             let mut toggle = launcher_toggle_requested.write();
+            *toggle = true;
+        });
+
+        let tasker_toggle_requested = self.tasker_toggle_requested.clone();
+
+        DBUS_TASKER_SERVICE.on_toggle(move || {
+            let mut toggle = tasker_toggle_requested.write();
             *toggle = true;
         });
 
@@ -163,6 +190,21 @@ impl AppMain for App {
                 } else {
                     if let Some(mut launcher) = self.launcher_window.launcher(ids!(launcher)).borrow_mut() {
                         launcher.hide(cx);
+                    }
+                }
+            }
+
+            if *self.tasker_toggle_requested.read() {
+                *self.tasker_toggle_requested.write() = false;
+                self.tasker_visible = !self.tasker_visible;
+
+                if self.tasker_visible {
+                    if let Some(mut tasker) = self.tasker_window.tasker(ids!(tasker)).borrow_mut() {
+                        tasker.show(cx);
+                    }
+                } else {
+                    if let Some(mut tasker) = self.tasker_window.tasker(ids!(tasker)).borrow_mut() {
+                        tasker.hide(cx);
                     }
                 }
             }
@@ -275,6 +317,15 @@ impl AppMain for App {
                     }
                     _ => {}
                 }
+
+                match action.as_widget_action().cast::<TaskerAction>() {
+                    TaskerAction::Close => {
+                        if let Some(mut tasker) = self.tasker_window.tasker(ids!(tasker)).borrow_mut() {
+                            tasker.hide(cx);
+                        }
+                    }
+                    _ => {}
+                }
             }
         }
 
@@ -282,6 +333,7 @@ impl AppMain for App {
         self.ui.handle_event(cx, event, &mut Scope::empty());
         self.osd_window.handle_event(cx, event, &mut Scope::empty());
         self.launcher_window.handle_event(cx, event, &mut Scope::empty());
+        self.tasker_window.handle_event(cx, event, &mut Scope::empty());
     }
 }
 
@@ -291,8 +343,11 @@ impl Default for App {
             ui: WidgetRef::default(),
             osd_window: WidgetRef::default(),
             launcher_window: WidgetRef::default(),
+            tasker_window: WidgetRef::default(),
             launcher_visible: false,
             launcher_toggle_requested: Arc::new(RwLock::new(false)),
+            tasker_visible: false,
+            tasker_toggle_requested: Arc::new(RwLock::new(false)),
             last_audio_state: None,
             last_capslock_state: None,
             last_clipboard_content: String::new(),
