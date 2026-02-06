@@ -1,10 +1,6 @@
 use gpui::{App, AppContext, Context, Entity, EventEmitter, Global};
 
-pub struct ChatToggled;
-pub struct ChatPinToggled;
-pub struct ChatNavigate {
-    pub url: String,
-}
+use crate::widgets::chat::types::{ChatNavigate, ChatPinToggled, ChatToggled};
 
 pub struct ChatService {
     pub visible: bool,
@@ -39,7 +35,6 @@ impl ChatService {
     pub fn toggle(&mut self, cx: &mut Context<Self>) {
         self.visible = !self.visible;
 
-        // Close control center when chat opens
         if self.visible {
             let cc = crate::widgets::control_center::ControlCenterService::global(cx);
             cc.update(cx, |cc, cx| {
