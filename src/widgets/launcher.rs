@@ -1,4 +1,5 @@
 use makepad_widgets::*;
+use makepad_widgets::image_cache::ImageCacheImpl;
 
 live_design! {
     use link::theme::*;
@@ -27,15 +28,9 @@ live_design! {
             }
         }
 
-        icon = <Icon> {
+        icon = <Image> {
             width: 24, height: 24
-            icon_walk: { width: 24, height: 24 }
-            draw_icon: {
-                svg_file: dep("crate://self/assets/icons/svg/search.svg")
-                brightness: 1.0
-                curve: 0.6
-                color: #fff
-            }
+            source: dep("crate://self/assets/icons/png/help.png")
         }
 
         name = <Label> {
@@ -159,6 +154,7 @@ pub struct LauncherResult {
     pub name: String,
     pub description: String,
     pub icon_path: Option<String>,
+    pub startup_wm_class: Option<String>,
     pub result_type: LauncherResultType,
 }
 
@@ -280,6 +276,7 @@ impl Launcher {
                     name: format!("= {}", expr),
                     description: "Calculator".to_string(),
                     icon_path: Some("./assets/icons/svg/search.svg".to_string()),
+                    startup_wm_class: None,
                     result_type: LauncherResultType::Calculator,
                 });
             }
@@ -289,6 +286,7 @@ impl Launcher {
                 name: "Process Manager".to_string(),
                 description: "List running processes".to_string(),
                 icon_path: Some("./assets/icons/svg/search.svg".to_string()),
+                startup_wm_class: None,
                 result_type: LauncherResultType::Process,
             });
         } else {
@@ -309,20 +307,21 @@ impl Launcher {
                         id: app.id.clone(),
                         name: app.name.clone(),
                         description,
-                    icon_path: app.icon.clone(),
-                    result_type: LauncherResultType::Application,
-                });
+                        icon_path: app.icon.clone(),
+                        startup_wm_class: app.startup_wm_class.clone(),
+                        result_type: LauncherResultType::Application,
+                    });
+                }
             }
         }
-    }
 
-    self.all_results = results;
-    self.visible_count = 10.min(self.all_results.len());
-    self.results = self.all_results[..self.visible_count].to_vec();
-    ::log::info!("search complete: all_results={}, visible_count={}", 
-        self.all_results.len(), self.visible_count);
-    self.update_results(cx);
-}
+        self.all_results = results;
+        self.visible_count = 10.min(self.all_results.len());
+        self.results = self.all_results[..self.visible_count].to_vec();
+        ::log::info!("search complete: all_results={}, visible_count={}", 
+            self.all_results.len(), self.visible_count);
+        self.update_results(cx);
+    }
 
     fn update_results(&mut self, cx: &mut Cx) {
         let item_ids = [
@@ -347,18 +346,11 @@ impl Launcher {
                 });
 
                 item.label(&[id!(name)]).set_text(cx, &result.name);
-
-                if let Some(path) = &result.icon_path {
-                    if std::path::Path::new(path).exists() {
-                        if let Some(mut icon) = item.icon(&[id!(icon)]).borrow_mut() {
-                        }
-                    } else {
-                        if let Some(mut icon) = item.icon(&[id!(icon)]).borrow_mut() {
-                        }
-                    }
-                } else {
-                    if let Some(mut icon) = item.icon(&[id!(icon)]).borrow_mut() {
-                    }
+                
+                let icon_path = Self::get_icon_path(result.startup_wm_class.as_ref(), &result.id);
+                if let Some(mut image) = item.image(&[id!(icon)]).borrow_mut() {
+                    let path = std::path::Path::new(&icon_path);
+                    let _ = image.load_image_file_by_path(cx, path, 0);
                 }
             } else {
                 item.set_visible(cx, false);
@@ -376,6 +368,28 @@ impl Launcher {
         self.selected_index = 0;
         self.update_results(cx);
         self.view.redraw(cx);
+    }
+
+    fn get_icon_path(startup_wm_class: Option<&String>, app_id: &str) -> String {
+        let candidates = if let Some(class) = startup_wm_class {
+            let normalized_class = class.to_lowercase().replace('.', "-");
+            vec![
+                format!("./assets/icons/png/{}.png", normalized_class),
+                format!("./assets/icons/png/{}.png", app_id.to_lowercase().replace('.', "-")),
+            ]
+        } else {
+            vec![
+                format!("./assets/icons/png/{}.png", app_id.to_lowercase().replace('.', "-")),
+            ]
+        };
+        
+        for candidate in candidates {
+            if std::path::Path::new(&candidate).exists() {
+                return candidate;
+            }
+        }
+        
+        "./assets/icons/png/help.png".to_string()
     }
 
     pub fn show(&mut self, cx: &mut Cx) {

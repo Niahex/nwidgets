@@ -15,6 +15,7 @@ pub struct Application {
     pub comment: Option<String>,
     pub exec: String,
     pub icon: Option<String>,
+    pub startup_wm_class: Option<String>,
     pub categories: Vec<String>,
     pub keywords: Vec<String>,
     pub desktop_file: PathBuf,
@@ -96,6 +97,7 @@ impl ApplicationService {
                         comment: entry.comment(None).map(|s| s.to_string()),
                         exec: entry.exec().unwrap_or("").to_string(),
                         icon: resolved_icon,
+                        startup_wm_class: entry.startup_wm_class().map(|s| s.to_string()),
                         categories: entry.categories()
                             .map(|s| s.split(';').map(|s| s.to_string()).collect())
                             .unwrap_or_default(),
