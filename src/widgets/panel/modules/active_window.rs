@@ -119,8 +119,6 @@ impl ActiveWindowModule {
             self.view.label(ids!(info.class)).set_text(cx, &class);
 
             let icon_path = Self::get_icon_path(&class);
-            
-            ::log::info!("Active window changed: class='{}', icon_path='{}'", class, icon_path);
 
             if let Some(mut image) = self.view.image(ids!(icon)).borrow_mut() {
                 let path = std::path::Path::new(&icon_path);
