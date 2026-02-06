@@ -1,12 +1,12 @@
 use gpui::*;
 
 use crate::services::system::{HyprlandService};
-use crate::services::ui::{ChatService};
+use crate::widgets::chat::ChatService;
 use crate::widgets::launcher::LauncherService;
 use crate::services::ui::{NotificationAdded, NotificationService};
 use crate::widgets::notifications::{NotificationsStateChanged, NotificationsWindowManager};
 
-use crate::windows::chat;
+use crate::widgets::chat::window;
 use crate::widgets::launcher::window as launcher;
 
 pub fn setup_all(

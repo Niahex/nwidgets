@@ -1,4 +1,4 @@
-use crate::services::ui::chat::ChatService;
+use crate::widgets::chat::ChatService;
 use crate::services::system::hyprland::{ActiveWindowChanged, HyprlandService};
 use crate::theme::ActiveTheme;
 use crate::assets::Icon;

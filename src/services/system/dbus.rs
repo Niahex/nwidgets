@@ -78,13 +78,13 @@ impl DbusService {
                     match cmd {
                         DbusCommand::ToggleChat => {
                             cx.update(|cx| {
-                                let chat = crate::services::ui::chat::ChatService::global(cx);
+                                let chat = crate::widgets::chat::ChatService::global(cx);
                                 chat.update(cx, |chat, mcx| chat.toggle(mcx));
                             });
                         }
                         DbusCommand::PinChat => {
                             cx.update(|cx| {
-                                let chat = crate::services::ui::chat::ChatService::global(cx);
+                                let chat = crate::widgets::chat::ChatService::global(cx);
                                 chat.update(cx, |chat, mcx| chat.toggle_pin(mcx));
                             });
                         }
