@@ -1,10 +1,9 @@
+use gpui::layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions};
 use gpui::*;
 
 use crate::widgets::panel::Panel;
 
 pub fn open(cx: &mut App) {
-    use gpui::layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions};
-
     cx.open_window(
         WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(Bounds {
