@@ -72,6 +72,8 @@ pub struct App {
     last_clipboard_content: String,
     #[rust]
     timer: Timer,
+    #[rust]
+    osd_hide_timer: Timer,
 }
 
 impl LiveRegister for App {
@@ -141,6 +143,20 @@ impl MatchEvent for App {
 
 impl AppMain for App {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
+        if self.osd_hide_timer.is_event(event).is_some() {
+            if let Some(mut window) = self.osd_window.borrow_mut::<Window>() {
+                window.set_layer_shell(cx, LayerShellConfig {
+                    layer: LayerShellLayer::Overlay,
+                    anchor: LayerShellAnchor::BOTTOM,
+                    exclusive_zone: None,
+                    namespace: "nwidgets-osd".to_string(),
+                    keyboard_interactivity: LayerShellKeyboardInteractivity::None,
+                    margin: (0, 0, 100, 0),
+                    input_region: None,
+                });
+            }
+        }
+        
         if self.timer.is_event(event).is_some() {
             if *self.launcher_toggle_requested.read() {
                 *self.launcher_toggle_requested.write() = false;
@@ -212,6 +228,8 @@ impl AppMain for App {
                         let volume = current_state.sink_volume as f32 / 100.0;
                         osd.show_volume(cx, volume, current_state.sink_muted);
                     }
+                    
+                    self.osd_hide_timer = cx.start_timeout(2.0);
                 }
             }
 
@@ -234,6 +252,7 @@ impl AppMain for App {
                 }
 
                 self.last_capslock_state = Some(capslock_state);
+                self.osd_hide_timer = cx.start_timeout(2.0);
             }
 
             let clipboard_content = CLIPBOARD_SERVICE.get_last_content();
@@ -255,6 +274,7 @@ impl AppMain for App {
                 }
 
                 self.last_clipboard_content = clipboard_content;
+                self.osd_hide_timer = cx.start_timeout(2.0);
             }
 
             self.last_audio_state = Some(current_state);
