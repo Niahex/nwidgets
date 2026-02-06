@@ -37,8 +37,10 @@ pub struct Theme {
     pub systray_hover: Hsla, // 0x313244 (catppuccin)
 }
 
+#[allow(dead_code)]
 impl Global for Theme {}
 
+#[allow(dead_code)]
 impl Theme {
     pub fn nord_dark() -> Self {
         Self {
@@ -77,16 +79,19 @@ impl Theme {
     }
 }
 
+#[allow(dead_code)]
 pub trait ActiveTheme {
     fn theme(&self) -> &Theme;
 }
 
+#[allow(dead_code)]
 impl ActiveTheme for App {
     fn theme(&self) -> &Theme {
         self.global::<Theme>()
     }
 }
 
+#[allow(dead_code)]
 impl<V> ActiveTheme for Context<'_, V> {
     fn theme(&self) -> &Theme {
         self.global::<Theme>()
