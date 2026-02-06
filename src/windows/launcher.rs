@@ -43,17 +43,17 @@ pub fn on_toggle(service: Entity<LauncherService>, _event: &LauncherToggled, cx:
     
     let _ = window.update(cx, |launcher, window, cx| {
         if visible {
-            window.resize(size(px(700.0), px(500.0)));
-            window.set_keyboard_interactivity(gpui::layer_shell::KeyboardInteractivity::Exclusive);
             window.set_layer(gpui::layer_shell::Layer::Overlay);
+            window.set_keyboard_interactivity(gpui::layer_shell::KeyboardInteractivity::Exclusive);
+            window.resize(size(px(700.0), px(500.0)));
             launcher.reset();
             window.focus(launcher.focus_handle(), cx);
             cx.activate(true);
         } else {
-            window.resize(size(px(1.0), px(1.0)));
-            window.set_keyboard_interactivity(gpui::layer_shell::KeyboardInteractivity::None);
-            window.set_input_region(None);
             window.set_layer(gpui::layer_shell::Layer::Background);
+            window.set_input_region(None);
+            window.set_keyboard_interactivity(gpui::layer_shell::KeyboardInteractivity::None);
+            window.resize(size(px(1.0), px(1.0)));
         }
         cx.notify();
     });

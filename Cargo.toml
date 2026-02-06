@@ -5,8 +5,8 @@ edition = "2021"
 include = ["data/**/*", "src/**/*", "Cargo.toml", "assets/**/*"]
 
 [dependencies]
-gpui = { git = "https://github.com/Niahex/zed", features = ["wayland"] }
-gpui_tokio = { git = "https://github.com/Niahex/zed" }
+gpui = { git = "https://github.com/Niahex/zed", branch = "layershellv2", features = ["wayland"] }
+gpui_tokio = { git = "https://github.com/Niahex/zed", branch = "layershellv2" }
 
 anyhow = "1.0"
 log = "0.4"
@@ -23,8 +23,8 @@ once_cell = "1.19"
 pipewire = "0.9.2"
 image = "0.25"
 smallvec = "1"
-cef = { git = "https://github.com/tauri-apps/cef-rs", tag = "export-cef-dir-v143.7.0+143.0.14" }
-cef-dll-sys = { git = "https://github.com/tauri-apps/cef-rs", tag = "export-cef-dir-v143.7.0+143.0.14" }
+cef = { git = "https://github.com/tauri-apps/cef-rs", tag = "export-cef-dir-v144.4.0+144.0.13" }
+cef-dll-sys = { git = "https://github.com/tauri-apps/cef-rs", tag = "export-cef-dir-v144.4.0+144.0.13" }
 dirs = "6.0"
 
 # Launcher dependencies

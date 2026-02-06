@@ -8,17 +8,6 @@
     rust-overlay.url = "github:oxalica/rust-overlay";
   };
 
-  nixConfig = {
-    extra-substituters = [
-      "https://nix-community.cachix.org"
-      "https://cache.nixos.org"
-    ];
-    extra-trusted-public-keys = [
-      "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
-      "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
-    ];
-  };
-
   outputs = {
     self,
     nixpkgs,
@@ -34,7 +23,7 @@
         pkgs = import nixpkgs {inherit system overlays;};
 
         # Rust toolchain configuration
-        rustToolchain = pkgs.rust-bin.stable."1.88.0".default.override {
+        rustToolchain = pkgs.rust-bin.nightly.latest.default.override {
           extensions = ["rust-src"];
         };
 
@@ -57,12 +46,12 @@
         };
 
         # CEF Configuration
-        cefVersion = "143.0.14+gdd46a37+chromium-143.0.7499.193";
+        cefVersion = "144.0.13+g9f739aa+chromium-144.0.7559.133";
         cefPlatform = "linux64";
         cefSrc = pkgs.fetchurl {
           url = "https://cef-builds.spotifycdn.com/cef_binary_${pkgs.lib.strings.escapeURL cefVersion}_${cefPlatform}_minimal.tar.bz2";
           name = "cef_binary_${pkgs.lib.strings.escapeURL cefVersion}_${cefPlatform}_minimal.tar.bz2";
-          hash = "sha256-BPlAGOHOxIkgpX+yMHUDxy+xk2FXgyXf1Ex9Uibn7cM=";
+          hash = "sha256-C5Q7smuu0yPLsADsIdkFcX0iHflS3KI7uyxq9tIbojg=";
         };
 
         cefDeps = with pkgs; [
@@ -265,14 +254,14 @@
 
           shellHook = ''
             echo "[🦀 Rust $(rustc --version)] - Ready to develop nwidgets!"
-            
+
             # Auto-detect available Vulkan ICDs (System + Nix Mesa Fallback)
             SYSTEM_ICDS=$(find /run/opengl-driver/share/vulkan/icd.d -name "*_icd.*.json" 2>/dev/null | tr '\n' ':')
             MESA_ICDS=$(find ${pkgs.mesa}/share/vulkan/icd.d -name "*_icd.*.json" 2>/dev/null | tr '\n' ':')
             export VK_ICD_FILENAMES="''${SYSTEM_ICDS}''${MESA_ICDS}"
             # Clean up trailing colon
             export VK_ICD_FILENAMES=$(echo "$VK_ICD_FILENAMES" | sed 's/:$//')
-            
+
             # GPU-specific optimizations
             if lspci 2>/dev/null | grep -qi nvidia; then
               export __GL_THREADED_OPTIMIZATIONS=1
@@ -287,7 +276,7 @@
             else
               echo "GPU: Auto-detected (AMD/NVIDIA/Intel)"
             fi
-            
+
             echo "Vulkan ICD: $VK_ICD_FILENAMES"
             echo "Available Vulkan devices:"
             vulkaninfo --summary 2>/dev/null | grep -A 2 "GPU" || echo "  Run 'vulkaninfo' for details"

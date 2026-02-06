@@ -200,11 +200,13 @@ impl NotificationsWindowManager {
     }
 
     pub fn open_window(&mut self, cx: &mut App) -> Option<Entity<NotificationsWidget>> {
-        if self.window.is_some() {
-            return self
-                .window
-                .as_ref()
-                .and_then(|w| cx.read_window(w, |entity, _| entity.clone()).ok());
+        if let Some(window) = &self.window {
+            let _ = window.update(cx, |_, window, _| {
+                window.set_layer(gpui::layer_shell::Layer::Overlay);
+                window.set_input_region(None);
+                window.resize(size(px(400.0), px(600.0)));
+            });
+            return cx.read_window(window, |entity, _| entity.clone()).ok();
         }
 
         use gpui::layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions};
@@ -234,7 +236,6 @@ impl NotificationsWindowManager {
                     ..Default::default()
                 },
                 |window, cx| {
-                    // Les notifications n'ont pas besoin de recevoir des clics
                     window.set_input_region(None);
                     cx.new(NotificationsWidget::new)
                 },
@@ -246,7 +247,14 @@ impl NotificationsWindowManager {
         entity
     }
 
-    pub fn close_window(&mut self, _cx: &mut App) {
-        // Ne plus fermer la fenêtre, elle reste ouverte et se cache via le rendu
+    pub fn close_window(&mut self, cx: &mut App) {
+        if let Some(window) = &self.window {
+            let _ = window.update(cx, |_, window, _| {
+                window.set_layer(gpui::layer_shell::Layer::Background);
+                window.set_input_region(None);
+                window.set_keyboard_interactivity(gpui::layer_shell::KeyboardInteractivity::None);
+                window.resize(size(px(1.0), px(1.0)));
+            });
+        }
     }
 }

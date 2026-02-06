@@ -120,10 +120,11 @@ impl OsdService {
             self.visible = true;
             changed = true;
 
-            // Restaurer vers la layer Overlay quand visible
             if let Some(window_handle) = &self.window_handle {
                 let _ = window_handle.update(cx, |_, window, _| {
                     window.set_layer(gpui::layer_shell::Layer::Overlay);
+                    window.set_input_region(None);
+                    window.resize(size(px(400.0), px(64.0)));
                 });
             }
         }
@@ -151,10 +152,12 @@ impl OsdService {
         if self.visible {
             self.visible = false;
 
-            // Déplacer vers la layer Background quand caché
             if let Some(window_handle) = &self.window_handle {
                 let _ = window_handle.update(cx, |_, window, _| {
                     window.set_layer(gpui::layer_shell::Layer::Background);
+                    window.set_input_region(None);
+                    window.set_keyboard_interactivity(gpui::layer_shell::KeyboardInteractivity::None);
+                    window.resize(size(px(1.0), px(1.0)));
                 });
             }
 
