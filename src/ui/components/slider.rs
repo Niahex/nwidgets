@@ -100,13 +100,13 @@ impl SliderState {
         let inner_pos = position.x - self.bounds.left();
         let total_width = self.bounds.size.width;
         let percentage = (inner_pos / total_width).clamp(0.0, 1.0);
-        
+
         let raw_value = self.min + (self.max - self.min) * percentage;
         let stepped_value = (raw_value / self.step).round() * self.step;
-        
+
         self.value = stepped_value.clamp(self.min, self.max);
         self.update_percentage();
-        
+
         cx.emit(SliderEvent::Change(self.value));
         cx.notify();
     }
