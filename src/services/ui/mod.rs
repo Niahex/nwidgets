@@ -1,12 +1,10 @@
 pub mod chat;
-pub mod clipboard;
 pub mod control_center;
 pub mod notifications;
 pub mod osd;
 pub mod systray;
 
 pub use chat::{ChatNavigate, ChatService, ChatToggled};
-pub use clipboard::ClipboardMonitor;
 pub use control_center::ControlCenterService;
 pub use notifications::{NotificationAdded, NotificationService};
 pub use osd::OsdService;

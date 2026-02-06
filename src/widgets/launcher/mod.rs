@@ -3,11 +3,18 @@ pub mod calculator;
 pub mod core;
 pub mod fuzzy;
 pub mod process;
+pub mod search_input;
+pub mod search_results;
 pub mod state;
+pub mod widget;
+pub mod window;
 
 use gpui::*;
 
 pub use core::{LauncherCore, SearchResultType};
+pub use search_input::SearchInput;
+pub use search_results::{SearchResult, SearchResults};
+pub use widget::{LauncherWidget, Backspace, Down, Launch, Quit, Up};
 
 #[derive(Clone)]
 pub struct LauncherToggled;
@@ -60,8 +67,8 @@ impl LauncherService {
             async move {
                 cx.background_executor()
                     .spawn(async {
-                        let apps = crate::services::launcher::applications::scan_applications();
-                        let _ = crate::services::launcher::applications::save_to_cache(&apps);
+                        let apps = applications::scan_applications();
+                        let _ = applications::save_to_cache(&apps);
                     })
                     .await;
             }

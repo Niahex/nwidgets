@@ -1,4 +1,4 @@
-use crate::services::launcher::state::ApplicationInfo;
+use crate::widgets::launcher::state::ApplicationInfo;
 use freedesktop_desktop_entry::{DesktopEntry, Iter};
 use freedesktop_icons::lookup;
 use std::collections::HashSet;

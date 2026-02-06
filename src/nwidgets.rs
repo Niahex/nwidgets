@@ -8,7 +8,7 @@ pub fn run(cx: &mut App) {
     
     crate::windows::panel::open(cx);
     crate::windows::chat::open(cx);
-    crate::windows::launcher::open(cx, launcher_service.clone(), clipboard);
+    crate::widgets::launcher::window::open(cx, launcher_service.clone(), clipboard);
     
     crate::app::subscriptions::setup_all(cx, chat_service, launcher_service, notif_service);
     

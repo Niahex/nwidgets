@@ -1,8 +1,8 @@
-use crate::ui::components::SearchResult;
-use crate::services::launcher::{
+use crate::widgets::launcher::search_results::SearchResult;
+use crate::widgets::launcher::{
     applications, calculator, fuzzy::FuzzyMatcher, process, state::ApplicationInfo,
 };
-use crate::services::ui::clipboard::ClipboardEntry;
+use crate::services::system::clipboard::ClipboardEntry;
 use applications::load_from_cache;
 use calculator::{is_calculator_query, Calculator};
 use parking_lot::RwLock;

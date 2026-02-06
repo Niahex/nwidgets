@@ -2,8 +2,8 @@ use gpui::*;
 use parking_lot::Mutex;
 use std::sync::Arc;
 
-use crate::services::ui::ClipboardMonitor;
-use crate::services::launcher::{LauncherService, LauncherToggled};
+use crate::services::system::clipboard::ClipboardMonitor;
+use crate::widgets::launcher::{LauncherService, LauncherToggled};
 use crate::widgets::launcher::LauncherWidget;
 
 static LAUNCHER_WINDOW: once_cell::sync::OnceCell<Arc<Mutex<WindowHandle<LauncherWidget>>>> = once_cell::sync::OnceCell::new();

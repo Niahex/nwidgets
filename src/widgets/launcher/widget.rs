@@ -4,9 +4,9 @@ use gpui::{
 };
 use std::time::Duration;
 
-use crate::ui::components::{SearchInput, SearchResult, SearchResults};
-use crate::services::ui::clipboard::{ClipboardEntry, ClipboardMonitor};
-use crate::services::launcher::{
+use crate::widgets::launcher::{SearchInput, SearchResult, SearchResults};
+use crate::services::system::clipboard::{ClipboardEntry, ClipboardMonitor};
+use crate::widgets::launcher::{
     process, LauncherCore, LauncherService, LauncherToggled, SearchResultType,
 };
 use crate::theme::Theme;
@@ -252,7 +252,7 @@ impl LauncherWidget {
                 // Scan sur le background executor (thread pool)
                 let apps = cx
                     .background_executor()
-                    .spawn(async { crate::services::launcher::applications::scan_applications() })
+                    .spawn(async { crate::widgets::launcher::applications::scan_applications() })
                     .await;
 
                 // Update UI thread
@@ -268,7 +268,7 @@ impl LauncherWidget {
                 // Save cache in background
                 cx.background_executor()
                     .spawn(async move {
-                        let _ = crate::services::launcher::applications::save_to_cache(&apps);
+                        let _ = crate::widgets::launcher::applications::save_to_cache(&apps);
                     })
                     .detach();
             }

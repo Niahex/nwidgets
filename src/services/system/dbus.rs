@@ -91,7 +91,7 @@ impl DbusService {
                         DbusCommand::ToggleLauncher => {
                             log::debug!("Received ToggleLauncher command");
                             cx.update(|cx| {
-                                let launcher = crate::services::launcher::LauncherService::global(cx);
+                                let launcher = crate::widgets::launcher::LauncherService::global(cx);
                                 launcher.update(cx, |launcher, mcx| {
                                     log::debug!(
                                         "Toggling launcher, current visible: {}",

@@ -1,5 +1,5 @@
-use crate::services::launcher::{process::ProcessInfo, state::ApplicationInfo};
-use crate::services::ui::clipboard::ClipboardEntry;
+use crate::widgets::launcher::{process::ProcessInfo, state::ApplicationInfo};
+use crate::services::system::clipboard::ClipboardEntry;
 use crate::theme::Theme;
 use gpui::{div, img, prelude::*};
 

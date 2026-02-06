@@ -1,5 +1,5 @@
 use crate::services::media::audio::{AudioService, AudioStateChanged};
-use crate::services::ui::clipboard::{ClipboardEvent, ClipboardMonitor};
+use crate::services::system::clipboard::{ClipboardEvent, ClipboardMonitor};
 use crate::services::system::lock_state::{LockMonitor, LockStateChanged};
 use gpui::layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions};
 use gpui::*;
