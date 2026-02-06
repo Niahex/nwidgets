@@ -1,7 +1,7 @@
 use crate::widgets::osd::service::{OsdEvent, OsdService, OsdStateChanged};
 use crate::theme::ActiveTheme;
 use crate::assets::Icon;
-use crate::ui::components::{Slider, SliderState};
+use crate::components::{Slider, SliderState};
 use gpui::prelude::*;
 use gpui::*;
 use std::time::Duration;

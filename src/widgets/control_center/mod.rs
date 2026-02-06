@@ -4,7 +4,7 @@ mod notifications;
 mod quick_actions;
 pub mod service;
 
-use crate::ui::components::{CircularProgress, Dropdown, DropdownOption, SliderState, Toggle};
+use crate::components::{CircularProgress, Dropdown, DropdownOption, SliderState, Toggle};
 use crate::services::media::audio::AudioService;
 use crate::services::hardware::bluetooth::BluetoothService;
 use crate::services::network::NetworkService;

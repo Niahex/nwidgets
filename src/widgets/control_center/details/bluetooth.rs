@@ -1,4 +1,4 @@
-use crate::ui::components::Toggle;
+use crate::components::Toggle;
 use crate::theme::ActiveTheme;
 use crate::assets::Icon;
 use gpui::prelude::*;

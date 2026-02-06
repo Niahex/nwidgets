@@ -2,7 +2,7 @@ use crate::services::media::audio::AudioService;
 use crate::widgets::control_center::ControlCenterSection;
 use crate::theme::{ActiveTheme, Theme};
 use crate::assets::Icon;
-use crate::ui::components::Slider;
+use crate::components::Slider;
 use gpui::*;
 
 impl super::ControlCenterWidget {

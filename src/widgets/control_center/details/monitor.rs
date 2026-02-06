@@ -1,4 +1,4 @@
-use crate::ui::components::CircularProgress;
+use crate::components::CircularProgress;
 use crate::theme::ActiveTheme;
 use gpui::prelude::*;
 use gpui::*;
