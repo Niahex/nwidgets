@@ -214,6 +214,7 @@ impl Widget for Launcher {
                             LauncherAction::Launch(result.id.clone()),
                         );
                     }
+                    return;
                 }
                 _ => {}
             }
