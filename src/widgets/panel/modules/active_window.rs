@@ -1,4 +1,5 @@
 use makepad_widgets::*;
+use makepad_widgets::image_cache::ImageCacheImpl;
 use std::sync::{Arc, Mutex};
 
 use crate::HYPRLAND_SERVICE;
@@ -91,18 +92,17 @@ impl Widget for ActiveWindowModule {
 impl ActiveWindowModule {
     fn get_icon_path(class: &str) -> String {
         if class.is_empty() {
-            return "crate://self/assets/icons/png/help.png".to_string();
+            return "./assets/icons/png/help.png".to_string();
         }
         
         let normalized_class = class.to_lowercase().replace('.', "-");
         let icon_filename = format!("{}.png", normalized_class);
-        let icon_path = format!("crate://self/assets/icons/png/{}", icon_filename);
         let fs_path = format!("./assets/icons/png/{}", icon_filename);
         
         if std::path::Path::new(&fs_path).exists() {
-            icon_path
+            fs_path
         } else {
-            "crate://self/assets/icons/png/help.png".to_string()
+            "./assets/icons/png/help.png".to_string()
         }
     }
 
@@ -119,8 +119,12 @@ impl ActiveWindowModule {
             self.view.label(ids!(info.class)).set_text(cx, &class);
 
             let icon_path = Self::get_icon_path(&class);
+            
+            ::log::info!("Active window changed: class='{}', icon_path='{}'", class, icon_path);
 
             if let Some(mut image) = self.view.image(ids!(icon)).borrow_mut() {
+                let path = std::path::Path::new(&icon_path);
+                let _ = image.load_image_file_by_path(cx, path, 0);
             }
 
             self.view.redraw(cx);
