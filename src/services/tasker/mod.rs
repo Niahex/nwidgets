@@ -2,16 +2,12 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Utc, NaiveDate, Local};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Project {
-    pub id: String,
-    pub name: String,
-    pub description: Option<String>,
+pub struct DailyTaskList {
+    pub date: NaiveDate,
     pub tasks: Vec<Task>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -20,10 +16,9 @@ pub struct Task {
     pub name: String,
     pub description: Option<String>,
     pub completed: bool,
-    pub subtasks: Vec<Task>,
+    pub date: NaiveDate,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-    pub parent_id: Option<String>,
 }
 
 #[derive(Clone)]
@@ -33,7 +28,8 @@ pub struct TaskerService {
 
 #[derive(Default)]
 struct TaskerState {
-    projects: HashMap<String, Project>,
+    // Map of date (YYYY-MM-DD) to list of tasks for that day
+    daily_tasks: HashMap<String, Vec<Task>>,
 }
 
 impl TaskerService {
@@ -46,113 +42,102 @@ impl TaskerService {
         service
     }
 
-    pub fn get_all_projects(&self) -> Vec<Project> {
+    pub fn get_tasks_for_date(&self, date: NaiveDate) -> Vec<Task> {
         let state = self.state.read();
-        state.projects.values().cloned().collect()
+        let date_key = date.format("%Y-%m-%d").to_string();
+        state.daily_tasks.get(&date_key).cloned().unwrap_or_default()
     }
 
-    pub fn get_project(&self, id: &str) -> Option<Project> {
-        self.state.read().projects.get(id).cloned()
+    pub fn get_date_range(&self, start: NaiveDate, end: NaiveDate) -> Vec<DailyTaskList> {
+        let state = self.state.read();
+        let mut result = Vec::new();
+        
+        let mut current = start;
+        while current <= end {
+            let date_key = current.format("%Y-%m-%d").to_string();
+            let tasks = state.daily_tasks.get(&date_key).cloned().unwrap_or_default();
+            result.push(DailyTaskList {
+                date: current,
+                tasks,
+            });
+            current = current.succ_opt().unwrap_or(current);
+        }
+        
+        result
     }
 
-    pub fn create_project(&self, name: String, description: Option<String>) -> Project {
-        let now = Utc::now();
-        let project = Project {
-            id: uuid::Uuid::new_v4().to_string(),
-            name,
-            description,
-            tasks: Vec::new(),
-            created_at: now,
-            updated_at: now,
-        };
-
-        self.state.write().projects.insert(project.id.clone(), project.clone());
-        self.save_to_disk();
-        project
-    }
-
-    pub fn add_task(&self, project_id: &str, task_name: String, parent_id: Option<String>) -> Option<Task> {
-        let mut state = self.state.write();
-        let project = state.projects.get_mut(project_id)?;
-
+    pub fn add_task(&self, date: NaiveDate, task_name: String) -> Task {
         let now = Utc::now();
         let task = Task {
             id: uuid::Uuid::new_v4().to_string(),
             name: task_name,
             description: None,
             completed: false,
-            subtasks: Vec::new(),
+            date,
             created_at: now,
             updated_at: now,
-            parent_id: parent_id.clone(),
         };
 
-        if let Some(parent_id) = parent_id {
-            Self::add_subtask_recursive(&mut project.tasks, &parent_id, task.clone())?;
-        } else {
-            project.tasks.push(task.clone());
-        }
-
-        project.updated_at = now;
-        self.save_to_disk();
-        Some(task)
-    }
-
-    fn add_subtask_recursive(tasks: &mut Vec<Task>, parent_id: &str, new_task: Task) -> Option<()> {
-        for task in tasks.iter_mut() {
-            if task.id == parent_id {
-                task.subtasks.push(new_task);
-                return Some(());
-            }
-            if Self::add_subtask_recursive(&mut task.subtasks, parent_id, new_task.clone()).is_some() {
-                return Some(());
-            }
-        }
-        None
-    }
-
-    pub fn toggle_task(&self, project_id: &str, task_id: &str) -> Option<bool> {
+        let date_key = date.format("%Y-%m-%d").to_string();
         let mut state = self.state.write();
-        let project = state.projects.get_mut(project_id)?;
+        state.daily_tasks.entry(date_key).or_insert_with(Vec::new).push(task.clone());
         
-        let completed = Self::toggle_task_recursive(&mut project.tasks, task_id)?;
-        project.updated_at = Utc::now();
+        drop(state);
         self.save_to_disk();
-        Some(completed)
+        task
     }
 
-    fn toggle_task_recursive(tasks: &mut Vec<Task>, task_id: &str) -> Option<bool> {
-        for task in tasks.iter_mut() {
-            if task.id == task_id {
-                task.completed = !task.completed;
-                task.updated_at = Utc::now();
-                return Some(task.completed);
-            }
-            if let Some(completed) = Self::toggle_task_recursive(&mut task.subtasks, task_id) {
-                return Some(completed);
+    pub fn toggle_task(&self, task_id: &str) -> Option<bool> {
+        let mut state = self.state.write();
+        
+        for tasks in state.daily_tasks.values_mut() {
+            for task in tasks.iter_mut() {
+                if task.id == task_id {
+                    task.completed = !task.completed;
+                    task.updated_at = Utc::now();
+                    let completed = task.completed;
+                    drop(state);
+                    self.save_to_disk();
+                    return Some(completed);
+                }
             }
         }
         None
+    }
+
+    pub fn delete_task(&self, task_id: &str) -> bool {
+        let mut state = self.state.write();
+        
+        for tasks in state.daily_tasks.values_mut() {
+            if let Some(pos) = tasks.iter().position(|t| t.id == task_id) {
+                tasks.remove(pos);
+                drop(state);
+                self.save_to_disk();
+                return true;
+            }
+        }
+        false
+    }
+
+    pub fn get_today() -> NaiveDate {
+        Local::now().date_naive()
     }
 
     fn load_from_disk(&self) {
         let path = Self::get_data_path();
         if let Ok(content) = std::fs::read_to_string(&path) {
-            if let Ok(projects) = serde_json::from_str::<Vec<Project>>(&content) {
+            if let Ok(daily_tasks) = serde_json::from_str::<HashMap<String, Vec<Task>>>(&content) {
                 let mut state = self.state.write();
-                for project in projects {
-                    state.projects.insert(project.id.clone(), project);
-                }
-                log::info!("Loaded {} projects from disk", state.projects.len());
+                state.daily_tasks = daily_tasks;
+                log::info!("Loaded {} days of tasks from disk", state.daily_tasks.len());
             }
         }
     }
 
     fn save_to_disk(&self) {
         let state = self.state.read();
-        let projects: Vec<Project> = state.projects.values().cloned().collect();
         
-        if let Ok(json) = serde_json::to_string_pretty(&projects) {
+        if let Ok(json) = serde_json::to_string_pretty(&state.daily_tasks) {
             let path = Self::get_data_path();
             if let Some(parent) = path.parent() {
                 let _ = std::fs::create_dir_all(parent);
