@@ -1,5 +1,5 @@
 use crate::widgets::panel::modules::mpris::{MprisService, MprisStateChanged};
-use super::service::PlaybackStatus;
+use super::service::{MprisPlayer, PlaybackStatus};
 use crate::theme::ActiveTheme;
 use gpui::prelude::*;
 use gpui::*;
@@ -51,7 +51,7 @@ impl MprisModule {
         }
     }
 
-    fn update_cache(&mut self, player: Option<&crate::services::media::mpris::MprisPlayer>) {
+    fn update_cache(&mut self, player: Option<&MprisPlayer>) {
         if let Some(player) = player {
             self.cached_title = player
                 .metadata
@@ -59,7 +59,7 @@ impl MprisModule {
                 .clone()
                 .unwrap_or_else(|| "No title".to_string())
                 .into();
-            self.cached_artist = player.metadata.artist.clone().map(|a| a.into());
+            self.cached_artist = player.metadata.artist.clone().map(|a: String| a.into());
             self.cached_status = player.status.clone();
         } else {
             self.cached_title = "No title".into();
