@@ -89,38 +89,19 @@ impl Widget for ActiveWindowModule {
 }
 
 impl ActiveWindowModule {
-    fn get_icon_path(class: &str) -> &'static str {
+    fn get_icon_path(class: &str) -> String {
         if class.is_empty() {
-            return "crate://self/assets/icons/png/help.png";
+            return "crate://self/assets/icons/png/help.png".to_string();
         }
         
-        let class_lower = class.to_lowercase();
+        let icon_filename = format!("{}.png", class);
+        let icon_path = format!("crate://self/assets/icons/png/{}", icon_filename);
+        let fs_path = format!("./assets/icons/png/{}", icon_filename);
         
-        match class_lower.as_str() {
-            "kitty" | "alacritty" | "terminal" => "crate://self/assets/icons/png/terminal.png",
-            "firefox" => "crate://self/assets/icons/png/firefox.png",
-            "brave-browser" | "brave" => "crate://self/assets/icons/png/help.png",
-            "discord" => "crate://self/assets/icons/png/help.png",
-            "spotify" => "crate://self/assets/icons/png/spotify.png",
-            "code" | "code-oss" | "vscode" | "zed" | "dev.zed.zed" => "crate://self/assets/icons/png/dev.zed.zed.png",
-            "vlc" => "crate://self/assets/icons/png/vlc.png",
-            "steam" => "crate://self/assets/icons/png/steam.png",
-            "lutris" => "crate://self/assets/icons/png/help.png",
-            "org.gnome.nautilus" | "nautilus" => "crate://self/assets/icons/png/help.png",
-            "org.inkscape.inkscape" | "inkscape" => "crate://self/assets/icons/png/inkscape.png",
-            "org.keepassxc.keepassxc" | "keepassxc" => "crate://self/assets/icons/png/keepass.png",
-            "element" => "crate://self/assets/icons/png/help.png",
-            "neochat" => "crate://self/assets/icons/png/help.png",
-            "calibre-gui" | "calibre" => "crate://self/assets/icons/png/help.png",
-            "qbittorrent" => "crate://self/assets/icons/png/help.png",
-            "resolve" | "davinci-resolve" => "crate://self/assets/icons/png/davinci-resolve.png",
-            "twitch" => "crate://self/assets/icons/png/help.png",
-            "zen-twilight" => "crate://self/assets/icons/png/help.png",
-            "libreoffice-writer" => "crate://self/assets/icons/png/help.png",
-            "libreoffice-calc" => "crate://self/assets/icons/png/help.png",
-            "libreoffice-draw" => "crate://self/assets/icons/png/help.png",
-            "libreoffice-math" => "crate://self/assets/icons/png/help.png",
-            _ => "crate://self/assets/icons/png/help.png",
+        if std::path::Path::new(&fs_path).exists() {
+            icon_path
+        } else {
+            "crate://self/assets/icons/png/help.png".to_string()
         }
     }
 
