@@ -141,6 +141,11 @@ impl OsdService {
     pub fn init(cx: &mut App) -> Entity<Self> {
         let service = cx.new(Self::new);
         cx.set_global(GlobalOsdService(service.clone()));
+        
+        service.update(cx, |this, cx| {
+            this.window_manager.open_window(cx);
+        });
+        
         service
     }
 }
