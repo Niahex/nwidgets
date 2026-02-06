@@ -6,6 +6,7 @@ pub fn init() {
         .filter_module("zbus", log::LevelFilter::Warn)
         .filter_module("gpui::platform", log::LevelFilter::Warn)
         .filter_module("gpui::window", log::LevelFilter::Off)
+        .filter_module("usvg::parser::svgtree", log::LevelFilter::Error)
         .format(|buf, record| {
             use std::io::Write;
 

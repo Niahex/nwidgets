@@ -135,6 +135,7 @@ cef::wrap_app! {
                     Some(&"disable-features".into()),
                     Some(&"AudioServiceOutOfProcess".into()),
                 );
+                cmd.append_switch(Some(&"disable-battery-status-service".into()));
             }
         }
 
