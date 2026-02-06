@@ -1,6 +1,7 @@
 use crate::widgets::panel::modules::pomodoro::{
-    PomodoroPhase, PomodoroService, PomodoroStateChanged, PomodoroStatus,
+    PomodoroService, PomodoroStateChanged,
 };
+use super::service::{PomodoroPhase, PomodoroStatus};
 use crate::theme::ActiveTheme;
 use crate::assets::Icon;
 use gpui::prelude::*;

@@ -1,5 +1,5 @@
 use crate::theme::ActiveTheme;
-mod modules;
+pub mod modules;
 pub mod window;
 
 pub use modules::{

@@ -10,7 +10,7 @@ use crate::widgets::control_center::ControlCenterService;
 use crate::widgets::launcher::LauncherService;
 use crate::widgets::notifications::NotificationService;
 use crate::widgets::osd::OsdService;
-use crate::widgets::panel::modules::pomodoro::PomodoroService;
+use crate::widgets::panel::modules::PomodoroService;
 
 pub fn initialize_all(cx: &mut App) -> (Entity<ClipboardMonitor>, Entity<OsdService>) {
     HyprlandService::init(cx);
