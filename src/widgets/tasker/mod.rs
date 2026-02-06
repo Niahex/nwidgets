@@ -171,25 +171,6 @@ live_design! {
             spacing: 8
             padding: {top: 8, bottom: 8}
 
-            prev_button = <Button> {
-                width: 40, height: 40
-                draw_bg: {
-                    fn pixel(self) -> vec4 {
-                        let sdf = Sdf2d::viewport(self.pos * self.rect_size);
-                        sdf.circle(20.0, 20.0, 18.0);
-                        sdf.fill((NORD_POLAR_1));
-                        
-                        sdf.move_to(22.0, 12.0);
-                        sdf.line_to(16.0, 20.0);
-                        sdf.line_to(22.0, 28.0);
-                        sdf.stroke((THEME_COLOR_TEXT_DEFAULT), 2.0);
-                        
-                        return sdf.result;
-                    }
-                }
-                draw_text: { visible: false }
-            }
-
             dates_container = <View> {
                 width: Fit, height: Fit
                 flow: Right
@@ -200,27 +181,6 @@ live_design! {
                 date2 = <DateItem> {visible: false}
                 date3 = <DateItem> {visible: false}
                 date4 = <DateItem> {visible: false}
-                date5 = <DateItem> {visible: false}
-                date6 = <DateItem> {visible: false}
-            }
-
-            next_button = <Button> {
-                width: 40, height: 40
-                draw_bg: {
-                    fn pixel(self) -> vec4 {
-                        let sdf = Sdf2d::viewport(self.pos * self.rect_size);
-                        sdf.circle(20.0, 20.0, 18.0);
-                        sdf.fill((NORD_POLAR_1));
-                        
-                        sdf.move_to(18.0, 12.0);
-                        sdf.line_to(24.0, 20.0);
-                        sdf.line_to(18.0, 28.0);
-                        sdf.stroke((THEME_COLOR_TEXT_DEFAULT), 2.0);
-                        
-                        return sdf.result;
-                    }
-                }
-                draw_text: { visible: false }
             }
         }
 
@@ -316,9 +276,6 @@ pub struct Tasker {
     current_date: NaiveDate,
 
     #[rust]
-    carousel_start_date: NaiveDate,
-
-    #[rust]
     selected_date: NaiveDate,
 
     #[rust]
@@ -344,11 +301,17 @@ impl Widget for Tasker {
                     return;
                 }
                 KeyCode::ArrowLeft => {
-                    self.navigate_prev_week(cx);
+                    self.selected_date = self.selected_date.checked_sub_signed(chrono::Duration::days(1)).unwrap_or(self.selected_date);
+                    self.load_tasks_for_selected_date();
+                    self.render_carousel(cx);
+                    self.render_tasks(cx);
                     return;
                 }
                 KeyCode::ArrowRight => {
-                    self.navigate_next_week(cx);
+                    self.selected_date = self.selected_date.checked_add_signed(chrono::Duration::days(1)).unwrap_or(self.selected_date);
+                    self.load_tasks_for_selected_date();
+                    self.render_carousel(cx);
+                    self.render_tasks(cx);
                     return;
                 }
                 _ => {}
@@ -357,14 +320,6 @@ impl Widget for Tasker {
 
         let actions = cx.capture_actions(|cx| self.view.handle_event(cx, event, scope));
         
-        if self.view.button(ids!(date_carousel.prev_button)).clicked(&actions) {
-            self.navigate_prev_week(cx);
-        }
-        
-        if self.view.button(ids!(date_carousel.next_button)).clicked(&actions) {
-            self.navigate_next_week(cx);
-        }
-
         if self.view.button(ids!(content.add_task_container.add_button)).clicked(&actions) {
             let task_name = self.view.text_input(ids!(content.add_task_container.task_input)).text();
             if !task_name.is_empty() {
@@ -387,7 +342,7 @@ impl Widget for Tasker {
             }
         }
 
-        for i in 0..7 {
+        for i in 0..5 {
             let date_id = LiveId::from_str(&format!("date{}", i));
             if self.view.view(ids!(date_carousel.dates_container)).button(&[date_id]).clicked(&actions) {
                 let date_opt = self.uid_to_date.get(&self.view.view(ids!(date_carousel.dates_container)).button(&[date_id]).widget_uid()).cloned();
@@ -424,7 +379,6 @@ impl Tasker {
         
         self.current_date = crate::services::tasker::TaskerService::get_today();
         self.selected_date = self.current_date;
-        self.carousel_start_date = self.current_date.checked_sub_signed(chrono::Duration::days(3)).unwrap_or(self.current_date);
         
         self.load_tasks_for_selected_date();
         self.render_carousel(cx);
@@ -446,21 +400,12 @@ impl Tasker {
         self.tasks_for_selected_date = TASKER_SERVICE.get_tasks_for_date(self.selected_date);
     }
 
-    fn navigate_prev_week(&mut self, cx: &mut Cx) {
-        self.carousel_start_date = self.carousel_start_date.checked_sub_signed(chrono::Duration::days(7)).unwrap_or(self.carousel_start_date);
-        self.render_carousel(cx);
-    }
-
-    fn navigate_next_week(&mut self, cx: &mut Cx) {
-        self.carousel_start_date = self.carousel_start_date.checked_add_signed(chrono::Duration::days(7)).unwrap_or(self.carousel_start_date);
-        self.render_carousel(cx);
-    }
-
     fn render_carousel(&mut self, cx: &mut Cx) {
         self.uid_to_date.clear();
 
-        for i in 0..7 {
-            let date = self.carousel_start_date.checked_add_signed(chrono::Duration::days(i)).unwrap_or(self.carousel_start_date);
+        for i in 0..5 {
+            let offset = i as i64 - 2;
+            let date = self.selected_date.checked_add_signed(chrono::Duration::days(offset)).unwrap_or(self.selected_date);
             let date_id = LiveId::from_str(&format!("date{}", i));
             let date_item = self.view.view(ids!(date_carousel.dates_container)).button(&[date_id]);
             
@@ -486,7 +431,7 @@ impl Tasker {
             let completed_count = tasks.iter().filter(|t| t.completed).count();
             date_item.label(ids!(content.task_count)).set_text(cx, &format!("{}/{}", completed_count, task_count));
 
-            let is_selected = date == self.selected_date;
+            let is_selected = i == 2;
             let is_today = date == self.current_date;
             
             date_item.apply_over(cx, live! {
