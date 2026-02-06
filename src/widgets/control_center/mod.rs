@@ -99,8 +99,8 @@ impl ControlCenterWidget {
     ) where
         F: Fn(&mut Self, f32, &mut Context<Self>) + 'static,
     {
-        cx.subscribe(slider, move |this, _, event: &crate::ui::components::SliderEvent, cx| {
-            if let crate::ui::components::SliderEvent::Change(value) = event {
+        cx.subscribe(slider, move |this, _, event: &crate::components::SliderEvent, cx| {
+            if let crate::components::SliderEvent::Change(value) = event {
                 handler(this, *value, cx);
             }
         })
