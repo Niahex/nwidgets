@@ -1,4 +1,4 @@
-use crate::services::media::pomodoro::{
+use crate::widgets::panel::modules::pomodoro::{
     PomodoroPhase, PomodoroService, PomodoroStateChanged, PomodoroStatus,
 };
 use crate::theme::ActiveTheme;

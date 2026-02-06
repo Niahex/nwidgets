@@ -1,7 +1,7 @@
 use gpui::*;
 
 use crate::services::hardware::{BluetoothService, SystemMonitorService};
-use crate::services::media::{AudioService, MprisService, PomodoroService};
+use crate::services::media::{AudioService, MprisService};
 use crate::services::system::{ClipboardMonitor, DbusService, HyprlandService};
 use crate::services::ui::SystrayService;
 use crate::services::CefService;
@@ -10,6 +10,7 @@ use crate::widgets::control_center::ControlCenterService;
 use crate::widgets::launcher::LauncherService;
 use crate::widgets::notifications::NotificationService;
 use crate::widgets::osd::OsdService;
+use crate::widgets::panel::modules::pomodoro::PomodoroService;
 
 pub fn initialize_all(cx: &mut App) -> (Entity<ClipboardMonitor>, Entity<OsdService>) {
     HyprlandService::init(cx);
