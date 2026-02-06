@@ -3,7 +3,7 @@ use parking_lot::Mutex;
 use std::sync::Arc;
 
 use crate::services::system::{FullscreenChanged, HyprlandService, WorkspaceChanged};
-use crate::services::ui::{ChatNavigate, ChatService, ChatToggled};
+use crate::widgets::chat::service::{ChatNavigate, ChatService, ChatToggled};
 use crate::widgets::chat::ChatWidget;
 
 static CHAT_WINDOW: once_cell::sync::OnceCell<Arc<Mutex<WindowHandle<ChatWidget>>>> = once_cell::sync::OnceCell::new();
@@ -67,7 +67,7 @@ pub fn on_toggle(service: Entity<ChatService>, _event: &ChatToggled, cx: &mut Ap
             cx.activate(true);
         } else {
             if let Some(url) = chat.current_url(cx) {
-                crate::widgets::chat::save_url(&url);
+                crate::widgets::chat::widget::save_url(&url);
             }
             window.set_exclusive_zone(0);
             window.resize(size(px(1.0), px(1.0)));

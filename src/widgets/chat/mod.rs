@@ -3,4 +3,4 @@ pub mod widget;
 pub mod window;
 
 pub use service::{ChatNavigate, ChatPinToggled, ChatService, ChatToggled};
-pub use widget::ChatWidget;
+pub use widget::{save_url, ChatWidget};

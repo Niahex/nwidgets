@@ -21,10 +21,10 @@ pub fn setup_all(
 }
 
 fn setup_chat(cx: &mut App, chat_service: Entity<ChatService>) {
-    cx.subscribe(&chat_service, chat::on_toggle).detach();
-    cx.subscribe(&HyprlandService::global(cx), chat::on_fullscreen).detach();
-    cx.subscribe(&HyprlandService::global(cx), chat::on_workspace_change).detach();
-    cx.subscribe(&chat_service, chat::on_navigate).detach();
+    cx.subscribe(&chat_service, window::on_toggle).detach();
+    cx.subscribe(&HyprlandService::global(cx), window::on_fullscreen).detach();
+    cx.subscribe(&HyprlandService::global(cx), window::on_workspace_change).detach();
+    cx.subscribe(&chat_service, window::on_navigate).detach();
 }
 
 fn setup_launcher(cx: &mut App, launcher_service: Entity<LauncherService>) {
