@@ -1,4 +1,4 @@
-use crate::widgets::launcher::state::ApplicationInfo;
+use crate::widgets::launcher::types::ApplicationInfo;
 use nucleo::{Config, Nucleo, Utf32String};
 
 pub struct FuzzyMatcher {
