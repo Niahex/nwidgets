@@ -2,6 +2,7 @@ use crate::services::cef::BrowserView;
 use crate::theme::ActiveTheme;
 use crate::widgets::jisig::service::JisigService;
 use crate::widgets::jisig::types::JisigToggled;
+use crate::widgets::jisig::widget::styles::CSS;
 use gpui::prelude::*;
 use gpui::{
     div, Animation, AnimationExt, AppContext, Context, Entity, IntoElement, ParentElement, Styled,
@@ -17,7 +18,12 @@ impl JisigWidget {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let url = "http://127.0.0.1:3000/private";
 
-        let browser = cx.new(|cx| BrowserView::new(url, 600, 1370, None, cx));
+        let injection_script = format!(
+            "const style=document.createElement('style');style.textContent=`{}`;document.head.appendChild(style);",
+            CSS.replace('`', "\\`").replace("${ ", "\\${ ")
+        );
+
+        let browser = cx.new(|cx| BrowserView::new(url, 600, 1370, Some(&injection_script), cx));
         let jisig_service = JisigService::global(cx);
 
         browser.read(cx).set_hidden(true);
