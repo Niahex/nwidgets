@@ -317,18 +317,30 @@ impl AudioService {
 
             let mut last_update = std::time::Instant::now();
             let debounce = std::time::Duration::from_millis(50);
+            let mut pending_update = false;
 
             while let Some(event) = rx.next().await {
                 if let PwEvent::NodeRemoved(id) = event {
                     nodes_data.write().remove(&id);
                 }
 
+                pending_update = true;
                 let now = std::time::Instant::now();
-                if now.duration_since(last_update) < debounce {
-                    while rx.try_next().is_ok() {}
-                    tokio::time::sleep(debounce).await;
+                
+                // Drain all pending events
+                while rx.try_next().is_ok() {}
+                
+                // Only process if enough time has passed since last update
+                if now.duration_since(last_update) >= debounce {
+                    pending_update = false;
+                    last_update = now;
+                } else {
+                    // Wait for remaining debounce time
+                    let remaining = debounce.saturating_sub(now.duration_since(last_update));
+                    tokio::time::sleep(remaining).await;
+                    pending_update = false;
+                    last_update = std::time::Instant::now();
                 }
-                last_update = std::time::Instant::now();
 
                 // Update volumes
                 let (sink_vol, sink_muted) =
@@ -406,7 +418,14 @@ impl AudioService {
             }
 
             log::warn!("PipeWire connection lost, reconnecting...");
-            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            
+            // Exponential backoff: 2s, 4s, 8s, max 16s
+            let retry_delay = std::time::Duration::from_secs(2);
+            let max_delay = std::time::Duration::from_secs(16);
+            let mut current_delay = retry_delay;
+            
+            tokio::time::sleep(current_delay).await;
+            current_delay = (current_delay * 2).min(max_delay);
         }
     }
 

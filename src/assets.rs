@@ -141,7 +141,7 @@ impl Icon {
         {
             let cache = ICON_CACHE.read();
             if let Some(path) = cache.get(&self.name) {
-                return path.clone();
+                return Arc::clone(path);
             }
         }
 
@@ -155,7 +155,7 @@ impl Icon {
 
         {
             let mut cache = ICON_CACHE.write();
-            cache.insert(self.name.clone(), path_arc.clone());
+            cache.insert(self.name.clone(), Arc::clone(&path_arc));
         }
 
         path_arc
