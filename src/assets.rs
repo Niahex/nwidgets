@@ -1,10 +1,9 @@
 use anyhow::Result;
 use gpui::*;
-use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use crate::theme::ActiveTheme;
 
@@ -84,8 +83,8 @@ pub fn determine_assets_path() -> PathBuf {
 }
 
 /// Cache global des icônes SVG chargées
-static ICON_CACHE: Lazy<RwLock<HashMap<String, Arc<str>>>> =
-    Lazy::new(|| RwLock::new(HashMap::with_capacity(128)));
+static ICON_CACHE: LazyLock<RwLock<HashMap<String, Arc<str>>>> =
+    LazyLock::new(|| RwLock::new(HashMap::with_capacity(128)));
 
 /// Répertoire des assets (peut être overridé via variable d'environnement)
 fn assets_dir() -> PathBuf {

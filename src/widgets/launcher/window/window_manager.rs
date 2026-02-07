@@ -1,12 +1,12 @@
 use gpui::*;
 use parking_lot::Mutex;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use crate::services::system::clipboard::ClipboardMonitor;
 use crate::widgets::launcher::{LauncherService, LauncherToggled};
 use crate::widgets::launcher::LauncherWidget;
 
-static LAUNCHER_WINDOW: once_cell::sync::OnceCell<Arc<Mutex<WindowHandle<LauncherWidget>>>> = once_cell::sync::OnceCell::new();
+static LAUNCHER_WINDOW: OnceLock<Arc<Mutex<WindowHandle<LauncherWidget>>>> = OnceLock::new();
 
 pub fn open(cx: &mut App, launcher_service: Entity<LauncherService>, clipboard: Entity<ClipboardMonitor>) {
     use gpui::layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions};

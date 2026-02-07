@@ -1,7 +1,7 @@
 use crate::widgets::notifications::types::{Notification, HISTORY_CAPACITY};
 use parking_lot::Mutex;
 use std::collections::VecDeque;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 pub struct NotificationState {
     pub sender: Option<tokio::sync::mpsc::UnboundedSender<Notification>>,
@@ -17,5 +17,5 @@ impl NotificationState {
     }
 }
 
-pub static STATE: once_cell::sync::Lazy<Arc<Mutex<NotificationState>>> =
-    once_cell::sync::Lazy::new(|| Arc::new(Mutex::new(NotificationState::new())));
+pub static STATE: LazyLock<Arc<Mutex<NotificationState>>> =
+    LazyLock::new(|| Arc::new(Mutex::new(NotificationState::new())));

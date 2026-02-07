@@ -1,11 +1,11 @@
 use gpui::*;
 use parking_lot::Mutex;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use crate::widgets::chat::ChatWidget;
 
-static CHAT_WINDOW: once_cell::sync::OnceCell<Arc<Mutex<WindowHandle<ChatWidget>>>> =
-    once_cell::sync::OnceCell::new();
+static CHAT_WINDOW: OnceLock<Arc<Mutex<WindowHandle<ChatWidget>>>> =
+    OnceLock::new();
 
 pub fn open(cx: &mut App) {
     use gpui::layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions};

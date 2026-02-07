@@ -4186,7 +4186,6 @@ dependencies = [
  "lyon_tessellation",
  "nucleo",
  "numbat",
- "once_cell",
  "parking_lot",
  "pipewire",
  "secret-service",
