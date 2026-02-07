@@ -10,6 +10,7 @@ pub enum DbusCommand {
     ToggleChat,
     PinChat,
     ToggleLauncher,
+    ToggleJisig,
 }
 
 struct NWidgets {
@@ -29,6 +30,10 @@ impl NWidgets {
 
     async fn pin_chat(&self) {
         let _ = self.tx.unbounded_send(DbusCommand::PinChat);
+    }
+
+    async fn toggle_jisig(&self) {
+        let _ = self.tx.unbounded_send(DbusCommand::ToggleJisig);
     }
 }
 
@@ -100,6 +105,12 @@ impl DbusService {
                                     launcher.toggle(mcx);
                                     log::debug!("After toggle, visible: {}", launcher.visible);
                                 });
+                            });
+                        }
+                        DbusCommand::ToggleJisig => {
+                            cx.update(|cx| {
+                                let jisig = crate::widgets::jisig::JisigService::global(cx);
+                                jisig.update(cx, |jisig, mcx| jisig.toggle(mcx));
                             });
                         }
                     }
