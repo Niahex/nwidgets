@@ -15,7 +15,7 @@ pub struct JisigWidget {
 
 impl JisigWidget {
     pub fn new(cx: &mut Context<Self>) -> Self {
-        let url = "http://localhost:8000/private";
+        let url = "http://127.0.0.1:3000/private";
 
         let browser = cx.new(|cx| BrowserView::new(url, 600, 1370, None, cx));
         let jisig_service = JisigService::global(cx);
