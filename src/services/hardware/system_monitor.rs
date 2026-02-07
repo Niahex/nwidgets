@@ -234,27 +234,19 @@ impl SystemMonitorService {
 
         // Try AMD/Intel DRM sysfs
         for card in 0..4 {
-            if let Ok(usage_str) = tokio::fs::read_to_string(format!(
-                "/sys/class/drm/card{card}/device/gpu_busy_percent"
-            ))
-            .await
-            {
+            let gpu_busy_path = format!("/sys/class/drm/card{card}/device/gpu_busy_percent");
+            let rps_cur_path = format!("/sys/class/drm/card{card}/gt/gt0/rps_cur_freq_mhz");
+            let rps_max_path = format!("/sys/class/drm/card{card}/gt/gt0/rps_max_freq_mhz");
+            
+            if let Ok(usage_str) = tokio::fs::read_to_string(&gpu_busy_path).await {
                 if let Ok(usage) = usage_str.trim().parse::<u8>() {
                     return usage;
                 }
             }
 
-            if let Ok(usage_str) = tokio::fs::read_to_string(format!(
-                "/sys/class/drm/card{card}/gt/gt0/rps_cur_freq_mhz"
-            ))
-            .await
-            {
+            if let Ok(usage_str) = tokio::fs::read_to_string(&rps_cur_path).await {
                 if let Ok(cur_freq) = usage_str.trim().parse::<u32>() {
-                    if let Ok(max_str) = tokio::fs::read_to_string(format!(
-                        "/sys/class/drm/card{card}/gt/gt0/rps_max_freq_mhz"
-                    ))
-                    .await
-                    {
+                    if let Ok(max_str) = tokio::fs::read_to_string(&rps_max_path).await {
                         if let Ok(max_freq) = max_str.trim().parse::<u32>() {
                             return ((cur_freq * 100) / max_freq.max(1)) as u8;
                         }

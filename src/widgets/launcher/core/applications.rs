@@ -74,7 +74,7 @@ pub fn scan_applications() -> Vec<ApplicationInfo> {
                                     .and_then(|icon_name| lookup(icon_name).with_size(24).find())
                                     .map(|p| p.to_string_lossy().to_string());
 
-                                let exec_clean = exec
+                                let exec_clean: String = exec
                                     .split_whitespace()
                                     .filter(|part| !part.starts_with('%'))
                                     .collect::<Vec<_>>()

@@ -18,7 +18,7 @@ impl Assets {
     pub fn new(base: PathBuf) -> Self {
         Self {
             base,
-            cache: RwLock::new(HashMap::new()),
+            cache: RwLock::new(HashMap::with_capacity(64)),
         }
     }
 }
@@ -85,7 +85,7 @@ pub fn determine_assets_path() -> PathBuf {
 
 /// Cache global des icônes SVG chargées
 static ICON_CACHE: Lazy<RwLock<HashMap<String, Arc<str>>>> =
-    Lazy::new(|| RwLock::new(HashMap::new()));
+    Lazy::new(|| RwLock::new(HashMap::with_capacity(128)));
 
 /// Répertoire des assets (peut être overridé via variable d'environnement)
 fn assets_dir() -> PathBuf {

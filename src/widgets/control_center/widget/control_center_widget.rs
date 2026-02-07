@@ -218,7 +218,7 @@ impl ControlCenterWidget {
             source_dropdown_open: false,
             sink_slider,
             source_slider,
-            stream_sliders: HashMap::new(),
+            stream_sliders: HashMap::with_capacity(16),
         }
     }
 }

@@ -193,7 +193,7 @@ impl AudioService {
         loop {
             let (tx, mut rx) = futures::channel::mpsc::unbounded::<PwEvent>();
             let nodes_data: Arc<RwLock<HashMap<u32, PwNodeInfo>>> =
-                Arc::new(RwLock::new(HashMap::new()));
+                Arc::new(RwLock::new(HashMap::with_capacity(32)));
             let nodes_data_thread = Arc::clone(&nodes_data);
 
             std::thread::spawn({
