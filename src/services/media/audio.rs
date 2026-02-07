@@ -4,6 +4,7 @@ use gpui::{App, AsyncApp, Context, Entity, EventEmitter, Global, SharedString, W
 use parking_lot::RwLock;
 use pipewire as pw;
 use serde::{Deserialize, Serialize};
+use smallvec::SmallVec;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -59,10 +60,10 @@ struct PwNodeInfo {
 
 pub struct AudioService {
     state: Arc<RwLock<AudioState>>,
-    sinks: Arc<RwLock<Vec<AudioDevice>>>,
-    sources: Arc<RwLock<Vec<AudioDevice>>>,
-    sink_inputs: Arc<RwLock<Vec<AudioStream>>>,
-    source_outputs: Arc<RwLock<Vec<AudioStream>>>,
+    sinks: Arc<RwLock<SmallVec<[AudioDevice; 8]>>>,
+    sources: Arc<RwLock<SmallVec<[AudioDevice; 8]>>>,
+    sink_inputs: Arc<RwLock<SmallVec<[AudioStream; 16]>>>,
+    source_outputs: Arc<RwLock<SmallVec<[AudioStream; 16]>>>,
 }
 
 impl EventEmitter<AudioStateChanged> for AudioService {}
@@ -70,20 +71,20 @@ impl EventEmitter<AudioStateChanged> for AudioService {}
 enum AudioUpdate {
     State(AudioState),
     Devices {
-        sinks: Vec<AudioDevice>,
-        sources: Vec<AudioDevice>,
-        sink_inputs: Vec<AudioStream>,
-        source_outputs: Vec<AudioStream>,
+        sinks: SmallVec<[AudioDevice; 8]>,
+        sources: SmallVec<[AudioDevice; 8]>,
+        sink_inputs: SmallVec<[AudioStream; 16]>,
+        source_outputs: SmallVec<[AudioStream; 16]>,
     },
 }
 
 impl AudioService {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let state = Arc::new(RwLock::new(AudioState::default()));
-        let sinks = Arc::new(RwLock::new(Vec::with_capacity(8)));
-        let sources = Arc::new(RwLock::new(Vec::with_capacity(8)));
-        let sink_inputs = Arc::new(RwLock::new(Vec::with_capacity(16)));
-        let source_outputs = Arc::new(RwLock::new(Vec::with_capacity(16)));
+        let sinks = Arc::new(RwLock::new(SmallVec::new()));
+        let sources = Arc::new(RwLock::new(SmallVec::new()));
+        let sink_inputs = Arc::new(RwLock::new(SmallVec::new()));
+        let source_outputs = Arc::new(RwLock::new(SmallVec::new()));
 
         let (ui_tx, mut ui_rx) = futures::channel::mpsc::unbounded::<AudioUpdate>();
 
@@ -363,10 +364,10 @@ impl AudioService {
 
                 // Build device lists
                 let nodes_snapshot = nodes_data.read();
-                let mut new_sinks = Vec::with_capacity(8);
-                let mut new_sources = Vec::with_capacity(8);
-                let mut new_sink_inputs = Vec::with_capacity(16);
-                let mut new_source_outputs = Vec::with_capacity(16);
+                let mut new_sinks = SmallVec::new();
+                let mut new_sources = SmallVec::new();
+                let mut new_sink_inputs = SmallVec::new();
+                let mut new_source_outputs = SmallVec::new();
 
                 for info in nodes_snapshot.values() {
                     if info.media_class.contains("Audio/Sink")
@@ -512,19 +513,19 @@ impl AudioService {
         .detach();
     }
 
-    pub fn sinks(&self) -> Vec<AudioDevice> {
+    pub fn sinks(&self) -> SmallVec<[AudioDevice; 8]> {
         self.sinks.read().clone()
     }
 
-    pub fn sources(&self) -> Vec<AudioDevice> {
+    pub fn sources(&self) -> SmallVec<[AudioDevice; 8]> {
         self.sources.read().clone()
     }
 
-    pub fn sink_inputs(&self) -> Vec<AudioStream> {
+    pub fn sink_inputs(&self) -> SmallVec<[AudioStream; 16]> {
         self.sink_inputs.read().clone()
     }
 
-    pub fn source_outputs(&self) -> Vec<AudioStream> {
+    pub fn source_outputs(&self) -> SmallVec<[AudioStream; 16]> {
         self.source_outputs.read().clone()
     }
 }

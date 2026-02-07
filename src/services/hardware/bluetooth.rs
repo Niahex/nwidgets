@@ -2,6 +2,7 @@ use futures::StreamExt;
 use gpui::prelude::*;
 use gpui::{App, AsyncApp, Context, Entity, EventEmitter, Global, SharedString, WeakEntity};
 use parking_lot::RwLock;
+use smallvec::SmallVec;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
@@ -23,7 +24,7 @@ pub struct BluetoothDevice {
 pub struct BluetoothState {
     pub powered: bool,
     pub connected_devices: usize,
-    pub devices: Vec<BluetoothDevice>,
+    pub devices: SmallVec<[BluetoothDevice; 8]>,
 }
 
 #[derive(Clone)]
@@ -171,7 +172,7 @@ impl BluetoothService {
     async fn fetch_bluetooth_state_dbus(om: &ObjectManagerProxy<'_>) -> BluetoothState {
         let mut powered = false;
         let mut connected_devices = 0;
-        let mut devices = Vec::with_capacity(10);
+        let mut devices = SmallVec::new();
 
         if let Ok(objects) = om.get_managed_objects().await {
             for (_path, interfaces) in objects {

@@ -3,6 +3,7 @@ use gpui::prelude::*;
 use gpui::{App, AsyncApp, BackgroundExecutor, Context, Entity, EventEmitter, Global, SharedString, WeakEntity};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
+use smallvec::SmallVec;
 use std::sync::Arc;
 use tokio::io::AsyncBufReadExt;
 
@@ -34,11 +35,11 @@ pub struct ActiveWindowChanged;
 pub struct FullscreenChanged(pub bool);
 
 pub struct HyprlandService {
-    workspaces: Arc<RwLock<Vec<Workspace>>>,
+    workspaces: Arc<RwLock<SmallVec<[Workspace; 10]>>>,
     active_workspace_id: Arc<RwLock<i32>>,
     active_window: Arc<RwLock<Option<ActiveWindow>>>,
     fullscreen_workspace: Arc<RwLock<Option<i32>>>,
-    open_windows: Arc<RwLock<Vec<String>>>, // Track open window classes
+    open_windows: Arc<RwLock<Vec<String>>>, // Track open window classes (keep Vec, not hot path)
     executor: BackgroundExecutor,
 }
 
@@ -48,7 +49,7 @@ impl EventEmitter<FullscreenChanged> for HyprlandService {}
 
 // Data structure to send from background worker to UI thread
 enum HyprlandUpdate {
-    Workspace(Vec<Workspace>, i32),
+    Workspace(SmallVec<[Workspace; 10]>, i32),
     Window(Option<ActiveWindow>),
     Fullscreen(Option<i32>), // workspace id with fullscreen, or None
     WindowOpened(String),    // window class
@@ -57,7 +58,7 @@ enum HyprlandUpdate {
 
 impl HyprlandService {
     pub fn new(cx: &mut Context<Self>) -> Self {
-        let workspaces = Arc::new(RwLock::new(Vec::with_capacity(10)));
+        let workspaces = Arc::new(RwLock::new(SmallVec::new()));
         let active_workspace_id = Arc::new(RwLock::new(1));
         let active_window = Arc::new(RwLock::new(None));
         let fullscreen_workspace = Arc::new(RwLock::new(None));
@@ -156,7 +157,7 @@ impl HyprlandService {
         }
     }
 
-    pub fn workspaces(&self) -> Vec<Workspace> {
+    pub fn workspaces(&self) -> SmallVec<[Workspace; 10]> {
         self.workspaces.read().clone()
     }
 
@@ -279,12 +280,15 @@ impl HyprlandService {
         }
     }
 
-    async fn fetch_hyprland_data() -> (Vec<Workspace>, i32) {
+    async fn fetch_hyprland_data() -> (SmallVec<[Workspace; 10]>, i32) {
         let workspaces_json = Self::hyprctl(&["workspaces", "-j"]).await;
         let active_workspace_json = Self::hyprctl(&["activeworkspace", "-j"]).await;
 
-        let mut workspaces: Vec<Workspace> =
-            serde_json::from_str(&workspaces_json).unwrap_or_default();
+        let mut workspaces: SmallVec<[Workspace; 10]> =
+            serde_json::from_str::<Vec<Workspace>>(&workspaces_json)
+                .unwrap_or_default()
+                .into_iter()
+                .collect();
         workspaces.sort_by_key(|w| w.id);
 
         let active_workspace_id: i32 =
