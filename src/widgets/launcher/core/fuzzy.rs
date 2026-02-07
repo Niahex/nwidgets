@@ -47,7 +47,7 @@ impl FuzzyMatcher {
 
         // Get the results
         let snapshot = self.matcher.snapshot();
-        let mut results: Vec<usize> = Vec::new();
+        let mut results: Vec<usize> = Vec::with_capacity(snapshot.matched_item_count() as usize);
 
         for i in 0..snapshot.matched_item_count() {
             if let Some(item) = snapshot.get_matched_item(i) {

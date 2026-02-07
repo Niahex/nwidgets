@@ -17,7 +17,7 @@ pub struct LauncherCore {
 impl LauncherCore {
     pub fn new() -> Self {
         Self {
-            applications: Arc::new(RwLock::new(Vec::new())),
+            applications: Arc::new(RwLock::new(Vec::with_capacity(200))),
             fuzzy_matcher: FuzzyMatcher::new(),
             calculator: Some(Calculator::new()),
         }
@@ -31,7 +31,7 @@ impl LauncherCore {
     }
 
     pub fn search(&mut self, query: &str, clipboard_history: Vec<ClipboardEntry>) -> Vec<SearchResultType> {
-        let mut results = Vec::new();
+        let mut results = Vec::with_capacity(50);
 
         if query.starts_with("clip") {
             let search_term = if query.len() > 4 {

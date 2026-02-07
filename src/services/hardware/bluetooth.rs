@@ -171,7 +171,7 @@ impl BluetoothService {
     async fn fetch_bluetooth_state_dbus(om: &ObjectManagerProxy<'_>) -> BluetoothState {
         let mut powered = false;
         let mut connected_devices = 0;
-        let mut devices = Vec::new();
+        let mut devices = Vec::with_capacity(10);
 
         if let Ok(objects) = om.get_managed_objects().await {
             for (_path, interfaces) in objects {

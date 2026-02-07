@@ -57,11 +57,11 @@ enum HyprlandUpdate {
 
 impl HyprlandService {
     pub fn new(cx: &mut Context<Self>) -> Self {
-        let workspaces = Arc::new(RwLock::new(Vec::new()));
+        let workspaces = Arc::new(RwLock::new(Vec::with_capacity(10)));
         let active_workspace_id = Arc::new(RwLock::new(1));
         let active_window = Arc::new(RwLock::new(None));
         let fullscreen_workspace = Arc::new(RwLock::new(None));
-        let open_windows = Arc::new(RwLock::new(Vec::new()));
+        let open_windows = Arc::new(RwLock::new(Vec::with_capacity(20)));
 
         // Create channel for communication: Worker (Tokio) -> UI (GPUI)
         let (ui_tx, mut ui_rx) = futures::channel::mpsc::unbounded::<HyprlandUpdate>();

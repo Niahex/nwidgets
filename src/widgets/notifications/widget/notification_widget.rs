@@ -21,7 +21,7 @@ impl EventEmitter<NotificationsStateChanged> for NotificationsWidget {}
 impl NotificationsWidget {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let service = NotificationService::global(cx);
-        let notifications = Arc::new(RwLock::new(Vec::new()));
+        let notifications = Arc::new(RwLock::new(Vec::with_capacity(20)));
 
         Self::subscribe_to_notifications(&service, Arc::clone(&notifications), cx);
         Self::start_cleanup_timer(Arc::clone(&notifications), cx);

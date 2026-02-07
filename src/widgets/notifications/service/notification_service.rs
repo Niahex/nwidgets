@@ -17,7 +17,7 @@ impl NotificationService {
     pub fn new(cx: &mut Context<Self>) -> Self {
         Self::start_dbus_server(cx);
 
-        let notifications = Arc::new(RwLock::new(Vec::new()));
+        let notifications = Arc::new(RwLock::new(Vec::with_capacity(20)));
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
 
         {

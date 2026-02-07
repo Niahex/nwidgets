@@ -80,10 +80,10 @@ enum AudioUpdate {
 impl AudioService {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let state = Arc::new(RwLock::new(AudioState::default()));
-        let sinks = Arc::new(RwLock::new(Vec::new()));
-        let sources = Arc::new(RwLock::new(Vec::new()));
-        let sink_inputs = Arc::new(RwLock::new(Vec::new()));
-        let source_outputs = Arc::new(RwLock::new(Vec::new()));
+        let sinks = Arc::new(RwLock::new(Vec::with_capacity(8)));
+        let sources = Arc::new(RwLock::new(Vec::with_capacity(8)));
+        let sink_inputs = Arc::new(RwLock::new(Vec::with_capacity(16)));
+        let source_outputs = Arc::new(RwLock::new(Vec::with_capacity(16)));
 
         let (ui_tx, mut ui_rx) = futures::channel::mpsc::unbounded::<AudioUpdate>();
 
@@ -234,9 +234,9 @@ impl AudioService {
                     };
 
                     let nodes: std::rc::Rc<std::cell::RefCell<Vec<pw::node::Node>>> =
-                        std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
+                        std::rc::Rc::new(std::cell::RefCell::new(Vec::with_capacity(32)));
                     let listeners: std::rc::Rc<std::cell::RefCell<Vec<pw::node::NodeListener>>> =
-                        std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
+                        std::rc::Rc::new(std::cell::RefCell::new(Vec::with_capacity(32)));
 
                     let nodes_clone = nodes.clone();
                     let listeners_clone = listeners.clone();
@@ -363,10 +363,10 @@ impl AudioService {
 
                 // Build device lists
                 let nodes_snapshot = nodes_data.read();
-                let mut new_sinks = Vec::new();
-                let mut new_sources = Vec::new();
-                let mut new_sink_inputs = Vec::new();
-                let mut new_source_outputs = Vec::new();
+                let mut new_sinks = Vec::with_capacity(8);
+                let mut new_sources = Vec::with_capacity(8);
+                let mut new_sink_inputs = Vec::with_capacity(16);
+                let mut new_source_outputs = Vec::with_capacity(16);
 
                 for info in nodes_snapshot.values() {
                     if info.media_class.contains("Audio/Sink")

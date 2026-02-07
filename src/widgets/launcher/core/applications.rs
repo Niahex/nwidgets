@@ -37,13 +37,13 @@ pub fn scan_applications() -> Vec<ApplicationInfo> {
     use std::sync::{Arc, Mutex};
     use std::thread;
 
-    let applications = Arc::new(Mutex::new(Vec::new()));
+    let applications = Arc::new(Mutex::new(Vec::with_capacity(200)));
     let seen_names = Arc::new(Mutex::new(HashSet::new()));
 
     let paths: Vec<_> = Iter::new(freedesktop_desktop_entry::default_paths()).collect();
     let chunk_size = (paths.len() / 4).max(1);
 
-    let mut handles = Vec::new();
+    let mut handles = Vec::with_capacity(4);
 
     for chunk in paths.chunks(chunk_size) {
         let chunk = chunk.to_vec();
@@ -51,7 +51,7 @@ pub fn scan_applications() -> Vec<ApplicationInfo> {
         let seen_names = Arc::clone(&seen_names);
 
         let handle = thread::spawn(move || {
-            let mut local_apps = Vec::new();
+            let mut local_apps = Vec::with_capacity(50);
 
             for path in chunk {
                 if let Ok(content) = fs::read_to_string(&path) {

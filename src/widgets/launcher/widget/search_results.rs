@@ -13,7 +13,7 @@ pub struct SearchResults {
 impl SearchResults {
     pub fn new() -> Self {
         Self {
-            results: Vec::new(),
+            results: Vec::with_capacity(50),
             selected_index: 0,
             scroll_offset: 0,
             theme: Theme::nord_dark(),

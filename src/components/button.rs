@@ -46,7 +46,7 @@ impl Button {
             on_click: None,
             on_right_click: None,
             on_middle_click: None,
-            children: Vec::new(),
+            children: Vec::with_capacity(4),
         }
     }
 

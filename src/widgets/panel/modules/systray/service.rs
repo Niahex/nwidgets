@@ -22,7 +22,7 @@ impl EventEmitter<SystrayChanged> for SystrayService {}
 impl SystrayService {
     pub fn new(_cx: &mut Context<Self>) -> Self {
         Self {
-            items: Arc::new(RwLock::new(Vec::new())),
+            items: Arc::new(RwLock::new(Vec::with_capacity(8))),
         }
     }
 

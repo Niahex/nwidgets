@@ -9,7 +9,7 @@ pub fn get_running_processes() -> Vec<ProcessInfo> {
             let stdout = String::from_utf8_lossy(&output.stdout);
             stdout.lines().filter_map(parse_ps_line).collect()
         }
-        Err(_) => Vec::new(),
+        Err(_) => Vec::with_capacity(0),
     }
 }
 

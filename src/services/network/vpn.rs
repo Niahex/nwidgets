@@ -123,7 +123,7 @@ impl VpnService {
     }
 
     async fn list_vpn_connections() -> Vec<VpnConnection> {
-        let mut connections = Vec::new();
+        let mut connections = Vec::with_capacity(5);
 
         if let Ok(output) = tokio::process::Command::new("nmcli")
             .args(["-t", "-f", "NAME,UUID,TYPE,DEVICE", "connection", "show"])

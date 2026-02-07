@@ -36,14 +36,14 @@ impl Launcher {
             core,
             search_input: SearchInput::new("Search for apps and commands").with_theme(&theme),
             search_results: SearchResults::new().with_theme(&theme),
-            internal_results: Vec::new(),
+            internal_results: Vec::with_capacity(50),
             search_task: None,
             theme,
         }
     }
 
     fn update_search_results(&mut self) {
-        self.update_search_results_with_clipboard(Vec::new());
+        self.update_search_results_with_clipboard(Vec::with_capacity(0));
     }
 
     fn update_search_results_with_clipboard(&mut self, clipboard_history: Vec<ClipboardEntry>) {
