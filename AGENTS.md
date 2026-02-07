@@ -28,6 +28,63 @@
   });
   ```
 
+## ⚠️ Critical Component Exceptions
+
+**IMPORTANT**: The following components require special error handling and are EXCLUDED from standard Zed guidelines:
+
+### CEF (Chromium Embedded Framework)
+
+**Location**: `src/services/cef/`
+
+**Why exceptions are needed**:
+- CEF initialization is critical for application functionality
+- Failed CEF initialization should cause immediate application exit
+- CEF manages its own lifecycle and doesn't support re-initialization
+- Panics are intentional to signal critical failures
+
+**Allowed patterns**:
+```rust
+// ✅ ALLOWED in CEF code
+Browser::new_offscreen(...).expect("Failed to create browser");
+cef::initialize(...).expect("Failed to initialize CEF");
+```
+
+**DO NOT**:
+- ❌ Replace `.expect()` with error logging and return
+- ❌ Add initialization guards or retry logic
+- ❌ Change panic behavior to graceful degradation
+
+### Chat Window
+
+**Location**: `src/widgets/chat/`
+
+**Why exceptions are needed**:
+- Chat window maintains persistent connection state
+- Window creation failure should be immediately visible
+- State persistence requires specific initialization order
+- `.expect()` ensures proper error visibility during development
+
+**Allowed patterns**:
+```rust
+// ✅ ALLOWED in Chat window code
+cx.open_window(...).expect("Failed to create chat window");
+```
+
+**DO NOT**:
+- ❌ Replace `.expect()` with graceful error handling
+- ❌ Allow chat window to fail silently
+- ❌ Add fallback logic that might corrupt state
+
+### When to Apply Exceptions
+
+Apply these exceptions ONLY when:
+1. Component is in `src/services/cef/` or `src/widgets/chat/`
+2. Failure is truly critical and should stop execution
+3. Alternative error handling would hide critical issues
+4. Component has been tested and verified to work with current approach
+
+For ALL other components, follow standard Zed error handling guidelines.
+
 ## GPUI Framework
 
 GPUI is a UI framework which also provides primitives for state and concurrency management. nwidgets uses a custom fork with Wayland support.

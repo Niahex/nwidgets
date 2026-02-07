@@ -20,6 +20,34 @@ This document defines coding standards for nwidgets, adapted from Zed's best pra
   - Example: avoid `let _ = client.request(...).await?;` - use `client.request(...).await?;` instead
 * **When implementing async operations that may fail**, ensure errors propagate to the UI layer so users get meaningful feedback.
 
+### ⚠️ Critical Component Exceptions
+
+**IMPORTANT**: The following components require special error handling and are EXCLUDED from standard guidelines:
+
+#### CEF (Chromium Embedded Framework)
+- **Location**: `src/services/cef/`
+- **Exception**: `.expect()` and panics are REQUIRED for critical failures
+- **Reason**: CEF initialization is critical and should fail fast. CEF cannot be re-initialized.
+- **DO NOT** replace `.expect()` with graceful error handling in CEF code
+
+**Example (ALLOWED in CEF)**:
+```rust
+Browser::new_offscreen(...).expect("Failed to create browser");
+```
+
+#### Chat Window
+- **Location**: `src/widgets/chat/`
+- **Exception**: `.expect()` is REQUIRED for window creation
+- **Reason**: Maintains persistent connection state that must not fail silently
+- **DO NOT** replace `.expect()` with graceful error handling in Chat code
+
+**Example (ALLOWED in Chat)**:
+```rust
+cx.open_window(...).expect("Failed to create chat window");
+```
+
+**For all other components**, follow standard error handling guidelines above.
+
 ## File Structure
 
 * **Never create files with `mod.rs` paths** - prefer `src/some_module.rs` instead of `src/some_module/mod.rs`.
