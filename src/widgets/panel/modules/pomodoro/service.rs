@@ -107,12 +107,16 @@ impl PomodoroService {
     }
 
     pub fn pause(&self, cx: &mut Context<Self>) {
-        let current_status = self.status.read().clone();
+        let status_guard = self.status.read();
         if let PomodoroStatus::Running {
             phase,
             remaining_secs,
-        } = current_status
+        } = &*status_guard
         {
+            let phase = phase.clone();
+            let remaining_secs = *remaining_secs;
+            drop(status_guard);
+            
             *self.status.write() = PomodoroStatus::Paused {
                 phase,
                 remaining_secs,
@@ -124,12 +128,16 @@ impl PomodoroService {
     }
 
     pub fn resume(&self, cx: &mut Context<Self>) {
-        let current_status = self.status.read().clone();
+        let status_guard = self.status.read();
         if let PomodoroStatus::Paused {
             phase,
             remaining_secs,
-        } = current_status
+        } = &*status_guard
         {
+            let phase = phase.clone();
+            let remaining_secs = *remaining_secs;
+            drop(status_guard);
+            
             *self.status.write() = PomodoroStatus::Running {
                 phase,
                 remaining_secs,
@@ -157,8 +165,8 @@ impl PomodoroService {
             cx.background_executor().timer(Duration::from_secs(1)).await;
 
             let should_update = {
-                let current_status = status.read().clone();
-                matches!(current_status, PomodoroStatus::Running { .. })
+                let status_guard = status.read();
+                matches!(&*status_guard, PomodoroStatus::Running { .. })
             };
 
             if should_update {
