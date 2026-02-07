@@ -4,7 +4,7 @@ use gpui::*;
 use crate::widgets::panel::Panel;
 
 pub fn open(cx: &mut App) {
-    cx.open_window(
+    if let Err(e) = cx.open_window(
         WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(Bounds {
                 origin: Point { x: px(0.0), y: px(0.0) },
@@ -24,5 +24,7 @@ pub fn open(cx: &mut App) {
             ..Default::default()
         },
         |_window, cx| cx.new(Panel::new),
-    ).expect("Failed to create panel window");
+    ) {
+        log::error!("Failed to create panel window: {}", e);
+    }
 }

@@ -34,16 +34,16 @@ impl Render for WorkspacesModule {
         div()
             .flex()
             .gap_1()
-            .children(workspaces.into_iter().map(|ws| {
-                let is_active = ws.id == active_id;
-                let ws_id = ws.id;
+            .children(workspaces.into_iter().map(|workspace| {
+                let is_active = workspace.id == active_id;
+                let workspace_id = workspace.id;
                 let hyprland = hyprland.clone();
 
                 // Format workspace name: if it's not a number, use first letter capitalized
-                let display_name = if ws.name.parse::<i32>().is_ok() {
-                    ws.name.clone()
+                let display_name = if workspace.name.parse::<i32>().is_ok() {
+                    workspace.name.clone()
                 } else {
-                    ws.name
+                    workspace.name
                         .chars()
                         .next()
                         .unwrap_or('?')
@@ -51,12 +51,12 @@ impl Render for WorkspacesModule {
                         .to_string()
                 };
 
-                Button::new(("workspace", ws.id as u32))
+                Button::new(("workspace", workspace.id as u32))
                     .label(display_name)
                     .accent()
                     .selected(is_active)
                     .on_click(move |_event, _window, cx| {
-                        hyprland.read(cx).switch_to_workspace(ws_id);
+                        hyprland.read(cx).switch_to_workspace(workspace_id);
                     })
             }))
     }

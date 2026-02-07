@@ -85,12 +85,12 @@ impl HyprlandService {
                     let mut fs_changed = None;
 
                     match update {
-                        HyprlandUpdate::Workspace(new_ws, new_id) => {
-                            let mut ws = workspaces_clone.write();
-                            let mut id = active_workspace_id_clone.write();
-                            if *ws != new_ws || *id != new_id {
-                                *ws = new_ws;
-                                *id = new_id;
+                        HyprlandUpdate::Workspace(new_workspaces, new_workspace_id) => {
+                            let mut workspaces = workspaces_clone.write();
+                            let mut workspace_id = active_workspace_id_clone.write();
+                            if *workspaces != new_workspaces || *workspace_id != new_workspace_id {
+                                *workspaces = new_workspaces;
+                                *workspace_id = new_workspace_id;
                                 ws_changed = true;
                             }
                         }
@@ -232,25 +232,25 @@ impl HyprlandService {
         });
 
         // Initial fetch
-        let (ws, id) = Self::fetch_hyprland_data().await;
-        let _ = ui_tx.unbounded_send(HyprlandUpdate::Workspace(ws, id));
-        let win = Self::fetch_active_window().await;
-        let _ = ui_tx.unbounded_send(HyprlandUpdate::Window(win));
-        let fs = Self::fetch_fullscreen_workspace().await;
-        let _ = ui_tx.unbounded_send(HyprlandUpdate::Fullscreen(fs));
+        let (workspaces, workspace_id) = Self::fetch_hyprland_data().await;
+        let _ = ui_tx.unbounded_send(HyprlandUpdate::Workspace(workspaces, workspace_id));
+        let window = Self::fetch_active_window().await;
+        let _ = ui_tx.unbounded_send(HyprlandUpdate::Window(window));
+        let fullscreen = Self::fetch_fullscreen_workspace().await;
+        let _ = ui_tx.unbounded_send(HyprlandUpdate::Fullscreen(fullscreen));
 
         // Event loop
         while let Some((ev_type, line)) = socket_rx.next().await {
             match ev_type {
                 0 => {
                     // Workspace event
-                    let (ws, id) = Self::fetch_hyprland_data().await;
-                    let _ = ui_tx.unbounded_send(HyprlandUpdate::Workspace(ws, id));
+                    let (workspaces, workspace_id) = Self::fetch_hyprland_data().await;
+                    let _ = ui_tx.unbounded_send(HyprlandUpdate::Workspace(workspaces, workspace_id));
                 }
                 1 => {
                     // Active window event
-                    let win = Self::fetch_active_window().await;
-                    let _ = ui_tx.unbounded_send(HyprlandUpdate::Window(win));
+                    let window = Self::fetch_active_window().await;
+                    let _ = ui_tx.unbounded_send(HyprlandUpdate::Window(window));
                 }
                 2 => {
                     // Window opened: openwindow>>ADDRESS,WORKSPACE,CLASS,TITLE
@@ -266,13 +266,13 @@ impl HyprlandService {
                     // Window closed: closewindow>>ADDRESS
                     // We need to get the class from hyprctl since we only have address
                     // For now, just trigger active window update
-                    let win = Self::fetch_active_window().await;
-                    let _ = ui_tx.unbounded_send(HyprlandUpdate::Window(win));
+                    let window = Self::fetch_active_window().await;
+                    let _ = ui_tx.unbounded_send(HyprlandUpdate::Window(window));
                 }
                 4 => {
                     // Fullscreen event
-                    let fs = Self::fetch_fullscreen_workspace().await;
-                    let _ = ui_tx.unbounded_send(HyprlandUpdate::Fullscreen(fs));
+                    let fullscreen = Self::fetch_fullscreen_workspace().await;
+                    let _ = ui_tx.unbounded_send(HyprlandUpdate::Fullscreen(fullscreen));
                 }
                 _ => {}
             }

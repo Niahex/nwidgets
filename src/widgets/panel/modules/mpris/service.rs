@@ -142,7 +142,9 @@ impl MprisService {
         gpui_tokio::Tokio::spawn(cx, async {
             if let Ok(conn) = Connection::session().await {
                 if let Ok(proxy) = MediaPlayer2PlayerProxy::new(&conn).await {
-                    let _ = proxy.play_pause().await;
+                    if let Err(e) = proxy.play_pause().await {
+                        log::warn!("Failed to play/pause MPRIS: {}", e);
+                    }
                 }
             }
         })
@@ -153,7 +155,9 @@ impl MprisService {
         gpui_tokio::Tokio::spawn(cx, async {
             if let Ok(conn) = Connection::session().await {
                 if let Ok(proxy) = MediaPlayer2PlayerProxy::new(&conn).await {
-                    let _ = proxy.next().await;
+                    if let Err(e) = proxy.next().await {
+                        log::warn!("Failed to skip to next track: {}", e);
+                    }
                 }
             }
         })
@@ -164,7 +168,9 @@ impl MprisService {
         gpui_tokio::Tokio::spawn(cx, async {
             if let Ok(conn) = Connection::session().await {
                 if let Ok(proxy) = MediaPlayer2PlayerProxy::new(&conn).await {
-                    let _ = proxy.previous().await;
+                    if let Err(e) = proxy.previous().await {
+                        log::warn!("Failed to skip to previous track: {}", e);
+                    }
                 }
             }
         })

@@ -66,7 +66,9 @@ impl ClipboardMonitor {
                             }
                         }
                     }
-                    let _ = child.kill().await;
+                    if let Err(e) = child.kill().await {
+                        log::warn!("Failed to kill wl-paste process: {}", e);
+                    }
                 }
                 Err(e) => {
                     log::error!("Failed to start wl-paste watcher: {e}");

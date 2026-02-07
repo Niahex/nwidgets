@@ -58,13 +58,16 @@ pub fn scan_applications() -> Vec<ApplicationInfo> {
                     if let Ok(desktop_entry) = DesktopEntry::decode(&path, &content) {
                         if let Some(name) = desktop_entry.name(None) {
                             if let Some(exec) = desktop_entry.exec() {
-                                {
-                                    let mut seen = seen_names.lock().unwrap();
-                                    if seen.contains(&name.to_string()) {
-                                        continue;
-                                    }
-                                    seen.insert(name.to_string());
+                            {
+                                let Ok(mut seen) = seen_names.lock() else {
+                                    log::error!("Failed to lock seen_names mutex");
+                                    continue;
+                                };
+                                if seen.contains(&name.to_string()) {
+                                    continue;
                                 }
+                                seen.insert(name.to_string());
+                            }
 
                                 let icon_path = desktop_entry
                                     .icon()
@@ -90,8 +93,11 @@ pub fn scan_applications() -> Vec<ApplicationInfo> {
                 }
             }
 
-            let mut apps = applications.lock().unwrap();
-            apps.extend(local_apps);
+            if let Ok(mut apps) = applications.lock() {
+                apps.extend(local_apps);
+            } else {
+                log::error!("Failed to lock applications mutex");
+            }
         });
 
         handles.push(handle);
@@ -101,7 +107,25 @@ pub fn scan_applications() -> Vec<ApplicationInfo> {
         let _ = handle.join();
     }
 
-    let mut applications = Arc::try_unwrap(applications).unwrap().into_inner().unwrap();
+    let mut applications = match Arc::try_unwrap(applications) {
+        Ok(mutex) => match mutex.into_inner() {
+            Ok(apps) => apps,
+            Err(e) => {
+                log::error!("Mutex poisoned during into_inner, recovering");
+                e.into_inner()
+            }
+        },
+        Err(arc) => {
+            log::warn!("Failed to unwrap Arc, cloning applications");
+            match arc.lock() {
+                Ok(guard) => (*guard).clone(),
+                Err(e) => {
+                    log::error!("Mutex poisoned, recovering");
+                    e.into_inner().clone()
+                }
+            }
+        }
+    };
     applications.sort_by(|a, b| a.name.cmp(&b.name));
     applications
 }

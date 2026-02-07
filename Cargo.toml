@@ -2,6 +2,11 @@
 name = "nwidgets"
 version = "0.1.0"
 edition = "2021"
+authors = ["Niahex"]
+license = "GPL-3.0"
+description = "High-performance Wayland widget system built with GPUI"
+repository = "https://github.com/Niahex/nwidgets"
+publish = false
 include = ["data/**/*", "src/**/*", "Cargo.toml", "assets/**/*"]
 
 [dependencies]

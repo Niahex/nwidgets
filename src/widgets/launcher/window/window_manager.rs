@@ -11,7 +11,7 @@ static LAUNCHER_WINDOW: once_cell::sync::OnceCell<Arc<Mutex<WindowHandle<Launche
 pub fn open(cx: &mut App, launcher_service: Entity<LauncherService>, clipboard: Entity<ClipboardMonitor>) {
     use gpui::layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions};
 
-    let window = cx.open_window(
+    let window = match cx.open_window(
         WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(Bounds {
                 origin: Point { x: px(0.0), y: px(0.0) },
@@ -31,9 +31,17 @@ pub fn open(cx: &mut App, launcher_service: Entity<LauncherService>, clipboard: 
             ..Default::default()
         },
         move |_window, cx| cx.new(|cx| LauncherWidget::new(cx, launcher_service, clipboard)),
-    ).expect("Failed to create launcher window");
+    ) {
+        Ok(window) => window,
+        Err(e) => {
+            log::error!("Failed to create launcher window: {}", e);
+            return;
+        }
+    };
 
-    LAUNCHER_WINDOW.set(Arc::new(Mutex::new(window))).ok();
+    if let Err(e) = LAUNCHER_WINDOW.set(Arc::new(Mutex::new(window))) {
+        log::error!("Failed to set launcher window: {:?}", e);
+    }
 }
 
 pub fn on_toggle(service: Entity<LauncherService>, _event: &LauncherToggled, cx: &mut App) {
