@@ -2,6 +2,7 @@ use super::PopoverMenu;
 use crate::theme::ActiveTheme;
 use gpui::prelude::*;
 use gpui::*;
+use smallvec::SmallVec;
 use std::rc::Rc;
 
 type ClickHandler = Rc<dyn Fn(&ClickEvent, &mut Window, &mut App)>;
@@ -12,7 +13,7 @@ type SelectHandler<T> = Rc<dyn Fn(&T, &mut Window, &mut App)>;
 pub struct Dropdown<T: Clone + PartialEq + 'static> {
     id: ElementId,
     selected: Option<T>,
-    options: Vec<DropdownOption<T>>,
+    options: SmallVec<[DropdownOption<T>; 8]>,
     is_open: bool,
     placeholder: SharedString,
     on_toggle: Option<ClickHandler>,
@@ -30,7 +31,7 @@ impl<T: Clone + PartialEq + 'static> Dropdown<T> {
         Self {
             id: id.into(),
             selected: None,
-            options,
+            options: SmallVec::from_vec(options),
             is_open: false,
             placeholder: "Select...".into(),
             on_toggle: None,

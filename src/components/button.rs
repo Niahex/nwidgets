@@ -1,6 +1,7 @@
 use crate::theme::ActiveTheme;
 use gpui::prelude::*;
 use gpui::*;
+use smallvec::SmallVec;
 use std::rc::Rc;
 
 #[allow(dead_code)]
@@ -30,7 +31,7 @@ pub struct Button {
     on_click: Option<ClickHandler>,
     on_right_click: Option<MouseDownHandler>,
     on_middle_click: Option<MouseDownHandler>,
-    children: Vec<AnyElement>,
+    children: SmallVec<[AnyElement; 4]>,
 }
 
 impl Button {
@@ -46,7 +47,7 @@ impl Button {
             on_click: None,
             on_right_click: None,
             on_middle_click: None,
-            children: Vec::with_capacity(4),
+            children: SmallVec::new(),
         }
     }
 
