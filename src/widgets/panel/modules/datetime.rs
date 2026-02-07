@@ -12,8 +12,8 @@ pub struct DateTimeModule {
 impl DateTimeModule {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let now = chrono::Local::now();
-        let time = now.format("%H:%M").to_string().into();
-        let date = now.format("%a %d %b").to_string().into();
+        let time = format!("{}", now.format("%H:%M")).into();
+        let date = format!("{}", now.format("%a %d %b")).into();
 
         cx.spawn(move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
             let mut cx = cx.clone();
@@ -28,8 +28,8 @@ impl DateTimeModule {
                 // Initial update after sync
                 if let Ok(()) = this.update(&mut cx, |this, cx| {
                     let now = chrono::Local::now();
-                    this.time = now.format("%H:%M").to_string().into();
-                    this.date = now.format("%a %d %b").to_string().into();
+                    this.time = format!("{}", now.format("%H:%M")).into();
+                    this.date = format!("{}", now.format("%a %d %b")).into();
                     cx.notify();
                 }) {}
 
@@ -41,8 +41,8 @@ impl DateTimeModule {
 
                     let now = chrono::Local::now();
                     if let Ok(()) = this.update(&mut cx, |this, cx| {
-                        this.time = now.format("%H:%M").to_string().into();
-                        this.date = now.format("%a %d %b").to_string().into();
+                        this.time = format!("{}", now.format("%H:%M")).into();
+                        this.date = format!("{}", now.format("%a %d %b")).into();
                         cx.notify();
                     }) {}
                 }

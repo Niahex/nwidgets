@@ -34,7 +34,7 @@ impl SearchInput {
         F1: Fn(&str) + 'static,
         F2: Fn(&str) + 'static,
     {
-        let query_text = self.query.to_string();
+        let query_text = self.query.clone();
         let theme = self.theme.clone();
         let placeholder = self.placeholder.clone();
 
@@ -58,20 +58,18 @@ impl SearchInput {
             } else if query_text.starts_with('=') {
                 self.render_command_input("=", &query_text, theme.accent_alt)
             } else {
-                div().child(query_text.clone())
+                div().child(query_text)
             })
     }
 
     fn render_command_input(&self, cmd: &str, query_text: &str, bg_color: gpui::Hsla) -> gpui::Div {
-        let (command, rest) = if query_text.starts_with(cmd) && query_text.len() > cmd.len() {
-            (
-                cmd.to_string(),
-                query_text.strip_prefix(cmd).unwrap_or("").to_string(),
-            )
+        let command = cmd.to_string();
+        let rest = if query_text.starts_with(cmd) && query_text.len() > cmd.len() {
+            query_text.strip_prefix(cmd).unwrap_or("").to_string()
         } else if query_text == cmd {
-            (cmd.to_string(), String::new())
+            String::new()
         } else {
-            (String::new(), query_text.to_string())
+            query_text.to_string()
         };
 
         div()
