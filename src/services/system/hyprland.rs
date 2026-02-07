@@ -1,6 +1,6 @@
 use futures::StreamExt;
 use gpui::prelude::*;
-use gpui::{App, AsyncApp, BackgroundExecutor, Context, Entity, EventEmitter, Global, WeakEntity};
+use gpui::{App, AsyncApp, BackgroundExecutor, Context, Entity, EventEmitter, Global, SharedString, WeakEntity};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -9,13 +9,13 @@ use tokio::io::AsyncBufReadExt;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Workspace {
     pub id: i32,
-    pub name: String,
+    pub name: SharedString,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 pub struct ActiveWindow {
     pub class: String,
-    pub title: String,
+    pub title: SharedString,
     #[serde(default)]
     pub initial_class: String,
     #[serde(default)]

@@ -49,6 +49,7 @@ impl Render for WorkspacesModule {
                         .unwrap_or('?')
                         .to_uppercase()
                         .to_string()
+                        .into()
                 };
 
                 Button::new(("workspace", workspace.id as u32))

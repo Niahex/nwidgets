@@ -27,7 +27,8 @@ fn parse_ps_line(line: &str) -> Option<ProcessInfo> {
         .split('/')
         .next_back()
         .unwrap_or(parts[10])
-        .to_string();
+        .to_string()
+        .into();
 
     Some(ProcessInfo {
         pid,

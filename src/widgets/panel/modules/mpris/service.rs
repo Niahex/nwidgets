@@ -1,6 +1,6 @@
 use futures_util::StreamExt;
 use gpui::prelude::*;
-use gpui::{App, AsyncApp, BackgroundExecutor, Context, Entity, EventEmitter, Global, WeakEntity};
+use gpui::{App, AsyncApp, BackgroundExecutor, Context, Entity, EventEmitter, Global, SharedString, WeakEntity};
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -27,14 +27,14 @@ impl From<String> for PlaybackStatus {
 
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct MprisMetadata {
-    pub title: Option<String>,
-    pub artist: Option<String>,
-    pub album: Option<String>,
+    pub title: Option<SharedString>,
+    pub artist: Option<SharedString>,
+    pub album: Option<SharedString>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct MprisPlayer {
-    pub player_name: String,
+    pub player_name: SharedString,
     pub status: PlaybackStatus,
     pub metadata: MprisMetadata,
 }
@@ -306,7 +306,7 @@ impl MprisService {
             // Extract title
             if let Some(value) = metadata_map.get("xesam:title") {
                 if let Ok(title_str) = value.downcast_ref::<zbus::zvariant::Str>() {
-                    metadata.title = Some(title_str.to_string());
+                    metadata.title = Some(title_str.to_string().into());
                 }
             }
 
@@ -315,7 +315,7 @@ impl MprisService {
                 if let Ok(artist_array) = value.downcast_ref::<zbus::zvariant::Array>() {
                     if let Ok(Some(first_artist)) = artist_array.get::<zbus::zvariant::Value>(0) {
                         if let Ok(artist_str) = first_artist.downcast_ref::<zbus::zvariant::Str>() {
-                            metadata.artist = Some(artist_str.to_string());
+                            metadata.artist = Some(artist_str.to_string().into());
                         }
                     }
                 }
@@ -324,13 +324,13 @@ impl MprisService {
             // Extract album
             if let Some(value) = metadata_map.get("xesam:album") {
                 if let Ok(album_str) = value.downcast_ref::<zbus::zvariant::Str>() {
-                    metadata.album = Some(album_str.to_string());
+                    metadata.album = Some(album_str.to_string().into());
                 }
             }
         }
 
         Ok(MprisPlayer {
-            player_name: "spotify".to_string(),
+            player_name: "spotify".into(),
             status,
             metadata,
         })

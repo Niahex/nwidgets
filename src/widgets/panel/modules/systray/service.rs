@@ -1,13 +1,13 @@
 use gpui::prelude::*;
-use gpui::{App, Context, Entity, EventEmitter, Global};
+use gpui::{App, Context, Entity, EventEmitter, Global, SharedString};
 use parking_lot::RwLock;
 use std::sync::Arc;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SystrayItem {
-    pub id: String,
-    pub title: String,
-    pub icon_name: Option<String>,
+    pub id: SharedString,
+    pub title: SharedString,
+    pub icon_name: Option<SharedString>,
 }
 
 #[derive(Clone)]
@@ -39,7 +39,7 @@ impl SystrayService {
 
     #[allow(dead_code)]
     pub fn remove_item(&self, id: &str, cx: &mut Context<Self>) {
-        self.items.write().retain(|item| item.id != id);
+        self.items.write().retain(|item| item.id.as_ref() != id);
         cx.emit(SystrayChanged);
         cx.notify();
     }

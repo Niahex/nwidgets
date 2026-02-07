@@ -40,7 +40,7 @@ impl Render for SystrayModule {
                     .rounded_sm()
                     .hover(|style| style.bg(cx.theme().systray_hover))
                     .cursor_pointer()
-                    .child(item.icon_name.unwrap_or_else(|| "📦".to_string()))
+                    .child(item.icon_name.unwrap_or_else(|| "📦".into()))
             }))
             .into_any_element()
     }

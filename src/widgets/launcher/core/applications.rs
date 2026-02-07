@@ -80,9 +80,10 @@ pub fn scan_applications() -> Vec<ApplicationInfo> {
                                     .collect::<Vec<_>>()
                                     .join(" ");
 
+                                let name_str = name.to_string();
                                 local_apps.push(ApplicationInfo {
-                                    name: name.to_string(),
-                                    name_lower: name.to_lowercase(),
+                                    name: name_str.clone().into(),
+                                    name_lower: name_str.to_lowercase(),
                                     exec: exec_clean,
                                     icon: desktop_entry.icon().map(|s| s.to_string()),
                                     icon_path,

@@ -98,7 +98,7 @@ impl LauncherCore {
                         SearchResult::Application(app.clone())
                     } else {
                         SearchResult::Application(ApplicationInfo {
-                            name: "Invalid app".to_string(),
+                            name: "Invalid app".into(),
                             name_lower: "invalid app".to_string(),
                             exec: "".to_string(),
                             icon: None,

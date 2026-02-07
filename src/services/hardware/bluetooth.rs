@@ -1,6 +1,6 @@
 use futures::StreamExt;
 use gpui::prelude::*;
-use gpui::{App, AsyncApp, Context, Entity, EventEmitter, Global, WeakEntity};
+use gpui::{App, AsyncApp, Context, Entity, EventEmitter, Global, SharedString, WeakEntity};
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -13,7 +13,7 @@ use zbus::{
 
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct BluetoothDevice {
-    pub name: String,
+    pub name: SharedString,
     pub address: String,
     pub connected: bool,
     pub auto_connect: bool,
@@ -219,9 +219,9 @@ impl BluetoothService {
                     if !address.is_empty() {
                         devices.push(BluetoothDevice {
                             name: if name.is_empty() {
-                                address.clone()
+                                address.clone().into()
                             } else {
-                                name
+                                name.into()
                             },
                             address,
                             connected,

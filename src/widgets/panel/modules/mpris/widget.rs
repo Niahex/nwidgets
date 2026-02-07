@@ -25,9 +25,8 @@ impl MprisModule {
                 player
                     .metadata
                     .title
-                    .unwrap_or_else(|| "No title".to_string())
-                    .into(),
-                player.metadata.artist.map(|a| a.into()),
+                    .unwrap_or_else(|| "No title".into()),
+                player.metadata.artist,
                 player.status,
             )
         } else {
@@ -57,9 +56,8 @@ impl MprisModule {
                 .metadata
                 .title
                 .clone()
-                .unwrap_or_else(|| "No title".to_string())
-                .into();
-            self.cached_artist = player.metadata.artist.clone().map(|a: String| a.into());
+                .unwrap_or_else(|| "No title".into());
+            self.cached_artist = player.metadata.artist.clone();
             self.cached_status = player.status.clone();
         } else {
             self.cached_title = "No title".into();
