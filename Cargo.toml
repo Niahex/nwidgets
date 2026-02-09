@@ -7,7 +7,7 @@ license = "GPL-3.0"
 description = "High-performance Wayland widget system built with GPUI"
 repository = "https://github.com/Niahex/nwidgets"
 publish = false
-include = ["data/**/*", "src/**/*", "Cargo.toml", "assets/**/*"]
+include = ["src/**/*", "Cargo.toml", "assets/**/*"]
 
 [dependencies]
 gpui = { git = "https://github.com/Niahex/zed", branch = "layershellv2", features = ["wayland"] }
