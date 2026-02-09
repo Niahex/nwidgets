@@ -15,7 +15,6 @@ impl NotificationsWindowManager {
         if let Some(window) = &self.window {
             let _ = window.update(cx, |_, window, _| {
                 window.set_layer(Layer::Overlay);
-                window.set_input_region(None);
                 window.resize(size(px(400.0), px(600.0)));
             });
             return cx.read_window(window, |entity, _| entity.clone()).ok();
@@ -46,7 +45,6 @@ impl NotificationsWindowManager {
                     ..Default::default()
                 },
                 |window, cx| {
-                    window.set_input_region(None);
                     cx.new(NotificationsWidget::new)
                 },
             )
