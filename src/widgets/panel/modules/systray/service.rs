@@ -144,33 +144,44 @@ impl SystrayService {
 
     async fn fetch_systray_items(conn: &Connection) -> SystrayState {
         let mut items = SmallVec::new();
-
-        // Get all D-Bus names
-        let dbus_proxy = match DBusProxy::new(conn).await {
+        
+        // Query the StatusNotifierWatcher for registered items
+        let watcher_proxy = match zbus::Proxy::new(
+            conn,
+            "org.kde.StatusNotifierWatcher",
+            "/StatusNotifierWatcher",
+            "org.kde.StatusNotifierWatcher",
+        )
+        .await
+        {
             Ok(p) => p,
             Err(e) => {
-                log::error!("Failed to create DBus proxy: {e}");
+                log::error!("Failed to create StatusNotifierWatcher proxy: {e}");
                 return SystrayState { items };
             }
         };
-
-        let names = match dbus_proxy.list_names().await {
-            Ok(n) => n,
+        
+        let registered_items: Vec<String> = match watcher_proxy
+            .get_property("RegisteredStatusNotifierItems")
+            .await
+        {
+            Ok(items) => items,
             Err(e) => {
-                log::error!("Failed to list D-Bus names: {e}");
+                log::error!("Failed to get registered items: {e}");
                 return SystrayState { items };
             }
         };
-
-        // Look for StatusNotifierItem services
-        for name in names {
-            if name.starts_with("org.kde.StatusNotifierItem-") {
-                if let Some(item) = Self::fetch_item_info(conn, &name).await {
-                    items.push(item);
-                }
+        
+        log::info!("Found {} registered systray items", registered_items.len());
+        
+        // Fetch info for each registered item
+        for service_name in registered_items {
+            log::info!("Fetching info for: {}", service_name);
+            if let Some(item) = Self::fetch_item_info(conn, &service_name).await {
+                items.push(item);
             }
         }
-
+        
         SystrayState { items }
     }
 
