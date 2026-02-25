@@ -83,7 +83,10 @@ impl SystrayService {
         .detach();
         
         // 2. Worker Task (Tokio)
-
+        gpui_tokio::Tokio::spawn(cx, async move {
+            Self::systray_worker(ui_tx).await
+        })
+        .detach();
         // 3. UI Task (GPUI)
         cx.spawn(move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
             let mut cx = cx.clone();
@@ -122,6 +125,7 @@ impl SystrayService {
     }
 
     async fn systray_worker(ui_tx: futures::channel::mpsc::UnboundedSender<SystrayState>) {
+        log::info!("Systray worker started");
         let conn = match Connection::session().await {
             Ok(c) => c,
             Err(e) => {
@@ -131,12 +135,14 @@ impl SystrayService {
         };
 
         // Initial fetch
+        log::info!("Fetching initial systray state");
         let initial_state = Self::fetch_systray_items(&conn).await;
         let _ = ui_tx.unbounded_send(initial_state);
 
         // Poll for changes every 5 seconds
         loop {
             tokio::time::sleep(Duration::from_secs(5)).await;
+            log::info!("Polling for systray changes");
             let new_state = Self::fetch_systray_items(&conn).await;
             let _ = ui_tx.unbounded_send(new_state);
         }
