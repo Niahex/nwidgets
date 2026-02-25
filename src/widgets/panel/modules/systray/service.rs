@@ -3,22 +3,15 @@ use gpui::prelude::*;
 use gpui::{App, AsyncApp, Context, Entity, EventEmitter, Global, SharedString, WeakEntity};
 use parking_lot::RwLock;
 use smallvec::SmallVec;
-use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Duration;
-use zbus::{
-    proxy,
-    zvariant::{OwnedObjectPath, OwnedValue},
-    Connection, Result,
-};
+use system_tray::client::{Client, Event, UpdateEvent};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SystrayItem {
     pub id: SharedString,
     pub title: SharedString,
     pub icon_name: Option<SharedString>,
-    pub service_name: String,
-    pub object_path: String,
+    pub address: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Default)]
@@ -31,41 +24,10 @@ pub struct SystrayChanged;
 
 pub struct SystrayService {
     state: Arc<RwLock<SystrayState>>,
+    client: Arc<RwLock<Option<Client>>>,
 }
 
 impl EventEmitter<SystrayChanged> for SystrayService {}
-
-type ManagedObjects = HashMap<OwnedObjectPath, HashMap<String, HashMap<String, OwnedValue>>>;
-
-// --- DBus Interfaces ---
-
-#[proxy(
-    default_service = "org.freedesktop.DBus",
-    default_path = "/org/freedesktop/DBus",
-    interface = "org.freedesktop.DBus"
-)]
-trait DBus {
-    fn list_names(&self) -> Result<Vec<String>>;
-}
-
-#[proxy(interface = "org.kde.StatusNotifierItem")]
-trait StatusNotifierItem {
-    #[zbus(property)]
-    fn id(&self) -> Result<String>;
-
-    #[zbus(property)]
-    fn title(&self) -> Result<String>;
-
-    #[zbus(property)]
-    fn icon_name(&self) -> Result<String>;
-
-    #[zbus(property)]
-    fn icon_theme_path(&self) -> Result<String>;
-
-    fn activate(&self, x: i32, y: i32) -> Result<()>;
-}
-
-// --- Service Implementation ---
 
 impl SystrayService {
     pub fn new(cx: &mut Context<Self>) -> Self {
@@ -74,20 +36,16 @@ impl SystrayService {
 
         let (ui_tx, mut ui_rx) = futures::channel::mpsc::unbounded::<SystrayState>();
 
-        // 1. Start StatusNotifierWatcher D-Bus server
+        let client = Arc::new(RwLock::new(None));
+        let client_clone = Arc::clone(&client);
+
+        // Worker Task (Tokio) - uses system-tray crate
         gpui_tokio::Tokio::spawn(cx, async move {
-            if let Err(e) = super::dbus_watcher::run_watcher_server().await {
-                log::error!("Failed to start StatusNotifierWatcher: {e}");
-            }
+            Self::systray_worker(ui_tx, client_clone).await
         })
         .detach();
-        
-        // 2. Worker Task (Tokio)
-        gpui_tokio::Tokio::spawn(cx, async move {
-            Self::systray_worker(ui_tx).await
-        })
-        .detach();
-        // 3. UI Task (GPUI)
+
+        // UI Task (GPUI)
         cx.spawn(move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
             let mut cx = cx.clone();
             async move {
@@ -113,7 +71,7 @@ impl SystrayService {
         })
         .detach();
 
-        Self { state }
+        Self { state, client }
     }
 
     pub fn items(&self) -> Vec<SystrayItem> {
@@ -124,137 +82,104 @@ impl SystrayService {
         self.state.read().clone()
     }
 
-    async fn systray_worker(ui_tx: futures::channel::mpsc::UnboundedSender<SystrayState>) {
+    async fn systray_worker(
+        ui_tx: futures::channel::mpsc::UnboundedSender<SystrayState>,
+        client_arc: Arc<RwLock<Option<Client>>>,
+    ) {
         log::info!("Systray worker started");
-        let conn = match Connection::session().await {
+
+        let client = match Client::new().await {
             Ok(c) => c,
             Err(e) => {
-                log::error!("Failed to connect to session bus: {e}");
+                log::error!("Failed to create system-tray client: {e}");
                 return;
             }
         };
 
-        // Initial fetch
-        log::info!("Fetching initial systray state");
-        let initial_state = Self::fetch_systray_items(&conn).await;
+        // Client is not cloneable, just use it directly
+
+        let mut tray_rx = client.subscribe();
+
+        // Send initial items
+        let initial_state = Self::items_to_state(&client);
+        log::info!("Found {} initial systray items", initial_state.items.len());
         let _ = ui_tx.unbounded_send(initial_state);
 
-        // Poll for changes every 5 seconds
-        loop {
-            tokio::time::sleep(Duration::from_secs(5)).await;
-            log::info!("Polling for systray changes");
-            let new_state = Self::fetch_systray_items(&conn).await;
-            let _ = ui_tx.unbounded_send(new_state);
+        // Listen for events
+        while let Ok(event) = tray_rx.recv().await {
+            log::info!("Systray event: {:?}", event);
+            
+            match event {
+                Event::Add(address, item) => {
+                    log::info!("Systray item added: {} - {:?}", address, item.id);
+                    let new_state = Self::items_to_state(&client);
+                    let _ = ui_tx.unbounded_send(new_state);
+                }
+                Event::Remove(address) => {
+                    log::info!("Systray item removed: {}", address);
+                    let new_state = Self::items_to_state(&client);
+                    let _ = ui_tx.unbounded_send(new_state);
+                }
+                Event::Update(address, update) => {
+                    log::info!("Systray item updated: {} - {:?}", address, update);
+                    let new_state = Self::items_to_state(&client);
+                    let _ = ui_tx.unbounded_send(new_state);
+                }
+            }
         }
     }
 
-    async fn fetch_systray_items(conn: &Connection) -> SystrayState {
-        let mut items = SmallVec::new();
-        
-        // Query the StatusNotifierWatcher for registered items
-        let watcher_proxy = match zbus::Proxy::new(
-            conn,
-            "org.kde.StatusNotifierWatcher",
-            "/StatusNotifierWatcher",
-            "org.kde.StatusNotifierWatcher",
-        )
-        .await
-        {
-            Ok(p) => p,
-            Err(e) => {
-                log::error!("Failed to create StatusNotifierWatcher proxy: {e}");
-                return SystrayState { items };
-            }
-        };
-        
-        let registered_items: Vec<String> = match watcher_proxy
-            .get_property("RegisteredStatusNotifierItems")
-            .await
-        {
-            Ok(items) => items,
-            Err(e) => {
-                log::error!("Failed to get registered items: {e}");
-                return SystrayState { items };
-            }
-        };
-        
-        log::info!("Found {} registered systray items", registered_items.len());
-        
-        // Fetch info for each registered item
-        for service_name in registered_items {
-            log::info!("Fetching info for: {}", service_name);
-            if let Some(item) = Self::fetch_item_info(conn, &service_name).await {
-                items.push(item);
-            }
-        }
-        
-        SystrayState { items }
-    }
+    fn items_to_state(client: &Client) -> SystrayState {
+        let mut state_items = SmallVec::new();
 
-    async fn fetch_item_info(conn: &Connection, service_name: &str) -> Option<SystrayItem> {
-        // Try common paths
-        let paths = vec![
-            "/StatusNotifierItem",
-            "/org/kde/StatusNotifierItem",
-        ];
+        let items_map = client.items();
+        let items_lock = items_map.lock().expect("Failed to lock items map");
 
-        for path in paths {
-            let proxy = StatusNotifierItemProxy::builder(conn)
-                .destination(service_name)
-                .ok()?
-                .path(path)
-                .ok()?
-                .build()
-                .await
-                .ok()?;
+        for (address, (item, _menu)) in items_lock.iter() {
+            let id = item.id.clone();
+            let title = item.title.clone().unwrap_or_else(|| id.clone());
+            let icon_name = item.icon_name.clone();
 
-            let id = proxy.id().await.ok()?;
-            let title = proxy.title().await.unwrap_or_else(|_| id.clone());
-            let icon_name = proxy.icon_name().await.ok();
-
-            return Some(SystrayItem {
-                id: id.clone().into(),
+            state_items.push(SystrayItem {
+                id: id.into(),
                 title: title.into(),
                 icon_name: icon_name.map(|s| s.into()),
-                service_name: service_name.to_string(),
-                object_path: path.to_string(),
+                address: address.clone(),
             });
         }
 
-        None
+        SystrayState { items: state_items }
     }
 
-    pub async fn activate_item(service_name: &str, object_path: &str) {
-        let conn = match Connection::session().await {
+    pub async fn activate_item(address: &str) {
+        log::info!("Activating systray item: {}", address);
+        
+        let client = match Client::new().await {
             Ok(c) => c,
             Err(e) => {
-                log::error!("Failed to connect to session bus: {e}");
+                log::error!("Failed to create system-tray client: {e}");
                 return;
             }
         };
 
-        let proxy_result = StatusNotifierItemProxy::builder(&conn)
-            .destination(service_name)
-            .and_then(|b| b.path(object_path));
-        
-        let builder = match proxy_result {
-            Ok(b) => b,
-            Err(e) => {
-                log::error!("Failed to create proxy builder: {e}");
-                return;
-            }
+        let items_map = client.items();
+        let exists = {
+            let items_lock = items_map.lock().expect("Failed to lock items map");
+            items_lock.contains_key(address)
         };
-        
-        let proxy = match builder.build().await {
-            Ok(p) => p,
-            Err(e) => {
-                log::error!("Failed to build proxy: {e}");
-                return;
+        if exists {
+            if let Err(e) = client
+                .activate(system_tray::client::ActivateRequest::Default {
+                    address: address.to_string(),
+                    x: 0,
+                    y: 0,
+                })
+                .await
+            {
+                log::error!("Failed to activate systray item: {e}");
             }
-        };
-
-        if let Err(e) = proxy.activate(0, 0).await {
-            log::error!("Failed to activate systray item: {e}");
+        } else {
+            log::warn!("Systray item not found: {}", address);
         }
     }
 }

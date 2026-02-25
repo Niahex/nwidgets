@@ -33,8 +33,7 @@ impl Render for SystrayModule {
             .gap_2()
             .items_center()
             .children(items.into_iter().enumerate().map(|(idx, item)| {
-                let service_name = item.service_name.clone();
-                let object_path = item.object_path.clone();
+                let address = item.address.clone();
                 
                 div()
                     .id(("systray-item", idx))
@@ -43,13 +42,11 @@ impl Render for SystrayModule {
                     .rounded_sm()
                     .hover(|style| style.bg(cx.theme().systray_hover))
                     .cursor_pointer()
-                    .on_click(move |_event, _window, cx| {
-                        let service = service_name.clone();
-                        let path = object_path.clone();
-                        gpui_tokio::Tokio::spawn(cx, async move {
-                            SystrayService::activate_item(&service, &path).await;
-                        })
-                        .detach();
+                    .on_click(move |_event, _window, _cx| {
+                        let addr = address.clone();
+                        tokio::spawn(async move {
+                            SystrayService::activate_item(&addr).await;
+                        });
                     })
                     .child(
                         item.icon_name
