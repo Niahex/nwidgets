@@ -74,10 +74,17 @@ impl SystrayService {
 
         let (ui_tx, mut ui_rx) = futures::channel::mpsc::unbounded::<SystrayState>();
 
-        // 1. Worker Task (Tokio)
-        gpui_tokio::Tokio::spawn(cx, async move { Self::systray_worker(ui_tx).await }).detach();
+        // 1. Start StatusNotifierWatcher D-Bus server
+        gpui_tokio::Tokio::spawn(cx, async move {
+            if let Err(e) = super::dbus_watcher::run_watcher_server().await {
+                log::error!("Failed to start StatusNotifierWatcher: {e}");
+            }
+        })
+        .detach();
+        
+        // 2. Worker Task (Tokio)
 
-        // 2. UI Task (GPUI)
+        // 3. UI Task (GPUI)
         cx.spawn(move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
             let mut cx = cx.clone();
             async move {

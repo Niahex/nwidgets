@@ -1,3 +1,4 @@
+mod dbus_watcher;
 pub mod service;
 pub mod widget;
 
