@@ -1,0 +1,46 @@
+use gpui::{App, AppContext, Context, Entity, EventEmitter, Global};
+
+use crate::widgets::dofustools::types::DofusToolsToggled;
+
+pub struct DofusToolsService {
+    pub visible: bool,
+}
+
+impl EventEmitter<DofusToolsToggled> for DofusToolsService {}
+
+struct GlobalDofusToolsService(Entity<DofusToolsService>);
+impl Global for GlobalDofusToolsService {}
+
+impl DofusToolsService {
+    pub fn new(_cx: &mut Context<Self>) -> Self {
+        Self {
+            visible: false,
+        }
+    }
+
+    pub fn global(cx: &App) -> Entity<Self> {
+        cx.global::<GlobalDofusToolsService>().0.clone()
+    }
+
+    pub fn init(cx: &mut App) -> Entity<Self> {
+        let service = cx.new(Self::new);
+        cx.set_global(GlobalDofusToolsService(service.clone()));
+        service
+    }
+
+    pub fn toggle(&mut self, cx: &mut Context<Self>) {
+        self.visible = !self.visible;
+
+        if self.visible {
+            let cc = crate::widgets::control_center::ControlCenterService::global(cx);
+            cc.update(cx, |cc, cx| {
+                if cc.is_visible() {
+                    cc.toggle(cx);
+                }
+            });
+        }
+
+        cx.emit(DofusToolsToggled);
+        cx.notify();
+    }
+}
