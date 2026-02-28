@@ -1,5 +1,5 @@
 use anyhow::Result;
-use gpui::{App, Context, Entity, EventEmitter, Global};
+use gpui::{App, AppContext, Context, Entity, EventEmitter, Global};
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::path::PathBuf;

@@ -1,6 +1,6 @@
 use gpui::prelude::*;
 use gpui::{
-    div, AppContext, Context, Entity, IntoElement, ParentElement, Render, SharedString, Styled,
+    div, Context, Entity, IntoElement, MouseButton, ParentElement, Render, SharedString, Styled, WeakEntity,
     Window,
 };
 
@@ -54,7 +54,8 @@ impl CrafterWidget {
         }
 
         let crafter_service = self.crafter_service.clone();
-        cx.spawn(|this, mut cx| async move {
+        let this = cx.entity().downgrade();
+        gpui_tokio::Tokio::spawn(cx, async move {
             if let Ok(items) = crafter_service.read(&cx).search_items(query).await {
                 let results: Vec<SearchResultItem> = items
                     .into_iter()
@@ -68,8 +69,7 @@ impl CrafterWidget {
                             .unwrap_or_else(|| format!("Item {}", item.id)),
                     })
                     .collect();
-
-                let _ = this.update(&mut cx, |this, cx| {
+                let _ = this.update(cx, |this: &mut Self, cx: &mut Context<Self>| {
                     this.search_results = results;
                     cx.notify();
                 });
@@ -99,23 +99,22 @@ impl CrafterWidget {
         cx.notify();
 
         let crafter_service = self.crafter_service.clone();
-        cx.spawn(|this, mut cx| async move {
+        let this = cx.entity().downgrade();
+        gpui_tokio::Tokio::spawn(cx, async move {
             if let Ok(result) = crafter_service.read(&cx).calculate_profitability(item_id).await {
-                let _ = this.update(&mut cx, |this, cx| {
+                let _ = this.update(cx, |this: &mut Self, cx: &mut Context<Self>| {
                     if let Some(ref mut selected) = this.selected_item {
                         selected.result = Some(result.clone());
                     }
                     this.calculating = false;
-
-                    // Add to history
-                    crafter_service.update(&mut cx, |service, cx| {
-                        service.add_to_history(&result, cx);
-                    });
-
                     cx.notify();
                 });
+                // Add to history
+                let _ = crafter_service.update(cx, |service, cx| {
+                    service.add_to_history(&result, cx);
+                });
             } else {
-                let _ = this.update(&mut cx, |this, cx| {
+                let _ = this.update(cx, |this: &mut Self, cx: &mut Context<Self>| {
                     this.calculating = false;
                     cx.notify();
                 });
@@ -214,7 +213,7 @@ impl Render for CrafterWidget {
                                 .rounded(gpui::px(8.))
                                 .border_1()
                                 .border_color(theme.accent_alt.opacity(0.3))
-                                .overflow_y_scroll()
+                                .overflow_hidden()
                                 .children(self.search_results.iter().map(|item| {
                                     let item_id = item.id;
                                     let item_name = item.name.clone();
@@ -226,7 +225,7 @@ impl Render for CrafterWidget {
                                         .items_center()
                                         .hover(|style| style.bg(theme.hover))
                                         .cursor_pointer()
-                                        .on_click(cx.listener(move |this, _event, _window, cx| {
+                                        .on_mouse_down(MouseButton::Left, cx.listener(move |this, _event, _window, cx| {
                                             this.select_item(item_id, item_name.clone(), cx);
                                         }))
                                         .child(
@@ -265,7 +264,7 @@ impl Render for CrafterWidget {
                                         .rounded(gpui::px(6.))
                                         .cursor_pointer()
                                         .hover(|style| style.bg(theme.accent.opacity(0.8)))
-                                        .on_click(cx.listener(|this, _event, _window, cx| {
+                                        .on_mouse_down(MouseButton::Left, cx.listener(|this, _event, _window, cx| {
                                             this.calculate_profitability(cx);
                                         }))
                                         .child(
