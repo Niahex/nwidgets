@@ -2,12 +2,13 @@ use gpui::*;
 
 use crate::services::system::{HyprlandService};
 use crate::widgets::chat::ChatService;
+use crate::widgets::dofustools::DofusToolsService;
 use crate::widgets::jisig::JisigService;
 use crate::widgets::launcher::LauncherService;
 use crate::widgets::notifications::{NotificationAdded, NotificationService};
 use crate::widgets::notifications::{NotificationsStateChanged, NotificationsWindowManager};
-
 use crate::widgets::chat::window;
+use crate::widgets::dofustools::window as dofustools;
 use crate::widgets::jisig::window as jisig;
 use crate::widgets::launcher::window as launcher;
 
@@ -19,6 +20,7 @@ pub fn setup_all(
 ) {
     setup_chat(cx, chat_service);
     setup_jisig(cx);
+    setup_dofustools(cx);
     setup_launcher(cx, launcher_service);
     setup_notifications(cx, notif_service);
 }
@@ -35,6 +37,13 @@ fn setup_jisig(cx: &mut App) {
     cx.subscribe(&jisig_service, jisig::on_toggle).detach();
     cx.subscribe(&HyprlandService::global(cx), jisig::on_fullscreen).detach();
     cx.subscribe(&HyprlandService::global(cx), jisig::on_workspace_change).detach();
+}
+
+fn setup_dofustools(cx: &mut App) {
+    let dofustools_service = DofusToolsService::global(cx);
+    cx.subscribe(&dofustools_service, dofustools::on_toggle).detach();
+    cx.subscribe(&HyprlandService::global(cx), dofustools::on_fullscreen).detach();
+    cx.subscribe(&HyprlandService::global(cx), dofustools::on_workspace_change).detach();
 }
 
 fn setup_launcher(cx: &mut App, launcher_service: Entity<LauncherService>) {

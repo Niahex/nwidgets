@@ -9,6 +9,7 @@ pub fn run(cx: &mut App) {
     crate::widgets::panel::window::open(cx);
     crate::widgets::chat::window::open(cx);
     crate::widgets::jisig::window::open(cx);
+    crate::widgets::dofustools::window::open(cx);
     crate::widgets::launcher::window::open(cx, launcher_service.clone(), clipboard);
     
     crate::app::subscriptions::setup_all(cx, chat_service, launcher_service, notif_service);
