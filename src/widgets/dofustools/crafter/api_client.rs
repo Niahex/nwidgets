@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use serde::de::DeserializeOwned;
+use serde::Deserialize;
 
 use super::types::{DofusItem, DofusRecipe};
 
@@ -18,10 +19,14 @@ impl DofusApiClient {
 
     /// Search items by name
     pub async fn search_items(&self, query: &str, limit: usize) -> Result<Vec<DofusItem>> {
+        // DofusDB API: name is an object with language keys (en, fr, de, es, pt)
+        // Use regex search on name.fr with case-insensitive option
+        let encoded_query = urlencoding::encode(query);
         let url = format!(
-            "{}/items?name[$search]={}&$limit={}",
-            API_BASE, query, limit
+            "{}/items?name.fr[$regex]=.*{}.*&name.fr[$options]=i&$limit={}",
+            API_BASE, encoded_query, limit
         );
+        log::info!("[API] Searching with URL: {}", url);
         self.fetch_list(&url).await
     }
 
@@ -90,15 +95,20 @@ impl DofusApiClient {
             .json::<serde_json::Value>()
             .await
             .context("Failed to parse response")?;
-
+        
+        log::debug!("[API] Raw response: {}", serde_json::to_string_pretty(&data).unwrap_or_default());
+        
         // DofusDB API returns either array or object with "data" field
         let items = if let Some(array) = data.as_array() {
+            log::debug!("[API] Parsing as array with {} items", array.len());
             serde_json::from_value(serde_json::Value::Array(array.clone()))
                 .context("Failed to parse items array")?
         } else if let Some(data_field) = data.get("data") {
+            log::debug!("[API] Parsing data field");
             serde_json::from_value(data_field.clone())
                 .context("Failed to parse data field")?
         } else {
+            log::warn!("[API] No data or array found in response");
             Vec::new()
         };
 

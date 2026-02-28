@@ -1,14 +1,16 @@
 use gpui::prelude::*;
 use gpui::{
-    div, Context, Entity, IntoElement, MouseButton, ParentElement, Render, SharedString, Styled, WeakEntity,
-    Window,
+    actions, div, Context, Entity, FocusHandle, IntoElement, KeyDownEvent, MouseButton,
+    ParentElement, Render, SharedString, Styled, WeakEntity, Window,
 };
 
 use crate::theme::ActiveTheme;
-use crate::widgets::dofustools::crafter::{CrafterService, CrafterStateChanged, ProfitabilityResult};
+use crate::widgets::dofustools::crafter::{CalculationCompleted, CrafterService, CrafterStateChanged, ProfitabilityResult, SearchCompleted};
 
+actions!(crafter, [Backspace]);
 pub struct CrafterWidget {
     crafter_service: Entity<CrafterService>,
+    focus_handle: FocusHandle,
     search_query: SharedString,
     search_results: Vec<SearchResultItem>,
     selected_item: Option<SelectedItemData>,
@@ -32,12 +34,37 @@ impl CrafterWidget {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let crafter_service = CrafterService::global(cx);
 
-        cx.subscribe(&crafter_service, |this, _service, _event: &CrafterStateChanged, cx| {
+        cx.subscribe(&crafter_service, |this, _service, event: &CrafterStateChanged, cx| {
+            cx.notify();
+        })
+        .detach();
+
+        cx.subscribe(&crafter_service, |this, _service, event: &CalculationCompleted, cx| {
+            if let Some(ref mut selected) = this.selected_item {
+                selected.result = Some(event.result.clone());
+            }
+            this.calculating = false;
+            cx.notify();
+        })
+        .detach();
+
+        cx.subscribe(&crafter_service, |this, _service, event: &SearchCompleted, cx| {
+            this.search_results = event.items.iter().map(|item| {
+                let name = item.name.get("fr")
+                    .or_else(|| item.name.get("en"))
+                    .cloned()
+                    .unwrap_or_else(|| format!("Item {}", item.id));
+                SearchResultItem {
+                    id: item.id,
+                    name,
+                }
+            }).collect();
             cx.notify();
         })
         .detach();
 
         Self {
+            focus_handle: cx.focus_handle(),
             crafter_service,
             search_query: SharedString::from(""),
             search_results: Vec::new(),
@@ -46,36 +73,14 @@ impl CrafterWidget {
         }
     }
 
-    fn search_items(&mut self, query: String, cx: &mut Context<Self>) {
+    fn search_items(&mut self, query: String, _cx: &mut Context<Self>) {
+        log::info!("[Crafter Widget] search_items called with query: '{}'", query);
         if query.len() < 2 {
             self.search_results.clear();
-            cx.notify();
             return;
         }
-
-        let crafter_service = self.crafter_service.clone();
-        let this = cx.entity().downgrade();
-        gpui_tokio::Tokio::spawn(cx, async move {
-            if let Ok(items) = crafter_service.read(&cx).search_items(query).await {
-                let results: Vec<SearchResultItem> = items
-                    .into_iter()
-                    .map(|item| SearchResultItem {
-                        id: item.id,
-                        name: item
-                            .name
-                            .get("fr")
-                            .or_else(|| item.name.get("en"))
-                            .cloned()
-                            .unwrap_or_else(|| format!("Item {}", item.id)),
-                    })
-                    .collect();
-                let _ = this.update(cx, |this: &mut Self, cx: &mut Context<Self>| {
-                    this.search_results = results;
-                    cx.notify();
-                });
-            }
-        })
-        .detach();
+        // Send command to service worker
+        self.crafter_service.read(_cx).search_items(query);
     }
 
     fn select_item(&mut self, item_id: i32, item_name: String, cx: &mut Context<Self>) {
@@ -93,34 +98,24 @@ impl CrafterWidget {
         let Some(ref selected) = self.selected_item else {
             return;
         };
-
         let item_id = selected.item_id;
         self.calculating = true;
         cx.notify();
+        self.crafter_service.read(cx).calculate_profitability(item_id);
+    }
 
-        let crafter_service = self.crafter_service.clone();
-        let this = cx.entity().downgrade();
-        gpui_tokio::Tokio::spawn(cx, async move {
-            if let Ok(result) = crafter_service.read(&cx).calculate_profitability(item_id).await {
-                let _ = this.update(cx, |this: &mut Self, cx: &mut Context<Self>| {
-                    if let Some(ref mut selected) = this.selected_item {
-                        selected.result = Some(result.clone());
-                    }
-                    this.calculating = false;
-                    cx.notify();
-                });
-                // Add to history
-                let _ = crafter_service.update(cx, |service, cx| {
-                    service.add_to_history(&result, cx);
-                });
+    fn backspace(&mut self, _: &Backspace, _: &mut Window, cx: &mut Context<Self>) {
+        let mut query = self.search_query.to_string();
+        if !query.is_empty() {
+            query.pop();
+            self.search_query = SharedString::from(query.clone());
+            if query.len() >= 2 {
+                self.search_items(query, cx);
             } else {
-                let _ = this.update(cx, |this: &mut Self, cx: &mut Context<Self>| {
-                    this.calculating = false;
-                    cx.notify();
-                });
+                self.search_results.clear();
             }
-        })
-        .detach();
+            cx.notify();
+        }
     }
 
     fn set_market_price(&mut self, price: f64, cx: &mut Context<Self>) {
@@ -153,6 +148,7 @@ impl CrafterWidget {
 impl Render for CrafterWidget {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.theme();
+        let focus_handle = self.focus_handle.clone();
 
         div()
             .id("crafter-widget")
@@ -162,6 +158,42 @@ impl Render for CrafterWidget {
             .bg(theme.bg)
             .p_4()
             .gap_4()
+            .track_focus(&focus_handle)
+            .on_key_down(cx.listener(|this, event: &KeyDownEvent, _window, cx| {
+                if event.keystroke.key == "backspace" {
+                    let mut query = this.search_query.to_string();
+                    if !query.is_empty() {
+                        query.pop();
+                        this.search_query = SharedString::from(query.clone());
+                        if query.len() >= 2 {
+                            this.search_items(query, cx);
+                        } else {
+                            this.search_results.clear();
+                        }
+                        cx.notify();
+                    }
+                } else if event.keystroke.key == "space" {
+                    let mut query = this.search_query.to_string();
+                    query.push(' ');
+                    this.search_query = SharedString::from(query.clone());
+                    if query.len() >= 2 {
+                        this.search_items(query, cx);
+                    }
+                    cx.notify();
+                } else if let Some(key_char) = &event.keystroke.key_char {
+                    let allowed = key_char.chars().all(|c| c.is_alphanumeric() || c == '-' || c == ' ');
+                    if allowed {
+                        let mut query = this.search_query.to_string();
+                        query.push_str(key_char);
+                        this.search_query = SharedString::from(query.clone());
+                        if query.len() >= 2 {
+                            this.search_items(query, cx);
+                        }
+                        cx.notify();
+                    }
+                }
+            }))
+            .on_action(cx.listener(Self::backspace))
             .child(
                 // Header
                 div()

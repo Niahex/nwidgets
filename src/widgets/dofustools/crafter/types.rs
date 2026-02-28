@@ -5,6 +5,7 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct DofusItem {
     #[serde(rename = "_id")]
+    pub _id: String,
     pub id: i32,
     pub name: HashMap<String, String>, // Localized names
     pub level: i32,
@@ -105,4 +106,9 @@ pub struct CrafterStateChanged;
 #[derive(Debug, Clone)]
 pub struct CalculationCompleted {
     pub result: ProfitabilityResult,
+}
+
+#[derive(Debug, Clone)]
+pub struct SearchCompleted {
+    pub items: Vec<DofusItem>,
 }
