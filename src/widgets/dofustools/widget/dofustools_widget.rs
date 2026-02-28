@@ -1,5 +1,6 @@
 use crate::services::cef::BrowserView;
 use crate::theme::ActiveTheme;
+use crate::widgets::dofustools::crafter::CrafterWidget;
 use crate::widgets::dofustools::service::DofusToolsService;
 use crate::widgets::dofustools::types::DofusToolsToggled;
 use gpui::prelude::*;
@@ -17,18 +18,17 @@ enum DofusToolsView {
 pub struct DofusToolsWidget {
     browser: Entity<BrowserView>,
     dofustools_service: Entity<DofusToolsService>,
+    crafter_widget: Entity<CrafterWidget>,
     current_view: DofusToolsView,
 }
 
 impl DofusToolsWidget {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let url = "https://dofusdb.fr";
-
         let browser = cx.new(|cx| BrowserView::new(url, 600, 1370, None, cx));
         let dofustools_service = DofusToolsService::global(cx);
-
+        let crafter_widget = cx.new(CrafterWidget::new);
         browser.read(cx).set_hidden(true);
-
         let browser_clone = browser.clone();
         cx.subscribe(
             &dofustools_service,
@@ -39,10 +39,10 @@ impl DofusToolsWidget {
             },
         )
         .detach();
-
         Self {
             browser,
             dofustools_service,
+            crafter_widget,
             current_view: DofusToolsView::DofusDb,
         }
     }
@@ -156,19 +156,7 @@ impl gpui::Render for DofusToolsWidget {
                         this.child(self.browser.clone())
                     })
                     .when(self.current_view == DofusToolsView::FutureApp, |this| {
-                        this.child(
-                            div()
-                                .size_full()
-                                .flex()
-                                .items_center()
-                                .justify_center()
-                                .child(
-                                    div()
-                                        .text_color(theme.text_muted)
-                                        .text_size(gpui::px(18.))
-                                        .child("Future App - Coming Soon"),
-                                ),
-                        )
+                        this.child(self.crafter_widget.clone())
                     }),
             )
             .with_animation(

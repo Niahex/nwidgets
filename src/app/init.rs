@@ -6,7 +6,7 @@ use crate::services::system::{ClipboardMonitor, DbusService, HyprlandService};
 use crate::services::CefService;
 use crate::widgets::chat::ChatService;
 use crate::widgets::control_center::ControlCenterService;
-use crate::widgets::dofustools::DofusToolsService;
+use crate::widgets::dofustools::{crafter::CrafterService, DofusToolsService};
 use crate::widgets::jisig::JisigService;
 use crate::widgets::launcher::LauncherService;
 use crate::widgets::notifications::NotificationService;
@@ -27,6 +27,7 @@ pub fn initialize_all(cx: &mut App) -> (Entity<ClipboardMonitor>, Entity<OsdServ
     ChatService::init(cx);
     JisigService::init(cx);
     DofusToolsService::init(cx);
+    CrafterService::init(cx);
     LauncherService::init(cx);
     let clipboard = ClipboardMonitor::init(cx);
     NotificationService::init(cx);

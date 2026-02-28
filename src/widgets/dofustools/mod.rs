@@ -1,3 +1,4 @@
+pub mod crafter;
 pub mod service;
 pub mod types;
 pub mod widget;
