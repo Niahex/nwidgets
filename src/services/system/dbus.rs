@@ -11,29 +11,28 @@ pub enum DbusCommand {
     PinChat,
     ToggleLauncher,
     ToggleJisig,
+    ToggleDofusTools,
 }
-
 struct NWidgets {
     tx: mpsc::UnboundedSender<DbusCommand>,
 }
-
 #[interface(name = "org.nwidgets.App")]
 impl NWidgets {
     async fn toggle_chat(&self) {
         let _ = self.tx.unbounded_send(DbusCommand::ToggleChat);
     }
-
     async fn toggle_launcher(&self) {
         log::debug!("D-Bus toggle_launcher called");
         let _ = self.tx.unbounded_send(DbusCommand::ToggleLauncher);
     }
-
     async fn pin_chat(&self) {
         let _ = self.tx.unbounded_send(DbusCommand::PinChat);
     }
-
     async fn toggle_jisig(&self) {
         let _ = self.tx.unbounded_send(DbusCommand::ToggleJisig);
+    }
+    async fn toggle_dofustools(&self) {
+        let _ = self.tx.unbounded_send(DbusCommand::ToggleDofusTools);
     }
 }
 
@@ -111,6 +110,12 @@ impl DbusService {
                             cx.update(|cx| {
                                 let jisig = crate::widgets::jisig::JisigService::global(cx);
                                 jisig.update(cx, |jisig, mcx| jisig.toggle(mcx));
+                            });
+                        }
+                        DbusCommand::ToggleDofusTools => {
+                            cx.update(|cx| {
+                                let dofustools = crate::widgets::dofustools::DofusToolsService::global(cx);
+                                dofustools.update(cx, |dofustools, mcx| dofustools.toggle(mcx));
                             });
                         }
                     }
