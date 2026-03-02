@@ -30,7 +30,7 @@ fn main() {
     }
 
     // Main application
-    Application::new()
+    Application::with_platform(gpui_platform::current_platform(false))
         .with_assets(assets::Assets::new(assets::determine_assets_path()))
         .run(|cx: &mut App| {
             cli::init_cef();

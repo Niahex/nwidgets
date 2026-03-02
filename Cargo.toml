@@ -10,8 +10,8 @@ publish = false
 include = ["src/**/*", "Cargo.toml", "assets/**/*"]
 
 [dependencies]
-gpui = { git = "https://github.com/Niahex/zed", branch = "layershellv2", features = ["wayland"] }
-gpui_tokio = { git = "https://github.com/Niahex/zed", branch = "layershellv2" }
+gpui = { git = "https://github.com/Niahex/zed", branch = "layershell", features = ["wayland"] }
+gpui_tokio = { git = "https://github.com/Niahex/zed", branch = "layershell" }
 
 anyhow = "1.0"
 log = "0.4"
@@ -71,3 +71,6 @@ incremental = false
 [profile.release.package."*"]
 opt-level = 3
 codegen-units = 16
+
+[patch.crates-io]
+codespan-reporting = { git = "https://github.com/brendanzab/codespan", branch = "master" }
