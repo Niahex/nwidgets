@@ -1,5 +1,27 @@
 # CEF + wgpu Optimizations for nwidgets
 
+## ✅ COMPLETED: GPUI wgpu Device/Queue Exposure
+
+**Status**: Implemented in zed fork (commit `86c6ca5917`)
+
+GPUI now exposes wgpu Device and Queue through public API on Linux:
+
+```rust
+// In nwidgets, you can now access wgpu handles:
+let device = window.gpu_device(cx)?;
+let queue = window.gpu_queue(cx)?;
+
+// Use these for CEF shared texture import:
+let shared_handle = SharedTextureHandle::new(info);
+let texture = shared_handle.import_texture(&device)?;
+```
+
+**Changes made**:
+- `PlatformWindow::gpu_device()` and `gpu_queue()` (Linux only)
+- `WgpuRenderer::device()` and `queue()` expose internal resources
+- `Window::gpu_device()` and `gpu_queue()` public API
+- Implemented in WaylandWindow and X11Window
+
 ## Current State (Suboptimal)
 
 **File**: `src/services/cef/init.rs` (lines 86-95)
