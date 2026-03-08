@@ -1,26 +1,18 @@
 # CEF + wgpu Optimizations for nwidgets
 
-## ✅ COMPLETED: GPUI wgpu Device/Queue Exposure
+## ⚠️ BLOCKED: GPUI wgpu Device/Queue Exposure
 
-**Status**: Implemented in zed fork (commit `86c6ca5917`)
+**Status**: Implementation attempted but reverted
 
-GPUI now exposes wgpu Device and Queue through public API on Linux:
+**Problem**: GPUI doesn't expose wgpu Device/Queue through its public API, and adding this requires:
+1. Adding `gpui_wgpu` as a dependency to `gpui` crate
+2. Exposing internal renderer resources
+3. This creates tight coupling and may not be accepted upstream
 
-```rust
-// In nwidgets, you can now access wgpu handles:
-let device = window.gpu_device(cx)?;
-let queue = window.gpu_queue(cx)?;
-
-// Use these for CEF shared texture import:
-let shared_handle = SharedTextureHandle::new(info);
-let texture = shared_handle.import_texture(&device)?;
-```
-
-**Changes made**:
-- `PlatformWindow::gpu_device()` and `gpu_queue()` (Linux only)
-- `WgpuRenderer::device()` and `queue()` expose internal resources
-- `Window::gpu_device()` and `gpu_queue()` public API
-- Implemented in WaylandWindow and X11Window
+**Alternative Approaches**:
+1. Implement CEF rendering at the platform layer (gpui_linux) instead of application layer
+2. Use CPU-based rendering for now (current SwiftShader approach)
+3. Wait for GPUI to provide official GPU context access API
 
 ## Current State (Suboptimal)
 
