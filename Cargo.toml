@@ -12,6 +12,8 @@ include = ["src/**/*", "Cargo.toml", "assets/**/*"]
 [dependencies]
 gpui = { git = "https://github.com/Niahex/zed", branch = "layershell", features = ["wayland"] }
 gpui_tokio = { git = "https://github.com/Niahex/zed", branch = "layershell" }
+gpui_platform = { git = "https://github.com/Niahex/zed", branch = "layershell", features = ["wayland"] }
+naga = { version = "28.0", features = ["wgsl-in", "termcolor"] }
 
 anyhow = "1.0"
 log = "0.4"
@@ -72,5 +74,10 @@ incremental = false
 opt-level = 3
 codegen-units = 16
 
-# [patch.crates-io]
-# codespan-reporting = { git = "https://github.com/brendanzab/codespan", branch = "master" }
+[patch.crates-io]
+wgpu = { git = "https://github.com/zed-industries/wgpu", rev = "465557eccfe77c840a9b4936f1408da9503372c4" }
+wgpu-core = { git = "https://github.com/zed-industries/wgpu", rev = "465557eccfe77c840a9b4936f1408da9503372c4" }
+wgpu-hal = { git = "https://github.com/zed-industries/wgpu", rev = "465557eccfe77c840a9b4936f1408da9503372c4" }
+wgpu-types = { git = "https://github.com/zed-industries/wgpu", rev = "465557eccfe77c840a9b4936f1408da9503372c4" }
+naga = { git = "https://github.com/zed-industries/wgpu", rev = "465557eccfe77c840a9b4936f1408da9503372c4" }
+codespan-reporting = { git = "https://github.com/brendanzab/codespan", rev = "a77bee56838f4e9479b9400243d0e8e9cfb620ea" }
