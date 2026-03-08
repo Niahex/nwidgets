@@ -2,7 +2,7 @@ use crate::theme::ActiveTheme;
 use crate::widgets::control_center::ControlCenterService;
 use crate::widgets::panel::modules::{
     ActiveWindowModule, BluetoothModule, DateTimeModule, MprisModule, NetworkModule,
-    PomodoroModule, SinkModule, SourceModule, SystrayModule, WorkspacesModule,
+    PomodoroModule, SinkModule, SourceModule, WorkspacesModule,
 };
 use gpui::*;
 
@@ -11,7 +11,6 @@ pub struct Panel {
     workspaces: Entity<WorkspacesModule>,
     pomodoro: Entity<PomodoroModule>,
     mpris: Entity<MprisModule>,
-    systray: Entity<SystrayModule>,
     bluetooth: Entity<BluetoothModule>,
     network: Entity<NetworkModule>,
     sink: Entity<SinkModule>,
@@ -27,7 +26,6 @@ impl Panel {
             workspaces: cx.new(WorkspacesModule::new),
             pomodoro: cx.new(PomodoroModule::new),
             mpris: cx.new(MprisModule::new),
-            systray: cx.new(SystrayModule::new),
             bluetooth: cx.new(BluetoothModule::new),
             network: cx.new(NetworkModule::new),
             sink: cx.new(SinkModule::new),
@@ -95,7 +93,6 @@ impl Render for Panel {
                             .gap_0()
                             .items_center()
                             .h_full()
-                            .child(div().flex().items_center().child(self.systray.clone()))
                             .child(
                                 div()
                                     .id("control-center-trigger")
