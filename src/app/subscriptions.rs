@@ -48,10 +48,15 @@ fn setup_notifications(cx: &mut App, notif_service: Entity<NotificationService>)
     cx.subscribe(&notif_service, move |_service, _event: &NotificationAdded, cx| {
         let mut mgr = manager_clone.lock();
         if let Some(widget) = mgr.open_window(cx) {
+            mgr.show_window(cx);
+            
             let mgr2 = manager_clone.clone();
             cx.subscribe(&widget, move |_widget, event: &NotificationsStateChanged, cx| {
-                if !event.has_notifications {
-                    mgr2.lock().close_window(cx);
+                let mut mgr = mgr2.lock();
+                if event.has_notifications {
+                    mgr.show_window(cx);
+                } else {
+                    mgr.hide_window(cx);
                 }
             }).detach();
         }

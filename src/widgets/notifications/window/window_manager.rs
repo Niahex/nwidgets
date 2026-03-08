@@ -13,10 +13,6 @@ impl NotificationsWindowManager {
 
     pub fn open_window(&mut self, cx: &mut App) -> Option<Entity<NotificationsWidget>> {
         if let Some(window) = &self.window {
-            let _ = window.update(cx, |_, window, _| {
-                window.set_layer(Layer::Overlay);
-                window.resize(size(px(400.0), px(600.0)));
-            });
             return cx.read_window(window, |entity, _| entity.clone()).ok();
         }
 
@@ -29,15 +25,15 @@ impl NotificationsWindowManager {
                             y: px(60.0),
                         },
                         size: Size {
-                            width: px(400.0),
-                            height: px(600.0),
+                            width: px(1.0),
+                            height: px(1.0),
                         },
                     })),
                     titlebar: None,
                     window_background: WindowBackgroundAppearance::Transparent,
                     kind: WindowKind::LayerShell(LayerShellOptions {
                         namespace: "nwidgets-notifications".to_string(),
-                        layer: Layer::Overlay,
+                        layer: Layer::Background,
                         anchor: Anchor::TOP | Anchor::RIGHT,
                         keyboard_interactivity: KeyboardInteractivity::None,
                         ..Default::default()
@@ -45,6 +41,7 @@ impl NotificationsWindowManager {
                     ..Default::default()
                 },
                 |window, cx| {
+                    window.set_input_region(None);
                     cx.new(NotificationsWidget::new)
                 },
             )
@@ -55,7 +52,17 @@ impl NotificationsWindowManager {
         entity
     }
 
-    pub fn close_window(&mut self, cx: &mut App) {
+    pub fn show_window(&mut self, cx: &mut App) {
+        if let Some(window) = &self.window {
+            let _ = window.update(cx, |_, window, _| {
+                window.set_layer(Layer::Overlay);
+                window.set_input_region(None);
+                window.resize(size(px(400.0), px(600.0)));
+            });
+        }
+    }
+
+    pub fn hide_window(&mut self, cx: &mut App) {
         if let Some(window) = &self.window {
             let _ = window.update(cx, |_, window, _| {
                 window.set_layer(Layer::Background);
