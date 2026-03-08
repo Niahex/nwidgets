@@ -72,5 +72,5 @@ incremental = false
 opt-level = 3
 codegen-units = 16
 
-[patch.crates-io]
-codespan-reporting = { git = "https://github.com/brendanzab/codespan", branch = "master" }
+# [patch.crates-io]
+# codespan-reporting = { git = "https://github.com/brendanzab/codespan", branch = "master" }
