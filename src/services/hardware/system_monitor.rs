@@ -206,11 +206,10 @@ impl SystemMonitorService {
                         available = line.split_whitespace().nth(1)?.parse().ok()?;
                     }
                 }
-                if total > 0 {
-                    Some((((total - available) * 100) / total) as u8)
-                } else {
-                    None
-                }
+                total.checked_sub(available)
+                    .and_then(|diff| diff.checked_mul(100))
+                    .and_then(|result| result.checked_div(total))
+                    .map(|percent| percent as u8)
             })
             .unwrap_or(0)
     }

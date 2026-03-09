@@ -1,5 +1,3 @@
-use gpui::EventEmitter;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ControlCenterSection {
     Volume,
@@ -11,5 +9,3 @@ pub enum ControlCenterSection {
 
 #[derive(Clone)]
 pub struct ControlCenterStateChanged;
-
-pub trait ControlCenterEvents: EventEmitter<ControlCenterStateChanged> {}

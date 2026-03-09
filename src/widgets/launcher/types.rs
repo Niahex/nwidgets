@@ -1,5 +1,5 @@
 use crate::services::system::clipboard::ClipboardEntry;
-use gpui::{EventEmitter, SharedString};
+use gpui::SharedString;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ApplicationInfo {
@@ -36,5 +36,3 @@ pub enum SearchResult {
     Process(ProcessInfo),
     Clipboard(ClipboardEntry),
 }
-
-pub trait LauncherEvents: EventEmitter<LauncherToggled> {}

@@ -142,14 +142,6 @@ impl NetworkService {
         self.state.read().clone()
     }
 
-    pub fn ethernet(&self) -> Entity<EthernetService> {
-        self.ethernet.clone()
-    }
-
-    pub fn wifi(&self) -> Entity<WifiService> {
-        self.wifi.clone()
-    }
-
     pub fn vpn(&self) -> Entity<VpnService> {
         self.vpn.clone()
     }

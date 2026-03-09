@@ -83,10 +83,6 @@ impl ActiveWindowModule {
         self.cached_title = title;
     }
 
-    fn get_icon_name(class: &str) -> String {
-        class.to_lowercase()
-    }
-
     fn extract_short_title(title: &str, max_chars: usize) -> String {
         let short_title = title
             .split(" - ")
@@ -104,10 +100,6 @@ impl ActiveWindowModule {
         }
     }
 
-    fn format_class_name(class: &str) -> String {
-        class.to_string()
-    }
-
     pub fn next_site(&mut self) -> &'static str {
         self.site_index = (self.site_index + 1) % SITES.len();
         let site_name = SITES[self.site_index].0;
@@ -115,10 +107,6 @@ impl ActiveWindowModule {
         self.cached_class = "AI Chat".into();
         self.cached_title = site_name.into();
         SITES[self.site_index].1
-    }
-
-    pub fn current_site_name(&self) -> &'static str {
-        SITES[self.site_index].0
     }
 }
 

@@ -81,10 +81,6 @@ struct GlobalEthernetService(Entity<EthernetService>);
 impl Global for GlobalEthernetService {}
 
 impl EthernetService {
-    pub fn global(cx: &App) -> Entity<Self> {
-        cx.global::<GlobalEthernetService>().0.clone()
-    }
-
     pub fn set_global(cx: &mut App, service: Entity<Self>) {
         cx.set_global(GlobalEthernetService(service));
     }

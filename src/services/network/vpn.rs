@@ -159,10 +159,6 @@ struct GlobalVpnService(Entity<VpnService>);
 impl Global for GlobalVpnService {}
 
 impl VpnService {
-    pub fn global(cx: &App) -> Entity<Self> {
-        cx.global::<GlobalVpnService>().0.clone()
-    }
-
     pub fn set_global(cx: &mut App, service: Entity<Self>) {
         cx.set_global(GlobalVpnService(service));
     }

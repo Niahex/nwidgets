@@ -30,9 +30,6 @@ impl FuzzyMatcher {
     }
 
     pub fn search(&mut self, query: &str) -> Vec<usize> {
-        if query.is_empty() {
-        }
-
         // Parse the pattern and update
         self.matcher.pattern.reparse(
             0,

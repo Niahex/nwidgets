@@ -1,6 +1,4 @@
 use crate::widgets::control_center::ControlCenterSection;
-use crate::theme::ActiveTheme;
-use crate::assets::Icon;
 use crate::components::Button;
 use gpui::prelude::*;
 use gpui::*;

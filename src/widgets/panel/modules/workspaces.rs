@@ -1,5 +1,4 @@
 use crate::services::system::hyprland::{HyprlandService, WorkspaceChanged};
-use crate::theme::ActiveTheme;
 use crate::components::Button;
 use gpui::prelude::*;
 use gpui::*;

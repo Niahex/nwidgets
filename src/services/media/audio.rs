@@ -71,10 +71,10 @@ impl EventEmitter<AudioStateChanged> for AudioService {}
 enum AudioUpdate {
     State(AudioState),
     Devices {
-        sinks: SmallVec<[AudioDevice; 8]>,
-        sources: SmallVec<[AudioDevice; 8]>,
-        sink_inputs: SmallVec<[AudioStream; 16]>,
-        source_outputs: SmallVec<[AudioStream; 16]>,
+        sinks: Box<SmallVec<[AudioDevice; 8]>>,
+        sources: Box<SmallVec<[AudioDevice; 8]>>,
+        sink_inputs: Box<SmallVec<[AudioStream; 16]>>,
+        source_outputs: Box<SmallVec<[AudioStream; 16]>>,
     },
 }
 
@@ -125,10 +125,10 @@ impl AudioService {
                             sink_inputs,
                             source_outputs,
                         } => {
-                            *sinks_clone.write() = sinks;
-                            *sources_clone.write() = sources;
-                            *sink_inputs_clone.write() = sink_inputs;
-                            *source_outputs_clone.write() = source_outputs;
+                            *sinks_clone.write() = *sinks;
+                            *sources_clone.write() = *sources;
+                            *sink_inputs_clone.write() = *sink_inputs;
+                            *source_outputs_clone.write() = *source_outputs;
 
                             let _ = this.update(&mut cx, |_, cx| {
                                 cx.notify();
@@ -318,28 +318,24 @@ impl AudioService {
 
             let mut last_update = std::time::Instant::now();
             let debounce = std::time::Duration::from_millis(50);
-            let mut pending_update = false;
 
             while let Some(event) = rx.next().await {
                 if let PwEvent::NodeRemoved(id) = event {
                     nodes_data.write().remove(&id);
                 }
 
-                pending_update = true;
                 let now = std::time::Instant::now();
                 
                 // Drain all pending events
-                while rx.try_next().is_ok() {}
+                while rx.try_recv().is_ok() {}
                 
                 // Only process if enough time has passed since last update
                 if now.duration_since(last_update) >= debounce {
-                    pending_update = false;
                     last_update = now;
                 } else {
                     // Wait for remaining debounce time
                     let remaining = debounce.saturating_sub(now.duration_since(last_update));
                     tokio::time::sleep(remaining).await;
-                    pending_update = false;
                     last_update = std::time::Instant::now();
                 }
 
@@ -411,10 +407,10 @@ impl AudioService {
                 drop(nodes_snapshot);
 
                 let _ = ui_tx.unbounded_send(AudioUpdate::Devices {
-                    sinks: new_sinks,
-                    sources: new_sources,
-                    sink_inputs: new_sink_inputs,
-                    source_outputs: new_source_outputs,
+                    sinks: Box::new(new_sinks),
+                    sources: Box::new(new_sources),
+                    sink_inputs: Box::new(new_sink_inputs),
+                    source_outputs: Box::new(new_source_outputs),
                 });
             }
 
@@ -423,10 +419,9 @@ impl AudioService {
             // Exponential backoff: 2s, 4s, 8s, max 16s
             let retry_delay = std::time::Duration::from_secs(2);
             let max_delay = std::time::Duration::from_secs(16);
-            let mut current_delay = retry_delay;
             
-            tokio::time::sleep(current_delay).await;
-            current_delay = (current_delay * 2).min(max_delay);
+            tokio::time::sleep(retry_delay).await;
+            let _ = (retry_delay * 2).min(max_delay);
         }
     }
 

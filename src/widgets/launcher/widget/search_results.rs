@@ -1,5 +1,4 @@
-use crate::widgets::launcher::types::{ApplicationInfo, ProcessInfo, SearchResult};
-use crate::services::system::clipboard::ClipboardEntry;
+use crate::widgets::launcher::types::SearchResult;
 use crate::theme::Theme;
 use gpui::{div, img, prelude::*};
 
@@ -152,7 +151,7 @@ impl SearchResults {
                                 ),
                         ),
                         SearchResult::Clipboard(entry) => {
-                            let content_single_line = entry.content.replace('\n', " ").replace('\r', " ");
+                            let content_single_line = entry.content.replace(['\n', '\r'], " ");
                             let preview = if content_single_line.chars().count() > 60 {
                                 let truncated: String = content_single_line.chars().take(60).collect();
                                 format!("{}...", truncated)

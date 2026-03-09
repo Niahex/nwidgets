@@ -43,7 +43,7 @@ impl OsdWidget {
         })
         .detach();
 
-        Self::start_animation_loop(volume_slider.clone(), cx);
+        Self::start_animation_loop(cx);
 
         Self {
             current_event: initial_event,
@@ -54,7 +54,7 @@ impl OsdWidget {
         }
     }
 
-    fn start_animation_loop(volume_slider: Entity<SliderState>, cx: &mut Context<Self>) {
+    fn start_animation_loop(cx: &mut Context<Self>) {
         cx.spawn(async move |this, cx| loop {
             cx.background_executor()
                 .timer(Duration::from_millis(ANIMATION_FRAME_MS))

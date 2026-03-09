@@ -24,10 +24,10 @@ pub fn render_notification_item(notif: &Notification, cx: &mut App) -> impl Into
         .border_1()
         .border_color(theme.accent_alt.opacity(0.25))
         .shadow_lg()
-        .child(render_header(notif, &theme))
-        .child(render_summary(notif, &theme))
+        .child(render_header(notif, theme))
+        .child(render_summary(notif, theme))
         .when(!notif.body.as_ref().is_empty(), |this| {
-            this.child(render_body(notif, &theme))
+            this.child(render_body(notif, theme))
         })
 }
 

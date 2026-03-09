@@ -49,11 +49,10 @@ impl EventEmitter<FullscreenChanged> for HyprlandService {}
 
 // Data structure to send from background worker to UI thread
 enum HyprlandUpdate {
-    Workspace(SmallVec<[Workspace; 10]>, i32),
+    Workspace(Box<SmallVec<[Workspace; 10]>>, i32),
     Window(Option<ActiveWindow>),
     Fullscreen(Option<i32>), // workspace id with fullscreen, or None
     WindowOpened(String),    // window class
-    WindowClosed(String),    // window class
 }
 
 impl HyprlandService {
@@ -89,8 +88,8 @@ impl HyprlandService {
                         HyprlandUpdate::Workspace(new_workspaces, new_workspace_id) => {
                             let mut workspaces = workspaces_clone.write();
                             let mut workspace_id = active_workspace_id_clone.write();
-                            if *workspaces != new_workspaces || *workspace_id != new_workspace_id {
-                                *workspaces = new_workspaces;
+                            if *workspaces != *new_workspaces || *workspace_id != new_workspace_id {
+                                *workspaces = *new_workspaces;
                                 *workspace_id = new_workspace_id;
                                 ws_changed = true;
                             }
@@ -120,11 +119,6 @@ impl HyprlandService {
                                 windows.push(class.clone());
                                 log::debug!("Window opened: {}", class);
                             }
-                        }
-                        HyprlandUpdate::WindowClosed(class) => {
-                            let mut windows = open_windows_clone.write();
-                            windows.retain(|w| w != &class);
-                            log::debug!("Window closed: {}", class);
                         }
                     }
 
@@ -234,7 +228,7 @@ impl HyprlandService {
 
         // Initial fetch
         let (workspaces, workspace_id) = Self::fetch_hyprland_data().await;
-        let _ = ui_tx.unbounded_send(HyprlandUpdate::Workspace(workspaces, workspace_id));
+        let _ = ui_tx.unbounded_send(HyprlandUpdate::Workspace(Box::new(workspaces), workspace_id));
         let window = Self::fetch_active_window().await;
         let _ = ui_tx.unbounded_send(HyprlandUpdate::Window(window));
         let fullscreen = Self::fetch_fullscreen_workspace().await;
@@ -246,7 +240,7 @@ impl HyprlandService {
                 0 => {
                     // Workspace event
                     let (workspaces, workspace_id) = Self::fetch_hyprland_data().await;
-                    let _ = ui_tx.unbounded_send(HyprlandUpdate::Workspace(workspaces, workspace_id));
+                    let _ = ui_tx.unbounded_send(HyprlandUpdate::Workspace(Box::new(workspaces), workspace_id));
                 }
                 1 => {
                     // Active window event

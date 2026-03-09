@@ -1,4 +1,4 @@
-use crate::widgets::launcher::types::{ApplicationInfo, ProcessInfo, SearchResult, SearchResultType};
+use crate::widgets::launcher::types::{ApplicationInfo, SearchResult, SearchResultType};
 use crate::widgets::launcher::core::{applications, calculator, fuzzy::FuzzyMatcher, process};
 use crate::services::system::clipboard::ClipboardEntry;
 use applications::load_from_cache;

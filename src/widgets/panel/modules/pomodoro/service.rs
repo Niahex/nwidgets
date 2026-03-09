@@ -89,7 +89,7 @@ impl PomodoroService {
     #[allow(dead_code)]
     pub fn start_break(&self, cx: &mut Context<Self>) {
         let count = *self.pomodoro_count.read();
-        let is_long_break = count % self.pomodoros_until_long_break == 0 && count > 0;
+        let is_long_break = count.is_multiple_of(self.pomodoros_until_long_break) && count > 0;
 
         let (phase, duration) = if is_long_break {
             (PomodoroPhase::LongBreak, self.long_break_duration)

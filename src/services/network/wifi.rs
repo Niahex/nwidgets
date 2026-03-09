@@ -99,10 +99,6 @@ struct GlobalWifiService(Entity<WifiService>);
 impl Global for GlobalWifiService {}
 
 impl WifiService {
-    pub fn global(cx: &App) -> Entity<Self> {
-        cx.global::<GlobalWifiService>().0.clone()
-    }
-
     pub fn set_global(cx: &mut App, service: Entity<Self>) {
         cx.set_global(GlobalWifiService(service));
     }
