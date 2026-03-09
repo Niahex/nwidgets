@@ -451,6 +451,16 @@ impl AudioService {
         .detach();
     }
 
+    pub fn toggle_source_mute(&self, cx: &mut Context<Self>) {
+        gpui_tokio::Tokio::spawn(cx, async move {
+            let _ = tokio::process::Command::new("wpctl")
+                .args(["set-mute", "@DEFAULT_AUDIO_SOURCE@", "toggle"])
+                .output()
+                .await;
+        })
+        .detach();
+    }
+
     pub fn set_source_volume(&self, volume: u8, cx: &mut Context<Self>) {
         let volume = volume.min(100);
         gpui_tokio::Tokio::spawn(cx, async move {

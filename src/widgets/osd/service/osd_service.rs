@@ -11,6 +11,8 @@ pub struct OsdService {
     visible: bool,
     window_manager: OsdWindowManager,
     hide_task: Option<Task<()>>,
+    previous_source_muted: Option<bool>,
+    previous_sink_muted: Option<bool>,
     _lock_monitor: Entity<LockMonitor>,
     _clipboard_monitor: Entity<ClipboardMonitor>,
 }
@@ -27,11 +29,26 @@ impl OsdService {
             &audio,
             move |this, _audio, event: &AudioStateChanged, cx| {
                 let state = &event.state;
+                
                 let icon_name = Self::get_volume_icon(state.sink_volume, state.sink_muted);
                 this.show_event(
                     OsdEvent::Volume(icon_name.to_string(), state.sink_volume, state.sink_muted),
                     cx,
                 );
+                
+                if let Some(prev_muted) = this.previous_sink_muted {
+                    if prev_muted != state.sink_muted && state.sink_muted {
+                        this.show_event(OsdEvent::Volume("sink-muted".to_string(), 0, true), cx);
+                    }
+                }
+                this.previous_sink_muted = Some(state.sink_muted);
+                
+                if let Some(prev_muted) = this.previous_source_muted {
+                    if prev_muted != state.source_muted {
+                        this.show_event(OsdEvent::Microphone(state.source_muted), cx);
+                    }
+                }
+                this.previous_source_muted = Some(state.source_muted);
             },
         )
         .detach();
@@ -57,6 +74,8 @@ impl OsdService {
             visible: false,
             window_manager: OsdWindowManager::new(),
             hide_task: None,
+            previous_source_muted: None,
+            previous_sink_muted: None,
             _lock_monitor: lock_monitor,
             _clipboard_monitor: clipboard_monitor,
         }
