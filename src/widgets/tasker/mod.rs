@@ -5,4 +5,4 @@ pub mod window;
 
 pub use service::TaskService;
 pub use types::{Task, TaskSelected, TaskStateChanged, TaskWindowToggled};
-pub use widget::{TaskListWidget, TaskWindow};
+pub use widget::{CloseTasker, TaskListWidget, TaskWindow};

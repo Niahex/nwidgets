@@ -51,11 +51,13 @@ pub fn on_toggle(service: Entity<TaskService>, _event: &TaskWindowToggled, cx: &
     let window = window.lock();
     let visible = service.read(cx).window_visible();
     
-    let _ = window.update(cx, |_task_window, window, cx| {
+    let _ = window.update(cx, |task_window, window, cx| {
         if visible {
             window.set_layer(gpui::layer_shell::Layer::Overlay);
-            window.set_keyboard_interactivity(gpui::layer_shell::KeyboardInteractivity::OnDemand);
+            window.set_keyboard_interactivity(gpui::layer_shell::KeyboardInteractivity::Exclusive);
             window.resize(size(px(600.0), px(700.0)));
+            window.focus(&task_window.focus_handle, cx);
+            cx.activate(true);
         } else {
             window.set_layer(gpui::layer_shell::Layer::Background);
             window.set_input_region(None);

@@ -5,6 +5,8 @@ use crate::widgets::tasker::types::{Task, TaskStateChanged};
 use gpui::prelude::*;
 use gpui::*;
 
+actions!(tasker, [CloseTasker]);
+
 #[derive(Clone, Copy, PartialEq)]
 enum FocusedInput {
     Title,
@@ -17,7 +19,7 @@ pub struct TaskWindow {
     new_task_title: String,
     new_task_project: String,
     new_task_pomodoros: String,
-    focus_handle: FocusHandle,
+    pub focus_handle: FocusHandle,
     focused_input: Option<FocusedInput>,
     show_create_modal: bool,
 }
@@ -133,6 +135,16 @@ impl Render for TaskWindow {
             .w_full()
             .h_full()
             .bg(theme.bg)
+            .on_action(cx.listener(|this, _: &CloseTasker, _window, cx| {
+                this.task_service.update(cx, |service, cx| {
+                    service.toggle_window(cx);
+                });
+            }))
+            .on_mouse_down_out(cx.listener(|this, _, _window, cx| {
+                this.task_service.update(cx, |service, cx| {
+                    service.toggle_window(cx);
+                });
+            }))
             .when(self.show_create_modal, |this| {
                 this.child(self.render_create_form(theme.clone(), cx))
             })

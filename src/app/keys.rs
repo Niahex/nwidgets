@@ -2,6 +2,7 @@ use gpui::*;
 
 use crate::widgets::control_center::CloseControlCenter;
 use crate::widgets::launcher::{Backspace, Down, Launch, Quit, Up};
+use crate::widgets::tasker::CloseTasker;
 
 pub fn bind_all(cx: &mut App) {
     cx.bind_keys([
@@ -11,5 +12,6 @@ pub fn bind_all(cx: &mut App) {
         KeyBinding::new("enter", Launch, None),
         KeyBinding::new("escape", Quit, None),
         KeyBinding::new("escape", CloseControlCenter, None),
+        KeyBinding::new("escape", CloseTasker, None),
     ]);
 }

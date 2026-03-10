@@ -43,12 +43,16 @@ impl TaskService {
 
     fn save_tasks(&self) {
         let tasks = self.tasks.read().clone();
-        if let Some(parent) = self.storage_path.parent() {
-            let _ = std::fs::create_dir_all(parent);
-        }
-        if let Ok(json) = serde_json::to_string_pretty(&tasks) {
-            let _ = std::fs::write(&self.storage_path, json);
-        }
+        let storage_path = self.storage_path.clone();
+        
+        std::thread::spawn(move || {
+            if let Some(parent) = storage_path.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+            if let Ok(json) = serde_json::to_string_pretty(&tasks) {
+                let _ = std::fs::write(&storage_path, json);
+            }
+        });
     }
 
     pub fn tasks(&self) -> Vec<Task> {
