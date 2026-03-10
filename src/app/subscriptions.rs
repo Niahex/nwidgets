@@ -6,10 +6,12 @@ use crate::widgets::jisig::JisigService;
 use crate::widgets::launcher::LauncherService;
 use crate::widgets::notifications::{NotificationAdded, NotificationService};
 use crate::widgets::notifications::{NotificationsStateChanged, NotificationsWindowManager};
+use crate::widgets::tasker::TaskService;
 
 use crate::widgets::chat::window;
 use crate::widgets::jisig::window as jisig;
 use crate::widgets::launcher::window as launcher;
+use crate::widgets::tasker::window as tasker;
 
 pub fn setup_all(
     cx: &mut App,
@@ -21,6 +23,7 @@ pub fn setup_all(
     setup_jisig(cx);
     setup_launcher(cx, launcher_service);
     setup_notifications(cx, notif_service);
+    setup_tasker(cx);
 }
 
 fn setup_chat(cx: &mut App, chat_service: Entity<ChatService>) {
@@ -61,4 +64,9 @@ fn setup_notifications(cx: &mut App, notif_service: Entity<NotificationService>)
             }).detach();
         }
     }).detach();
+}
+
+fn setup_tasker(cx: &mut App) {
+    let task_service = TaskService::global(cx);
+    cx.subscribe(&task_service, tasker::on_toggle).detach();
 }

@@ -3,6 +3,7 @@ use gpui::{App, AsyncApp, Context, Entity, EventEmitter, Global, WeakEntity};
 use parking_lot::RwLock;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use crate::widgets::tasker::TaskService;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum PomodoroPhase {
@@ -187,9 +188,13 @@ impl PomodoroService {
                             cx.emit(PomodoroStateChanged);
                             cx.notify();
                         } else {
-                            // Timer finished
                             if matches!(phase, PomodoroPhase::Work) {
                                 *service.pomodoro_count.write() += 1;
+                                
+                                let task_service = TaskService::global(cx);
+                                let _ = task_service.update(cx, |service, cx| {
+                                    service.increment_active_task_pomodoros(cx);
+                                });
                             }
                             *current_status = PomodoroStatus::Idle;
                             *service.start_time.write() = None;

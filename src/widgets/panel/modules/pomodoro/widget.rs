@@ -4,6 +4,7 @@ use crate::widgets::panel::modules::pomodoro::{
 use super::service::{PomodoroPhase, PomodoroStatus};
 use crate::theme::ActiveTheme;
 use crate::assets::Icon;
+use crate::widgets::tasker::TaskService;
 use gpui::prelude::*;
 use gpui::*;
 
@@ -84,10 +85,17 @@ impl Render for PomodoroModule {
             }
         };
 
-        element.on_mouse_down(MouseButton::Middle, move |_event, _window, cx| {
-            pomodoro_middle.update(cx, |service, cx| {
-                service.stop(cx);
-            });
-        })
+        element
+            .on_mouse_down(MouseButton::Middle, move |_event, _window, cx| {
+                pomodoro_middle.update(cx, |service, cx| {
+                    service.stop(cx);
+                });
+            })
+            .on_mouse_down(MouseButton::Right, move |_event, _window, cx| {
+                let task_service = TaskService::global(cx);
+                task_service.update(cx, |service, cx| {
+                    service.toggle_window(cx);
+                });
+            })
     }
 }

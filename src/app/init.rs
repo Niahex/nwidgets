@@ -11,6 +11,7 @@ use crate::widgets::launcher::LauncherService;
 use crate::widgets::notifications::NotificationService;
 use crate::widgets::osd::OsdService;
 use crate::widgets::panel::modules::{MprisService, PomodoroService};
+use crate::widgets::tasker::TaskService;
 
 pub fn initialize_all(cx: &mut App) -> (Entity<ClipboardMonitor>, Entity<OsdService>) {
     HyprlandService::init(cx);
@@ -20,6 +21,7 @@ pub fn initialize_all(cx: &mut App) -> (Entity<ClipboardMonitor>, Entity<OsdServ
     SystemMonitorService::init(cx);
     MprisService::init(cx);
     PomodoroService::init(cx);
+    TaskService::init(cx);
     CefService::init(cx);
     DbusService::init(cx);
     ChatService::init(cx);

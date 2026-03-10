@@ -10,6 +10,7 @@ pub fn run(cx: &mut App) {
     crate::widgets::chat::window::open(cx);
     crate::widgets::jisig::window::open(cx);
     crate::widgets::launcher::window::open(cx, launcher_service.clone(), clipboard);
+    crate::widgets::tasker::window::open(cx);
     
     crate::app::subscriptions::setup_all(cx, chat_service, launcher_service, notif_service);
     
