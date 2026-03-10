@@ -15,24 +15,22 @@ pub fn on_toggle(service: Entity<ChatService>, _event: &ChatToggled, cx: &mut Ap
 
     let _ = window.update(cx, |chat, window, cx| {
         if visible {
-            let height = if fullscreen { 1440 } else { 1370 };
-            window.resize(size(px(600.0), px(height as f32)));
-            chat.resize_browser(600, height, cx);
-            chat.focus_input(cx);
-            window.set_margin(
-                if fullscreen { 0 } else { 40 },
-                0,
-                if fullscreen { 0 } else { 20 },
-                if fullscreen { 0 } else { 10 },
-            );
-            window.set_exclusive_edge(gpui::layer_shell::Anchor::LEFT);
-            window.set_exclusive_zone(if fullscreen { 0 } else { 600 });
-            window.set_layer(if fullscreen {
-                gpui::layer_shell::Layer::Overlay
+            if fullscreen {
+                window.resize(size(px(600.0), px(1440.0)));
+                chat.resize_browser(600, 1440, cx);
+                window.set_margin(0, 0, 0, 0);
+                window.set_exclusive_zone(0);
+                window.set_layer(gpui::layer_shell::Layer::Overlay);
             } else {
-                gpui::layer_shell::Layer::Top
-            });
+                window.resize(size(px(600.0), px(1370.0)));
+                chat.resize_browser(600, 1370, cx);
+                window.set_margin(40, 0, 20, 10);
+                window.set_exclusive_zone(600);
+                window.set_layer(gpui::layer_shell::Layer::Top);
+            }
+            window.set_exclusive_edge(gpui::layer_shell::Anchor::LEFT);
             window.set_keyboard_interactivity(gpui::layer_shell::KeyboardInteractivity::OnDemand);
+            chat.focus_input(cx);
             cx.activate(true);
         } else {
             if let Some(url) = chat.current_url(cx) {
@@ -48,9 +46,32 @@ pub fn on_toggle(service: Entity<ChatService>, _event: &ChatToggled, cx: &mut Ap
 
 pub fn on_fullscreen(_hypr: Entity<HyprlandService>, event: &FullscreenChanged, cx: &mut App) {
     let chat_service = ChatService::global(cx);
-    if chat_service.read(cx).visible && event.0 {
-        chat_service.update(cx, |cs, cx| cs.toggle(cx));
+    
+    if !chat_service.read(cx).visible {
+        return;
     }
+    
+    let Some(window) = get_window() else {
+        return;
+    };
+    let window = window.lock();
+    
+    let _ = window.update(cx, |chat, window, cx| {
+        if event.0 {
+            window.resize(size(px(600.0), px(1440.0)));
+            chat.resize_browser(600, 1440, cx);
+            window.set_margin(0, 0, 0, 0);
+            window.set_exclusive_zone(0);
+            window.set_layer(gpui::layer_shell::Layer::Overlay);
+        } else {
+            window.resize(size(px(600.0), px(1370.0)));
+            chat.resize_browser(600, 1370, cx);
+            window.set_margin(40, 0, 20, 10);
+            window.set_exclusive_zone(600);
+            window.set_layer(gpui::layer_shell::Layer::Top);
+        }
+        cx.notify();
+    });
 }
 
 pub fn on_workspace_change(
@@ -60,9 +81,32 @@ pub fn on_workspace_change(
 ) {
     let fullscreen = HyprlandService::global(cx).read(cx).has_fullscreen();
     let chat_service = ChatService::global(cx);
-    if chat_service.read(cx).visible && fullscreen {
-        chat_service.update(cx, |cs, cx| cs.toggle(cx));
+    
+    if !chat_service.read(cx).visible {
+        return;
     }
+    
+    let Some(window) = get_window() else {
+        return;
+    };
+    let window = window.lock();
+    
+    let _ = window.update(cx, |chat, window, cx| {
+        if fullscreen {
+            window.resize(size(px(600.0), px(1440.0)));
+            chat.resize_browser(600, 1440, cx);
+            window.set_margin(0, 0, 0, 0);
+            window.set_exclusive_zone(0);
+            window.set_layer(gpui::layer_shell::Layer::Overlay);
+        } else {
+            window.resize(size(px(600.0), px(1370.0)));
+            chat.resize_browser(600, 1370, cx);
+            window.set_margin(40, 0, 20, 10);
+            window.set_exclusive_zone(600);
+            window.set_layer(gpui::layer_shell::Layer::Top);
+        }
+        cx.notify();
+    });
 }
 
 pub fn on_navigate(_service: Entity<ChatService>, event: &ChatNavigate, cx: &mut App) {
