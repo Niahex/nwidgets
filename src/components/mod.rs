@@ -15,5 +15,6 @@ pub use corner::Corner;
 pub use dropdown::*;
 pub use popover_menu::*;
 pub use slider::{Slider, SliderEvent, SliderState};
+#[allow(unused_imports)]
 pub use text_input::TextInput;
 pub use toggle::Toggle;

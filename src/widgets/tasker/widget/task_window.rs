@@ -11,14 +11,12 @@ actions!(tasker, [CloseTasker]);
 enum FocusedInput {
     Title,
     Project,
-    Pomodoros,
 }
 
 pub struct TaskWindow {
     task_service: Entity<TaskService>,
     new_task_title: String,
     new_task_project: String,
-    new_task_pomodoros: String,
     pub focus_handle: FocusHandle,
     focused_input: Option<FocusedInput>,
     show_create_modal: bool,
@@ -40,7 +38,6 @@ impl TaskWindow {
             task_service,
             new_task_title: String::new(),
             new_task_project: String::new(),
-            new_task_pomodoros: String::from("4"),
             focus_handle: cx.focus_handle(),
             focused_input: None,
             show_create_modal: false,
@@ -52,14 +49,13 @@ impl TaskWindow {
             return;
         }
 
-        let estimated = self.new_task_pomodoros.parse::<u32>().unwrap_or(4);
         let project = if self.new_task_project.trim().is_empty() {
             None
         } else {
             Some(self.new_task_project.trim().to_string())
         };
 
-        let task = Task::new(self.new_task_title.trim().to_string(), project, estimated);
+        let task = Task::new(self.new_task_title.trim().to_string(), project);
 
         self.task_service.update(cx, |service, cx| {
             service.add_task(task, cx);
@@ -67,7 +63,6 @@ impl TaskWindow {
 
         self.new_task_title.clear();
         self.new_task_project.clear();
-        self.new_task_pomodoros = String::from("4");
         self.focused_input = None;
         self.show_create_modal = false;
         cx.notify();
@@ -90,7 +85,6 @@ impl Render for TaskWindow {
                             match focused {
                                 FocusedInput::Title => { this.new_task_title.pop(); },
                                 FocusedInput::Project => { this.new_task_project.pop(); },
-                                FocusedInput::Pomodoros => { this.new_task_pomodoros.pop(); },
                             }
                             cx.notify();
                         } else if event.keystroke.key == "enter" {
@@ -102,29 +96,17 @@ impl Render for TaskWindow {
                         } else if event.keystroke.key == "tab" {
                             this.focused_input = match focused {
                                 FocusedInput::Title => Some(FocusedInput::Project),
-                                FocusedInput::Project => Some(FocusedInput::Pomodoros),
-                                FocusedInput::Pomodoros => Some(FocusedInput::Title),
+                                FocusedInput::Project => Some(FocusedInput::Title),
                             };
                             cx.notify();
                         } else if let Some(key_char) = &event.keystroke.key_char {
-                            match focused {
-                                FocusedInput::Title | FocusedInput::Project => {
-                                    if key_char.len() == 1 {
-                                        let target = match focused {
-                                            FocusedInput::Title => &mut this.new_task_title,
-                                            FocusedInput::Project => &mut this.new_task_project,
-                                            _ => return,
-                                        };
-                                        target.push_str(key_char);
-                                        cx.notify();
-                                    }
-                                },
-                                FocusedInput::Pomodoros => {
-                                    if key_char.chars().all(|c| c.is_numeric()) {
-                                        this.new_task_pomodoros.push_str(key_char);
-                                        cx.notify();
-                                    }
-                                },
+                            if key_char.len() == 1 {
+                                let target = match focused {
+                                    FocusedInput::Title => &mut this.new_task_title,
+                                    FocusedInput::Project => &mut this.new_task_project,
+                                };
+                                target.push_str(key_char);
+                                cx.notify();
                             }
                         }
                     }
@@ -141,9 +123,12 @@ impl Render for TaskWindow {
                 });
             }))
             .on_mouse_down_out(cx.listener(|this, _, _window, cx| {
-                this.task_service.update(cx, |service, cx| {
-                    service.toggle_window(cx);
-                });
+                let visible = this.task_service.read(cx).window_visible();
+                if visible {
+                    this.task_service.update(cx, |service, cx| {
+                        service.toggle_window(cx);
+                    });
+                }
             }))
             .when(self.show_create_modal, |this| {
                 this.child(self.render_create_form(theme.clone(), cx))
@@ -250,28 +235,6 @@ impl TaskWindow {
                             }),
                     )
                     .child(
-                        div()
-                            .flex_1()
-                            .px_3()
-                            .py_2()
-                            .bg(theme.surface)
-                            .rounded(px(4.))
-                            .border_1()
-                            .border_color(if self.focused_input == Some(FocusedInput::Pomodoros) {
-                                theme.accent
-                            } else {
-                                theme.border()
-                            })
-                            .cursor_text()
-                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, window, cx| {
-                                this.focused_input = Some(FocusedInput::Pomodoros);
-                                window.focus(&this.focus_handle, cx);
-                                cx.notify();
-                            }))
-                            .text_color(theme.text)
-                            .child(format!("{} pomodoros", self.new_task_pomodoros)),
-                    )
-                    .child(
                         Button::new("add-task-button")
                             .label("Create Task")
                             .accent()
@@ -282,7 +245,7 @@ impl TaskWindow {
             )
     }
 
-    fn render_task_list(&mut self, tasks: Vec<Task>, active_task_id: Option<uuid::Uuid>, theme: crate::theme::Theme, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render_task_list(&mut self, tasks: Vec<Task>, active_task_id: Option<uuid::Uuid>, theme: crate::theme::Theme, _cx: &mut Context<Self>) -> impl IntoElement {
         div()
             .flex()
             .flex_col()
@@ -337,6 +300,7 @@ impl TaskWindow {
                                         )
                                     })
                                     .on_mouse_down(MouseButton::Left, move |_event, _window, cx| {
+                                        cx.stop_propagation();
                                         task_service_toggle.update(cx, |service, cx| {
                                             service.toggle_task_completed(task_id, cx);
                                         });
@@ -375,29 +339,14 @@ impl TaskWindow {
                                     .flex()
                                     .items_center()
                                     .gap_1()
-                                    .child(
-                                        div()
-                                            .text_xs()
-                                            .text_color(theme.text_muted)
-                                            .child(format!(
-                                                "{}/{}",
-                                                task.completed_pomodoros, task.estimated_pomodoros
-                                            )),
-                                    )
-                                    .child(
-                                        div()
-                                            .w(px(40.))
-                                            .h(px(4.))
-                                            .bg(theme.bg)
-                                            .rounded(px(2.))
-                                            .child(
-                                                div()
-                                                    .w(relative(task.progress()))
-                                                    .h_full()
-                                                    .bg(theme.green)
-                                                    .rounded(px(2.)),
-                                            ),
-                                    ),
+                                    .when(task.time_spent_secs > 0, |this| {
+                                        this.child(
+                                            div()
+                                                .text_xs()
+                                                .text_color(theme.text_muted)
+                                                .child(task.format_time_spent()),
+                                        )
+                                    }),
                             )
                             .child(
                                 div()

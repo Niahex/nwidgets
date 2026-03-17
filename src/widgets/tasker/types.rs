@@ -8,30 +8,32 @@ pub struct Task {
     pub id: Uuid,
     pub title: String,
     pub project: Option<String>,
-    pub estimated_pomodoros: u32,
-    pub completed_pomodoros: u32,
+    pub time_spent_secs: u64,
     pub created_at: DateTime<Utc>,
     pub completed: bool,
 }
 
 impl Task {
-    pub fn new(title: String, project: Option<String>, estimated_pomodoros: u32) -> Self {
+    pub fn new(title: String, project: Option<String>) -> Self {
         Self {
             id: Uuid::new_v4(),
             title,
             project,
-            estimated_pomodoros,
-            completed_pomodoros: 0,
+            time_spent_secs: 0,
             created_at: Utc::now(),
             completed: false,
         }
     }
 
-    pub fn progress(&self) -> f32 {
-        if self.estimated_pomodoros == 0 {
-            return 0.0;
+    pub fn format_time_spent(&self) -> SharedString {
+        let total = self.time_spent_secs;
+        let hours = total / 3600;
+        let mins = (total % 3600) / 60;
+        if hours > 0 {
+            format!("{hours}h{mins:02}m").into()
+        } else {
+            format!("{mins}m").into()
         }
-        (self.completed_pomodoros as f32 / self.estimated_pomodoros as f32).min(1.0)
     }
 
     pub fn display_title(&self) -> SharedString {

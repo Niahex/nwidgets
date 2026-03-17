@@ -69,4 +69,5 @@ fn setup_notifications(cx: &mut App, notif_service: Entity<NotificationService>)
 fn setup_tasker(cx: &mut App) {
     let task_service = TaskService::global(cx);
     cx.subscribe(&task_service, tasker::on_toggle).detach();
+    cx.subscribe(&task_service, tasker::on_task_selected).detach();
 }

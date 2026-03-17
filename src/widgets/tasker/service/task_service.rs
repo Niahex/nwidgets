@@ -95,8 +95,16 @@ impl TaskService {
     }
 
     pub fn toggle_task_completed(&mut self, task_id: Uuid, cx: &mut Context<Self>) {
-        if let Some(task) = self.tasks.write().iter_mut().find(|t| t.id == task_id) {
-            task.completed = !task.completed;
+        let found = {
+            let mut tasks = self.tasks.write();
+            if let Some(task) = tasks.iter_mut().find(|t| t.id == task_id) {
+                task.completed = !task.completed;
+                true
+            } else {
+                false
+            }
+        };
+        if found {
             self.save_tasks();
             cx.emit(TaskStateChanged);
             cx.notify();
@@ -109,14 +117,20 @@ impl TaskService {
         cx.notify();
     }
 
-    pub fn increment_active_task_pomodoros(&mut self, cx: &mut Context<Self>) {
-        if let Some(task_id) = *self.active_task_id.read() {
-            if let Some(task) = self.tasks.write().iter_mut().find(|t| t.id == task_id) {
-                task.completed_pomodoros += 1;
-                self.save_tasks();
-                cx.emit(TaskStateChanged);
-                cx.notify();
+    pub fn add_time_spent_to_active_task(&mut self, secs: u64) {
+        let should_save = if let Some(task_id) = *self.active_task_id.read() {
+            let mut tasks = self.tasks.write();
+            if let Some(task) = tasks.iter_mut().find(|t| t.id == task_id) {
+                task.time_spent_secs += secs;
+                task.time_spent_secs % 60 == 0
+            } else {
+                false
             }
+        } else {
+            false
+        };
+        if should_save {
+            self.save_tasks();
         }
     }
 

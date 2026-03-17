@@ -2,8 +2,9 @@ use gpui::*;
 use parking_lot::Mutex;
 use std::sync::{Arc, OnceLock};
 
+use crate::widgets::panel::modules::pomodoro::PomodoroService;
 use crate::widgets::tasker::widget::TaskWindow;
-use crate::widgets::tasker::{TaskService, TaskWindowToggled};
+use crate::widgets::tasker::{TaskService, TaskSelected, TaskWindowToggled};
 
 static TASK_WINDOW: OnceLock<Arc<Mutex<WindowHandle<TaskWindow>>>> = OnceLock::new();
 
@@ -47,11 +48,11 @@ pub fn open(cx: &mut App) {
 }
 
 pub fn on_toggle(service: Entity<TaskService>, _event: &TaskWindowToggled, cx: &mut App) {
-    let Some(window) = TASK_WINDOW.get() else { return };
-    let window = window.lock();
+    let Some(window_arc) = TASK_WINDOW.get() else { return };
     let visible = service.read(cx).window_visible();
-    
-    let _ = window.update(cx, |task_window, window, cx| {
+    let window = window_arc.lock();
+
+    if let Err(err) = window.update(cx, |task_window, window, cx| {
         if visible {
             window.set_layer(gpui::layer_shell::Layer::Overlay);
             window.set_keyboard_interactivity(gpui::layer_shell::KeyboardInteractivity::Exclusive);
@@ -65,9 +66,30 @@ pub fn on_toggle(service: Entity<TaskService>, _event: &TaskWindowToggled, cx: &
             window.resize(size(px(1.0), px(1.0)));
         }
         cx.notify();
-    });
+    }) {
+        log::error!("Failed to update task window: {err}");
+    }
 }
 
 pub fn get_window() -> Option<Arc<Mutex<WindowHandle<TaskWindow>>>> {
     TASK_WINDOW.get().cloned()
+}
+
+pub fn on_task_selected(service: Entity<TaskService>, event: &TaskSelected, cx: &mut App) {
+    let pomodoro = PomodoroService::global(cx);
+    pomodoro.update(cx, |pomodoro, cx| {
+        if event.task_id.is_some() {
+            pomodoro.start_work(cx);
+        } else {
+            pomodoro.stop(cx);
+        }
+    });
+
+    if event.task_id.is_some() {
+        service.update(cx, |service, cx| {
+            if service.window_visible() {
+                service.toggle_window(cx);
+            }
+        });
+    }
 }

@@ -1,5 +1,4 @@
 use crate::widgets::tasker::service::TaskService;
-use crate::widgets::tasker::types::Task;
 use crate::theme::ActiveTheme;
 use gpui::prelude::*;
 use gpui::*;
@@ -25,8 +24,7 @@ impl Render for TaskListWidget {
             .flex()
             .flex_col()
             .gap_2()
-            .when(active_task.is_some(), |this| {
-                let task = active_task.unwrap();
+            .when_some(active_task, |this, task| {
                 this.child(
                     div()
                         .p_2()
@@ -40,15 +38,14 @@ impl Render for TaskListWidget {
                                 .text_color(theme.text)
                                 .child(format!("Active: {}", task.title)),
                         )
-                        .child(
-                            div()
-                                .text_xs()
-                                .text_color(theme.text_muted)
-                                .child(format!(
-                                    "{}/{} pomodoros",
-                                    task.completed_pomodoros, task.estimated_pomodoros
-                                )),
-                        ),
+                        .when(task.time_spent_secs > 0, |this| {
+                            this.child(
+                                div()
+                                    .text_xs()
+                                    .text_color(theme.text_muted)
+                                    .child(task.format_time_spent()),
+                            )
+                        }),
                 )
             })
             .children(tasks.iter().take(5).map(|task| {
@@ -64,12 +61,14 @@ impl Render for TaskListWidget {
                             .text_color(theme.text)
                             .child(task.title.clone()),
                     )
-                    .child(
-                        div()
-                            .text_xs()
-                            .text_color(theme.text_muted)
-                            .child(format!("{}/{}", task.completed_pomodoros, task.estimated_pomodoros)),
-                    )
+                    .when(task.time_spent_secs > 0, |this| {
+                        this.child(
+                            div()
+                                .text_xs()
+                                .text_color(theme.text_muted)
+                                .child(task.format_time_spent()),
+                        )
+                    })
             }))
     }
 }

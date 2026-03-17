@@ -172,36 +172,39 @@ impl PomodoroService {
 
             if should_update {
                 let _ = this.update(cx, |service, cx| {
-                    let mut current_status = service.status.write();
-
-                    if let PomodoroStatus::Running {
-                        phase,
-                        remaining_secs,
-                    } = &*current_status
-                    {
-                        if *remaining_secs > 0 {
-                            *current_status = PomodoroStatus::Running {
-                                phase: phase.clone(),
-                                remaining_secs: remaining_secs - 1,
-                            };
-
-                            cx.emit(PomodoroStateChanged);
-                            cx.notify();
+                    let (phase, remaining_secs) = {
+                        let current_status = service.status.read();
+                        if let PomodoroStatus::Running { phase, remaining_secs } = &*current_status {
+                            (phase.clone(), *remaining_secs)
                         } else {
-                            if matches!(phase, PomodoroPhase::Work) {
-                                *service.pomodoro_count.write() += 1;
-                                
-                                let task_service = TaskService::global(cx);
-                                let _ = task_service.update(cx, |service, cx| {
-                                    service.increment_active_task_pomodoros(cx);
-                                });
-                            }
-                            *current_status = PomodoroStatus::Idle;
-                            *service.start_time.write() = None;
-
-                            cx.emit(PomodoroStateChanged);
-                            cx.notify();
+                            return;
                         }
+                    };
+
+                    if remaining_secs > 0 {
+                        *service.status.write() = PomodoroStatus::Running {
+                            phase: phase.clone(),
+                            remaining_secs: remaining_secs - 1,
+                        };
+
+                        if matches!(phase, PomodoroPhase::Work) {
+                            let task_service = TaskService::global(cx);
+                            let _ = task_service.update(cx, |service, _cx| {
+                                service.add_time_spent_to_active_task(1);
+                            });
+                        }
+
+                        cx.emit(PomodoroStateChanged);
+                        cx.notify();
+                    } else {
+                        if matches!(phase, PomodoroPhase::Work) {
+                            *service.pomodoro_count.write() += 1;
+                        }
+                        *service.status.write() = PomodoroStatus::Idle;
+                        *service.start_time.write() = None;
+
+                        cx.emit(PomodoroStateChanged);
+                        cx.notify();
                     }
                 });
             }
