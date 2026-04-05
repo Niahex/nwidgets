@@ -46,12 +46,12 @@
         };
 
         # CEF Configuration
-        cefVersion = "144.0.13+g9f739aa+chromium-144.0.7559.133";
+        cefVersion = "146.0.10+g8219561+chromium-146.0.7680.179";
         cefPlatform = "linux64";
         cefSrc = pkgs.fetchurl {
           url = "https://cef-builds.spotifycdn.com/cef_binary_${pkgs.lib.strings.escapeURL cefVersion}_${cefPlatform}_minimal.tar.bz2";
           name = "cef_binary_${pkgs.lib.strings.escapeURL cefVersion}_${cefPlatform}_minimal.tar.bz2";
-          hash = "sha256-C5Q7smuu0yPLsADsIdkFcX0iHflS3KI7uyxq9tIbojg=";
+          hash = "sha256-xJ4txYZkjfQZSEbn31sbDMKkvZfPMGPDD6sNFUvLzBw=";
         };
 
         cefDeps = with pkgs; [
