@@ -19,11 +19,12 @@ fn parse_ps_line(line: &str) -> Option<ProcessInfo> {
         return None;
     }
 
-    let pid = parts[1].parse::<u32>().ok()?;
-    let cpu_usage = parts[2].parse::<f32>().unwrap_or(0.0);
-    let memory_mb = parts[5].parse::<f32>().unwrap_or(0.0) / 1024.0; // KB to MB
-    let command = parts[10..].join(" ");
-    let name = parts[10]
+    let pid = parts.get(1)?.parse::<u32>().ok()?;
+    let cpu_usage = parts.get(2)?.parse::<f32>().unwrap_or(0.0);
+    let memory_mb = parts.get(5)?.parse::<f32>().unwrap_or(0.0) / 1024.0;
+    let command = parts.get(10..)?.join(" ");
+    let name = parts
+        .get(10)?
         .split('/')
         .next_back()
         .unwrap_or(parts[10])

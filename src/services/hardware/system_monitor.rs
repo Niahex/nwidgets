@@ -178,10 +178,10 @@ impl SystemMonitorService {
                 let line = s.lines().next()?;
                 let parts: Vec<_> = line.split_whitespace().skip(1).collect();
                 if parts.len() >= 4 {
-                    let user: u64 = parts[0].parse().ok()?;
-                    let nice: u64 = parts[1].parse().ok()?;
-                    let system: u64 = parts[2].parse().ok()?;
-                    let idle: u64 = parts[3].parse().ok()?;
+                    let user: u64 = parts.get(0)?.parse().ok()?;
+                    let nice: u64 = parts.get(1)?.parse().ok()?;
+                    let system: u64 = parts.get(2)?.parse().ok()?;
+                    let idle: u64 = parts.get(3)?.parse().ok()?;
                     let total = user + nice + system + idle;
                     let used = user + nice + system;
                     Some(((used * 100) / total.max(1)) as u8)
@@ -311,13 +311,15 @@ impl SystemMonitorService {
                 for line in s.lines().skip(2) {
                     let parts: Vec<_> = line.split_whitespace().collect();
                     if parts.len() >= 10 {
-                        let iface = parts[0].trim_end_matches(':');
-                        if iface != "lo" {
-                            if let (Ok(rx), Ok(tx)) =
-                                (parts[1].parse::<u64>(), parts[9].parse::<u64>())
-                            {
-                                total_rx += rx;
-                                total_tx += tx;
+                        if let Some(iface_str) = parts.get(0) {
+                            let iface = iface_str.trim_end_matches(':');
+                            if iface != "lo" {
+                                if let (Some(rx_str), Some(tx_str)) = (parts.get(1), parts.get(9)) {
+                                    if let (Ok(rx), Ok(tx)) = (rx_str.parse::<u64>(), tx_str.parse::<u64>()) {
+                                        total_rx += rx;
+                                        total_tx += tx;
+                                    }
+                                }
                             }
                         }
                     }
@@ -341,13 +343,13 @@ impl SystemMonitorService {
                     .filter_map(|line| {
                         let parts: Vec<_> = line.split_whitespace().collect();
                         if parts.len() >= 3 {
-                            let source = parts[0];
-                            let mount = parts[1];
-                            let percent_str = parts[2].trim_end_matches('%');
+                            let source = parts.get(0)?;
+                            let mount = parts.get(1)?;
+                            let percent_str = parts.get(2)?.trim_end_matches('%');
 
                             if source.starts_with("/dev/")
                                 && !source.contains("loop")
-                                && mount != "/boot"
+                                && *mount != "/boot"
                             {
                                 if let Ok(percent) = percent_str.parse::<u8>() {
                                     let name = source.strip_prefix("/dev/").unwrap_or(source);

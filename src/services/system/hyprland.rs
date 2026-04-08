@@ -255,12 +255,10 @@ impl HyprlandService {
                     let _ = ui_tx.unbounded_send(HyprlandUpdate::Window(window));
                 }
                 2 => {
-                    // Window opened: openwindow>>ADDRESS,WORKSPACE,CLASS,TITLE
                     if let Some(data) = line.strip_prefix("openwindow>>") {
                         let parts: Vec<&str> = data.split(',').collect();
-                        if parts.len() >= 3 {
-                            let class = parts[2].to_string();
-                            let _ = ui_tx.unbounded_send(HyprlandUpdate::WindowOpened(class));
+                        if let Some(class) = parts.get(2) {
+                            let _ = ui_tx.unbounded_send(HyprlandUpdate::WindowOpened(class.to_string()));
                         }
                     }
                 }

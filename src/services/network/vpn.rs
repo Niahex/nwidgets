@@ -134,17 +134,19 @@ impl VpnService {
                 for line in text.lines() {
                     let parts: Vec<_> = line.split(':').collect();
                     if parts.len() >= 4 {
-                        let vpn_type = parts[2];
-                        if vpn_type.contains("vpn")
-                            || vpn_type.contains("wireguard")
-                            || vpn_type.contains("openvpn")
-                        {
-                            connections.push(VpnConnection {
-                                name: parts[0].to_string().into(),
-                                uuid: parts[1].to_string().into(),
-                                connected: !parts[3].is_empty() && parts[3] != "--",
-                                vpn_type: vpn_type.to_string().into(),
-                            });
+                        if let (Some(name), Some(uuid), Some(vpn_type), Some(status)) = 
+                            (parts.get(0), parts.get(1), parts.get(2), parts.get(3)) {
+                            if vpn_type.contains("vpn")
+                                || vpn_type.contains("wireguard")
+                                || vpn_type.contains("openvpn")
+                            {
+                                connections.push(VpnConnection {
+                                    name: name.to_string().into(),
+                                    uuid: uuid.to_string().into(),
+                                    connected: !status.is_empty() && *status != "--",
+                                    vpn_type: vpn_type.to_string().into(),
+                                });
+                            }
                         }
                     }
                 }
