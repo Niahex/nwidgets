@@ -83,8 +83,12 @@ impl Render for TaskWindow {
                     if let Some(focused) = this.focused_input {
                         if event.keystroke.key == "backspace" {
                             match focused {
-                                FocusedInput::Title => { this.new_task_title.pop(); },
-                                FocusedInput::Project => { this.new_task_project.pop(); },
+                                FocusedInput::Title => {
+                                    this.new_task_title.pop();
+                                }
+                                FocusedInput::Project => {
+                                    this.new_task_project.pop();
+                                }
                             }
                             cx.notify();
                         } else if event.keystroke.key == "enter" {
@@ -137,39 +141,42 @@ impl Render for TaskWindow {
                 this.child(self.render_task_list(tasks.clone(), active_task_id, theme.clone(), cx))
             })
             .child(
-                div()
-                    .absolute()
-                    .bottom_4()
-                    .right_4()
-                    .child(
-                        div()
-                            .w(px(48.))
-                            .h(px(48.))
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .bg(theme.accent)
-                            .rounded(px(24.))
-                            .text_color(theme.bg)
-                            .text_xl()
-                            .cursor_pointer()
-                            .hover(|style| style.bg(theme.accent.opacity(0.8)))
-                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, window, cx| {
+                div().absolute().bottom_4().right_4().child(
+                    div()
+                        .w(px(48.))
+                        .h(px(48.))
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .bg(theme.accent)
+                        .rounded(px(24.))
+                        .text_color(theme.bg)
+                        .text_xl()
+                        .cursor_pointer()
+                        .hover(|style| style.bg(theme.accent.opacity(0.8)))
+                        .on_mouse_down(
+                            MouseButton::Left,
+                            cx.listener(|this, _, window, cx| {
                                 this.show_create_modal = !this.show_create_modal;
                                 if this.show_create_modal {
                                     this.focused_input = Some(FocusedInput::Title);
                                     window.focus(&this.focus_handle, cx);
                                 }
                                 cx.notify();
-                            }))
-                            .child(if self.show_create_modal { "×" } else { "+" }),
-                    ),
+                            }),
+                        )
+                        .child(if self.show_create_modal { "×" } else { "+" }),
+                ),
             )
     }
 }
 
 impl TaskWindow {
-    fn render_create_form(&mut self, theme: crate::theme::Theme, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render_create_form(
+        &mut self,
+        theme: crate::theme::Theme,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
         div()
             .flex()
             .flex_col()
@@ -196,16 +203,20 @@ impl TaskWindow {
                                 theme.border()
                             })
                             .cursor_text()
-                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, window, cx| {
-                                this.focused_input = Some(FocusedInput::Title);
-                                window.focus(&this.focus_handle, cx);
-                                cx.notify();
-                            }))
+                            .on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(|this, _, window, cx| {
+                                    this.focused_input = Some(FocusedInput::Title);
+                                    window.focus(&this.focus_handle, cx);
+                                    cx.notify();
+                                }),
+                            )
                             .when(self.new_task_title.is_empty(), |this| {
                                 this.text_color(theme.text_muted).child("Task title...")
                             })
                             .when(!self.new_task_title.is_empty(), |this| {
-                                this.text_color(theme.text).child(self.new_task_title.clone())
+                                this.text_color(theme.text)
+                                    .child(self.new_task_title.clone())
                             }),
                     )
                     .child(
@@ -222,16 +233,21 @@ impl TaskWindow {
                                 theme.border()
                             })
                             .cursor_text()
-                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, window, cx| {
-                                this.focused_input = Some(FocusedInput::Project);
-                                window.focus(&this.focus_handle, cx);
-                                cx.notify();
-                            }))
+                            .on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(|this, _, window, cx| {
+                                    this.focused_input = Some(FocusedInput::Project);
+                                    window.focus(&this.focus_handle, cx);
+                                    cx.notify();
+                                }),
+                            )
                             .when(self.new_task_project.is_empty(), |this| {
-                                this.text_color(theme.text_muted).child("Project (optional)")
+                                this.text_color(theme.text_muted)
+                                    .child("Project (optional)")
                             })
                             .when(!self.new_task_project.is_empty(), |this| {
-                                this.text_color(theme.text).child(self.new_task_project.clone())
+                                this.text_color(theme.text)
+                                    .child(self.new_task_project.clone())
                             }),
                     )
                     .child(
@@ -245,7 +261,13 @@ impl TaskWindow {
             )
     }
 
-    fn render_task_list(&mut self, tasks: Vec<Task>, active_task_id: Option<uuid::Uuid>, theme: crate::theme::Theme, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render_task_list(
+        &mut self,
+        tasks: Vec<Task>,
+        active_task_id: Option<uuid::Uuid>,
+        theme: crate::theme::Theme,
+        _cx: &mut Context<Self>,
+    ) -> impl IntoElement {
         div()
             .flex()
             .flex_col()
@@ -254,116 +276,107 @@ impl TaskWindow {
             .p_4()
             .gap_2()
             .children(tasks.iter().map(|task| {
-                        let task_id = task.id;
-                        let is_active = active_task_id == Some(task_id);
-                        let task_service = self.task_service.clone();
-                        let task_service_toggle = self.task_service.clone();
-                        let task_service_delete = self.task_service.clone();
+                let task_id = task.id;
+                let is_active = active_task_id == Some(task_id);
+                let task_service = self.task_service.clone();
+                let task_service_toggle = self.task_service.clone();
+                let task_service_delete = self.task_service.clone();
 
+                div()
+                    .flex()
+                    .items_center()
+                    .gap_2()
+                    .p_2()
+                    .rounded(px(6.))
+                    .bg(if is_active {
+                        theme.accent.opacity(0.2)
+                    } else {
+                        theme.surface
+                    })
+                    .border_1()
+                    .border_color(if is_active {
+                        theme.accent
+                    } else {
+                        theme.border()
+                    })
+                    .cursor_pointer()
+                    .on_mouse_down(MouseButton::Left, move |_, _window, cx| {
+                        task_service.update(cx, |service, cx| {
+                            service.select_task(Some(task_id), cx);
+                        });
+                    })
+                    .child(
                         div()
-                            .flex()
-                            .items_center()
-                            .gap_2()
-                            .p_2()
-                            .rounded(px(6.))
-                            .bg(if is_active {
-                                theme.accent.opacity(0.2)
-                            } else {
-                                theme.surface
-                            })
+                            .w(px(16.))
+                            .h(px(16.))
+                            .rounded(px(3.))
                             .border_1()
-                            .border_color(if is_active {
-                                theme.accent
-                            } else {
-                                theme.border()
-                            })
+                            .border_color(theme.border())
                             .cursor_pointer()
-                            .on_mouse_down(MouseButton::Left, move |_, _window, cx| {
-                                task_service.update(cx, |service, cx| {
-                                    service.select_task(Some(task_id), cx);
+                            .when(task.completed, |this| {
+                                this.bg(theme.green)
+                                    .child(div().text_color(theme.bg).text_xs().child("✓"))
+                            })
+                            .on_mouse_down(MouseButton::Left, move |_event, _window, cx| {
+                                cx.stop_propagation();
+                                task_service_toggle.update(cx, |service, cx| {
+                                    service.toggle_task_completed(task_id, cx);
+                                });
+                            }),
+                    )
+                    .child(
+                        div()
+                            .flex_1()
+                            .flex()
+                            .flex_col()
+                            .gap_1()
+                            .child(
+                                div()
+                                    .text_sm()
+                                    .text_color(if task.completed {
+                                        theme.text_muted
+                                    } else {
+                                        theme.text
+                                    })
+                                    .when(task.completed, |this| this.line_through())
+                                    .child(task.title.clone()),
+                            )
+                            .when_some(task.project.as_ref(), |this, project| {
+                                this.child(
+                                    div()
+                                        .text_xs()
+                                        .text_color(theme.accent)
+                                        .child(format!("[{}]", project)),
+                                )
+                            }),
+                    )
+                    .child(div().flex().items_center().gap_1().when(
+                        task.time_spent_secs > 0,
+                        |this| {
+                            this.child(
+                                div()
+                                    .text_xs()
+                                    .text_color(theme.text_muted)
+                                    .child(task.format_time_spent()),
+                            )
+                        },
+                    ))
+                    .child(
+                        div()
+                            .px_2()
+                            .py_1()
+                            .rounded(px(4.))
+                            .bg(theme.red.opacity(0.2))
+                            .text_color(theme.red)
+                            .text_xs()
+                            .cursor_pointer()
+                            .on_mouse_down(MouseButton::Left, move |_event, _window, cx| {
+                                task_service_delete.update(cx, |service, cx| {
+                                    service.remove_task(task_id, cx);
                                 });
                             })
-                            .child(
-                                div()
-                                    .w(px(16.))
-                                    .h(px(16.))
-                                    .rounded(px(3.))
-                                    .border_1()
-                                    .border_color(theme.border())
-                                    .cursor_pointer()
-                                    .when(task.completed, |this| {
-                                        this.bg(theme.green).child(
-                                            div()
-                                                .text_color(theme.bg)
-                                                .text_xs()
-                                                .child("✓"),
-                                        )
-                                    })
-                                    .on_mouse_down(MouseButton::Left, move |_event, _window, cx| {
-                                        cx.stop_propagation();
-                                        task_service_toggle.update(cx, |service, cx| {
-                                            service.toggle_task_completed(task_id, cx);
-                                        });
-                                    }),
-                            )
-                            .child(
-                                div()
-                                    .flex_1()
-                                    .flex()
-                                    .flex_col()
-                                    .gap_1()
-                                    .child(
-                                        div()
-                                            .text_sm()
-                                            .text_color(if task.completed {
-                                                theme.text_muted
-                                            } else {
-                                                theme.text
-                                            })
-                                            .when(task.completed, |this| {
-                                                this.line_through()
-                                            })
-                                            .child(task.title.clone()),
-                                    )
-                                    .when(task.project.is_some(), |this| {
-                                        this.child(
-                                            div()
-                                                .text_xs()
-                                                .text_color(theme.accent)
-                                                .child(format!("[{}]", task.project.as_ref().unwrap())),
-                                        )
-                                    }),
-                            )
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .gap_1()
-                                    .when(task.time_spent_secs > 0, |this| {
-                                        this.child(
-                                            div()
-                                                .text_xs()
-                                                .text_color(theme.text_muted)
-                                                .child(task.format_time_spent()),
-                                        )
-                                    }),
-                            )
-                            .child(
-                                div()
-                                    .px_2()
-                                    .py_1()
-                                    .rounded(px(4.))
-                                    .bg(theme.red.opacity(0.2))
-                                    .text_color(theme.red)
-                                    .text_xs()
-                                    .cursor_pointer()
-                                    .on_mouse_down(MouseButton::Left, move |_event, _window, cx| {
-                                        task_service_delete.update(cx, |service, cx| {
-                                            service.remove_task(task_id, cx);
-                                        });
-                                    })
-                                    .child("Delete"),
-                            )
-                    }))
+                            .child("Delete"),
+                    )
+            }))
     }
 }

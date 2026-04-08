@@ -63,7 +63,7 @@ impl RenderOnce for TextInput {
             .on_key_down(move |event: &KeyDownEvent, window, cx| {
                 if let Some(ref handler) = on_change {
                     let mut new_value = value.to_string();
-                    
+
                     if event.keystroke.key == "backspace" {
                         new_value.pop();
                         handler(new_value, window, cx);
@@ -75,15 +75,12 @@ impl RenderOnce for TextInput {
                     }
                 }
             })
-            .when(self.value.is_empty() && self.placeholder.is_some(), |this| {
-                this.child(
-                    div()
-                        .text_color(theme.text_muted)
-                        .child(self.placeholder.unwrap())
-                )
-            })
-            .when(!self.value.is_empty(), |this| {
-                this.child(self.value)
-            })
+            .when_some(
+                self.placeholder.filter(|_| self.value.is_empty()),
+                |this, placeholder| {
+                    this.child(div().text_color(theme.text_muted).child(placeholder))
+                },
+            )
+            .when(!self.value.is_empty(), |this| this.child(self.value))
     }
 }
