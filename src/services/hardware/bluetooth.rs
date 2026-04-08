@@ -110,18 +110,28 @@ impl BluetoothService {
     }
 
     async fn bluetooth_worker(ui_tx: futures::channel::mpsc::UnboundedSender<BluetoothState>) {
-        let conn = match Connection::system().await {
-            Ok(c) => c,
-            Err(e) => {
+        let timeout = std::time::Duration::from_secs(3);
+        
+        let conn = match tokio::time::timeout(timeout, Connection::system()).await {
+            Ok(Ok(c)) => c,
+            Ok(Err(e)) => {
                 log::error!("Failed to connect to system bus: {e}");
+                return;
+            }
+            Err(_) => {
+                log::error!("Timeout connecting to system bus");
                 return;
             }
         };
 
-        let object_manager = match ObjectManagerProxy::new(&conn).await {
-            Ok(p) => p,
-            Err(e) => {
+        let object_manager = match tokio::time::timeout(timeout, ObjectManagerProxy::new(&conn)).await {
+            Ok(Ok(p)) => p,
+            Ok(Err(e)) => {
                 log::error!("Failed to create ObjectManager proxy: {e}");
+                return;
+            }
+            Err(_) => {
+                log::error!("Timeout creating ObjectManager proxy");
                 return;
             }
         };

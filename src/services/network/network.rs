@@ -170,20 +170,28 @@ impl NetworkService {
     }
 
     async fn network_worker(ui_tx: futures::channel::mpsc::UnboundedSender<NetworkState>) {
-        // Initialize DBus connection
-        let conn = match Connection::system().await {
-            Ok(c) => c,
-            Err(e) => {
+        let timeout = std::time::Duration::from_secs(3);
+        
+        let conn = match tokio::time::timeout(timeout, Connection::system()).await {
+            Ok(Ok(c)) => c,
+            Ok(Err(e)) => {
                 log::error!("Failed to connect to system bus: {e}");
+                return;
+            }
+            Err(_) => {
+                log::error!("Timeout connecting to system bus");
                 return;
             }
         };
 
-        // Create proxies
-        let nm_proxy = match NetworkManagerProxy::new(&conn).await {
-            Ok(p) => p,
-            Err(e) => {
+        let nm_proxy = match tokio::time::timeout(timeout, NetworkManagerProxy::new(&conn)).await {
+            Ok(Ok(p)) => p,
+            Ok(Err(e)) => {
                 log::error!("Failed to create NetworkManager proxy: {e}");
+                return;
+            }
+            Err(_) => {
+                log::error!("Timeout creating NetworkManager proxy");
                 return;
             }
         };

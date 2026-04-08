@@ -71,14 +71,16 @@ impl NetworkManagerWorker {
     }
 
     pub async fn run(&self, tx: futures::channel::mpsc::UnboundedSender<NetworkManagerState>) {
-        let conn = match Connection::system().await {
-            Ok(c) => c,
-            Err(_) => return,
+        let timeout = std::time::Duration::from_secs(3);
+        
+        let conn = match tokio::time::timeout(timeout, Connection::system()).await {
+            Ok(Ok(c)) => c,
+            Ok(Err(_)) | Err(_) => return,
         };
 
-        let nm_proxy = match NetworkManagerProxy::new(&conn).await {
-            Ok(p) => p,
-            Err(_) => return,
+        let nm_proxy = match tokio::time::timeout(timeout, NetworkManagerProxy::new(&conn)).await {
+            Ok(Ok(p)) => p,
+            Ok(Err(_)) | Err(_) => return,
         };
 
         let initial_state = Self::fetch_state(&conn, &nm_proxy).await;
