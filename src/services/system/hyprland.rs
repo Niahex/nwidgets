@@ -179,9 +179,14 @@ impl HyprlandService {
         let ws_id = workspace_id.to_string();
         self.executor
             .spawn(async move {
-                let _ = std::process::Command::new("hyprctl")
-                    .args(["dispatch", "workspace", &ws_id])
-                    .output();
+                let timeout = std::time::Duration::from_secs(2);
+                let _ = tokio::time::timeout(timeout, async {
+                    tokio::process::Command::new("hyprctl")
+                        .args(["dispatch", "workspace", &ws_id])
+                        .output()
+                        .await
+                })
+                .await;
             })
             .detach();
     }
@@ -203,7 +208,10 @@ impl HyprlandService {
 
         // Async socket reader using tokio
         tokio::spawn(async move {
-            if let Ok(stream) = tokio::net::UnixStream::connect(&socket_path).await {
+            let timeout = std::time::Duration::from_secs(5);
+            let connect_result = tokio::time::timeout(timeout, tokio::net::UnixStream::connect(&socket_path)).await;
+            
+            if let Ok(Ok(stream)) = connect_result {
                 let reader = tokio::io::BufReader::new(stream);
                 let mut lines = reader.lines();
 
@@ -223,6 +231,8 @@ impl HyprlandService {
                         let _ = socket_tx.unbounded_send((4, line)); // fullscreen
                     }
                 }
+            } else {
+                log::error!("Failed to connect to Hyprland socket or timeout");
             }
         });
 
@@ -314,13 +324,19 @@ impl HyprlandService {
     }
 
     async fn hyprctl(args: &[&str]) -> String {
-        match tokio::process::Command::new("hyprctl")
-            .args(args)
-            .output()
-            .await
-        {
-            Ok(output) => String::from_utf8(output.stdout).unwrap_or_default(),
-            Err(_) => String::new(),
+        let timeout = std::time::Duration::from_secs(2);
+        
+        let result = tokio::time::timeout(timeout, async {
+            tokio::process::Command::new("hyprctl")
+                .args(args)
+                .output()
+                .await
+        })
+        .await;
+        
+        match result {
+            Ok(Ok(output)) => String::from_utf8(output.stdout).unwrap_or_default(),
+            Ok(Err(_)) | Err(_) => String::new(),
         }
     }
 }

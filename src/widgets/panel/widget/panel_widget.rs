@@ -2,7 +2,7 @@ use crate::theme::ActiveTheme;
 use crate::widgets::control_center::ControlCenterService;
 use crate::widgets::panel::modules::{
     ActiveWindowModule, BluetoothModule, DateTimeModule, MprisModule, NetworkModule,
-    PomodoroModule, SinkModule, SourceModule, WorkspacesModule,
+    PomodoroModule, SinkModule, SourceModule, SystrayWidget, WorkspacesModule,
 };
 use gpui::*;
 
@@ -16,6 +16,7 @@ pub struct Panel {
     sink: Entity<SinkModule>,
     source: Entity<SourceModule>,
     datetime: Entity<DateTimeModule>,
+    systray: Entity<SystrayWidget>,
     control_center: Entity<ControlCenterService>,
 }
 
@@ -31,6 +32,7 @@ impl Panel {
             sink: cx.new(SinkModule::new),
             source: cx.new(SourceModule::new),
             datetime: cx.new(DateTimeModule::new),
+            systray: cx.new(SystrayWidget::new),
             control_center: ControlCenterService::global(cx),
         }
     }
@@ -88,68 +90,64 @@ impl Render for Panel {
                     )
                     // Right section
                     .child(
-                        div()
-                            .flex()
-                            .gap_0()
-                            .items_center()
-                            .h_full()
-                            .child(
-                                div()
-                                    .id("control-center-trigger")
-                                    .flex()
-                                    .gap_0()
-                                    .items_center()
-                                    .h_full()
-                                    .cursor_pointer()
-                                    .on_click(cx.listener(|this, _, _window, cx| {
-                                        this.control_center.update(cx, |cc, cx| {
-                                            cc.toggle(cx);
-                                        });
-                                    }))
-                                    .child(
-                                        div()
-                                            .flex()
-                                            .items_center()
-                                            .justify_center()
-                                            .w(px(32.))
-                                            .h(px(32.))
-                                            .child(self.bluetooth.clone()),
-                                    )
-                                    .child(
-                                        div()
-                                            .flex()
-                                            .items_center()
-                                            .justify_center()
-                                            .w(px(32.))
-                                            .h(px(32.))
-                                            .child(self.network.clone()),
-                                    )
-                                    .child(
-                                        div()
-                                            .flex()
-                                            .items_center()
-                                            .justify_center()
-                                            .w(px(32.))
-                                            .h(px(32.))
-                                            .child(self.source.clone()),
-                                    )
-                                    .child(
-                                        div()
-                                            .flex()
-                                            .items_center()
-                                            .justify_center()
-                                            .w(px(32.))
-                                            .h(px(32.))
-                                            .child(self.sink.clone()),
-                                    )
-                                    .child(
-                                        div()
-                                            .flex()
-                                            .items_center()
-                                            .px_3()
-                                            .child(self.datetime.clone()),
-                                    ),
-                            ),
+                        div().flex().gap_0().items_center().h_full().child(
+                            div()
+                                .id("control-center-trigger")
+                                .flex()
+                                .gap_0()
+                                .items_center()
+                                .h_full()
+                                .cursor_pointer()
+                                .on_click(cx.listener(|this, _, _window, cx| {
+                                    this.control_center.update(cx, |cc, cx| {
+                                        cc.toggle(cx);
+                                    });
+                                }))
+                                .child(self.systray.clone())
+                                .child(
+                                    div()
+                                        .flex()
+                                        .items_center()
+                                        .justify_center()
+                                        .w(px(32.))
+                                        .h(px(32.))
+                                        .child(self.bluetooth.clone()),
+                                )
+                                .child(
+                                    div()
+                                        .flex()
+                                        .items_center()
+                                        .justify_center()
+                                        .w(px(32.))
+                                        .h(px(32.))
+                                        .child(self.network.clone()),
+                                )
+                                .child(
+                                    div()
+                                        .flex()
+                                        .items_center()
+                                        .justify_center()
+                                        .w(px(32.))
+                                        .h(px(32.))
+                                        .child(self.source.clone()),
+                                )
+                                .child(
+                                    div()
+                                        .flex()
+                                        .items_center()
+                                        .justify_center()
+                                        .w(px(32.))
+                                        .h(px(32.))
+                                        .child(self.sink.clone()),
+                                )
+                                .child(
+                                    div()
+                                        .flex()
+                                        .items_center()
+                                        .px_3()
+                                        .child(self.datetime.clone()),
+                                ),
+                        ),
                     ),
             )
             // Left corner avec bg

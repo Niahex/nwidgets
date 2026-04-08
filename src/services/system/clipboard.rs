@@ -50,12 +50,16 @@ impl ClipboardMonitor {
                     if let Some(stdout) = child.stdout.take() {
                         let mut reader = BufReader::new(stdout).lines();
                         while let Ok(Some(_)) = reader.next_line().await {
-                            // Récupérer le contenu actuel du clipboard
-                            if let Ok(output) = tokio::process::Command::new("wl-paste")
-                                .arg("-n")
-                                .output()
-                                .await
-                            {
+                            let timeout = std::time::Duration::from_secs(2);
+                            let result = tokio::time::timeout(timeout, async {
+                                tokio::process::Command::new("wl-paste")
+                                    .arg("-n")
+                                    .output()
+                                    .await
+                            })
+                            .await;
+                            
+                            if let Ok(Ok(output)) = result {
                                 if let Ok(content) = String::from_utf8(output.stdout) {
                                     if !content.trim().is_empty()
                                         && tx.unbounded_send(content).is_err()
