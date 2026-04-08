@@ -86,7 +86,10 @@ impl SystrayWidget {
 
 impl Render for SystrayWidget {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let items = self.systray.read(cx).get_items();
+        let items: Vec<TrayItem> = {
+            let service = self.systray.read(cx);
+            service.items.read().clone()
+        };
         
         div()
             .flex()

@@ -59,21 +59,26 @@ impl Launcher {
     fn backspace(&mut self, _: &Backspace, _: &mut Window, cx: &mut Context<Self>) {
         let mut query = self.search_input.get_query().to_string();
         if !query.is_empty() {
+            let old_results_len = self.internal_results.len();
             query.pop();
             self.search_input.set_query(query);
             self.update_search_results();
-            cx.notify();
+            if self.internal_results.len() != old_results_len {
+                cx.notify();
+            }
         }
     }
 
     fn up(&mut self, _: &Up, _: &mut Window, cx: &mut Context<Self>) {
-        self.search_results.move_selection_up();
-        cx.notify();
+        if self.search_results.move_selection_up() {
+            cx.notify();
+        }
     }
 
     fn down(&mut self, _: &Down, _: &mut Window, cx: &mut Context<Self>) {
-        self.search_results.move_selection_down();
-        cx.notify();
+        if self.search_results.move_selection_down() {
+            cx.notify();
+        }
     }
 
     fn launch(&mut self, _: &Launch, _: &mut Window, cx: &mut Context<Self>) {
@@ -180,28 +185,33 @@ impl Render for Launcher {
                 if event.keystroke.key == "space" {
                     let query = this.search_input.get_query().to_string();
 
-                    // Block space in ps mode
                     if query.starts_with("ps") {
                         return;
                     }
 
+                    let old_results_len = this.internal_results.len();
                     let mut query = query;
                     query.push(' ');
 
                     this.search_input.set_query(query);
                     this.update_search_results();
-                    cx.notify();
+                    if this.internal_results.len() != old_results_len {
+                        cx.notify();
+                    }
                 } else if let Some(key_char) = &event.keystroke.key_char {
                     let allowed = key_char
                         .chars()
                         .all(|c| c.is_alphanumeric() || "+-*/()^.=".contains(c));
 
                     if allowed {
+                        let old_results_len = this.internal_results.len();
                         let mut query = this.search_input.get_query().to_string();
                         query.push_str(key_char);
                         this.search_input.set_query(query);
                         this.update_search_results();
-                        cx.notify();
+                        if this.internal_results.len() != old_results_len {
+                            cx.notify();
+                        }
                     }
                 }
             }))
@@ -280,8 +290,11 @@ impl LauncherWidget {
         cx.subscribe(
             &launcher_service,
             |this, _service, _event: &LauncherToggled, cx| {
-                this.visible = this.launcher_service.read(cx).visible;
-                cx.notify();
+                let new_visible = this.launcher_service.read(cx).visible;
+                if this.visible != new_visible {
+                    this.visible = new_visible;
+                    cx.notify();
+                }
             },
         )
         .detach();
@@ -326,11 +339,11 @@ impl Render for LauncherWidget {
                 if event.keystroke.key == "space" {
                     let query = this.launcher.search_input.get_query().to_string();
 
-                    // Block space in ps mode
                     if query.starts_with("ps") {
                         return;
                     }
 
+                    let old_results_len = this.launcher.internal_results.len();
                     let mut query = query;
                     query.push(' ');
 
@@ -338,41 +351,51 @@ impl Render for LauncherWidget {
                     let clipboard_history = this.clipboard_monitor.read(cx).get_history();
                     this.launcher
                         .update_search_results_with_clipboard(clipboard_history);
-                    cx.notify();
+                    if this.launcher.internal_results.len() != old_results_len {
+                        cx.notify();
+                    }
                 } else if let Some(key_char) = &event.keystroke.key_char {
                     let allowed = key_char
                         .chars()
                         .all(|c| c.is_alphanumeric() || "+-*/()^.=".contains(c));
 
                     if allowed {
+                        let old_results_len = this.launcher.internal_results.len();
                         let mut query = this.launcher.search_input.get_query().to_string();
                         query.push_str(key_char);
                         this.launcher.search_input.set_query(query);
                         let clipboard_history = this.clipboard_monitor.read(cx).get_history();
                         this.launcher
                             .update_search_results_with_clipboard(clipboard_history);
-                        cx.notify();
+                        if this.launcher.internal_results.len() != old_results_len {
+                            cx.notify();
+                        }
                     }
                 }
             }))
             .on_action(cx.listener(|this, _: &Backspace, _window, cx| {
                 let mut query = this.launcher.search_input.get_query().to_string();
                 if !query.is_empty() {
+                    let old_results_len = this.launcher.internal_results.len();
                     query.pop();
                     this.launcher.search_input.set_query(query);
                     let clipboard_history = this.clipboard_monitor.read(cx).get_history();
                     this.launcher
                         .update_search_results_with_clipboard(clipboard_history);
-                    cx.notify();
+                    if this.launcher.internal_results.len() != old_results_len {
+                        cx.notify();
+                    }
                 }
             }))
             .on_action(cx.listener(|this, _: &Up, _window, cx| {
-                this.launcher.search_results.move_selection_up();
-                cx.notify();
+                if this.launcher.search_results.move_selection_up() {
+                    cx.notify();
+                }
             }))
             .on_action(cx.listener(|this, _: &Down, _window, cx| {
-                this.launcher.search_results.move_selection_down();
-                cx.notify();
+                if this.launcher.search_results.move_selection_down() {
+                    cx.notify();
+                }
             }))
             .on_action(cx.listener(|this, _: &Quit, _window, cx| {
                 // Hide the launcher
@@ -470,7 +493,6 @@ impl Render for LauncherWidget {
                             let clipboard_history = this.clipboard_monitor.read(cx).get_history();
                             this.launcher
                                 .update_search_results_with_clipboard(clipboard_history);
-                            cx.notify();
                         }
                         SearchResult::Clipboard(entry) => {
                             let content = entry.content.clone();

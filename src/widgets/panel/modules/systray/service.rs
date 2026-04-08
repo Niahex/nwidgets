@@ -109,10 +109,6 @@ impl SystrayService {
 
         Self { items }
     }
-
-    pub fn get_items(&self) -> Vec<TrayItem> {
-        self.items.read().clone()
-    }
 }
 
 #[derive(Debug)]

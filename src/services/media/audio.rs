@@ -104,17 +104,19 @@ impl AudioService {
                 while let Some(update) = ui_rx.next().await {
                     match update {
                         AudioUpdate::State(new_state) => {
-                            let mut changed = false;
-                            {
+                            let changed = {
                                 let mut current = state_clone.write();
                                 if *current != new_state {
-                                    *current = new_state.clone();
-                                    changed = true;
+                                    *current = new_state;
+                                    true
+                                } else {
+                                    false
                                 }
-                            }
+                            };
+                            
                             if changed {
                                 let _ = this.update(&mut cx, |_, cx| {
-                                    cx.emit(AudioStateChanged { state: new_state });
+                                    cx.emit(AudioStateChanged { state: state_clone.read().clone() });
                                     cx.notify();
                                 });
                             }

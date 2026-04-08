@@ -32,21 +32,28 @@ pub(in crate::widgets::control_center) fn get_stream_display(
     stream: &crate::services::media::audio::AudioStream,
 ) -> (SharedString, &'static str, bool) {
     let title = stream.window_title.as_ref().unwrap_or(&stream.app_name);
-    let title_lower = title.to_lowercase();
 
-    let (icon, preserve_colors) = if title_lower.contains("youtube") {
+    let contains_ci = |s: &str, pattern: &str| {
+        s.chars()
+            .zip(pattern.chars().cycle())
+            .any(|(a, b)| a.eq_ignore_ascii_case(&b))
+            || s.to_ascii_lowercase()
+                .contains(&pattern.to_ascii_lowercase())
+    };
+
+    let (icon, preserve_colors) = if contains_ci(title, "youtube") {
         ("youtube", true)
-    } else if title_lower.contains("twitch") {
+    } else if contains_ci(title, "twitch") {
         ("twitch", true)
-    } else if title_lower.contains("discord") {
+    } else if contains_ci(title, "discord") {
         ("discord", true)
-    } else if title_lower.contains("spotify") {
+    } else if contains_ci(title, "spotify") {
         ("spotify", true)
-    } else if title_lower.contains("firefox") {
+    } else if contains_ci(title, "firefox") {
         ("firefox", true)
-    } else if title_lower.contains("chrome") || title_lower.contains("chromium") {
+    } else if contains_ci(title, "chrome") || contains_ci(title, "chromium") {
         ("chrome", true)
-    } else if title_lower.contains("vlc") {
+    } else if contains_ci(title, "vlc") {
         ("vlc", true)
     } else {
         ("none", false)
@@ -62,10 +69,8 @@ pub(in crate::widgets::control_center) fn get_stream_display(
 }
 
 impl ControlCenterWidget {
-    fn subscribe_and_notify<E, Evt>(
-        entity: &Entity<E>,
-        cx: &mut Context<Self>,
-    ) where
+    fn subscribe_and_notify<E, Evt>(entity: &Entity<E>, cx: &mut Context<Self>)
+    where
         E: EventEmitter<Evt> + 'static,
         Evt: 'static,
     {
@@ -82,17 +87,17 @@ impl ControlCenterWidget {
         })
     }
 
-    fn subscribe_to_slider<F>(
-        slider: &Entity<SliderState>,
-        handler: F,
-        cx: &mut Context<Self>,
-    ) where
+    fn subscribe_to_slider<F>(slider: &Entity<SliderState>, handler: F, cx: &mut Context<Self>)
+    where
         F: Fn(&mut Self, f32, &mut Context<Self>) + 'static,
     {
-        cx.subscribe(slider, move |this, _, event: &crate::components::SliderEvent, cx| {
-            let crate::components::SliderEvent::Change(value) = event;
-            handler(this, *value, cx);
-        })
+        cx.subscribe(
+            slider,
+            move |this, _, event: &crate::components::SliderEvent, cx| {
+                let crate::components::SliderEvent::Change(value) = event;
+                handler(this, *value, cx);
+            },
+        )
         .detach();
     }
 
@@ -107,18 +112,22 @@ impl ControlCenterWidget {
             .entry(stream_id)
             .or_insert_with(|| {
                 let slider = Self::create_volume_slider(initial_volume, cx);
-                
+
                 // Subscribe to slider events
-                Self::subscribe_to_slider(&slider, move |this, value, cx| {
-                    this.audio.update(cx, |audio, cx| {
-                        if is_sink_input {
-                            audio.set_sink_input_volume(stream_id, value as u8, cx);
-                        } else {
-                            audio.set_source_output_volume(stream_id, value as u8, cx);
-                        }
-                    });
-                }, cx);
-                
+                Self::subscribe_to_slider(
+                    &slider,
+                    move |this, value, cx| {
+                        this.audio.update(cx, |audio, cx| {
+                            if is_sink_input {
+                                audio.set_sink_input_volume(stream_id, value as u8, cx);
+                            } else {
+                                audio.set_source_output_volume(stream_id, value as u8, cx);
+                            }
+                        });
+                    },
+                    cx,
+                );
+
                 slider
             })
             .clone()
@@ -186,17 +195,25 @@ impl ControlCenterWidget {
         .detach();
 
         // Subscribe to slider events
-        Self::subscribe_to_slider(&sink_slider, |this, value, cx| {
-            this.audio.update(cx, |audio, cx| {
-                audio.set_sink_volume(value as u8, cx);
-            });
-        }, cx);
+        Self::subscribe_to_slider(
+            &sink_slider,
+            |this, value, cx| {
+                this.audio.update(cx, |audio, cx| {
+                    audio.set_sink_volume(value as u8, cx);
+                });
+            },
+            cx,
+        );
 
-        Self::subscribe_to_slider(&source_slider, |this, value, cx| {
-            this.audio.update(cx, |audio, cx| {
-                audio.set_source_volume(value as u8, cx);
-            });
-        }, cx);
+        Self::subscribe_to_slider(
+            &source_slider,
+            |this, value, cx| {
+                this.audio.update(cx, |audio, cx| {
+                    audio.set_source_volume(value as u8, cx);
+                });
+            },
+            cx,
+        );
 
         let vpn_service = network.read(cx).vpn();
         cx.subscribe(

@@ -57,10 +57,11 @@ impl StatusNotifierWatcher {
     async fn register_status_notifier_host(&mut self, service: &str) {
         log::info!("Registering StatusNotifierHost: {}", service);
         
+        let service_owned = service.to_string();
         {
             let mut hosts = self.registered_hosts.write();
-            if !hosts.contains(&service.to_string()) {
-                hosts.push(service.to_string());
+            if !hosts.contains(&service_owned) {
+                hosts.push(service_owned);
             }
         }
 

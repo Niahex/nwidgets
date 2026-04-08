@@ -1,5 +1,5 @@
-use crate::widgets::launcher::types::SearchResult;
 use crate::theme::Theme;
+use crate::widgets::launcher::types::SearchResult;
 use gpui::{div, img, prelude::*};
 
 pub struct SearchResults {
@@ -30,22 +30,28 @@ impl SearchResults {
         self.scroll_offset = 0;
     }
 
-    pub fn move_selection_up(&mut self) {
+    pub fn move_selection_up(&mut self) -> bool {
         if !self.results.is_empty() && self.selected_index > 0 {
             self.selected_index -= 1;
             if self.selected_index < self.scroll_offset {
                 self.scroll_offset = self.selected_index;
             }
+            true
+        } else {
+            false
         }
     }
 
-    pub fn move_selection_down(&mut self) {
+    pub fn move_selection_down(&mut self) -> bool {
         if !self.results.is_empty() && self.selected_index + 1 < self.results.len() {
             self.selected_index += 1;
             let visible_items = self.get_visible_items();
             if self.selected_index >= self.scroll_offset + visible_items {
                 self.scroll_offset = self.selected_index - visible_items + 1;
             }
+            true
+        } else {
+            false
         }
     }
 
@@ -153,7 +159,8 @@ impl SearchResults {
                         SearchResult::Clipboard(entry) => {
                             let content_single_line = entry.content.replace(['\n', '\r'], " ");
                             let preview = if content_single_line.chars().count() > 60 {
-                                let truncated: String = content_single_line.chars().take(60).collect();
+                                let truncated: String =
+                                    content_single_line.chars().take(60).collect();
                                 format!("{}...", truncated)
                             } else {
                                 content_single_line
@@ -176,11 +183,12 @@ impl SearchResults {
                                             .child("📋"),
                                     )
                                     .child(
-                                        div()
-                                            .flex()
-                                            .flex_col()
-                                            .child(preview)
-                                            .child(div().text_xs().text_color(theme.text_muted).child(timestamp)),
+                                        div().flex().flex_col().child(preview).child(
+                                            div()
+                                                .text_xs()
+                                                .text_color(theme.text_muted)
+                                                .child(timestamp),
+                                        ),
                                     ),
                             )
                         }
