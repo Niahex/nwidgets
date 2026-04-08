@@ -135,30 +135,28 @@ impl Launcher {
                 SearchResult::Calculation(result) => {
                     if result != "Initializing calculator..." {
                         let result = result.clone();
-                        cx.background_executor()
-                            .spawn(async move {
-                                match std::process::Command::new("wl-copy").arg(&result).output() {
-                                    Ok(_) => log::info!("Copied to clipboard: {result}"),
-                                    Err(e) => log::error!("Failed to copy to clipboard: {e}"),
-                                }
-                            })
-                            .detach();
+                        gpui_tokio::Tokio::spawn(cx, async move {
+                            match tokio::process::Command::new("wl-copy").arg(&result).output().await {
+                                Ok(_) => log::info!("Copied to clipboard: {result}"),
+                                Err(e) => log::error!("Failed to copy to clipboard: {e}"),
+                            }
+                        })
+                        .detach();
                         cx.quit();
                     }
                 }
                 SearchResult::Process(process) => {
                     let pid = process.pid;
                     let name = process.name.clone();
-                    cx.background_executor()
-                        .spawn(async move {
-                            match kill_process(pid) {
-                                Ok(_) => log::info!("Killed process: {name} (pid: {pid})"),
-                                Err(e) => {
-                                    log::error!("Failed to kill process {name} (pid: {pid}): {e}")
-                                }
+                    gpui_tokio::Tokio::spawn(cx, async move {
+                        match kill_process(pid) {
+                            Ok(_) => log::info!("Killed process: {name} (pid: {pid})"),
+                            Err(e) => {
+                                log::error!("Failed to kill process {name} (pid: {pid}): {e}")
                             }
-                        })
-                        .detach();
+                        }
+                    })
+                    .detach();
 
                     self.update_search_results();
                     cx.notify();
@@ -410,7 +408,6 @@ impl Render for LauncherWidget {
                             let mut exec = app.exec.clone();
                             let name = app.name.clone();
 
-                            // Remove desktop entry field codes
                             exec = exec
                                 .replace("%U", "")
                                 .replace("%u", "")
@@ -421,35 +418,33 @@ impl Render for LauncherWidget {
                                 .replace("%k", "");
                             let exec = exec.trim().to_string();
 
-                            cx.background_executor()
-                                .spawn(async move {
-                                    log::info!("Launching: {name} with command: '{exec}'");
+                            gpui_tokio::Tokio::spawn(cx, async move {
+                                log::info!("Launching: {name} with command: '{exec}'");
 
-                                    use std::os::unix::process::CommandExt;
-                                    unsafe {
-                                        let result = std::process::Command::new("sh")
-                                            .arg("-c")
-                                            .arg(&exec)
-                                            .env_remove("LD_LIBRARY_PATH")
-                                            .pre_exec(|| {
-                                                if libc::setsid() == -1 {
-                                                    return Err(std::io::Error::last_os_error());
-                                                }
-                                                Ok(())
-                                            })
-                                            .spawn();
-
-                                        match result {
-                                            Ok(_) => log::info!("Successfully spawned: {name}"),
-                                            Err(err) => {
-                                                log::error!("Failed to spawn {name}: {err}")
+                                use std::os::unix::process::CommandExt;
+                                unsafe {
+                                    let result = std::process::Command::new("sh")
+                                        .arg("-c")
+                                        .arg(&exec)
+                                        .env_remove("LD_LIBRARY_PATH")
+                                        .pre_exec(|| {
+                                            if libc::setsid() == -1 {
+                                                return Err(std::io::Error::last_os_error());
                                             }
+                                            Ok(())
+                                        })
+                                        .spawn();
+
+                                    match result {
+                                        Ok(_) => log::info!("Successfully spawned: {name}"),
+                                        Err(err) => {
+                                            log::error!("Failed to spawn {name}: {err}")
                                         }
                                     }
-                                })
-                                .detach();
+                                }
+                            })
+                            .detach();
 
-                            // Hide launcher after launch
                             this.launcher_service.update(cx, |service, cx| {
                                 service.toggle(cx);
                             });
@@ -457,20 +452,19 @@ impl Render for LauncherWidget {
                         SearchResult::Calculation(result) => {
                             if result != "Initializing calculator..." {
                                 let result = result.clone();
-                                cx.background_executor()
-                                    .spawn(async move {
-                                        match std::process::Command::new("wl-copy")
-                                            .arg(&result)
-                                            .output()
-                                        {
-                                            Ok(_) => log::info!("Copied to clipboard: {result}"),
-                                            Err(e) => {
-                                                log::error!("Failed to copy to clipboard: {e}")
-                                            }
+                                gpui_tokio::Tokio::spawn(cx, async move {
+                                    match tokio::process::Command::new("wl-copy")
+                                        .arg(&result)
+                                        .output()
+                                        .await
+                                    {
+                                        Ok(_) => log::info!("Copied to clipboard: {result}"),
+                                        Err(e) => {
+                                            log::error!("Failed to copy to clipboard: {e}")
                                         }
-                                    })
-                                    .detach();
-                                // Hide launcher after copy
+                                    }
+                                })
+                                .detach();
                                 this.launcher_service.update(cx, |service, cx| {
                                     service.toggle(cx);
                                 });
@@ -479,16 +473,15 @@ impl Render for LauncherWidget {
                         SearchResult::Process(process) => {
                             let pid = process.pid;
                             let name = process.name.clone();
-                            cx.background_executor()
-                                .spawn(async move {
-                                    match kill_process(pid) {
-                                        Ok(_) => log::info!("Killed process: {name} (pid: {pid})"),
-                                        Err(e) => log::error!(
-                                            "Failed to kill process {name} (pid: {pid}): {e}"
-                                        ),
-                                    }
-                                })
-                                .detach();
+                            gpui_tokio::Tokio::spawn(cx, async move {
+                                match kill_process(pid) {
+                                    Ok(_) => log::info!("Killed process: {name} (pid: {pid})"),
+                                    Err(e) => log::error!(
+                                        "Failed to kill process {name} (pid: {pid}): {e}"
+                                    ),
+                                }
+                            })
+                            .detach();
 
                             let clipboard_history = this.clipboard_monitor.read(cx).get_history();
                             this.launcher
@@ -496,18 +489,17 @@ impl Render for LauncherWidget {
                         }
                         SearchResult::Clipboard(entry) => {
                             let content = entry.content.clone();
-                            cx.background_executor()
-                                .spawn(async move {
-                                    match std::process::Command::new("wl-copy")
-                                        .arg(&content)
-                                        .output()
-                                    {
-                                        Ok(_) => log::info!("Copied clipboard entry"),
-                                        Err(e) => log::error!("Failed to copy: {e}"),
-                                    }
-                                })
-                                .detach();
-                            // Hide launcher after copy
+                            gpui_tokio::Tokio::spawn(cx, async move {
+                                match tokio::process::Command::new("wl-copy")
+                                    .arg(&content)
+                                    .output()
+                                    .await
+                                {
+                                    Ok(_) => log::info!("Copied clipboard entry"),
+                                    Err(e) => log::error!("Failed to copy: {e}"),
+                                }
+                            })
+                            .detach();
                             this.launcher_service.update(cx, |service, cx| {
                                 service.toggle(cx);
                             });
