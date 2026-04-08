@@ -1,5 +1,5 @@
-use crate::services::system::hyprland::{HyprlandService, WorkspaceChanged};
 use crate::components::Button;
+use crate::services::system::hyprland::{HyprlandService, WorkspaceChanged};
 use gpui::prelude::*;
 use gpui::*;
 
@@ -42,7 +42,8 @@ impl Render for WorkspacesModule {
                 let display_name = if workspace.name.parse::<i32>().is_ok() {
                     workspace.name.clone()
                 } else {
-                    workspace.name
+                    workspace
+                        .name
                         .chars()
                         .next()
                         .unwrap_or('?')
@@ -56,7 +57,7 @@ impl Render for WorkspacesModule {
                     .accent()
                     .selected(is_active)
                     .on_click(move |_event, _window, cx| {
-                        hyprland.read(cx).switch_to_workspace(workspace_id);
+                        hyprland.read(cx).switch_to_workspace(workspace_id, cx);
                     })
             }))
     }

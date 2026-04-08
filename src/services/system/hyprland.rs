@@ -1,6 +1,6 @@
 use futures::StreamExt;
 use gpui::prelude::*;
-use gpui::{App, AsyncApp, BackgroundExecutor, Context, Entity, EventEmitter, Global, SharedString, WeakEntity};
+use gpui::{App, AsyncApp, Context, Entity, EventEmitter, Global, SharedString, WeakEntity};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
@@ -39,8 +39,7 @@ pub struct HyprlandService {
     active_workspace_id: Arc<RwLock<i32>>,
     active_window: Arc<RwLock<Option<ActiveWindow>>>,
     fullscreen_workspace: Arc<RwLock<Option<i32>>>,
-    open_windows: Arc<RwLock<Vec<String>>>, // Track open window classes (keep Vec, not hot path)
-    executor: BackgroundExecutor,
+    open_windows: Arc<RwLock<Vec<String>>>,
 }
 
 impl EventEmitter<WorkspaceChanged> for HyprlandService {}
@@ -147,7 +146,6 @@ impl HyprlandService {
             active_window,
             fullscreen_workspace,
             open_windows,
-            executor: cx.background_executor().clone(),
         }
     }
 
@@ -175,20 +173,19 @@ impl HyprlandService {
         *self.fullscreen_workspace.read() == Some(active_ws)
     }
 
-    pub fn switch_to_workspace(&self, workspace_id: i32) {
+    pub fn switch_to_workspace(&self, workspace_id: i32, cx: &App) {
         let ws_id = workspace_id.to_string();
-        self.executor
-            .spawn(async move {
-                let timeout = std::time::Duration::from_secs(2);
-                let _ = tokio::time::timeout(timeout, async {
-                    tokio::process::Command::new("hyprctl")
-                        .args(["dispatch", "workspace", &ws_id])
-                        .output()
-                        .await
-                })
-                .await;
+        gpui_tokio::Tokio::spawn(cx, async move {
+            let timeout = std::time::Duration::from_secs(2);
+            let _ = tokio::time::timeout(timeout, async {
+                tokio::process::Command::new("hyprctl")
+                    .args(["dispatch", "workspace", &ws_id])
+                    .output()
+                    .await
             })
-            .detach();
+            .await;
+        })
+        .detach();
     }
 
     // Worker running in Tokio context
