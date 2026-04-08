@@ -39,19 +39,9 @@ impl AssetSource for Assets {
                 Ok(Some(std::borrow::Cow::Borrowed(leaked_data)))
             }
             Err(_) => {
-                // Fallback to none.svg for any missing SVG
                 if path.ends_with(".svg") {
-                    log::warn!("Asset not found: {}, using fallback", path);
-                    match std::fs::read(self.base.join("icons/none.svg")) {
-                        Ok(data) => {
-                            let leaked_data: &'static [u8] = Box::leak(data.into_boxed_slice());
-                            Ok(Some(std::borrow::Cow::Borrowed(leaked_data)))
-                        }
-                        Err(e) => {
-                            log::error!("Fallback icon not found: icons/none.svg");
-                            Err(e.into())
-                        }
-                    }
+                    log::warn!("SVG asset not found: {}, returning None", path);
+                    Ok(None)
                 } else {
                     log::error!("Asset not found: {}", path);
                     Err(anyhow::anyhow!("Asset not found: {}", path))
