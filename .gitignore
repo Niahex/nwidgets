@@ -3,3 +3,5 @@ result/
 examples/
 result
 .ai/reference/
+.envrc
+.direnv/
