@@ -5,6 +5,7 @@ use futures::channel::mpsc::unbounded;
 use futures::StreamExt;
 use gpui::*;
 use parking_lot::RwLock;
+use std::process::Stdio;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
@@ -226,20 +227,26 @@ impl MacroService {
             let start_time = start_time;
 
             let handle = tokio::spawn(async move {
+                let device_name = device.clone();
                 let mut child = match Command::new("evtest")
-                    .arg(&device)
-                    .stdout(std::process::Stdio::piped())
-                    .stderr(std::process::Stdio::null())
+                    .arg(device)
+                    .stdout(Stdio::piped())
                     .spawn()
                 {
                     Ok(child) => child,
                     Err(e) => {
-                        log::error!("Failed to spawn evtest for {}: {}", device, e);
+                        log::error!("Failed to spawn evtest for {}: {}", device_name, e);
                         return;
                     }
                 };
 
-                let stdout = child.stdout.take().unwrap();
+                let stdout = match child.stdout.take() {
+                    Some(stdout) => stdout,
+                    None => {
+                        log::error!("Failed to capture stdout for evtest on {}", device_name);
+                        return;
+                    }
+                };
                 let reader = BufReader::new(stdout);
                 let mut lines = reader.lines();
 

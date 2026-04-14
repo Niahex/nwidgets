@@ -88,9 +88,7 @@ impl Render for ZoneSelectorWidget {
             .w_full()
             .h_full()
             .bg(rgba(0x00000066))
-            .children(if start.is_some() && current.is_some() {
-                let start = start.unwrap();
-                let current = current.unwrap();
+            .children(if let (Some(start), Some(current)) = (start, current) {
                 let x = start.x.min(current.x);
                 let y = start.y.min(current.y);
                 let width = start.x.max(current.x) - start.x.min(current.x);
