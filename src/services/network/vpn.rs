@@ -41,7 +41,9 @@ impl VpnService {
         gpui_tokio::Tokio::spawn(cx, async move {
             loop {
                 let connections = Self::list_vpn_connections().await;
-                let _ = list_tx.unbounded_send(connections);
+                if let Err(e) = list_tx.unbounded_send(connections) {
+                    log::warn!("Failed to send VPN connections list: {}", e);
+                }
                 tokio::time::sleep(std::time::Duration::from_secs(5)).await;
             }
         })
@@ -104,20 +106,26 @@ impl VpnService {
 
     pub fn connect(&self, uuid: SharedString, cx: &mut Context<Self>) {
         gpui_tokio::Tokio::spawn(cx, async move {
-            let _ = tokio::process::Command::new("nmcli")
+            if let Err(e) = tokio::process::Command::new("nmcli")
                 .args(["connection", "up", "uuid", &uuid])
                 .output()
-                .await;
+                .await
+            {
+                log::warn!("Failed to connect VPN: {}", e);
+            }
         })
         .detach();
     }
 
     pub fn disconnect(&self, uuid: SharedString, cx: &mut Context<Self>) {
         gpui_tokio::Tokio::spawn(cx, async move {
-            let _ = tokio::process::Command::new("nmcli")
+            if let Err(e) = tokio::process::Command::new("nmcli")
                 .args(["connection", "down", "uuid", &uuid])
                 .output()
-                .await;
+                .await
+            {
+                log::warn!("Failed to disconnect VPN: {}", e);
+            }
         })
         .detach();
     }

@@ -156,7 +156,9 @@ impl SystemMonitorService {
                 net_total: total_rx + total_tx,
             };
 
-            let _ = ui_tx.unbounded_send(stats);
+            if let Err(e) = ui_tx.unbounded_send(stats) {
+                log::warn!("Failed to send system monitor stats: {}", e);
+            }
 
             // Sleep or wait for disable
             tokio::select! {

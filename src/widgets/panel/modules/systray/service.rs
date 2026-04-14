@@ -40,7 +40,9 @@ impl SystrayService {
                         
                         match fetch_item_data(&service_name, &object_path).await {
                             Ok(item) => {
-                                let _ = ui_tx.unbounded_send(UiEvent::ItemAdded(item));
+                                if let Err(e) = ui_tx.unbounded_send(UiEvent::ItemAdded(item)) {
+                                    log::warn!("Failed to send systray item added event: {}", e);
+                                }
                             }
                             Err(e) => {
                                 log::error!("Failed to fetch item data for {}: {}", service, e);
@@ -49,7 +51,9 @@ impl SystrayService {
                     }
                     WatcherEvent::ItemUnregistered(service) => {
                         log::info!("Item unregistered: {}", service);
-                        let _ = ui_tx.unbounded_send(UiEvent::ItemRemoved(service));
+                        if let Err(e) = ui_tx.unbounded_send(UiEvent::ItemRemoved(service)) {
+                            log::warn!("Failed to send systray item removed event: {}", e);
+                        }
                     }
                     WatcherEvent::HostRegistered => {
                         log::info!("Host registered");

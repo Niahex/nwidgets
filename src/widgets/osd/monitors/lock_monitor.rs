@@ -86,7 +86,9 @@ impl LockMonitor {
 
     async fn capslock_monitor_worker(tx: futures::channel::mpsc::UnboundedSender<bool>) {
         let mut last_state = Self::read_capslock_state();
-        let _ = tx.unbounded_send(last_state);
+        if let Err(e) = tx.unbounded_send(last_state) {
+            log::warn!("Failed to send initial capslock state: {}", e);
+        }
 
         // Polling optimisé: 500ms (réduit charge CPU avec impact visuel négligeable)
         // Note: sysfs ne supporte pas inotify, polling nécessaire
@@ -95,7 +97,9 @@ impl LockMonitor {
             let current_state = Self::read_capslock_state();
             if current_state != last_state {
                 last_state = current_state;
-                let _ = tx.unbounded_send(current_state);
+                if let Err(e) = tx.unbounded_send(current_state) {
+                    log::warn!("Failed to send capslock state update: {}", e);
+                }
             }
         }
     }

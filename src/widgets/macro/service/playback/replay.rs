@@ -29,10 +29,13 @@ pub async fn replay_macro(
             ActionType::MouseClick(btn) => {
                 if let Some(zone) = &action.click_zone {
                     let (x, y) = randomize_click_position(zone);
-                    let _ = Command::new("ydotool")
+                    if let Err(e) = Command::new("ydotool")
                         .args(["mousemove", "--absolute", &x.to_string(), &y.to_string()])
                         .output()
-                        .await;
+                        .await
+                    {
+                        log::warn!("Failed to execute ydotool mousemove: {}", e);
+                    }
                     tokio::time::sleep(std::time::Duration::from_millis(10)).await;
                 }
                 
@@ -41,16 +44,22 @@ pub async fn replay_macro(
                     MacroMouseButton::Right => "0xC1",
                     MacroMouseButton::Middle => "0xC2",
                 };
-                let _ = Command::new("ydotool")
+                if let Err(e) = Command::new("ydotool")
                     .args(["click", btn_code])
                     .output()
-                    .await;
+                    .await
+                {
+                    log::warn!("Failed to execute ydotool click: {}", e);
+                }
             }
             ActionType::KeyPress(code) | ActionType::KeyRelease(code) => {
-                let _ = Command::new("ydotool")
+                if let Err(e) = Command::new("ydotool")
                     .args(["key", &code.to_string()])
                     .output()
-                    .await;
+                    .await
+                {
+                    log::warn!("Failed to execute ydotool key: {}", e);
+                }
             }
             ActionType::Delay(_) => {
                 // Delay is already handled by the timestamp difference calculation above

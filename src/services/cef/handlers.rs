@@ -172,7 +172,9 @@ cef::wrap_render_handler! {
             }
 
             // Notify UI thread
-            let _ = self.handler.repaint_tx.unbounded_send(());
+            if let Err(e) = self.handler.repaint_tx.unbounded_send(()) {
+                log::warn!("Failed to send CEF repaint notification: {}", e);
+            }
         }
 
         fn on_text_selection_changed(

@@ -29,29 +29,39 @@ impl MacroDbusServer {
 impl MacroDbusServer {
     fn toggle(&self) {
         log::info!("D-Bus: Toggle macro window");
-        let _ = self.command_tx.unbounded_send(MacroDbusCommand::Toggle);
+        if let Err(e) = self.command_tx.unbounded_send(MacroDbusCommand::Toggle) {
+            log::warn!("Failed to send D-Bus toggle macro command: {}", e);
+        }
     }
 
     fn start_recording(&self, name: String) {
         log::info!("D-Bus: Start recording macro: {}", name);
-        let _ = self.command_tx.unbounded_send(MacroDbusCommand::StartRecording(name));
+        if let Err(e) = self.command_tx.unbounded_send(MacroDbusCommand::StartRecording(name)) {
+            log::warn!("Failed to send D-Bus start recording command: {}", e);
+        }
     }
 
     fn stop_recording(&self) {
         log::info!("D-Bus: Stop recording");
-        let _ = self.command_tx.unbounded_send(MacroDbusCommand::StopRecording);
+        if let Err(e) = self.command_tx.unbounded_send(MacroDbusCommand::StopRecording) {
+            log::warn!("Failed to send D-Bus stop recording command: {}", e);
+        }
     }
 
     fn play_macro(&self, macro_id: String) {
         log::info!("D-Bus: Play macro: {}", macro_id);
         if let Ok(uuid) = uuid::Uuid::parse_str(&macro_id) {
-            let _ = self.command_tx.unbounded_send(MacroDbusCommand::PlayMacro(uuid));
+            if let Err(e) = self.command_tx.unbounded_send(MacroDbusCommand::PlayMacro(uuid)) {
+                log::warn!("Failed to send D-Bus play macro command: {}", e);
+            }
         }
     }
 
     fn stop_playback(&self) {
         log::info!("D-Bus: Stop playback");
-        let _ = self.command_tx.unbounded_send(MacroDbusCommand::StopPlayback);
+        if let Err(e) = self.command_tx.unbounded_send(MacroDbusCommand::StopPlayback) {
+            log::warn!("Failed to send D-Bus stop playback command: {}", e);
+        }
     }
 
     fn list_macros(&self) -> Vec<String> {

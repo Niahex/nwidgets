@@ -51,7 +51,9 @@ impl StatusNotifierWatcher {
             }
         }
 
-        let _ = self.tx.unbounded_send(WatcherEvent::ItemRegistered(service_string));
+        if let Err(e) = self.tx.unbounded_send(WatcherEvent::ItemRegistered(service_string)) {
+            log::warn!("Failed to send systray item registered event: {}", e);
+        }
     }
 
     async fn register_status_notifier_host(&mut self, service: &str) {
@@ -65,7 +67,9 @@ impl StatusNotifierWatcher {
             }
         }
 
-        let _ = self.tx.unbounded_send(WatcherEvent::HostRegistered);
+        if let Err(e) = self.tx.unbounded_send(WatcherEvent::HostRegistered) {
+            log::warn!("Failed to send systray host registered event: {}", e);
+        }
     }
 
     #[zbus(property)]

@@ -84,7 +84,9 @@ impl NetworkManagerWorker {
         };
 
         let initial_state = Self::fetch_state(&conn, &nm_proxy).await;
-        let _ = tx.unbounded_send(initial_state.clone());
+        if let Err(e) = tx.unbounded_send(initial_state.clone()) {
+            log::warn!("Failed to send initial network manager state: {}", e);
+        }
         *self.state.write() = initial_state;
 
         let mut connectivity_stream = nm_proxy.receive_connectivity_changed().await;
@@ -96,21 +98,27 @@ impl NetworkManagerWorker {
                     let new_state = Self::fetch_state(&conn, &nm_proxy).await;
                     if *self.state.read() != new_state {
                         *self.state.write() = new_state.clone();
-                        let _ = tx.unbounded_send(new_state);
+                        if let Err(e) = tx.unbounded_send(new_state) {
+                            log::warn!("Failed to send network manager connectivity update: {}", e);
+                        }
                     }
                 }
                 Some(_) = active_connections_stream.next() => {
                     let new_state = Self::fetch_state(&conn, &nm_proxy).await;
                     if *self.state.read() != new_state {
                         *self.state.write() = new_state.clone();
-                        let _ = tx.unbounded_send(new_state);
+                        if let Err(e) = tx.unbounded_send(new_state) {
+                            log::warn!("Failed to send network manager connections update: {}", e);
+                        }
                     }
                 }
                 _ = tokio::time::sleep(std::time::Duration::from_secs(5)) => {
                     let new_state = Self::fetch_state(&conn, &nm_proxy).await;
                     if *self.state.read() != new_state {
                         *self.state.write() = new_state.clone();
-                        let _ = tx.unbounded_send(new_state);
+                        if let Err(e) = tx.unbounded_send(new_state) {
+                            log::warn!("Failed to send network manager polling update: {}", e);
+                        }
                     }
                 }
             }

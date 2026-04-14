@@ -217,15 +217,25 @@ impl HyprlandService {
                         || line.starts_with("createworkspace>>")
                         || line.starts_with("destroyworkspace>>")
                     {
-                        let _ = socket_tx.unbounded_send((0, line)); // workspace
+                        if let Err(e) = socket_tx.unbounded_send((0, line)) {
+                            log::warn!("Failed to send workspace event: {}", e);
+                        }
                     } else if line.starts_with("activewindow>>") {
-                        let _ = socket_tx.unbounded_send((1, line)); // window
+                        if let Err(e) = socket_tx.unbounded_send((1, line)) {
+                            log::warn!("Failed to send active window event: {}", e);
+                        }
                     } else if line.starts_with("openwindow>>") {
-                        let _ = socket_tx.unbounded_send((2, line)); // window opened
+                        if let Err(e) = socket_tx.unbounded_send((2, line)) {
+                            log::warn!("Failed to send window opened event: {}", e);
+                        }
                     } else if line.starts_with("closewindow>>") {
-                        let _ = socket_tx.unbounded_send((3, line)); // window closed
+                        if let Err(e) = socket_tx.unbounded_send((3, line)) {
+                            log::warn!("Failed to send window closed event: {}", e);
+                        }
                     } else if line.starts_with("fullscreen>>") {
-                        let _ = socket_tx.unbounded_send((4, line)); // fullscreen
+                        if let Err(e) = socket_tx.unbounded_send((4, line)) {
+                            log::warn!("Failed to send fullscreen event: {}", e);
+                        }
                     }
                 }
             } else {
@@ -235,11 +245,17 @@ impl HyprlandService {
 
         // Initial fetch
         let (workspaces, workspace_id) = Self::fetch_hyprland_data().await;
-        let _ = ui_tx.unbounded_send(HyprlandUpdate::Workspace(Box::new(workspaces), workspace_id));
+        if let Err(e) = ui_tx.unbounded_send(HyprlandUpdate::Workspace(Box::new(workspaces), workspace_id)) {
+            log::warn!("Failed to send initial workspace update: {}", e);
+        }
         let window = Self::fetch_active_window().await;
-        let _ = ui_tx.unbounded_send(HyprlandUpdate::Window(window));
+        if let Err(e) = ui_tx.unbounded_send(HyprlandUpdate::Window(window)) {
+            log::warn!("Failed to send initial window update: {}", e);
+        }
         let fullscreen = Self::fetch_fullscreen_workspace().await;
-        let _ = ui_tx.unbounded_send(HyprlandUpdate::Fullscreen(fullscreen));
+        if let Err(e) = ui_tx.unbounded_send(HyprlandUpdate::Fullscreen(fullscreen)) {
+            log::warn!("Failed to send initial fullscreen update: {}", e);
+        }
 
         // Event loop
         while let Some((ev_type, line)) = socket_rx.next().await {
@@ -247,18 +263,24 @@ impl HyprlandService {
                 0 => {
                     // Workspace event
                     let (workspaces, workspace_id) = Self::fetch_hyprland_data().await;
-                    let _ = ui_tx.unbounded_send(HyprlandUpdate::Workspace(Box::new(workspaces), workspace_id));
+                    if let Err(e) = ui_tx.unbounded_send(HyprlandUpdate::Workspace(Box::new(workspaces), workspace_id)) {
+                        log::warn!("Failed to send workspace update: {}", e);
+                    }
                 }
                 1 => {
                     // Active window event
                     let window = Self::fetch_active_window().await;
-                    let _ = ui_tx.unbounded_send(HyprlandUpdate::Window(window));
+                    if let Err(e) = ui_tx.unbounded_send(HyprlandUpdate::Window(window)) {
+                        log::warn!("Failed to send window update: {}", e);
+                    }
                 }
                 2 => {
                     if let Some(data) = line.strip_prefix("openwindow>>") {
                         let parts: Vec<&str> = data.split(',').collect();
                         if let Some(class) = parts.get(2) {
-                            let _ = ui_tx.unbounded_send(HyprlandUpdate::WindowOpened(class.to_string()));
+                            if let Err(e) = ui_tx.unbounded_send(HyprlandUpdate::WindowOpened(class.to_string())) {
+                                log::warn!("Failed to send window opened update: {}", e);
+                            }
                         }
                     }
                 }
@@ -267,12 +289,16 @@ impl HyprlandService {
                     // We need to get the class from hyprctl since we only have address
                     // For now, just trigger active window update
                     let window = Self::fetch_active_window().await;
-                    let _ = ui_tx.unbounded_send(HyprlandUpdate::Window(window));
+                    if let Err(e) = ui_tx.unbounded_send(HyprlandUpdate::Window(window)) {
+                        log::warn!("Failed to send window closed update: {}", e);
+                    }
                 }
                 4 => {
                     // Fullscreen event
                     let fullscreen = Self::fetch_fullscreen_workspace().await;
-                    let _ = ui_tx.unbounded_send(HyprlandUpdate::Fullscreen(fullscreen));
+                    if let Err(e) = ui_tx.unbounded_send(HyprlandUpdate::Fullscreen(fullscreen)) {
+                        log::warn!("Failed to send fullscreen update: {}", e);
+                    }
                 }
                 _ => {}
             }

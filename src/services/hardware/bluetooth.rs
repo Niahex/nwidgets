@@ -138,7 +138,9 @@ impl BluetoothService {
 
         // Initial fetch
         let initial_state = Self::fetch_bluetooth_state_dbus(&object_manager).await;
-        let _ = ui_tx.unbounded_send(initial_state);
+        if let Err(e) = ui_tx.unbounded_send(initial_state) {
+            log::warn!("Failed to send initial bluetooth state: {}", e);
+        }
 
         // Get event streams
         let mut added_stream = match object_manager.receive_interfaces_added().await {
@@ -163,17 +165,23 @@ impl BluetoothService {
                     if let Some(s) = &mut added_stream { s.next().await } else { std::future::pending().await }
                 } => {
                     let new_state = Self::fetch_bluetooth_state_dbus(&object_manager).await;
-                    let _ = ui_tx.unbounded_send(new_state);
+                    if let Err(e) = ui_tx.unbounded_send(new_state) {
+                        log::warn!("Failed to send bluetooth device added update: {}", e);
+                    }
                 }
                 Some(_) = async {
                     if let Some(s) = &mut removed_stream { s.next().await } else { std::future::pending().await }
                 } => {
                     let new_state = Self::fetch_bluetooth_state_dbus(&object_manager).await;
-                    let _ = ui_tx.unbounded_send(new_state);
+                    if let Err(e) = ui_tx.unbounded_send(new_state) {
+                        log::warn!("Failed to send bluetooth device removed update: {}", e);
+                    }
                 }
                 _ = tokio::time::sleep(Duration::from_secs(2)) => {
                     let new_state = Self::fetch_bluetooth_state_dbus(&object_manager).await;
-                    let _ = ui_tx.unbounded_send(new_state);
+                    if let Err(e) = ui_tx.unbounded_send(new_state) {
+                        log::warn!("Failed to send bluetooth polling update: {}", e);
+                    }
                 }
             }
         }

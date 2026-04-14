@@ -176,9 +176,15 @@ pub fn init_network_services(cx: &mut App) {
 
         // Broadcast to all services
         while let Some(state) = main_rx.next().await {
-            let _ = tx1.unbounded_send(state.clone());
-            let _ = tx2.unbounded_send(state.clone());
-            let _ = tx3.unbounded_send(state);
+            if let Err(e) = tx1.unbounded_send(state.clone()) {
+                log::warn!("Failed to send network state to ethernet service: {}", e);
+            }
+            if let Err(e) = tx2.unbounded_send(state.clone()) {
+                log::warn!("Failed to send network state to wifi service: {}", e);
+            }
+            if let Err(e) = tx3.unbounded_send(state) {
+                log::warn!("Failed to send network state to vpn service: {}", e);
+            }
         }
     })
     .detach();

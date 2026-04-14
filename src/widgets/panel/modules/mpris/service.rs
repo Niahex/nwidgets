@@ -180,9 +180,12 @@ impl MprisService {
     pub fn volume_up(&self) {
         self.executor
             .spawn(async {
-                let _ = std::process::Command::new("playerctl")
+                if let Err(e) = std::process::Command::new("playerctl")
                     .args(["-p", "spotify", "volume", "0.05+"])
-                    .status();
+                    .status()
+                {
+                    log::warn!("Failed to execute playerctl volume up: {}", e);
+                }
             })
             .detach();
     }
@@ -190,9 +193,12 @@ impl MprisService {
     pub fn volume_down(&self) {
         self.executor
             .spawn(async {
-                let _ = std::process::Command::new("playerctl")
+                if let Err(e) = std::process::Command::new("playerctl")
                     .args(["-p", "spotify", "volume", "0.05-"])
-                    .status();
+                    .status()
+                {
+                    log::warn!("Failed to execute playerctl volume down: {}", e);
+                }
             })
             .detach();
     }
@@ -238,7 +244,9 @@ impl MprisService {
                         }
                         spotify_notify.notified().await;
                     }
-                    let _ = ui_tx.unbounded_send(None);
+                    if let Err(e) = ui_tx.unbounded_send(None) {
+                        log::warn!("Failed to send MPRIS clear state: {}", e);
+                    }
                     continue;
                 }
             };
@@ -247,11 +255,15 @@ impl MprisService {
             match Self::fetch_player_state(&proxy).await {
                 Ok(player) => {
                     log::debug!("Initial MPRIS state: {:?}", player.metadata.title);
-                    let _ = ui_tx.unbounded_send(Some(player));
+                    if let Err(e) = ui_tx.unbounded_send(Some(player)) {
+                        log::warn!("Failed to send initial MPRIS state: {}", e);
+                    }
                 }
                 Err(e) => {
                     log::error!("Failed to fetch initial state: {}", e);
-                    let _ = ui_tx.unbounded_send(None);
+                    if let Err(e) = ui_tx.unbounded_send(None) {
+                        log::warn!("Failed to send MPRIS error state: {}", e);
+                    }
                     continue;
                 }
             }
@@ -269,7 +281,9 @@ impl MprisService {
                             break;
                         }
                         if let Ok(player) = Self::fetch_player_state(&proxy).await {
-                            let _ = ui_tx.unbounded_send(Some(player));
+                            if let Err(e) = ui_tx.unbounded_send(Some(player)) {
+                                log::warn!("Failed to send MPRIS status update: {}", e);
+                            }
                         }
                     }
                     metadata_change = metadata_stream.next() => {
@@ -278,7 +292,9 @@ impl MprisService {
                             break;
                         }
                         if let Ok(player) = Self::fetch_player_state(&proxy).await {
-                            let _ = ui_tx.unbounded_send(Some(player));
+                            if let Err(e) = ui_tx.unbounded_send(Some(player)) {
+                                log::warn!("Failed to send MPRIS metadata update: {}", e);
+                            }
                         }
                     }
                     _ = spotify_notify.notified() => {
@@ -292,7 +308,9 @@ impl MprisService {
 
             // Spotify closed, clear state
             log::debug!("Clearing MPRIS state");
-            let _ = ui_tx.unbounded_send(None);
+            if let Err(e) = ui_tx.unbounded_send(None) {
+                log::warn!("Failed to send MPRIS final clear state: {}", e);
+            }
         }
     }
 

@@ -198,7 +198,9 @@ impl NetworkService {
 
         // Initial fetch
         let initial_state = Self::fetch_network_state_dbus(&conn, &nm_proxy).await;
-        let _ = ui_tx.unbounded_send(initial_state);
+        if let Err(e) = ui_tx.unbounded_send(initial_state) {
+            log::warn!("Failed to send initial network state: {}", e);
+        }
 
         // Subscribe to properties changes
         // receive_connectivity_changed returns PropertyStream (not Result)
@@ -209,16 +211,22 @@ impl NetworkService {
             tokio::select! {
                 Some(_) = connectivity_stream.next() => {
                     let new_state = Self::fetch_network_state_dbus(&conn, &nm_proxy).await;
-                    let _ = ui_tx.unbounded_send(new_state);
+                    if let Err(e) = ui_tx.unbounded_send(new_state) {
+                        log::warn!("Failed to send network connectivity update: {}", e);
+                    }
                 }
                 Some(_) = active_connections_stream.next() => {
                     let new_state = Self::fetch_network_state_dbus(&conn, &nm_proxy).await;
-                    let _ = ui_tx.unbounded_send(new_state);
+                    if let Err(e) = ui_tx.unbounded_send(new_state) {
+                        log::warn!("Failed to send network connections update: {}", e);
+                    }
                 }
                 // Fallback polling for signal strength
                 _ = tokio::time::sleep(std::time::Duration::from_secs(5)) => {
                      let new_state = Self::fetch_network_state_dbus(&conn, &nm_proxy).await;
-                     let _ = ui_tx.unbounded_send(new_state);
+                     if let Err(e) = ui_tx.unbounded_send(new_state) {
+                         log::warn!("Failed to send network polling update: {}", e);
+                     }
                 }
             }
         }

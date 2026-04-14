@@ -20,20 +20,28 @@ struct NWidgets {
 #[interface(name = "org.nwidgets.App")]
 impl NWidgets {
     async fn toggle_chat(&self) {
-        let _ = self.tx.unbounded_send(DbusCommand::ToggleChat);
+        if let Err(e) = self.tx.unbounded_send(DbusCommand::ToggleChat) {
+            log::warn!("Failed to send D-Bus toggle chat command: {}", e);
+        }
     }
 
     async fn toggle_launcher(&self) {
         log::debug!("D-Bus toggle_launcher called");
-        let _ = self.tx.unbounded_send(DbusCommand::ToggleLauncher);
+        if let Err(e) = self.tx.unbounded_send(DbusCommand::ToggleLauncher) {
+            log::warn!("Failed to send D-Bus toggle launcher command: {}", e);
+        }
     }
 
     async fn pin_chat(&self) {
-        let _ = self.tx.unbounded_send(DbusCommand::PinChat);
+        if let Err(e) = self.tx.unbounded_send(DbusCommand::PinChat) {
+            log::warn!("Failed to send D-Bus pin chat command: {}", e);
+        }
     }
 
     async fn toggle_jisig(&self) {
-        let _ = self.tx.unbounded_send(DbusCommand::ToggleJisig);
+        if let Err(e) = self.tx.unbounded_send(DbusCommand::ToggleJisig) {
+            log::warn!("Failed to send D-Bus toggle jisig command: {}", e);
+        }
     }
 }
 

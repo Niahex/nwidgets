@@ -271,7 +271,9 @@ impl AudioService {
                                             media_class: media_class.to_string().into(),
                                         };
                                         nodes_data_clone.write().insert(global.id, info);
-                                        let _ = tx.unbounded_send(PwEvent::NodeAdded);
+                                        if let Err(e) = tx.unbounded_send(PwEvent::NodeAdded) {
+                                            log::warn!("Failed to send NodeAdded event: {}", e);
+                                        }
 
                                         if let Ok(node) =
                                             registry_clone.bind::<pw::node::Node, _>(global)
@@ -281,8 +283,9 @@ impl AudioService {
                                             let node_listener = node
                                                 .add_listener_local()
                                                 .param(move |_, _, _, _, _| {
-                                                    let _ = tx_param
-                                                        .unbounded_send(PwEvent::ParamChanged);
+                                                    if let Err(e) = tx_param.unbounded_send(PwEvent::ParamChanged) {
+                                                        log::warn!("Failed to send ParamChanged event: {}", e);
+                                                    }
                                                 })
                                                 .register();
 
@@ -298,7 +301,9 @@ impl AudioService {
                             }
                         })
                         .global_remove(move |id| {
-                            let _ = tx_remove.unbounded_send(PwEvent::NodeRemoved(id));
+                            if let Err(e) = tx_remove.unbounded_send(PwEvent::NodeRemoved(id)) {
+                                log::warn!("Failed to send NodeRemoved event: {}", e);
+                            }
                         })
                         .register();
 
@@ -311,12 +316,14 @@ impl AudioService {
             let (source_vol, source_muted) =
                 Self::get_volume_wpctl_async("@DEFAULT_AUDIO_SOURCE@").await;
 
-            let _ = ui_tx.unbounded_send(AudioUpdate::State(AudioState {
+            if let Err(e) = ui_tx.unbounded_send(AudioUpdate::State(AudioState {
                 sink_volume: sink_vol,
                 sink_muted,
                 source_volume: source_vol,
                 source_muted,
-            }));
+            })) {
+                log::warn!("Failed to send initial audio state: {}", e);
+            }
 
             let mut last_update = std::time::Instant::now();
             let debounce = std::time::Duration::from_millis(50);
@@ -347,13 +354,14 @@ impl AudioService {
                 let (source_vol, source_muted) =
                     Self::get_volume_wpctl_async("@DEFAULT_AUDIO_SOURCE@").await;
 
-                let _ = ui_tx.unbounded_send(AudioUpdate::State(AudioState {
+            if let Err(e) = ui_tx.unbounded_send(AudioUpdate::State(AudioState {
                     sink_volume: sink_vol,
                     sink_muted,
                     source_volume: source_vol,
                     source_muted,
-                }));
-
+                })) {
+                log::warn!("Failed to send audio state update: {}", e);
+            }
                 // Get default device IDs
                 let default_sink_id =
                     Self::get_default_device_id_async("@DEFAULT_AUDIO_SINK@").await;
@@ -408,12 +416,14 @@ impl AudioService {
                 }
                 drop(nodes_snapshot);
 
-                let _ = ui_tx.unbounded_send(AudioUpdate::Devices {
+                if let Err(e) = ui_tx.unbounded_send(AudioUpdate::Devices {
                     sinks: Box::new(new_sinks),
                     sources: Box::new(new_sources),
                     sink_inputs: Box::new(new_sink_inputs),
                     source_outputs: Box::new(new_source_outputs),
-                });
+                }) {
+                    log::warn!("Failed to send audio devices update: {}", e);
+                }
             }
 
             log::warn!("PipeWire connection lost, reconnecting...");
@@ -434,10 +444,13 @@ impl AudioService {
     pub fn set_sink_volume(&self, volume: u8, cx: &mut Context<Self>) {
         let volume = volume.min(100);
         gpui_tokio::Tokio::spawn(cx, async move {
-            let _ = tokio::process::Command::new("wpctl")
+            if let Err(e) = tokio::process::Command::new("wpctl")
                 .args(["set-volume", "@DEFAULT_AUDIO_SINK@", &format!("{volume}%")])
                 .output()
-                .await;
+                .await
+            {
+                log::warn!("Failed to set sink volume: {}", e);
+            }
         })
         .detach();
     }
@@ -445,20 +458,26 @@ impl AudioService {
     #[allow(dead_code)]
     pub fn toggle_sink_mute(&self, cx: &mut Context<Self>) {
         gpui_tokio::Tokio::spawn(cx, async move {
-            let _ = tokio::process::Command::new("wpctl")
+            if let Err(e) = tokio::process::Command::new("wpctl")
                 .args(["set-mute", "@DEFAULT_AUDIO_SINK@", "toggle"])
                 .output()
-                .await;
+                .await
+            {
+                log::warn!("Failed to toggle sink mute: {}", e);
+            }
         })
         .detach();
     }
 
     pub fn toggle_source_mute(&self, cx: &mut Context<Self>) {
         gpui_tokio::Tokio::spawn(cx, async move {
-            let _ = tokio::process::Command::new("wpctl")
+            if let Err(e) = tokio::process::Command::new("wpctl")
                 .args(["set-mute", "@DEFAULT_AUDIO_SOURCE@", "toggle"])
                 .output()
-                .await;
+                .await
+            {
+                log::warn!("Failed to toggle source mute: {}", e);
+            }
         })
         .detach();
     }
@@ -466,14 +485,17 @@ impl AudioService {
     pub fn set_source_volume(&self, volume: u8, cx: &mut Context<Self>) {
         let volume = volume.min(100);
         gpui_tokio::Tokio::spawn(cx, async move {
-            let _ = tokio::process::Command::new("wpctl")
+            if let Err(e) = tokio::process::Command::new("wpctl")
                 .args([
                     "set-volume",
                     "@DEFAULT_AUDIO_SOURCE@",
                     &format!("{volume}%"),
                 ])
                 .output()
-                .await;
+                .await
+            {
+                log::warn!("Failed to set source volume: {}", e);
+            }
         })
         .detach();
     }
@@ -481,10 +503,13 @@ impl AudioService {
     pub fn set_sink_input_volume(&self, stream_id: u32, volume: u8, cx: &mut Context<Self>) {
         let volume = volume.min(100);
         gpui_tokio::Tokio::spawn(cx, async move {
-            let _ = tokio::process::Command::new("wpctl")
+            if let Err(e) = tokio::process::Command::new("wpctl")
                 .args(["set-volume", &stream_id.to_string(), &format!("{volume}%")])
                 .output()
-                .await;
+                .await
+            {
+                log::warn!("Failed to set sink input volume: {}", e);
+            }
         })
         .detach();
     }
@@ -492,30 +517,39 @@ impl AudioService {
     pub fn set_source_output_volume(&self, stream_id: u32, volume: u8, cx: &mut Context<Self>) {
         let volume = volume.min(100);
         gpui_tokio::Tokio::spawn(cx, async move {
-            let _ = tokio::process::Command::new("wpctl")
+            if let Err(e) = tokio::process::Command::new("wpctl")
                 .args(["set-volume", &stream_id.to_string(), &format!("{volume}%")])
                 .output()
-                .await;
+                .await
+            {
+                log::warn!("Failed to set source output volume: {}", e);
+            }
         })
         .detach();
     }
 
     pub fn set_default_sink(&self, id: u32, cx: &mut Context<Self>) {
         gpui_tokio::Tokio::spawn(cx, async move {
-            let _ = tokio::process::Command::new("wpctl")
+            if let Err(e) = tokio::process::Command::new("wpctl")
                 .args(["set-default", &id.to_string()])
                 .output()
-                .await;
+                .await
+            {
+                log::warn!("Failed to set default sink: {}", e);
+            }
         })
         .detach();
     }
 
     pub fn set_default_source(&self, id: u32, cx: &mut Context<Self>) {
         gpui_tokio::Tokio::spawn(cx, async move {
-            let _ = tokio::process::Command::new("wpctl")
+            if let Err(e) = tokio::process::Command::new("wpctl")
                 .args(["set-default", &id.to_string()])
                 .output()
-                .await;
+                .await
+            {
+                log::warn!("Failed to set default source: {}", e);
+            }
         })
         .detach();
     }
