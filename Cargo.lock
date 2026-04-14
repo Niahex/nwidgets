@@ -4345,6 +4345,7 @@ dependencies = [
  "numbat",
  "parking_lot",
  "pipewire",
+ "rand 0.8.5",
  "secret-service",
  "serde",
  "serde_json",

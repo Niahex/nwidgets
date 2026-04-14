@@ -138,6 +138,8 @@
             alsa-lib
             udev
             pipewire
+            evtest
+            ydotool
           ]
           ++ cefDeps;
 
@@ -149,6 +151,8 @@
             mesa
             libxkbcommon
             wayland
+            evtest
+            ydotool
           ]
           ++ cefDeps;
 
@@ -285,6 +289,32 @@
         };
 
         formatter = pkgs.alejandra;
+
+        nixosModules.default = {
+          config,
+          lib,
+          pkgs,
+          ...
+        }: {
+          options.programs.nwidgets = {
+            enable = lib.mkEnableOption "nwidgets";
+          };
+
+          config = lib.mkIf config.programs.nwidgets.enable {
+            environment.systemPackages = [self.packages.${system}.default];
+
+            systemd.user.services.ydotool = {
+              description = "ydotool daemon for macro playback";
+              wantedBy = ["graphical-session.target"];
+              serviceConfig = {
+                ExecStart = "${pkgs.ydotool}/bin/ydotoold";
+                Restart = "on-failure";
+              };
+            };
+
+            users.groups.input = {};
+          };
+        };
       }
     );
 }

@@ -12,6 +12,7 @@ use crate::widgets::notifications::NotificationService;
 use crate::widgets::osd::OsdService;
 use crate::widgets::panel::modules::systray::SystrayService;
 use crate::widgets::panel::modules::{MprisService, PomodoroService};
+use crate::widgets::r#macro::MacroService;
 use crate::widgets::tasker::TaskService;
 
 pub fn initialize_all(cx: &mut App) -> (Entity<ClipboardMonitor>, Entity<OsdService>) {
@@ -23,6 +24,7 @@ pub fn initialize_all(cx: &mut App) -> (Entity<ClipboardMonitor>, Entity<OsdServ
     MprisService::init(cx);
     PomodoroService::init(cx);
     TaskService::init(cx);
+    MacroService::init(cx);
     CefService::init(cx);
     DbusService::init(cx);
     SystrayService::init(cx);

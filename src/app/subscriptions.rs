@@ -1,16 +1,18 @@
 use gpui::*;
 
-use crate::services::system::{HyprlandService};
+use crate::services::system::HyprlandService;
 use crate::widgets::chat::ChatService;
 use crate::widgets::jisig::JisigService;
 use crate::widgets::launcher::LauncherService;
 use crate::widgets::notifications::{NotificationAdded, NotificationService};
 use crate::widgets::notifications::{NotificationsStateChanged, NotificationsWindowManager};
+use crate::widgets::r#macro::MacroService;
 use crate::widgets::tasker::TaskService;
 
 use crate::widgets::chat::window;
 use crate::widgets::jisig::window as jisig;
 use crate::widgets::launcher::window as launcher;
+use crate::widgets::r#macro::window as macro_window;
 use crate::widgets::tasker::window as tasker;
 
 pub fn setup_all(
@@ -24,50 +26,71 @@ pub fn setup_all(
     setup_launcher(cx, launcher_service);
     setup_notifications(cx, notif_service);
     setup_tasker(cx);
+    setup_macro(cx);
 }
 
 fn setup_chat(cx: &mut App, chat_service: Entity<ChatService>) {
     cx.subscribe(&chat_service, window::on_toggle).detach();
-    cx.subscribe(&HyprlandService::global(cx), window::on_fullscreen).detach();
-    cx.subscribe(&HyprlandService::global(cx), window::on_workspace_change).detach();
+    cx.subscribe(&HyprlandService::global(cx), window::on_fullscreen)
+        .detach();
+    cx.subscribe(&HyprlandService::global(cx), window::on_workspace_change)
+        .detach();
     cx.subscribe(&chat_service, window::on_navigate).detach();
 }
 
 fn setup_jisig(cx: &mut App) {
     let jisig_service = JisigService::global(cx);
     cx.subscribe(&jisig_service, jisig::on_toggle).detach();
-    cx.subscribe(&HyprlandService::global(cx), jisig::on_fullscreen).detach();
-    cx.subscribe(&HyprlandService::global(cx), jisig::on_workspace_change).detach();
+    cx.subscribe(&HyprlandService::global(cx), jisig::on_fullscreen)
+        .detach();
+    cx.subscribe(&HyprlandService::global(cx), jisig::on_workspace_change)
+        .detach();
 }
 
 fn setup_launcher(cx: &mut App, launcher_service: Entity<LauncherService>) {
-    cx.subscribe(&launcher_service, launcher::on_toggle).detach();
+    cx.subscribe(&launcher_service, launcher::on_toggle)
+        .detach();
 }
 
 fn setup_notifications(cx: &mut App, notif_service: Entity<NotificationService>) {
     let manager = std::sync::Arc::new(parking_lot::Mutex::new(NotificationsWindowManager::new()));
     let manager_clone = manager.clone();
 
-    cx.subscribe(&notif_service, move |_service, _event: &NotificationAdded, cx| {
-        let mut mgr = manager_clone.lock();
-        if let Some(widget) = mgr.open_window(cx) {
-            mgr.show_window(cx);
-            
-            let mgr2 = manager_clone.clone();
-            cx.subscribe(&widget, move |_widget, event: &NotificationsStateChanged, cx| {
-                let mut mgr = mgr2.lock();
-                if event.has_notifications {
-                    mgr.show_window(cx);
-                } else {
-                    mgr.hide_window(cx);
-                }
-            }).detach();
-        }
-    }).detach();
+    cx.subscribe(
+        &notif_service,
+        move |_service, _event: &NotificationAdded, cx| {
+            let mut mgr = manager_clone.lock();
+            if let Some(widget) = mgr.open_window(cx) {
+                mgr.show_window(cx);
+
+                let mgr2 = manager_clone.clone();
+                cx.subscribe(
+                    &widget,
+                    move |_widget, event: &NotificationsStateChanged, cx| {
+                        let mut mgr = mgr2.lock();
+                        if event.has_notifications {
+                            mgr.show_window(cx);
+                        } else {
+                            mgr.hide_window(cx);
+                        }
+                    },
+                )
+                .detach();
+            }
+        },
+    )
+    .detach();
 }
 
 fn setup_tasker(cx: &mut App) {
     let task_service = TaskService::global(cx);
     cx.subscribe(&task_service, tasker::on_toggle).detach();
-    cx.subscribe(&task_service, tasker::on_task_selected).detach();
+    cx.subscribe(&task_service, tasker::on_task_selected)
+        .detach();
+}
+
+fn setup_macro(cx: &mut App) {
+    let macro_service = MacroService::global(cx);
+    cx.subscribe(&macro_service, macro_window::on_toggle)
+        .detach();
 }
