@@ -1,3 +1,4 @@
+use crate::services::database::get_database;
 use crate::services::system::HyprlandService;
 use crate::widgets::r#macro::types::*;
 use anyhow::Result;
@@ -5,7 +6,6 @@ use futures::channel::mpsc::unbounded;
 use futures::StreamExt;
 use gpui::*;
 use parking_lot::RwLock;
-use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
@@ -88,29 +88,184 @@ impl MacroService {
         });
     }
 
-    fn get_config_path() -> PathBuf {
-        let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
-        PathBuf::from(home).join(".config/nwidgets/macros.json")
-    }
-
     fn load_macros() -> Result<Vec<Macro>> {
-        let path = Self::get_config_path();
-        if !path.exists() {
-            return Ok(Vec::new());
-        }
-        let content = std::fs::read_to_string(path)?;
-        Ok(serde_json::from_str(&content)?)
+        let db = get_database();
+        let conn = db.conn();
+        let conn = conn.lock();
+
+        let mut stmt = conn.prepare(
+            "SELECT id, name, app_class, created_at FROM macros ORDER BY created_at DESC"
+        )?;
+
+        let macros = stmt.query_map([], |row| {
+            let id_str: String = row.get(0)?;
+            let id = Uuid::parse_str(&id_str).map_err(|e| rusqlite::Error::FromSqlConversionFailure(
+                0,
+                rusqlite::types::Type::Text,
+                Box::new(std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string()))
+            ))?;
+            let name: String = row.get(1)?;
+            let app_class: Option<String> = row.get(2)?;
+            let created_at: u64 = row.get(3)?;
+
+            let actions = Self::load_actions(&conn, &id_str)?;
+
+            Ok(Macro {
+                id,
+                name,
+                app_class,
+                actions,
+                created_at,
+            })
+        })?.collect::<Result<Vec<_>, _>>()?;
+
+        Ok(macros)
     }
 
-    fn save_macros(&self) -> Result<()> {
-        let path = Self::get_config_path();
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)?;
+    fn load_actions(conn: &rusqlite::Connection, macro_id: &str) -> Result<Vec<MacroAction>, rusqlite::Error> {
+        let mut stmt = conn.prepare(
+            "SELECT timestamp_ms, action_type, action_data, click_zone_x, click_zone_y, 
+                    click_zone_width, click_zone_height 
+             FROM macro_actions 
+             WHERE macro_id = ? 
+             ORDER BY action_index"
+        )?;
+
+        let actions = stmt.query_map([macro_id], |row| {
+            let timestamp_ms: u64 = row.get(0)?;
+            let action_type_str: String = row.get(1)?;
+            let action_data: Option<String> = row.get(2)?;
+            
+            let action_type = Self::parse_action_type(&action_type_str, action_data.as_deref())
+                .map_err(|e| rusqlite::Error::FromSqlConversionFailure(
+                    0,
+                    rusqlite::types::Type::Text,
+                    Box::new(std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string()))
+                ))?;
+
+            let click_zone = if let (Some(x), Some(y), Some(w), Some(h)) = (
+                row.get::<_, Option<i32>>(3)?,
+                row.get::<_, Option<i32>>(4)?,
+                row.get::<_, Option<u32>>(5)?,
+                row.get::<_, Option<u32>>(6)?,
+            ) {
+                Some(ClickZone { x, y, width: w, height: h })
+            } else {
+                None
+            };
+
+            Ok(MacroAction {
+                timestamp_ms,
+                action_type,
+                click_zone,
+            })
+        })?.collect::<Result<Vec<_>, _>>()?;
+
+        Ok(actions)
+    }
+
+    fn parse_action_type(type_str: &str, data: Option<&str>) -> Result<ActionType> {
+        match type_str {
+            "KeyPress" => {
+                let code = data.ok_or_else(|| anyhow::anyhow!("Missing data for KeyPress"))?
+                    .parse::<u32>()?;
+                Ok(ActionType::KeyPress(code))
+            }
+            "KeyRelease" => {
+                let code = data.ok_or_else(|| anyhow::anyhow!("Missing data for KeyRelease"))?
+                    .parse::<u32>()?;
+                Ok(ActionType::KeyRelease(code))
+            }
+            "MouseClick" => {
+                let btn_str = data.ok_or_else(|| anyhow::anyhow!("Missing data for MouseClick"))?;
+                let btn = match btn_str {
+                    "Left" => MacroMouseButton::Left,
+                    "Right" => MacroMouseButton::Right,
+                    "Middle" => MacroMouseButton::Middle,
+                    _ => MacroMouseButton::Left,
+                };
+                Ok(ActionType::MouseClick(btn))
+            }
+            "Delay" => {
+                let ms = data.ok_or_else(|| anyhow::anyhow!("Missing data for Delay"))?
+                    .parse::<u64>()?;
+                Ok(ActionType::Delay(ms))
+            }
+            _ => Err(anyhow::anyhow!("Unknown action type: {}", type_str)),
         }
-        let macros = self.macros.read();
-        let content = serde_json::to_string_pretty(&*macros)?;
-        std::fs::write(path, content)?;
+    }
+
+    fn save_macros(&self, cx: &mut Context<Self>) {
+        let macros = self.macros.read().clone();
+        
+        gpui_tokio::Tokio::spawn(cx, async move {
+            tokio::task::spawn_blocking(move || {
+                if let Err(e) = Self::save_macros_sync(macros) {
+                    log::error!("Failed to save macros: {}", e);
+                }
+            }).await
+        }).detach();
+    }
+
+    fn save_macros_sync(macros: Vec<Macro>) -> Result<()> {
+        let db = get_database();
+        let conn = db.conn();
+        let conn = conn.lock();
+
+        conn.execute("DELETE FROM macro_actions", [])?;
+        conn.execute("DELETE FROM macros", [])?;
+
+        for macro_rec in macros {
+            conn.execute(
+                "INSERT INTO macros (id, name, app_class, created_at) VALUES (?, ?, ?, ?)",
+                rusqlite::params![
+                    macro_rec.id.to_string(),
+                    macro_rec.name,
+                    macro_rec.app_class,
+                    macro_rec.created_at,
+                ],
+            )?;
+
+            for (idx, action) in macro_rec.actions.iter().enumerate() {
+                let (action_type_str, action_data) = Self::serialize_action_type(&action.action_type);
+                
+                conn.execute(
+                    "INSERT INTO macro_actions 
+                     (macro_id, action_index, timestamp_ms, action_type, action_data, 
+                      click_zone_x, click_zone_y, click_zone_width, click_zone_height)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    rusqlite::params![
+                        macro_rec.id.to_string(),
+                        idx as i64,
+                        action.timestamp_ms as i64,
+                        action_type_str,
+                        action_data,
+                        action.click_zone.as_ref().map(|z| z.x),
+                        action.click_zone.as_ref().map(|z| z.y),
+                        action.click_zone.as_ref().map(|z| z.width as i64),
+                        action.click_zone.as_ref().map(|z| z.height as i64),
+                    ],
+                )?;
+            }
+        }
+
         Ok(())
+    }
+
+    fn serialize_action_type(action_type: &ActionType) -> (&'static str, String) {
+        match action_type {
+            ActionType::KeyPress(code) => ("KeyPress", code.to_string()),
+            ActionType::KeyRelease(code) => ("KeyRelease", code.to_string()),
+            ActionType::MouseClick(btn) => {
+                let btn_str = match btn {
+                    MacroMouseButton::Left => "Left",
+                    MacroMouseButton::Right => "Right",
+                    MacroMouseButton::Middle => "Middle",
+                };
+                ("MouseClick", btn_str.to_string())
+            }
+            ActionType::Delay(ms) => ("Delay", ms.to_string()),
+        }
     }
 
     pub fn toggle_window(&mut self, cx: &mut Context<Self>) {
@@ -189,7 +344,7 @@ impl MacroService {
         if let Some(recorded_macro) = self.current_recording.write().take() {
             if !recorded_macro.actions.is_empty() {
                 self.macros.write().push(recorded_macro);
-                let _ = self.save_macros();
+                self.save_macros(cx);
                 cx.emit(MacroListChanged);
             }
         }
@@ -450,70 +605,140 @@ impl MacroService {
 
     pub fn delete_macro(&mut self, macro_id: Uuid, cx: &mut Context<Self>) {
         self.macros.write().retain(|m| m.id != macro_id);
-        let _ = self.save_macros();
+        self.save_macros(cx);
         cx.emit(MacroListChanged);
         cx.notify();
     }
 
     pub fn rename_macro(&mut self, macro_id: Uuid, new_name: String, cx: &mut Context<Self>) {
-        if let Some(macro_rec) = self.macros.write().iter_mut().find(|m| m.id == macro_id) {
-            macro_rec.name = new_name;
-            let _ = self.save_macros();
+        let renamed = {
+            let mut macros = self.macros.write();
+            if let Some(macro_rec) = macros.iter_mut().find(|m| m.id == macro_id) {
+                macro_rec.name = new_name;
+                true
+            } else {
+                false
+            }
+        };
+        
+        if renamed {
+            self.save_macros(cx);
             cx.emit(MacroListChanged);
             cx.notify();
         }
     }
 
     pub fn add_action(&mut self, macro_id: Uuid, action: MacroAction, cx: &mut Context<Self>) {
-        if let Some(macro_rec) = self.macros.write().iter_mut().find(|m| m.id == macro_id) {
-            macro_rec.actions.push(action);
-            let _ = self.save_macros();
+        let added = {
+            let mut macros = self.macros.write();
+            if let Some(macro_rec) = macros.iter_mut().find(|m| m.id == macro_id) {
+                macro_rec.actions.push(action);
+                true
+            } else {
+                false
+            }
+        };
+        
+        if added {
+            self.save_macros(cx);
             cx.emit(MacroListChanged);
             cx.notify();
         }
     }
 
     pub fn delete_action(&mut self, macro_id: Uuid, action_index: usize, cx: &mut Context<Self>) {
-        if let Some(macro_rec) = self.macros.write().iter_mut().find(|m| m.id == macro_id) {
-            if action_index < macro_rec.actions.len() {
-                macro_rec.actions.remove(action_index);
-                let _ = self.save_macros();
-                cx.emit(MacroListChanged);
-                cx.notify();
+        log::info!("delete_action called: macro_id={}, action_index={}", macro_id, action_index);
+        let deleted = {
+            let mut macros = self.macros.write();
+            if let Some(macro_rec) = macros.iter_mut().find(|m| m.id == macro_id) {
+                log::info!("Found macro, actions count: {}", macro_rec.actions.len());
+                if action_index < macro_rec.actions.len() {
+                    log::info!("Removing action at index {}", action_index);
+                    macro_rec.actions.remove(action_index);
+                    log::info!("Action removed");
+                    true
+                } else {
+                    false
+                }
+            } else {
+                false
             }
+        };
+        
+        if deleted {
+            log::info!("Saving macros...");
+            self.save_macros(cx);
+            log::info!("Emitting MacroListChanged...");
+            cx.emit(MacroListChanged);
+            log::info!("Calling notify...");
+            cx.notify();
+            log::info!("delete_action completed");
         }
     }
 
     pub fn move_action_up(&mut self, macro_id: Uuid, action_index: usize, cx: &mut Context<Self>) {
-        if let Some(macro_rec) = self.macros.write().iter_mut().find(|m| m.id == macro_id) {
-            if action_index > 0 && action_index < macro_rec.actions.len() {
-                macro_rec.actions.swap(action_index, action_index - 1);
-                let _ = self.save_macros();
-                cx.emit(MacroListChanged);
-                cx.notify();
+        let moved = {
+            let mut macros = self.macros.write();
+            if let Some(macro_rec) = macros.iter_mut().find(|m| m.id == macro_id) {
+                if action_index > 0 && action_index < macro_rec.actions.len() {
+                    macro_rec.actions.swap(action_index, action_index - 1);
+                    true
+                } else {
+                    false
+                }
+            } else {
+                false
             }
+        };
+        
+        if moved {
+            self.save_macros(cx);
+            cx.emit(MacroListChanged);
+            cx.notify();
         }
     }
 
     pub fn move_action_down(&mut self, macro_id: Uuid, action_index: usize, cx: &mut Context<Self>) {
-        if let Some(macro_rec) = self.macros.write().iter_mut().find(|m| m.id == macro_id) {
-            if action_index < macro_rec.actions.len().saturating_sub(1) {
-                macro_rec.actions.swap(action_index, action_index + 1);
-                let _ = self.save_macros();
-                cx.emit(MacroListChanged);
-                cx.notify();
+        let moved = {
+            let mut macros = self.macros.write();
+            if let Some(macro_rec) = macros.iter_mut().find(|m| m.id == macro_id) {
+                if action_index < macro_rec.actions.len().saturating_sub(1) {
+                    macro_rec.actions.swap(action_index, action_index + 1);
+                    true
+                } else {
+                    false
+                }
+            } else {
+                false
             }
+        };
+        
+        if moved {
+            self.save_macros(cx);
+            cx.emit(MacroListChanged);
+            cx.notify();
         }
     }
 
     pub fn update_action(&mut self, macro_id: Uuid, action_index: usize, action: MacroAction, cx: &mut Context<Self>) {
-        if let Some(macro_rec) = self.macros.write().iter_mut().find(|m| m.id == macro_id) {
-            if action_index < macro_rec.actions.len() {
-                macro_rec.actions[action_index] = action;
-                let _ = self.save_macros();
-                cx.emit(MacroListChanged);
-                cx.notify();
+        let updated = {
+            let mut macros = self.macros.write();
+            if let Some(macro_rec) = macros.iter_mut().find(|m| m.id == macro_id) {
+                if action_index < macro_rec.actions.len() {
+                    macro_rec.actions[action_index] = action;
+                    true
+                } else {
+                    false
+                }
+            } else {
+                false
             }
+        };
+        
+        if updated {
+            self.save_macros(cx);
+            cx.emit(MacroListChanged);
+            cx.notify();
         }
     }
 }

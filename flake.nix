@@ -140,6 +140,7 @@
             pipewire
             evtest
             ydotool
+            sqlite
           ]
           ++ cefDeps;
 

@@ -16,6 +16,10 @@ use crate::widgets::r#macro::MacroService;
 use crate::widgets::tasker::TaskService;
 
 pub fn initialize_all(cx: &mut App) -> (Entity<ClipboardMonitor>, Entity<OsdService>) {
+    if let Err(e) = crate::services::init_database() {
+        log::error!("Failed to initialize database: {}", e);
+    }
+
     HyprlandService::init(cx);
     AudioService::init(cx);
     BluetoothService::init(cx);
