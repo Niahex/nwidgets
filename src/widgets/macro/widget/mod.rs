@@ -1,4 +1,5 @@
 mod controls;
+mod editor;
 mod list;
 mod macro_widget;
 
