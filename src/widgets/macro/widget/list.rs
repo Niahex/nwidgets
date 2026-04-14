@@ -1,5 +1,6 @@
-use crate::assets::Icon;
+use crate::components::{Button, ButtonVariant};
 use crate::theme::Theme;
+use crate::widgets::r#macro::service::MacroService;
 use gpui::prelude::*;
 use gpui::*;
 
@@ -72,55 +73,41 @@ impl super::MacroWidget {
                             .flex()
                             .gap_2()
                             .child(
-                                div()
-                                    .p_2()
-                                    .rounded(px(4.))
-                                    .cursor_pointer()
-                                    .hover(|style| style.bg(theme.surface))
-                                    .on_mouse_down(
-                                        MouseButton::Left,
-                                        cx.listener(move |this, _, _window, cx| {
-                                            this.macro_service.update(cx, |service, cx| {
-                                                if is_playing {
-                                                    service.stop_playback(cx);
-                                                } else {
-                                                    service.play_macro(macro_id, cx);
-                                                }
-                                            });
-                                        }),
-                                    )
-                                    .child(Icon::new("play").size(px(16.)).color(theme.text)),
+                                Button::new(format!("play-{}", macro_id))
+                                    .icon("play")
+                                    .icon_size(px(16.))
+                                    .icon_only()
+                                    .on_click(cx.listener(move |this, _, _window, cx| {
+                                        this.macro_service.update(cx, |service, cx| {
+                                            if is_playing {
+                                                service.stop_playback(cx);
+                                            } else {
+                                                service.play_macro(macro_id, cx);
+                                            }
+                                        });
+                                    })),
                             )
                             .child(
-                                div()
-                                    .p_2()
-                                    .rounded(px(4.))
-                                    .cursor_pointer()
-                                    .hover(|style| style.bg(theme.surface))
-                                    .on_mouse_down(
-                                        MouseButton::Left,
-                                        cx.listener(move |this, _, _window, cx| {
-                                            this.editing_macro_id = Some(macro_id);
-                                            cx.notify();
-                                        }),
-                                    )
-                                    .child(Icon::new("edit").size(px(16.)).color(theme.text)),
+                                Button::new(format!("edit-{}", macro_id))
+                                    .icon("edit")
+                                    .icon_size(px(16.))
+                                    .icon_only()
+                                    .on_click(cx.listener(move |this, _, _window, cx| {
+                                        this.editing_macro_id = Some(macro_id);
+                                        cx.notify();
+                                    })),
                             )
                             .child(
-                                div()
-                                    .p_2()
-                                    .rounded(px(4.))
-                                    .cursor_pointer()
-                                    .hover(|style| style.bg(theme.red.opacity(0.2)))
-                                    .on_mouse_down(
-                                        MouseButton::Left,
-                                        cx.listener(move |this, _, _window, cx| {
-                                            this.macro_service.update(cx, |service, cx| {
-                                                service.delete_macro(macro_id, cx);
-                                            });
-                                        }),
-                                    )
-                                    .child(Icon::new("delete").size(px(16.)).color(theme.text)),
+                                Button::new(format!("delete-{}", macro_id))
+                                    .icon("delete")
+                                    .icon_size(px(16.))
+                                    .icon_only()
+                                    .variant(ButtonVariant::Danger)
+                                    .on_click(cx.listener(move |this, _, _window, cx| {
+                                        this.macro_service.update(cx, |service, cx| {
+                                            service.delete_macro(macro_id, cx);
+                                        });
+                                    })),
                             ),
                     )
             }))

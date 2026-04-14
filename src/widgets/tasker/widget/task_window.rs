@@ -1,4 +1,4 @@
-use crate::components::Button;
+use crate::components::{Button, ButtonVariant};
 use crate::theme::ActiveTheme;
 use crate::widgets::tasker::service::TaskService;
 use crate::widgets::tasker::types::{Task, TaskStateChanged};
@@ -141,32 +141,25 @@ impl Render for TaskWindow {
                 this.child(self.render_task_list(tasks.clone(), active_task_id, theme.clone(), cx))
             })
             .child(
-                div().absolute().bottom_4().right_4().child(
-                    div()
-                        .w(px(48.))
-                        .h(px(48.))
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .bg(theme.accent)
-                        .rounded(px(24.))
-                        .text_color(theme.bg)
-                        .text_xl()
-                        .cursor_pointer()
-                        .hover(|style| style.bg(theme.accent.opacity(0.8)))
-                        .on_mouse_down(
-                            MouseButton::Left,
-                            cx.listener(|this, _, window, cx| {
+                div()
+                    .absolute()
+                    .bottom_4()
+                    .right_4()
+                    .w(px(48.))
+                    .h(px(48.))
+                    .child(
+                        Button::new("add-task-fab")
+                            .label(if self.show_create_modal { "×" } else { "+" })
+                            .variant(ButtonVariant::Accent)
+                            .on_click(cx.listener(|this, _, window, cx| {
                                 this.show_create_modal = !this.show_create_modal;
                                 if this.show_create_modal {
                                     this.focused_input = Some(FocusedInput::Title);
                                     window.focus(&this.focus_handle, cx);
                                 }
                                 cx.notify();
-                            }),
-                        )
-                        .child(if self.show_create_modal { "×" } else { "+" }),
-                ),
+                            })),
+                    ),
             )
     }
 }
@@ -362,20 +355,14 @@ impl TaskWindow {
                         },
                     ))
                     .child(
-                        div()
-                            .px_2()
-                            .py_1()
-                            .rounded(px(4.))
-                            .bg(theme.red.opacity(0.2))
-                            .text_color(theme.red)
-                            .text_xs()
-                            .cursor_pointer()
-                            .on_mouse_down(MouseButton::Left, move |_event, _window, cx| {
+                        Button::new(format!("delete-task-{}", task_id))
+                            .label("Delete")
+                            .variant(ButtonVariant::Danger)
+                            .on_click(move |_, _window, cx| {
                                 task_service_delete.update(cx, |service, cx| {
                                     service.remove_task(task_id, cx);
                                 });
-                            })
-                            .child("Delete"),
+                            }),
                     )
             }))
     }

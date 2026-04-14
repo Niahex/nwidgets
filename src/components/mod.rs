@@ -8,7 +8,7 @@ mod slider;
 mod text_input;
 mod toggle;
 
-pub use button::Button;
+pub use button::{Button, ButtonVariant};
 pub use circular_progress::CircularProgress;
 #[allow(unused_imports)]
 pub use corner::Corner;

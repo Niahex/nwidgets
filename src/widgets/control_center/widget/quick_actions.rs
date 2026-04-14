@@ -1,5 +1,5 @@
-use crate::widgets::control_center::ControlCenterSection;
 use crate::components::Button;
+use crate::widgets::control_center::ControlCenterSection;
 use gpui::prelude::*;
 use gpui::*;
 
@@ -26,88 +26,80 @@ impl super::ControlCenterWidget {
                     .flex()
                     .gap_2()
                     .child(
-                        div()
-                            .flex_1()
-                            .child(
-                                Button::new("monitor-toggle")
-                                    .icon("monitor")
-                                    .icon_size(px(20.))
-                                    .accent()
-                                    .selected(monitor_expanded)
-                                    .on_click(cx.listener(|this, _, _window, cx| {
-                                        this.control_center.update(cx, |cc, cx| {
-                                            cc.toggle_section(ControlCenterSection::Monitor, cx)
-                                        });
-                                    }))
-                            )
+                        div().flex_1().child(
+                            Button::new("monitor-toggle")
+                                .icon("monitor")
+                                .icon_size(px(20.))
+                                .accent()
+                                .selected(monitor_expanded)
+                                .on_click(cx.listener(|this, _, _window, cx| {
+                                    this.control_center.update(cx, |cc, cx| {
+                                        cc.toggle_section(ControlCenterSection::Monitor, cx)
+                                    });
+                                })),
+                        ),
+                    )
+                    .child(div().flex_1().child({
+                        let mut button = Button::new("bluetooth-toggle")
+                            .icon("bluetooth-active")
+                            .icon_size(px(20.))
+                            .accent()
+                            .selected(bt_expanded)
+                            .on_click(cx.listener(|this, _, _window, cx| {
+                                this.control_center.update(cx, |cc, cx| {
+                                    cc.toggle_section(ControlCenterSection::Bluetooth, cx)
+                                });
+                            }))
+                            .on_right_click(cx.listener(|this, _, _, cx| {
+                                this.bluetooth.update(cx, |bt, cx| bt.toggle_power(cx));
+                            }));
+
+                        if bt_state.connected_devices > 0 {
+                            button = button.child(format!("{}", bt_state.connected_devices));
+                        }
+
+                        button
+                    }))
+                    .child(
+                        div().flex_1().child(
+                            Button::new("network-toggle")
+                                .icon(net_state.get_icon_name())
+                                .icon_size(px(20.))
+                                .accent()
+                                .selected(net_expanded)
+                                .on_click(cx.listener(|this, _, _window, cx| {
+                                    this.control_center.update(cx, |cc, cx| {
+                                        cc.toggle_section(ControlCenterSection::Network, cx)
+                                    });
+                                })),
+                        ),
                     )
                     .child(
-                        div()
-                            .flex_1()
-                            .child(
-                                Button::new("bluetooth-toggle")
-                                    .icon("bluetooth-active")
-                                    .icon_size(px(20.))
-                                    .accent()
-                                    .selected(bt_expanded)
-                                    .on_click(cx.listener(|this, _, _window, cx| {
-                                        this.control_center.update(cx, |cc, cx| {
-                                            cc.toggle_section(ControlCenterSection::Bluetooth, cx)
-                                        });
-                                    }))
-                                    .on_right_click(cx.listener(|this, _, _, cx| {
-                                        this.bluetooth.update(cx, |bt, cx| bt.toggle_power(cx));
-                                    }))
-                                    .when(bt_state.connected_devices > 0, |this| {
-                                        this.child(format!("{}", bt_state.connected_devices))
-                                    })
-                            )
+                        div().flex_1().child(
+                            Button::new("proxy-toggle")
+                                .icon("proxy")
+                                .icon_size(px(20.))
+                                .accent()
+                                .on_click(|_, _, _| {}),
+                        ),
                     )
                     .child(
-                        div()
-                            .flex_1()
-                            .child(
-                                Button::new("network-toggle")
-                                    .icon(net_state.get_icon_name())
-                                    .icon_size(px(20.))
-                                    .accent()
-                                    .selected(net_expanded)
-                                    .on_click(cx.listener(|this, _, _window, cx| {
-                                        this.control_center.update(cx, |cc, cx| {
-                                            cc.toggle_section(ControlCenterSection::Network, cx)
-                                        });
-                                    }))
-                            )
+                        div().flex_1().child(
+                            Button::new("ssh-toggle")
+                                .icon("ssh")
+                                .icon_size(px(20.))
+                                .accent()
+                                .on_click(|_, _, _| {}),
+                        ),
                     )
                     .child(
-                        div()
-                            .flex_1()
-                            .child(
-                                Button::new("proxy-toggle")
-                                    .icon("proxy")
-                                    .icon_size(px(20.))
-                                    .accent()
-                            )
-                    )
-                    .child(
-                        div()
-                            .flex_1()
-                            .child(
-                                Button::new("ssh-toggle")
-                                    .icon("ssh")
-                                    .icon_size(px(20.))
-                                    .accent()
-                            )
-                    )
-                    .child(
-                        div()
-                            .flex_1()
-                            .child(
-                                Button::new("vm-toggle")
-                                    .icon("vm")
-                                    .icon_size(px(20.))
-                                    .accent()
-                            )
+                        div().flex_1().child(
+                            Button::new("vm-toggle")
+                                .icon("vm")
+                                .icon_size(px(20.))
+                                .accent()
+                                .on_click(|_, _, _| {}),
+                        ),
                     ),
             )
             .child(if bt_expanded {

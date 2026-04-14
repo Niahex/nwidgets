@@ -1,7 +1,7 @@
-use crate::widgets::control_center::ControlCenterSection;
-use crate::theme::{ActiveTheme, Theme};
 use crate::assets::Icon;
-use crate::components::Slider;
+use crate::components::{Button, Slider};
+use crate::theme::{ActiveTheme, Theme};
+use crate::widgets::control_center::ControlCenterSection;
 use gpui::*;
 
 impl super::ControlCenterWidget {
@@ -13,9 +13,11 @@ impl super::ControlCenterWidget {
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let stream_volume = stream.volume;
-        let (display_name, icon_name, preserve_colors) = super::control_center_widget::get_stream_display(stream);
-        
-        let slider = self.get_or_create_stream_slider(stream.id, stream_volume, stream.is_sink_input, cx);
+        let (display_name, icon_name, preserve_colors) =
+            super::control_center_widget::get_stream_display(stream);
+
+        let slider =
+            self.get_or_create_stream_slider(stream.id, stream_volume, stream.is_sink_input, cx);
 
         div()
             .flex()
@@ -53,7 +55,7 @@ impl super::ControlCenterWidget {
                     .h(px(20.))
                     .flex()
                     .items_center()
-                    .child(Slider::new(&slider))
+                    .child(Slider::new(&slider)),
             )
             .into_any_element()
     }
@@ -99,7 +101,7 @@ impl super::ControlCenterWidget {
                             .h(px(20.))
                             .flex()
                             .items_center()
-                            .child(Slider::new(&self.sink_slider))
+                            .child(Slider::new(&self.sink_slider)),
                     )
                     .child(
                         div()
@@ -108,23 +110,19 @@ impl super::ControlCenterWidget {
                             .child(format!("{}%", self.sink_slider.read(cx).value() as u8)),
                     )
                     .child(
-                        div()
-                            .id("sink-expand")
-                            .child(
-                                Icon::new(if sink_expanded {
-                                    "arrow-up"
-                                } else {
-                                    "arrow-down"
-                                })
-                                .size(px(16.))
-                                .color(theme.text),
-                            )
+                        Button::new("sink-expand")
+                            .icon(if sink_expanded {
+                                "arrow-up"
+                            } else {
+                                "arrow-down"
+                            })
+                            .icon_size(px(16.))
+                            .icon_only()
                             .on_click(cx.listener(|this, _, _window, cx| {
                                 this.control_center.update(cx, |cc, cx| {
                                     cc.toggle_section(ControlCenterSection::Volume, cx);
                                 });
-                            }))
-                            .cursor_pointer(),
+                            })),
                     ),
             )
             .child(
@@ -151,7 +149,7 @@ impl super::ControlCenterWidget {
                             .h(px(20.))
                             .flex()
                             .items_center()
-                            .child(Slider::new(&self.source_slider))
+                            .child(Slider::new(&self.source_slider)),
                     )
                     .child(
                         div()
@@ -160,23 +158,19 @@ impl super::ControlCenterWidget {
                             .child(format!("{}%", self.source_slider.read(cx).value() as u8)),
                     )
                     .child(
-                        div()
-                            .id("source-expand")
-                            .child(
-                                Icon::new(if source_expanded {
-                                    "arrow-up"
-                                } else {
-                                    "arrow-down"
-                                })
-                                .size(px(16.))
-                                .color(theme.text),
-                            )
+                        Button::new("source-expand")
+                            .icon(if source_expanded {
+                                "arrow-up"
+                            } else {
+                                "arrow-down"
+                            })
+                            .icon_size(px(16.))
+                            .icon_only()
                             .on_click(cx.listener(|this, _, _window, cx| {
                                 this.control_center.update(cx, |cc, cx| {
                                     cc.toggle_section(ControlCenterSection::Mic, cx);
                                 });
-                            }))
-                            .cursor_pointer(),
+                            })),
                     ),
             )
             .child(

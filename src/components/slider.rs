@@ -1,5 +1,5 @@
-use crate::theme::ActiveTheme;
 use crate::components::element_ext::ElementExt;
+use crate::theme::ActiveTheme;
 use gpui::prelude::*;
 use gpui::*;
 

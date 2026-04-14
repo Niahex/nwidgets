@@ -1,8 +1,8 @@
 use crate::theme::ActiveTheme;
 use crate::widgets::control_center::ControlCenterService;
 use crate::widgets::panel::modules::{
-    ActiveWindowModule, BluetoothModule, DateTimeModule, MprisModule, NetworkModule,
-    PomodoroModule, SinkModule, SourceModule, SystrayWidget, WorkspacesModule,
+    ActiveWindowModule, AudioVolumeModule, BluetoothModule, DateTimeModule, MprisModule,
+    NetworkModule, PomodoroModule, SystrayWidget, WorkspacesModule,
 };
 use gpui::*;
 
@@ -13,8 +13,8 @@ pub struct Panel {
     mpris: Entity<MprisModule>,
     bluetooth: Entity<BluetoothModule>,
     network: Entity<NetworkModule>,
-    sink: Entity<SinkModule>,
-    source: Entity<SourceModule>,
+    sink: Entity<AudioVolumeModule>,
+    source: Entity<AudioVolumeModule>,
     datetime: Entity<DateTimeModule>,
     systray: Entity<SystrayWidget>,
     control_center: Entity<ControlCenterService>,
@@ -29,8 +29,8 @@ impl Panel {
             mpris: cx.new(MprisModule::new),
             bluetooth: cx.new(BluetoothModule::new),
             network: cx.new(NetworkModule::new),
-            sink: cx.new(SinkModule::new),
-            source: cx.new(SourceModule::new),
+            sink: cx.new(AudioVolumeModule::sink),
+            source: cx.new(AudioVolumeModule::source),
             datetime: cx.new(DateTimeModule::new),
             systray: cx.new(SystrayWidget::new),
             control_center: ControlCenterService::global(cx),
