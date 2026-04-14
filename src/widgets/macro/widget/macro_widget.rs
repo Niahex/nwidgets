@@ -1,3 +1,4 @@
+use crate::assets::Icon;
 use crate::components::Button;
 use crate::theme::ActiveTheme;
 use crate::widgets::r#macro::types::*;
@@ -21,7 +22,6 @@ pub struct MacroWidget {
     form_timestamp: String,
     form_field_focus: FormField,
     editing_zone_for_action: Option<usize>,
-    scroll_offset: usize,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -72,7 +72,6 @@ impl MacroWidget {
             form_timestamp: "0".to_string(),
             form_field_focus: FormField::None,
             editing_zone_for_action: None,
-            scroll_offset: 0,
         }
     }
 
@@ -86,41 +85,34 @@ impl MacroWidget {
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
         let is_recording = self.macro_service.read(cx).is_recording();
-        let label = if is_recording {
-            "⏹ Stop Recording"
+        let icon_name = if is_recording {
+            "recording-recording"
         } else {
-            "⏺ Record"
-        };
-        let bg_color = if is_recording {
-            theme.red
-        } else {
-            theme.accent
+            "recording-stopped"
         };
 
-        Button::new("record-button")
-            .label(label)
-            .on_click(cx.listener(move |this, _, _window, cx| {
-                if is_recording {
-                    this.macro_service.update(cx, |service, cx| {
-                        service.stop_recording(cx);
-                    });
-                } else {
-                    let name = format!("Macro {}", chrono::Local::now().format("%H:%M:%S"));
-                    this.macro_service.update(cx, |service, cx| {
-                        service.start_recording(name, cx);
-                    });
-                }
-            }))
-            .child(
-                div()
-                    .px_4()
-                    .py_2()
-                    .bg(bg_color)
-                    .rounded(px(6.))
-                    .text_color(theme.bg)
-                    .font_weight(FontWeight::BOLD)
-                    .child(label),
+        div()
+            .px_3()
+            .py_2()
+            .bg(theme.surface)
+            .rounded(px(6.))
+            .cursor_pointer()
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(move |this, _, _window, cx| {
+                    if is_recording {
+                        this.macro_service.update(cx, |service, cx| {
+                            service.stop_recording(cx);
+                        });
+                    } else {
+                        let name = format!("Macro {}", chrono::Local::now().format("%H:%M:%S"));
+                        this.macro_service.update(cx, |service, cx| {
+                            service.start_recording(name, cx);
+                        });
+                    }
+                }),
             )
+            .child(Icon::new(icon_name).size(px(20.)).color(theme.text))
     }
 
     fn render_speed_control(
@@ -131,35 +123,27 @@ impl MacroWidget {
         let speed = self.macro_service.read(cx).playback_speed();
 
         div()
-            .flex()
-            .items_center()
-            .gap_2()
-            .child(div().text_sm().text_color(theme.text_muted).child("Speed:"))
-            .child(
-                div()
-                    .px_3()
-                    .py_1()
-                    .bg(theme.surface)
-                    .border_1()
-                    .border_color(theme.border())
-                    .rounded(px(4.))
-                    .text_sm()
-                    .text_color(theme.text)
-                    .on_scroll_wheel(cx.listener(
-                        move |this, event: &ScrollWheelEvent, window, cx| {
-                            let delta = event.delta.pixel_delta(window.line_height());
-                            let delta_y: f32 = delta.y.into();
-                            let change = if delta_y > 0.0 { -0.1 } else { 0.1 };
-                            this.macro_service.update(cx, |service, cx| {
-                                let new_speed =
-                                    (service.playback_speed() + change).clamp(0.1, 10.0);
-                                service.set_playback_speed(new_speed, cx);
-                                this.speed_input = format!("{:.1}", new_speed);
-                            });
-                        },
-                    ))
-                    .child(format!("{:.1}x", speed)),
+            .px_3()
+            .py_1()
+            .bg(theme.surface)
+            .border_1()
+            .border_color(theme.border())
+            .rounded(px(4.))
+            .text_sm()
+            .text_color(theme.text)
+            .on_scroll_wheel(
+                cx.listener(move |this, event: &ScrollWheelEvent, window, cx| {
+                    let delta = event.delta.pixel_delta(window.line_height());
+                    let delta_y: f32 = delta.y.into();
+                    let change = if delta_y > 0.0 { -0.1 } else { 0.1 };
+                    this.macro_service.update(cx, |service, cx| {
+                        let new_speed = (service.playback_speed() + change).clamp(0.1, 10.0);
+                        service.set_playback_speed(new_speed, cx);
+                        this.speed_input = format!("{:.1}", new_speed);
+                    });
+                }),
             )
+            .child(format!("{:.1}x", speed))
     }
 
     fn render_macro_list(
@@ -171,147 +155,117 @@ impl MacroWidget {
         let playing_id = self.macro_service.read(cx).is_playing();
 
         div()
+            .id("macro-list-scroll")
             .flex()
             .flex_col()
             .flex_1()
-            .overflow_hidden()
+            .overflow_y_scroll()
             .gap_2()
-            .on_scroll_wheel(cx.listener(|this, event: &ScrollWheelEvent, window, _cx| {
-                let delta = event.delta.pixel_delta(window.line_height());
-                let delta_y: f32 = delta.y.into();
-                let scroll_amount = (delta_y / 50.0) as isize;
-                if scroll_amount != 0 {
-                    this.scroll_offset = this
-                        .scroll_offset
-                        .saturating_add_signed(-scroll_amount)
-                        .max(0);
-                }
-            }))
-            .children(
-                macros
-                    .into_iter()
-                    .enumerate()
-                    .skip(self.scroll_offset)
-                    .take(10)
-                    .map(|(_, macro_rec)| {
-                        let macro_id = macro_rec.id;
-                        let is_playing = playing_id == Some(macro_id);
+            .children(macros.into_iter().map(|macro_rec| {
+                let macro_id = macro_rec.id;
+                let is_playing = playing_id == Some(macro_id);
 
+                div()
+                    .flex()
+                    .items_center()
+                    .gap_2()
+                    .p_3()
+                    .bg(if is_playing {
+                        theme.accent.opacity(0.2)
+                    } else {
+                        theme.surface
+                    })
+                    .border_1()
+                    .border_color(if is_playing {
+                        theme.accent
+                    } else {
+                        theme.border()
+                    })
+                    .rounded(px(6.))
+                    .child(
+                        div()
+                            .flex_1()
+                            .flex()
+                            .flex_col()
+                            .gap_1()
+                            .child(
+                                div()
+                                    .text_sm()
+                                    .font_weight(FontWeight::SEMIBOLD)
+                                    .text_color(theme.text)
+                                    .child(macro_rec.name.clone()),
+                            )
+                            .child(
+                                div()
+                                    .flex()
+                                    .gap_2()
+                                    .text_xs()
+                                    .text_color(theme.text_muted)
+                                    .child(format!("{} actions", macro_rec.action_count()))
+                                    .child("•")
+                                    .child(format!("{}ms", macro_rec.duration_ms()))
+                                    .when_some(macro_rec.app_class.clone(), |this, app| {
+                                        this.child("•").child(app)
+                                    }),
+                            ),
+                    )
+                    .child(
                         div()
                             .flex()
-                            .items_center()
                             .gap_2()
-                            .p_3()
-                            .bg(if is_playing {
-                                theme.accent.opacity(0.2)
-                            } else {
-                                theme.surface
-                            })
-                            .border_1()
-                            .border_color(if is_playing {
-                                theme.accent
-                            } else {
-                                theme.border()
-                            })
-                            .rounded(px(6.))
                             .child(
                                 div()
-                                    .flex_1()
-                                    .flex()
-                                    .flex_col()
-                                    .gap_1()
-                                    .child(
-                                        div()
-                                            .text_sm()
-                                            .font_weight(FontWeight::SEMIBOLD)
-                                            .text_color(theme.text)
-                                            .child(macro_rec.name.clone()),
+                                    .p_2()
+                                    .rounded(px(4.))
+                                    .cursor_pointer()
+                                    .hover(|style| style.bg(theme.surface))
+                                    .on_mouse_down(
+                                        MouseButton::Left,
+                                        cx.listener(move |this, _, _window, cx| {
+                                            this.macro_service.update(cx, |service, cx| {
+                                                if is_playing {
+                                                    service.stop_playback(cx);
+                                                } else {
+                                                    service.play_macro(macro_id, cx);
+                                                }
+                                            });
+                                        }),
                                     )
-                                    .child(
-                                        div()
-                                            .flex()
-                                            .gap_2()
-                                            .text_xs()
-                                            .text_color(theme.text_muted)
-                                            .child(format!("{} actions", macro_rec.action_count()))
-                                            .child("•")
-                                            .child(format!("{}ms", macro_rec.duration_ms()))
-                                            .when_some(macro_rec.app_class.clone(), |this, app| {
-                                                this.child("•").child(app)
-                                            }),
-                                    ),
+                                    .child(Icon::new("play").size(px(16.)).color(theme.text)),
                             )
                             .child(
                                 div()
-                                    .flex()
-                                    .gap_1()
-                                    .child(
-                                        div()
-                                            .px_3()
-                                            .py_1()
-                                            .bg(if is_playing { theme.red } else { theme.green })
-                                            .rounded(px(4.))
-                                            .text_xs()
-                                            .text_color(theme.bg)
-                                            .cursor_pointer()
-                                            .on_mouse_down(
-                                                MouseButton::Left,
-                                                cx.listener(move |this, _, _window, cx| {
-                                                    this.macro_service.update(cx, |service, cx| {
-                                                        if is_playing {
-                                                            service.stop_playback(cx);
-                                                        } else {
-                                                            service.play_macro(macro_id, cx);
-                                                        }
-                                                    });
-                                                }),
-                                            )
-                                            .child(if is_playing {
-                                                "⏸ Stop"
-                                            } else {
-                                                "▶ Play"
-                                            }),
+                                    .p_2()
+                                    .rounded(px(4.))
+                                    .cursor_pointer()
+                                    .hover(|style| style.bg(theme.surface))
+                                    .on_mouse_down(
+                                        MouseButton::Left,
+                                        cx.listener(move |this, _, _window, cx| {
+                                            this.editing_macro_id = Some(macro_id);
+                                            cx.notify();
+                                        }),
                                     )
-                                    .child(
-                                        div()
-                                            .px_3()
-                                            .py_1()
-                                            .bg(theme.accent)
-                                            .rounded(px(4.))
-                                            .text_xs()
-                                            .text_color(theme.bg)
-                                            .cursor_pointer()
-                                            .on_mouse_down(
-                                                MouseButton::Left,
-                                                cx.listener(move |this, _, _window, cx| {
-                                                    this.editing_macro_id = Some(macro_id);
-                                                    cx.notify();
-                                                }),
-                                            )
-                                            .child("✎ Edit"),
-                                    )
-                                    .child(
-                                        div()
-                                            .px_3()
-                                            .py_1()
-                                            .bg(theme.red.opacity(0.8))
-                                            .rounded(px(4.))
-                                            .text_xs()
-                                            .text_color(theme.bg)
-                                            .cursor_pointer()
-                                            .on_mouse_down(
-                                                MouseButton::Left,
-                                                cx.listener(move |this, _, _window, cx| {
-                                                    this.macro_service.update(cx, |service, cx| {
-                                                        service.delete_macro(macro_id, cx);
-                                                    });
-                                                }),
-                                            )
-                                            .child("🗑 Delete"),
-                                    ),
+                                    .child(Icon::new("edit").size(px(16.)).color(theme.text)),
                             )
-                    }),
-            )
+                            .child(
+                                div()
+                                    .p_2()
+                                    .rounded(px(4.))
+                                    .cursor_pointer()
+                                    .hover(|style| style.bg(theme.red.opacity(0.2)))
+                                    .on_mouse_down(
+                                        MouseButton::Left,
+                                        cx.listener(move |this, _, _window, cx| {
+                                            this.macro_service.update(cx, |service, cx| {
+                                                service.delete_macro(macro_id, cx);
+                                            });
+                                        }),
+                                    )
+                                    .child(Icon::new("delete").size(px(16.)).color(theme.text)),
+                            ),
+                    )
+            }))
     }
 
     fn render_macro_editor(
@@ -444,15 +398,16 @@ impl MacroWidget {
             .when_some(add_form, |this, form| this.child(form))
             .child(
                 div()
+                    .id("macro-actions-scroll")
                     .flex()
                     .flex_col()
                     .flex_1()
-                    .overflow_hidden()
+                    .overflow_y_scroll()
                     .gap_2()
                     .children({
                         let mut elements = Vec::new();
                         let mut prev_timestamp = 0u64;
-                        
+
                         for (idx, action) in macro_rec.actions.iter().enumerate() {
                             // Ajouter un délai si nécessaire
                             if idx > 0 {
@@ -483,16 +438,22 @@ impl MacroWidget {
                                             )
                                             .child(
                                                 div()
-                                                    .text_xs()
-                                                    .text_color(theme.text_muted)
-                                                    .child("(calculated from timestamps)"),
-                                            )
+                                                    .p_2()
+                                                    .rounded(px(4.))
+                                                    .cursor_pointer()
+                                                    .hover(|style| style.bg(theme.red.opacity(0.2)))
+                                                    .child(
+                                                        Icon::new("delete")
+                                                            .size(px(16.))
+                                                            .color(theme.text),
+                                                    ),
+                                            ),
                                     );
                                 }
                             }
-                            
+
                             prev_timestamp = action.timestamp_ms;
-                            
+
                             let is_selected = self.selected_action_index == Some(idx);
                             let action_clone = action.clone();
                             let zone_for_display = action_clone.click_zone.clone();
@@ -507,7 +468,7 @@ impl MacroWidget {
                                     .bg(if is_selected {
                                         theme.accent.opacity(0.2)
                                     } else {
-                                   theme.surface
+                                        theme.surface
                                     })
                                     .border_1()
                                     .border_color(if is_selected {
@@ -527,8 +488,10 @@ impl MacroWidget {
                                                     cx, zone,
                                                 );
                                             } else {
-                                                crate::widgets::r#macro::window::zone_viewer::close(cx);
-                                         }
+                                                crate::widgets::r#macro::window::zone_viewer::close(
+                                                    cx,
+                                                );
+                                            }
 
                                             cx.notify();
                                         }),
@@ -542,7 +505,7 @@ impl MacroWidget {
                                     .child(
                                         div()
                                             .flex_1()
-                                .flex()
+                                            .flex()
                                             .flex_col()
                                             .gap_1()
                                             .child(
@@ -551,134 +514,77 @@ impl MacroWidget {
                                                     .text_color(theme.text)
                                                     .child(action_clone.action_type.display_name()),
                                             )
-                                            .child(
-                                                div()
-                                                    .text_xs()
-                                                    .text_color(theme.text_muted)
-                                                    .child(format!("{}ms", action_clone.timestamp_ms)),
-                                            )
                                             .when_some(zone_for_display.clone(), |this, zone| {
-                                                this.child(div().text_xs().text_color(theme.accent).child(
-                                                    format!(
-                                                        "🎯 Zone: {}x{} at ({},{})",
-                                                        zone.width, zone.height, zone.x, zone.y
+                                                this.child(
+                                                    div().text_xs().text_color(theme.accent).child(
+                                                        format!(
+                                                            "🎯 Zone: {}x{} at ({},{})",
+                                                            zone.width, zone.height, zone.x, zone.y
+                                                        ),
                                                     ),
-                                                ))
+                                                )
                                             }),
                                     )
-                                    .child(
-                                        div()
-                                            .flex()
-                                            .flex_col()
-                                            .gap_1()
-                                            .when(
-                                                matches!(
-                                                    action_clone.action_type,
-                                                    ActionType::MouseClick(_)
-                                                ),
-                                                |this| {
-                                                    this.child(
-                                                        div()
-                                                            .px_2()
-                                                            .py_1()
-                                                            .bg(theme.accent)
-                                                            .rounded(px(3.))
-                                                            .text_xs()
-                                                            .text_color(theme.bg)
-                                                            .cursor_pointer()
-                                                            .on_mouse_down(
-                                                                MouseButton::Left,
-                                                                cx.listener(
-                                                                    move |this, _, _window, _cx| {
-                                                                        this.editing_zone_for_action =
-                                                                            Some(idx);
-                                                                    },
-                                                                ),
-                                                            )
-                                                            .child("🎯"),
-                                                    )
-                                                },
-                                            )
-                                            .child(
+                                    .child(div().flex().flex_col().gap_1().when(
+                                        matches!(
+                                            action_clone.action_type,
+                                            ActionType::MouseClick(_)
+                                        ),
+                                        |this| {
+                                            this.child(
                                                 div()
-                                                    .px_2()
-                                                    .py_1()
-                                                    .bg(theme.surface)
-                                                    .rounded(px(3.))
-                                                    .text_xs()
-                                                    .text_color(theme.text)
+                                                    .p_2()
+                                                    .rounded(px(4.))
                                                     .cursor_pointer()
+                                                    .hover(|style| style.bg(theme.surface))
                                                     .on_mouse_down(
                                                         MouseButton::Left,
-                                                        cx.listener(move |this, _, _window, cx| {
-                                                  if let Some(macro_id) = this.editing_macro_id {
-                                                                this.macro_service.update(
-                                                                    cx,
-                                                                    |service, cx| {
-                                                                        service.move_action_up(
-                                                                            macro_id, idx, cx,
-                                                                        );
-                                                                    },
-                                                                );
-                                                            }
-                                                        }),
+                                                        cx.listener(
+                                                            move |this, _, _window, _cx| {
+                                                                this.editing_zone_for_action =
+                                                                    Some(idx);
+                                                            },
+                                                        ),
                                                     )
-                                                    .child("↑"),
+                                                    .child(
+                                                        Icon::new("target")
+                                                            .size(px(16.))
+                                                            .color(theme.text),
+                                                    ),
                                             )
-                                            .child(
-                                                div()
-                                                    .px_2()
-                                                    .py_1()
-                                                    .bg(theme.surface)
-                                                    .rounded(px(3.))
-                                                    .text_xs()
-                                                    .text_color(theme.text)
-                                                    .cursor_pointer()
-                                                    .on_mouse_down(
-                                                        MouseButton::Left,
-                                                        cx.listener(move |this, _, _window, cx| {
-                                                            if let Some(macro_id) = this.editing_macro_id {
-                                                                this.macro_service.update(
-                                                                    cx,
-                                                                    |service, cx| {
-                                                                        service.move_action_down(
-                                                                            macro_id, idx, cx,
-                                                                        );
-                                                                    },
-                                                                );
-                                                            }
-                                                        }),
-                                                    )
-                                                    .child("↓"),
-                                            ),
-                                    )
+                                        },
+                                    ))
                                     .child(
                                         div()
-                                            .px_2()
-                                            .py_1()
-                                      .bg(theme.red)
-                                            .rounded(px(3.))
-                                            .text_xs()
-                                            .text_color(theme.bg)
+                                            .p_2()
+                                            .rounded(px(4.))
                                             .cursor_pointer()
+                                            .hover(|style| style.bg(theme.red.opacity(0.2)))
                                             .on_mouse_down(
                                                 MouseButton::Left,
                                                 cx.listener(move |this, _, _window, cx| {
                                                     if let Some(macro_id) = this.editing_macro_id {
-                                                        this.macro_service.update(cx, |service, cx| {
-                                                            service.delete_action(macro_id, idx, cx);
-                                                        });
+                                                        this.macro_service.update(
+                                                            cx,
+                                                            |service, cx| {
+                                                                service.delete_action(
+                                                                    macro_id, idx, cx,
+                                                                );
+                                                            },
+                                                        );
                                                         if this.selected_action_index == Some(idx) {
                                                             this.selected_action_index = None;
                                                         }
                                                     }
                                                 }),
                                             )
-                                            .child("🗑"),
-                                    )
+                                            .child(
+                                                Icon::new("delete").size(px(16.)).color(theme.text),
+                                            ),
+                                    ),
                             );
                         }
-                        
+
                         elements
                     }),
             )
@@ -1096,20 +1002,13 @@ impl Render for MacroWidget {
                     .flex()
                     .items_center()
                     .justify_between()
-                    .child(
-                        div()
-                            .text_xl()
-                            .font_weight(FontWeight::BOLD)
-                            .text_color(theme.text)
-                            .child("Macro Manager"),
-                    )
+                    .when(self.editing_macro_id.is_none(), |this| {
+                        this.child(self.render_record_button(theme.clone(), cx))
+                    })
                     .when(self.editing_macro_id.is_none(), |this| {
                         this.child(self.render_speed_control(theme.clone(), cx))
                     }),
             )
-            .when(self.editing_macro_id.is_none(), |this| {
-                this.child(self.render_record_button(theme.clone(), cx))
-            })
             .when(self.editing_macro_id.is_none(), |this| {
                 this.child(self.render_macro_list(theme.clone(), cx))
             })
