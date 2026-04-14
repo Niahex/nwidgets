@@ -9,33 +9,33 @@ use gpui::*;
 actions!(r#macro, [CloseMacro]);
 
 pub struct MacroWidget {
-    macro_service: Entity<MacroService>,
-    focus_handle: FocusHandle,
-    editing_name: Option<uuid::Uuid>,
-    name_input: String,
-    speed_input: String,
-    editing_macro_id: Option<uuid::Uuid>,
-    selected_action_index: Option<usize>,
-    show_add_action_form: bool,
-    form_action_type: String,
-    form_key_code: String,
-    form_timestamp: String,
-    form_field_focus: FormField,
-    editing_zone_for_action: Option<usize>,
-    form_mouse_button: MacroMouseButton,
-    form_mouse_click_type: MouseClickType,
-    form_delay_ms: String,
+    pub(in crate::widgets::r#macro) macro_service: Entity<MacroService>,
+    pub(in crate::widgets::r#macro) focus_handle: FocusHandle,
+    pub(in crate::widgets::r#macro) editing_name: Option<uuid::Uuid>,
+    pub(in crate::widgets::r#macro) name_input: String,
+    pub(in crate::widgets::r#macro) speed_input: String,
+    pub(in crate::widgets::r#macro) editing_macro_id: Option<uuid::Uuid>,
+    pub(in crate::widgets::r#macro) selected_action_index: Option<usize>,
+    pub(in crate::widgets::r#macro) show_add_action_form: bool,
+    pub(in crate::widgets::r#macro) form_action_type: String,
+    pub(in crate::widgets::r#macro) form_key_code: String,
+    pub(in crate::widgets::r#macro) form_timestamp: String,
+    pub(in crate::widgets::r#macro) form_field_focus: FormField,
+    pub(in crate::widgets::r#macro) editing_zone_for_action: Option<usize>,
+    pub(in crate::widgets::r#macro) form_mouse_button: MacroMouseButton,
+    pub(in crate::widgets::r#macro) form_mouse_click_type: MouseClickType,
+    pub(in crate::widgets::r#macro) form_delay_ms: String,
 }
 
 #[derive(Clone, Copy, PartialEq)]
-enum FormField {
+pub(in crate::widgets::r#macro) enum FormField {
     None,
     KeyCode,
     Timestamp,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
-enum MouseClickType {
+pub(in crate::widgets::r#macro) enum MouseClickType {
     Quick,
     Long,
     Double,
@@ -108,195 +108,6 @@ impl MacroWidget {
 
     pub fn focus_handle(&self) -> &FocusHandle {
         &self.focus_handle
-    }
-
-    fn render_record_button(
-        &self,
-        theme: crate::theme::Theme,
-        cx: &mut Context<Self>,
-    ) -> impl IntoElement {
-        let is_recording = self.macro_service.read(cx).is_recording();
-        let icon_name = if is_recording {
-            "recording-recording"
-        } else {
-            "recording-stopped"
-        };
-
-        div()
-            .px_3()
-            .py_2()
-            .bg(theme.surface)
-            .rounded(px(6.))
-            .cursor_pointer()
-            .on_mouse_down(
-                MouseButton::Left,
-                cx.listener(move |this, _, _window, cx| {
-                    if is_recording {
-                        this.macro_service.update(cx, |service, cx| {
-                            service.stop_recording(cx);
-                        });
-                    } else {
-                        let name = format!("Macro {}", chrono::Local::now().format("%H:%M:%S"));
-                        this.macro_service.update(cx, |service, cx| {
-                            service.start_recording(name, cx);
-                        });
-                    }
-                }),
-            )
-            .child(Icon::new(icon_name).size(px(20.)).color(theme.text))
-    }
-
-    fn render_speed_control(
-        &mut self,
-        theme: crate::theme::Theme,
-        cx: &mut Context<Self>,
-    ) -> impl IntoElement {
-        let speed = self.macro_service.read(cx).playback_speed();
-
-        div()
-            .px_3()
-            .py_1()
-            .bg(theme.surface)
-            .border_1()
-            .border_color(theme.border())
-            .rounded(px(4.))
-            .text_sm()
-            .text_color(theme.text)
-            .on_scroll_wheel(
-                cx.listener(move |this, event: &ScrollWheelEvent, window, cx| {
-                    let delta = event.delta.pixel_delta(window.line_height());
-                    let delta_y: f32 = delta.y.into();
-                    let change = if delta_y > 0.0 { 0.1 } else { -0.1 };
-                    this.macro_service.update(cx, |service, cx| {
-                        let new_speed = (service.playback_speed() + change).clamp(0.1, 10.0);
-                        service.set_playback_speed(new_speed, cx);
-                        this.speed_input = format!("{:.1}", new_speed);
-                    });
-                }),
-            )
-            .child(format!("{:.1}x", speed))
-    }
-
-    fn render_macro_list(
-        &mut self,
-        theme: crate::theme::Theme,
-        cx: &mut Context<Self>,
-    ) -> impl IntoElement {
-        let macros = self.macro_service.read(cx).get_macros().clone();
-        let playing_id = self.macro_service.read(cx).is_playing();
-
-        div()
-            .id("macro-list-scroll")
-            .flex()
-            .flex_col()
-            .flex_1()
-            .overflow_y_scroll()
-            .gap_2()
-            .children(macros.into_iter().map(|macro_rec| {
-                let macro_id = macro_rec.id;
-                let is_playing = playing_id == Some(macro_id);
-
-                div()
-                    .flex()
-                    .items_center()
-                    .gap_2()
-                    .p_3()
-                    .bg(if is_playing {
-                        theme.accent.opacity(0.2)
-                    } else {
-                        theme.surface
-                    })
-                    .border_1()
-                    .border_color(if is_playing {
-                        theme.accent
-                    } else {
-                        theme.border()
-                    })
-                    .rounded(px(6.))
-                    .child(
-                        div()
-                            .flex_1()
-                            .flex()
-                            .flex_col()
-                            .gap_1()
-                            .child(
-                                div()
-                                    .text_sm()
-                                    .font_weight(FontWeight::SEMIBOLD)
-                                    .text_color(theme.text)
-                                    .child(macro_rec.name.clone()),
-                            )
-                            .child(
-                                div()
-                                    .flex()
-                                    .gap_2()
-                                    .text_xs()
-                                    .text_color(theme.text_muted)
-                                    .child(format!("{} actions", macro_rec.action_count()))
-                                    .child("•")
-                                    .child(format!("{}ms", macro_rec.duration_ms()))
-                                    .when_some(macro_rec.app_class.clone(), |this, app| {
-                                        this.child("•").child(app)
-                                    }),
-                            ),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .gap_2()
-                            .child(
-                                div()
-                                    .p_2()
-                                    .rounded(px(4.))
-                                    .cursor_pointer()
-                                    .hover(|style| style.bg(theme.surface))
-                                    .on_mouse_down(
-                                        MouseButton::Left,
-                                        cx.listener(move |this, _, _window, cx| {
-                                            this.macro_service.update(cx, |service, cx| {
-                                                if is_playing {
-                                                    service.stop_playback(cx);
-                                                } else {
-                                                    service.play_macro(macro_id, cx);
-                                                }
-                                            });
-                                        }),
-                                    )
-                                    .child(Icon::new("play").size(px(16.)).color(theme.text)),
-                            )
-                            .child(
-                                div()
-                                    .p_2()
-                                    .rounded(px(4.))
-                                    .cursor_pointer()
-                                    .hover(|style| style.bg(theme.surface))
-                                    .on_mouse_down(
-                                        MouseButton::Left,
-                                        cx.listener(move |this, _, _window, cx| {
-                                            this.editing_macro_id = Some(macro_id);
-                                            cx.notify();
-                                        }),
-                                    )
-                                    .child(Icon::new("edit").size(px(16.)).color(theme.text)),
-                            )
-                            .child(
-                                div()
-                                    .p_2()
-                                    .rounded(px(4.))
-                                    .cursor_pointer()
-                                    .hover(|style| style.bg(theme.red.opacity(0.2)))
-                                    .on_mouse_down(
-                                        MouseButton::Left,
-                                        cx.listener(move |this, _, _window, cx| {
-                                            this.macro_service.update(cx, |service, cx| {
-                                                service.delete_macro(macro_id, cx);
-                                            });
-                                        }),
-                                    )
-                                    .child(Icon::new("delete").size(px(16.)).color(theme.text)),
-                            ),
-                    )
-            }))
     }
 
     fn render_macro_editor(
