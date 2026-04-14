@@ -1,3 +1,4 @@
+mod audio_device;
 mod bluetooth;
 mod monitor;
 mod network;
