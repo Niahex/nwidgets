@@ -20,7 +20,7 @@ impl super::MacroWidget {
             .flex_1()
             .overflow_y_scroll()
             .gap_2()
-            .children(macros.into_iter().map(|macro_rec| {
+            .children(macros.into_iter().take(50).map(|macro_rec| {
                 let macro_id = macro_rec.id;
                 let is_playing = playing_id == Some(macro_id);
 

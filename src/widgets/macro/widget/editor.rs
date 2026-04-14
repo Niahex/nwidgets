@@ -24,7 +24,11 @@ impl super::MacroWidget {
         };
 
         let add_form = if self.show_add_action_form {
-            Some(self.render_add_action_form(macro_id, theme.clone(), cx))
+            Some(deferred(self.render_add_action_form(
+                macro_id,
+                theme.clone(),
+                cx,
+            )))
         } else {
             None
         };
@@ -145,7 +149,7 @@ impl super::MacroWidget {
                         let mut elements = Vec::new();
                         let mut prev_timestamp = 0u64;
 
-                        for (idx, action) in macro_rec.actions.iter().enumerate() {
+                        for (idx, action) in macro_rec.actions.iter().take(100).enumerate() {
                             if idx > 0 {
                                 let delay_ms = action.timestamp_ms.saturating_sub(prev_timestamp);
                                 if delay_ms > 0 {

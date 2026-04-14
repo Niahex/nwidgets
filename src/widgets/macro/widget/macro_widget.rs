@@ -210,7 +210,11 @@ impl Render for MacroWidget {
                 this.child(self.render_macro_list(theme.clone(), cx))
             })
             .when_some(self.editing_macro_id, |this, macro_id| {
-                this.child(self.render_macro_editor(macro_id, theme.clone(), cx))
+                this.child(deferred(self.render_macro_editor(
+                    macro_id,
+                    theme.clone(),
+                    cx,
+                )))
             })
     }
 }
