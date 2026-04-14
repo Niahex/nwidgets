@@ -22,6 +22,9 @@ pub struct MacroWidget {
     form_timestamp: String,
     form_field_focus: FormField,
     editing_zone_for_action: Option<usize>,
+    form_mouse_button: MacroMouseButton,
+    form_mouse_click_type: MouseClickType,
+    form_delay_ms: String,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -29,6 +32,31 @@ enum FormField {
     None,
     KeyCode,
     Timestamp,
+}
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum MouseClickType {
+    Quick,
+    Long,
+    Double,
+}
+
+impl MouseClickType {
+    fn next(&self) -> Self {
+        match self {
+            MouseClickType::Quick => MouseClickType::Long,
+            MouseClickType::Long => MouseClickType::Double,
+            MouseClickType::Double => MouseClickType::Quick,
+        }
+    }
+
+    fn color(&self, theme: &crate::theme::Theme) -> Hsla {
+        match self {
+            MouseClickType::Quick => theme.green,
+            MouseClickType::Long => theme.red,
+            MouseClickType::Double => theme.purple,
+        }
+    }
 }
 
 impl MacroWidget {
@@ -72,6 +100,9 @@ impl MacroWidget {
             form_timestamp: "0".to_string(),
             form_field_focus: FormField::None,
             editing_zone_for_action: None,
+            form_mouse_button: MacroMouseButton::Left,
+            form_mouse_click_type: MouseClickType::Quick,
+            form_delay_ms: String::new(),
         }
     }
 
