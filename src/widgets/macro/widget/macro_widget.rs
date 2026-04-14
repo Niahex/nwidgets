@@ -135,7 +135,7 @@ impl MacroWidget {
                 cx.listener(move |this, event: &ScrollWheelEvent, window, cx| {
                     let delta = event.delta.pixel_delta(window.line_height());
                     let delta_y: f32 = delta.y.into();
-                    let change = if delta_y > 0.0 { -0.1 } else { 0.1 };
+                    let change = if delta_y > 0.0 { 0.1 } else { -0.1 };
                     this.macro_service.update(cx, |service, cx| {
                         let new_speed = (service.playback_speed() + change).clamp(0.1, 10.0);
                         service.set_playback_speed(new_speed, cx);
@@ -477,53 +477,60 @@ impl MacroWidget {
                                         theme.border()
                                     })
                                     .rounded(px(4.))
-                                    .cursor_pointer()
-                                    .on_mouse_down(
-                                        MouseButton::Left,
-                                        cx.listener(move |this, _, _window, cx| {
-                                            this.selected_action_index = Some(idx);
-
-                                            if let Some(zone) = zone_for_handler.clone() {
-                                                crate::widgets::r#macro::window::zone_viewer::open(
-                                                    cx, zone,
-                                                );
-                                            } else {
-                                                crate::widgets::r#macro::window::zone_viewer::close(
-                                                    cx,
-                                                );
-                                            }
-
-                                            cx.notify();
-                                        }),
-                                    )
                                     .child(
                                         div()
-                                            .text_xs()
-                                            .text_color(theme.text_muted)
-                                            .child(format!("#{}", idx + 1)),
-                                    )
-                                    .child(
-                                        div()
-                                            .flex_1()
                                             .flex()
-                                            .flex_col()
-                                            .gap_1()
+                                            .items_center()
+                                            .gap_2()
+                                            .flex_1()
+                                            .cursor_pointer()
+                                            .on_mouse_down(
+                                                MouseButton::Left,
+                                                cx.listener(move |this, _, _window, cx| {
+                                                    this.selected_action_index = Some(idx);
+
+                                                    if let Some(zone) = zone_for_handler.clone() {
+                                                        crate::widgets::r#macro::window::zone_viewer::open(
+                                                            cx, zone,
+                                                        );
+                                                    } else {
+                                                        crate::widgets::r#macro::window::zone_viewer::close(
+                                                            cx,
+                                                        );
+                                                    }
+
+                                                    cx.notify();
+                                                }),
+                                            )
                                             .child(
                                                 div()
-                                                    .text_sm()
-                                                    .text_color(theme.text)
-                                                    .child(action_clone.action_type.display_name()),
+                                                    .text_xs()
+                                                    .text_color(theme.text_muted)
+                                                    .child(format!("#{}", idx + 1)),
                                             )
-                                            .when_some(zone_for_display.clone(), |this, zone| {
-                                                this.child(
-                                                    div().text_xs().text_color(theme.accent).child(
-                                                        format!(
-                                                            "🎯 Zone: {}x{} at ({},{})",
-                                                            zone.width, zone.height, zone.x, zone.y
-                                                        ),
-                                                    ),
-                                                )
-                                            }),
+                                            .child(
+                                                div()
+                                                    .flex_1()
+                                                    .flex()
+                                                    .flex_col()
+                                                    .gap_1()
+                                                    .child(
+                                                        div()
+                                                            .text_sm()
+                                                            .text_color(theme.text)
+                                                            .child(action_clone.action_type.display_name()),
+                                                    )
+                                                    .when_some(zone_for_display.clone(), |this, zone| {
+                                                        this.child(
+                                                            div().text_xs().text_color(theme.accent).child(
+                                                                format!(
+                                                                    "🎯 Zone: {}x{} at ({},{})",
+                                                                    zone.width, zone.height, zone.x, zone.y
+                                                                ),
+                                                            ),
+                                                        )
+                                                    }),
+                                            ),
                                     )
                                     .child(div().flex().flex_col().gap_1().when(
                                         matches!(
