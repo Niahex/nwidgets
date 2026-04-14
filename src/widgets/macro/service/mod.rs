@@ -1,3 +1,4 @@
+mod database;
 mod dbus_server;
 mod macro_service;
 
