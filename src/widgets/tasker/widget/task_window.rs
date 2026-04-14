@@ -1,4 +1,4 @@
-use crate::components::{Button, ButtonVariant};
+use crate::components::{Button, ButtonVariant, TextInput};
 use crate::theme::ActiveTheme;
 use crate::widgets::tasker::service::TaskService;
 use crate::widgets::tasker::types::{Task, TaskStateChanged};
@@ -183,65 +183,18 @@ impl TaskWindow {
                     .flex_col()
                     .gap_2()
                     .child(
-                        div()
-                            .flex_1()
-                            .px_3()
-                            .py_2()
-                            .bg(theme.surface)
-                            .rounded(px(4.))
-                            .border_1()
-                            .border_color(if self.focused_input == Some(FocusedInput::Title) {
-                                theme.accent
-                            } else {
-                                theme.border()
-                            })
-                            .cursor_text()
-                            .on_mouse_down(
-                                MouseButton::Left,
-                                cx.listener(|this, _, window, cx| {
-                                    this.focused_input = Some(FocusedInput::Title);
-                                    window.focus(&this.focus_handle, cx);
-                                    cx.notify();
-                                }),
-                            )
-                            .when(self.new_task_title.is_empty(), |this| {
-                                this.text_color(theme.text_muted).child("Task title...")
-                            })
-                            .when(!self.new_task_title.is_empty(), |this| {
-                                this.text_color(theme.text)
-                                    .child(self.new_task_title.clone())
-                            }),
+                        TextInput::new("task-title-input")
+                            .value(self.new_task_title.clone())
+                            .placeholder("Task title...")
+                            .focused(self.focused_input == Some(FocusedInput::Title))
+                            .on_click(|_window, _cx| {}),
                     )
                     .child(
-                        div()
-                            .flex_1()
-                            .px_3()
-                            .py_2()
-                            .bg(theme.surface)
-                            .rounded(px(4.))
-                            .border_1()
-                            .border_color(if self.focused_input == Some(FocusedInput::Project) {
-                                theme.accent
-                            } else {
-                                theme.border()
-                            })
-                            .cursor_text()
-                            .on_mouse_down(
-                                MouseButton::Left,
-                                cx.listener(|this, _, window, cx| {
-                                    this.focused_input = Some(FocusedInput::Project);
-                                    window.focus(&this.focus_handle, cx);
-                                    cx.notify();
-                                }),
-                            )
-                            .when(self.new_task_project.is_empty(), |this| {
-                                this.text_color(theme.text_muted)
-                                    .child("Project (optional)")
-                            })
-                            .when(!self.new_task_project.is_empty(), |this| {
-                                this.text_color(theme.text)
-                                    .child(self.new_task_project.clone())
-                            }),
+                        TextInput::new("task-project-input")
+                            .value(self.new_task_project.clone())
+                            .placeholder("Project (optional)")
+                            .focused(self.focused_input == Some(FocusedInput::Project))
+                            .on_click(|_window, _cx| {}),
                     )
                     .child(
                         Button::new("add-task-button")
