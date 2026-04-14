@@ -29,7 +29,7 @@ impl TaskService {
     }
 
     fn load_tasks() -> Result<Vec<Task>> {
-        let db = get_database();
+        let db = get_database()?;
         let conn = db.conn();
         let conn = conn.lock();
 
@@ -88,7 +88,7 @@ impl TaskService {
     }
 
     fn save_tasks_sync(tasks: Vec<Task>) -> Result<()> {
-        let db = get_database();
+        let db = get_database()?;
         let conn = db.conn();
         let conn = conn.lock();
 

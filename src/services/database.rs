@@ -103,6 +103,7 @@ pub fn init_database() -> Result<()> {
     Ok(())
 }
 
-pub fn get_database() -> &'static Database {
-    DB.get().expect("Database not initialized")
+pub fn get_database() -> Result<&'static Database> {
+    DB.get()
+        .ok_or_else(|| anyhow::anyhow!("Database not initialized. Call init_database() first."))
 }

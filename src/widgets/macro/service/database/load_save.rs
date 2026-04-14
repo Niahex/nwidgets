@@ -4,7 +4,7 @@ use anyhow::Result;
 use uuid::Uuid;
 
 pub fn load_macros() -> Result<Vec<Macro>> {
-    let db = get_database();
+    let db = get_database()?;
     let conn = db.conn();
     let conn = conn.lock();
 
@@ -135,7 +135,7 @@ pub fn parse_action_type(type_str: &str, data: Option<&str>) -> Result<ActionTyp
 }
 
 pub fn save_macros_sync(macros: Vec<Macro>) -> Result<()> {
-    let db = get_database();
+    let db = get_database()?;
     let conn = db.conn();
     let conn = conn.lock();
 

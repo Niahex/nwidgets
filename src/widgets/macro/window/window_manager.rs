@@ -23,34 +23,38 @@ pub fn on_toggle(service: Entity<MacroService>, _event: &MacroToggled, cx: &mut 
         if window_lock.is_none() {
             let macro_service = MacroService::global(cx);
 
-            let window = cx
-                .open_window(
-                    WindowOptions {
-                        window_bounds: Some(WindowBounds::Windowed(Bounds {
-                            origin: Point {
-                                x: px(100.0),
-                                y: px(100.0),
-                            },
-                            size: Size {
-                                width: px(800.0),
-                                height: px(600.0),
-                            },
-                        })),
-                        titlebar: Some(TitlebarOptions {
-                            title: Some("Macro Manager".into()),
-                            appears_transparent: false,
-                            ..Default::default()
-                        }),
-                        window_background: WindowBackgroundAppearance::Opaque,
-                        window_decorations: Some(WindowDecorations::Server),
-                        kind: WindowKind::Normal,
-                        app_id: Some("nwidgets-macro".to_string()),
-                        is_movable: true,
+            let window = match cx.open_window(
+                WindowOptions {
+                    window_bounds: Some(WindowBounds::Windowed(Bounds {
+                        origin: Point {
+                            x: px(100.0),
+                            y: px(100.0),
+                        },
+                        size: Size {
+                            width: px(800.0),
+                            height: px(600.0),
+                        },
+                    })),
+                    titlebar: Some(TitlebarOptions {
+                        title: Some("Macro Manager".into()),
+                        appears_transparent: false,
                         ..Default::default()
-                    },
-                    move |_window, cx| cx.new(|cx| MacroWidget::new(cx, macro_service)),
-                )
-                .expect("Failed to create macro window");
+                    }),
+                    window_background: WindowBackgroundAppearance::Opaque,
+                    window_decorations: Some(WindowDecorations::Server),
+                    kind: WindowKind::Normal,
+                    app_id: Some("nwidgets-macro".to_string()),
+                    is_movable: true,
+                    ..Default::default()
+                },
+                move |_window, cx| cx.new(|cx| MacroWidget::new(cx, macro_service)),
+            ) {
+                Ok(window) => window,
+                Err(e) => {
+                    log::error!("Failed to create macro window: {}", e);
+                    return;
+                }
+            };
 
             *window_lock = Some(window);
         } else if let Some(window) = window_lock.as_ref() {

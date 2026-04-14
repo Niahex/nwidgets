@@ -126,35 +126,39 @@ where
         },
     });
 
-    let window = cx
-        .open_window(
-            WindowOptions {
-                window_bounds: Some(WindowBounds::Windowed(bounds)),
-                titlebar: None,
-                window_background: WindowBackgroundAppearance::Transparent,
-                window_decorations: Some(WindowDecorations::Client),
-                kind: WindowKind::LayerShell(LayerShellOptions {
-                    namespace: "nwidgets-zone-selector".to_string(),
-                    layer: Layer::Overlay,
-                    anchor: Anchor::all(),
-                    exclusive_zone: None,
-                    margin: None,
-                    keyboard_interactivity: KeyboardInteractivity::Exclusive,
-                    ..Default::default()
-                }),
-                app_id: Some("nwidgets-zone-selector".to_string()),
-                is_movable: false,
+    let window = match cx.open_window(
+        WindowOptions {
+            window_bounds: Some(WindowBounds::Windowed(bounds)),
+            titlebar: None,
+            window_background: WindowBackgroundAppearance::Transparent,
+            window_decorations: Some(WindowDecorations::Client),
+            kind: WindowKind::LayerShell(LayerShellOptions {
+                namespace: "nwidgets-zone-selector".to_string(),
+                layer: Layer::Overlay,
+                anchor: Anchor::all(),
+                exclusive_zone: None,
+                margin: None,
+                keyboard_interactivity: KeyboardInteractivity::Exclusive,
                 ..Default::default()
-            },
-            move |_window, cx| {
-                let widget = cx.new(|cx| ZoneSelectorWidget::new(cx));
-                widget.update(cx, |w, _cx| {
-                    *w.callback.lock() = Some(Box::new(callback));
-                });
-                widget
-            },
-        )
-        .expect("Failed to create zone selector window");
+            }),
+            app_id: Some("nwidgets-zone-selector".to_string()),
+            is_movable: false,
+            ..Default::default()
+        },
+        move |_window, cx| {
+            let widget = cx.new(|cx| ZoneSelectorWidget::new(cx));
+            widget.update(cx, |w, _cx| {
+                *w.callback.lock() = Some(Box::new(callback));
+            });
+            widget
+        },
+    ) {
+        Ok(window) => window,
+        Err(e) => {
+            log::error!("Failed to create zone selector window: {}", e);
+            return;
+        }
+    };
 
     window
         .update(cx, |widget, window, cx| {
