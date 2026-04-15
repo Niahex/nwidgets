@@ -36,15 +36,19 @@ impl VpnService {
         let state_clone = Arc::clone(&state);
 
         let (list_tx, mut list_rx) = futures::channel::mpsc::unbounded::<Vec<VpnConnection>>();
+        let notify = Arc::new(tokio::sync::Notify::new());
+        let notify_clone = Arc::clone(&notify);
 
-        // Worker to list all VPN connections
         gpui_tokio::Tokio::spawn(cx, async move {
+            let connections = Self::list_vpn_connections().await;
+            let _ = list_tx.unbounded_send(connections);
+
             loop {
+                notify_clone.notified().await;
                 let connections = Self::list_vpn_connections().await;
                 if let Err(e) = list_tx.unbounded_send(connections) {
                     log::warn!("Failed to send VPN connections list: {}", e);
                 }
-                tokio::time::sleep(std::time::Duration::from_secs(5)).await;
             }
         })
         .detach();
@@ -67,6 +71,7 @@ impl VpnService {
                             };
 
                             if changed {
+                                notify.notify_one();
                                 let _ = this.update(&mut cx, |_, cx| {
                                     cx.emit(VpnStateChanged);
                                     cx.notify();
