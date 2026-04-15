@@ -2,6 +2,7 @@ use crate::components::{Button, ButtonVariant, Dropdown, DropdownOption, TextInp
 use crate::theme::ActiveTheme;
 use crate::widgets::tasker::service::TaskService;
 use crate::widgets::tasker::types::{Task, TaskStateChanged, TaskStatus};
+use chrono::{Datelike, Duration, Local, NaiveDate};
 use gpui::prelude::*;
 use gpui::*;
 use uuid::Uuid;
@@ -30,6 +31,7 @@ pub struct TaskWindow {
     focused_input: Option<FocusedInput>,
     show_create_modal: bool,
     form_mode: FormMode,
+    selected_date: NaiveDate,
 }
 
 impl TaskWindow {
@@ -54,6 +56,7 @@ impl TaskWindow {
             focused_input: None,
             show_create_modal: false,
             form_mode: FormMode::Create,
+            selected_date: Local::now().date_naive(),
         }
     }
 
@@ -195,6 +198,7 @@ impl Render for TaskWindow {
                     });
                 }
             }))
+            .child(self.render_date_carousel(theme.clone(), cx))
             .when(self.show_create_modal, |this| {
                 this.child(self.render_create_form(theme.clone(), cx))
             })
@@ -226,6 +230,89 @@ impl Render for TaskWindow {
 }
 
 impl TaskWindow {
+    fn render_date_carousel(
+        &mut self,
+        theme: crate::theme::Theme,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        let dates: Vec<NaiveDate> = (-2..=2)
+            .map(|i| self.selected_date + Duration::days(i))
+            .collect();
+
+        let today = Local::now().date_naive();
+
+        div()
+            .flex()
+            .items_center()
+            .justify_center()
+            .gap_2()
+            .p_3()
+            .bg(theme.surface)
+            .border_b_1()
+            .border_color(theme.border())
+            .children(dates.iter().map(|date| {
+                let date_copy = *date;
+                let is_selected = date_copy == self.selected_date;
+                let is_today = date_copy == today;
+
+                div()
+                    .flex()
+                    .flex_col()
+                    .items_center()
+                    .gap_1()
+                    .px_3()
+                    .py_2()
+                    .rounded_md()
+                    .cursor_pointer()
+                    .bg(if is_selected {
+                        theme.accent.opacity(0.2)
+                    } else {
+                        theme.surface
+                    })
+                    .border_1()
+                    .border_color(if is_selected {
+                        theme.accent
+                    } else if is_today {
+                        theme.accent.opacity(0.5)
+                    } else {
+                        theme.border()
+                    })
+                    .hover(|s| s.bg(theme.hover))
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(move |this, _, _, cx| {
+                            this.selected_date = date_copy;
+                            cx.notify();
+                        }),
+                    )
+                    .child(
+                        div()
+                            .text_xs()
+                            .text_color(if is_selected {
+                                theme.accent
+                            } else {
+                                theme.text_muted
+                            })
+                            .child(date.format("%a").to_string()),
+                    )
+                    .child(
+                        div()
+                            .text_lg()
+                            .font_weight(if is_selected {
+                                FontWeight::BOLD
+                            } else {
+                                FontWeight::NORMAL
+                            })
+                            .text_color(if is_selected {
+                                theme.accent
+                            } else {
+                                theme.text
+                            })
+                            .child(date.format("%d").to_string()),
+                    )
+            }))
+    }
+
     fn render_create_form(
         &mut self,
         theme: crate::theme::Theme,
