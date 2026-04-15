@@ -27,6 +27,7 @@ pub struct TaskWindow {
     new_task_project: String,
     new_task_status: TaskStatus,
     new_task_priority: u8,
+    new_task_due_date: Option<NaiveDate>,
     pub focus_handle: FocusHandle,
     focused_input: Option<FocusedInput>,
     show_create_modal: bool,
@@ -52,6 +53,7 @@ impl TaskWindow {
             new_task_project: String::new(),
             new_task_status: TaskStatus::Todo,
             new_task_priority: 5,
+            new_task_due_date: None,
             focus_handle: cx.focus_handle(),
             focused_input: None,
             show_create_modal: false,
@@ -74,6 +76,7 @@ impl TaskWindow {
         let mut task = Task::new(self.new_task_title.trim().to_string(), project);
         task.status = self.new_task_status;
         task.priority = self.new_task_priority;
+        task.due_date = self.new_task_due_date;
 
         self.task_service.update(cx, |service, cx| {
             service.add_task(task, cx);
@@ -101,6 +104,7 @@ impl TaskWindow {
                 project,
                 self.new_task_status,
                 self.new_task_priority,
+                self.new_task_due_date,
                 cx,
             );
         });
@@ -114,6 +118,7 @@ impl TaskWindow {
         self.new_task_project.clear();
         self.new_task_status = TaskStatus::Todo;
         self.new_task_priority = 5;
+        self.new_task_due_date = None;
         self.focused_input = None;
         self.show_create_modal = false;
         self.form_mode = FormMode::Create;
@@ -124,6 +129,7 @@ impl TaskWindow {
         self.new_task_project = task.project.clone().unwrap_or_default();
         self.new_task_status = task.status;
         self.new_task_priority = task.priority;
+        self.new_task_due_date = task.due_date;
         self.form_mode = FormMode::Edit(task.id);
         self.show_create_modal = true;
         self.focused_input = Some(FocusedInput::Title);
@@ -235,7 +241,7 @@ impl TaskWindow {
         theme: crate::theme::Theme,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
-        let dates: Vec<NaiveDate> = (-2..=2)
+        let dates: Vec<NaiveDate> = (-3..=3)
             .map(|i| self.selected_date + Duration::days(i))
             .collect();
 

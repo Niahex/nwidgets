@@ -34,7 +34,7 @@ impl TaskService {
         let conn = conn.lock();
 
         let mut stmt = conn.prepare(
-            "SELECT id, title, project, time_spent_secs, created_at, completed, status, priority 
+            "SELECT id, title, project, time_spent_secs, created_at, completed, status, priority, due_date 
              FROM tasks 
              ORDER BY created_at DESC",
         )?;
@@ -59,11 +59,14 @@ impl TaskService {
                 let completed: bool = row.get(5)?;
                 let status_str: String = row.get(6)?;
                 let priority: i64 = row.get(7)?;
+                let due_date_str: Option<String> = row.get(8)?;
 
                 let created_at =
                     DateTime::from_timestamp(created_at_timestamp, 0).unwrap_or_else(|| Utc::now());
 
                 let status = TaskStatus::from_str(&status_str).unwrap_or(TaskStatus::Todo);
+
+                let due_date = due_date_str.and_then(|s| chrono::NaiveDate::parse_from_str(&s, "%Y-%m-%d").ok());
 
                 Ok(Task {
                     id,
@@ -74,6 +77,7 @@ impl TaskService {
                     completed,
                     status,
                     priority: priority.clamp(0, 10) as u8,
+                    due_date,
                 })
             })?
             .collect::<Result<Vec<_>, _>>()?;
@@ -103,8 +107,8 @@ impl TaskService {
         for task in tasks {
             conn.execute(
                 "INSERT INTO tasks 
-                 (id, title, project, time_spent_secs, created_at, completed, status, priority)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                 (id, title, project, time_spent_secs, created_at, completed, status, priority, due_date)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 rusqlite::params![
                     task.id.to_string(),
                     task.title,
@@ -114,6 +118,7 @@ impl TaskService {
                     task.completed,
                     task.status.as_str(),
                     task.priority as i64,
+                    task.due_date.map(|d| d.format("%Y-%m-%d").to_string()),
                 ],
             )?;
         }
@@ -158,7 +163,7 @@ impl TaskService {
         cx.notify();
     }
 
-    pub fn update_task(&mut self, task_id: Uuid, title: String, project: Option<String>, status: TaskStatus, priority: u8, cx: &mut Context<Self>) {
+    pub fn update_task(&mut self, task_id: Uuid, title: String, project: Option<String>, status: TaskStatus, priority: u8, due_date: Option<chrono::NaiveDate>, cx: &mut Context<Self>) {
         let found = {
             let mut tasks = self.tasks.write();
             if let Some(task) = tasks.iter_mut().find(|t| t.id == task_id) {
@@ -166,6 +171,7 @@ impl TaskService {
                 task.project = project;
                 task.status = status;
                 task.priority = priority.clamp(0, 10);
+                task.due_date = due_date;
                 true
             } else {
                 false

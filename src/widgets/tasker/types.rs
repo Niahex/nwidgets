@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use gpui::{EventEmitter, SharedString};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -45,6 +45,7 @@ pub struct Task {
     pub completed: bool,
     pub status: TaskStatus,
     pub priority: u8,
+    pub due_date: Option<NaiveDate>,
 }
 
 impl Task {
@@ -58,6 +59,7 @@ impl Task {
             completed: false,
             status: TaskStatus::Todo,
             priority: 5,
+            due_date: None,
         }
     }
 
