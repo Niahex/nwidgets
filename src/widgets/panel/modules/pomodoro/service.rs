@@ -189,8 +189,8 @@ impl PomodoroService {
 
                         if matches!(phase, PomodoroPhase::Work) {
                             let task_service = TaskService::global(cx);
-                            let _ = task_service.update(cx, |service, _cx| {
-                                service.add_time_spent_to_active_task(1);
+                            let _ = task_service.update(cx, |service, cx| {
+                                service.add_time_spent_to_active_task(1, cx);
                             });
                         }
 

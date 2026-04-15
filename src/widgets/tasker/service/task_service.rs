@@ -75,16 +75,16 @@ impl TaskService {
         Ok(tasks)
     }
 
-    fn save_tasks(&self) {
+    fn save_tasks(&self, cx: &mut Context<Self>) {
         let tasks = self.tasks.read().clone();
         
-        tokio::task::spawn(async move {
+        gpui_tokio::Tokio::spawn(cx, async move {
             tokio::task::spawn_blocking(move || {
                 if let Err(e) = Self::save_tasks_sync(tasks) {
                     log::error!("Failed to save tasks: {}", e);
                 }
             }).await
-        });
+        }).detach();
     }
 
     fn save_tasks_sync(tasks: Vec<Task>) -> Result<()> {
@@ -132,7 +132,7 @@ impl TaskService {
 
     pub fn add_task(&mut self, task: Task, cx: &mut Context<Self>) {
         self.tasks.write().push(task);
-        self.save_tasks();
+        self.save_tasks(cx);
         cx.emit(TaskStateChanged);
         cx.notify();
     }
@@ -145,7 +145,7 @@ impl TaskService {
             cx.emit(TaskSelected { task_id: None });
         }
 
-        self.save_tasks();
+        self.save_tasks(cx);
         cx.emit(TaskStateChanged);
         cx.notify();
     }
@@ -161,7 +161,7 @@ impl TaskService {
             }
         };
         if found {
-            self.save_tasks();
+            self.save_tasks(cx);
             cx.emit(TaskStateChanged);
             cx.notify();
         }
@@ -173,7 +173,7 @@ impl TaskService {
         cx.notify();
     }
 
-    pub fn add_time_spent_to_active_task(&mut self, secs: u64) {
+    pub fn add_time_spent_to_active_task(&mut self, secs: u64, cx: &mut Context<Self>) {
         let should_save = if let Some(task_id) = *self.active_task_id.read() {
             let mut tasks = self.tasks.write();
             if let Some(task) = tasks.iter_mut().find(|t| t.id == task_id) {
@@ -186,7 +186,7 @@ impl TaskService {
             false
         };
         if should_save {
-            self.save_tasks();
+            self.save_tasks(cx);
         }
     }
 
