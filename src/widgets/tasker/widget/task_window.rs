@@ -484,6 +484,83 @@ impl TaskWindow {
                             ),
                     )
                     .child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .gap_1()
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .text_color(theme.text_muted)
+                                    .child("Due Date"),
+                            )
+                            .child(
+                                div()
+                                    .flex()
+                                    .gap_2()
+                                    .child(
+                                        div()
+                                            .flex_1()
+                                            .px_2()
+                                            .py_1p5()
+                                            .rounded_md()
+                                            .bg(theme.surface)
+                                            .text_xs()
+                                            .text_color(if self.new_task_due_date.is_some() {
+                                                theme.text
+                                            } else {
+                                                theme.text_muted
+                                            })
+                                            .child(
+                                                self.new_task_due_date
+                                                    .map(|d| d.format("%Y-%m-%d").to_string())
+                                                    .unwrap_or_else(|| "No due date".to_string()),
+                                            ),
+                                    )
+                                    .child(
+                                        div()
+                                            .px_3()
+                                            .py_1p5()
+                                            .rounded_md()
+                                            .text_xs()
+                                            .bg(theme.accent.opacity(0.2))
+                                            .text_color(theme.accent)
+                                            .cursor_pointer()
+                                            .hover(|s| s.bg(theme.accent.opacity(0.3)))
+                                            .on_mouse_down(
+                                                MouseButton::Left,
+                                                cx.listener(|this, _, _, cx| {
+                                                    this.new_task_due_date =
+                                                        Some(this.selected_date);
+                                                    cx.notify();
+                                                }),
+                                            )
+                                            .child("Set to selected"),
+                                    )
+                                    .when(self.new_task_due_date.is_some(), |this| {
+                                        this.child(
+                                            div()
+                                                .px_3()
+                                                .py_1p5()
+                                                .rounded_md()
+                                                .text_xs()
+                                                .bg(theme.red.opacity(0.2))
+                                                .text_color(theme.red)
+                                                .cursor_pointer()
+                                                .hover(|s| s.bg(theme.red.opacity(0.3)))
+                                                .on_mouse_down(
+                                                    MouseButton::Left,
+                                                    cx.listener(|this, _, _, cx| {
+                                                        this.new_task_due_date = None;
+                                                        cx.notify();
+                                                    }),
+                                                )
+                                                .child("Clear"),
+                                        )
+                                    }),
+                            ),
+                    )
+                    .child(
                         Button::new("submit-task-button")
                             .label(button_label)
                             .accent()
@@ -502,6 +579,15 @@ impl TaskWindow {
         theme: crate::theme::Theme,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
+        let filtered_tasks: Vec<Task> = tasks
+            .into_iter()
+            .filter(|task| {
+                task.due_date
+                    .map(|d| d == self.selected_date)
+                    .unwrap_or(false)
+            })
+            .collect();
+
         div()
             .flex()
             .flex_col()
@@ -509,7 +595,22 @@ impl TaskWindow {
             .overflow_hidden()
             .p_4()
             .gap_2()
-            .children(tasks.iter().map(|task| {
+            .when(filtered_tasks.is_empty(), |this| {
+                this.child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .flex_1()
+                        .text_sm()
+                        .text_color(theme.text_muted)
+                        .child(format!(
+                            "No tasks for {}",
+                            self.selected_date.format("%Y-%m-%d")
+                        )),
+                )
+            })
+            .children(filtered_tasks.iter().map(|task| {
                 let task_id = task.id;
                 let is_active = active_task_id == Some(task_id);
                 let task_service = self.task_service.clone();
@@ -608,7 +709,35 @@ impl TaskWindow {
                                             .bg(theme.accent.opacity(0.2))
                                             .text_color(theme.accent)
                                             .child(format!("P{}", task.priority)),
-                                    ),
+                                    )
+                                    .when_some(task.due_date, |this, due_date| {
+                                        let today = Local::now().date_naive();
+                                        let is_overdue = due_date < today && !task.completed;
+                                        let is_today = due_date == today;
+
+                                        this.child(
+                                            div()
+                                                .px_2()
+                                                .py_0p5()
+                                                .rounded(px(4.))
+                                                .text_xs()
+                                                .bg(if is_overdue {
+                                                    theme.red.opacity(0.2)
+                                                } else if is_today {
+                                                    theme.orange.opacity(0.2)
+                                                } else {
+                                                    theme.surface
+                                                })
+                                                .text_color(if is_overdue {
+                                                    theme.red
+                                                } else if is_today {
+                                                    theme.orange
+                                                } else {
+                                                    theme.text_muted
+                                                })
+                                                .child(due_date.format("%m/%d").to_string()),
+                                        )
+                                    }),
                             )
                             .when_some(task.project.as_ref(), |this, project| {
                                 this.child(
