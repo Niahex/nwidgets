@@ -221,13 +221,6 @@ impl NetworkService {
                         log::warn!("Failed to send network connections update: {}", e);
                     }
                 }
-                // Fallback polling for signal strength
-                _ = tokio::time::sleep(std::time::Duration::from_secs(5)) => {
-                     let new_state = Self::fetch_network_state_dbus(&conn, &nm_proxy).await;
-                     if let Err(e) = ui_tx.unbounded_send(new_state) {
-                         log::warn!("Failed to send network polling update: {}", e);
-                     }
-                }
             }
         }
     }

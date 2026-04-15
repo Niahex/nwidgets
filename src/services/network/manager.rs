@@ -112,15 +112,6 @@ impl NetworkManagerWorker {
                         }
                     }
                 }
-                _ = tokio::time::sleep(std::time::Duration::from_secs(5)) => {
-                    let new_state = Self::fetch_state(&conn, &nm_proxy).await;
-                    if *self.state.read() != new_state {
-                        *self.state.write() = new_state.clone();
-                        if let Err(e) = tx.unbounded_send(new_state) {
-                            log::warn!("Failed to send network manager polling update: {}", e);
-                        }
-                    }
-                }
             }
         }
     }
