@@ -2,7 +2,6 @@ use crate::widgets::r#macro::types::*;
 use anyhow::Result;
 use parking_lot::RwLock;
 use std::sync::Arc;
-use tokio::process::Command;
 use uuid::Uuid;
 
 pub async fn replay_macro(
@@ -10,6 +9,7 @@ pub async fn replay_macro(
     playing: Arc<RwLock<Option<Uuid>>>,
     playback_speed: Arc<RwLock<f32>>,
 ) -> Result<()> {
+    let mut wayland_input = super::wayland_input::WaylandInput::new()?;
     let mut last_timestamp = 0u64;
 
     for action in &macro_rec.actions {
@@ -29,40 +29,23 @@ pub async fn replay_macro(
             ActionType::MouseClick(btn) => {
                 if let Some(zone) = &action.click_zone {
                     let (x, y) = randomize_click_position(zone);
-                    if let Err(e) = Command::new("ydotool")
-                        .args(["mousemove", "--absolute", &x.to_string(), &y.to_string()])
-                        .output()
-                        .await
-                    {
-                        log::warn!("Failed to execute ydotool mousemove: {}", e);
+                    if let Err(e) = wayland_input.move_pointer(x, y) {
+                        log::warn!("Failed to move pointer: {}", e);
                     }
                     tokio::time::sleep(std::time::Duration::from_millis(10)).await;
                 }
                 
-                let btn_code = match btn {
-                    MacroMouseButton::Left => "0xC0",
-                    MacroMouseButton::Right => "0xC1",
-                    MacroMouseButton::Middle => "0xC2",
-                };
-                if let Err(e) = Command::new("ydotool")
-                    .args(["click", btn_code])
-                    .output()
-                    .await
-                {
-                    log::warn!("Failed to execute ydotool click: {}", e);
+                if let Err(e) = wayland_input.click_button(*btn) {
+                    log::warn!("Failed to click button: {}", e);
                 }
             }
             ActionType::KeyPress(code) | ActionType::KeyRelease(code) => {
-                if let Err(e) = Command::new("ydotool")
-                    .args(["key", &code.to_string()])
-                    .output()
-                    .await
-                {
-                    log::warn!("Failed to execute ydotool key: {}", e);
+                let pressed = matches!(action.action_type, ActionType::KeyPress(_));
+                if let Err(e) = wayland_input.send_key(*code, pressed) {
+                    log::warn!("Failed to send key: {}", e);
                 }
             }
             ActionType::Delay(_) => {
-                // Delay is already handled by the timestamp difference calculation above
             }
         }
 

@@ -36,6 +36,12 @@ cef = { git = "https://github.com/tauri-apps/cef-rs", tag = "export-cef-dir-v146
 cef-dll-sys = { git = "https://github.com/tauri-apps/cef-rs", tag = "export-cef-dir-v146.5.0+146.0.10" }
 dirs = "6.0"
 
+# Wayland virtual input protocols
+wayland-client = "0.31"
+wayland-protocols = { version = "0.32", features = ["client", "unstable"] }
+wayland-protocols-wlr = { version = "0.3", features = ["client"] }
+wayland-protocols-misc = { version = "0.3", features = ["client"] }
+
 # Launcher dependencies
 freedesktop-desktop-entry = "0.5.2"
 freedesktop-icons = "0.4.0"
