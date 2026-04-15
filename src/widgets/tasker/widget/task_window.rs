@@ -1,9 +1,10 @@
-use crate::components::{Button, ButtonVariant, TextInput};
+use crate::components::{Button, ButtonVariant, Dropdown, DropdownOption, TextInput};
 use crate::theme::ActiveTheme;
 use crate::widgets::tasker::service::TaskService;
-use crate::widgets::tasker::types::{Task, TaskStateChanged};
+use crate::widgets::tasker::types::{Task, TaskStateChanged, TaskStatus};
 use gpui::prelude::*;
 use gpui::*;
+use uuid::Uuid;
 
 actions!(tasker, [CloseTasker]);
 
@@ -13,13 +14,22 @@ enum FocusedInput {
     Project,
 }
 
+#[derive(Clone, Copy, PartialEq)]
+enum FormMode {
+    Create,
+    Edit(Uuid),
+}
+
 pub struct TaskWindow {
     task_service: Entity<TaskService>,
     new_task_title: String,
     new_task_project: String,
+    new_task_status: TaskStatus,
+    new_task_priority: u8,
     pub focus_handle: FocusHandle,
     focused_input: Option<FocusedInput>,
     show_create_modal: bool,
+    form_mode: FormMode,
 }
 
 impl TaskWindow {
@@ -38,9 +48,12 @@ impl TaskWindow {
             task_service,
             new_task_title: String::new(),
             new_task_project: String::new(),
+            new_task_status: TaskStatus::Todo,
+            new_task_priority: 5,
             focus_handle: cx.focus_handle(),
             focused_input: None,
             show_create_modal: false,
+            form_mode: FormMode::Create,
         }
     }
 
@@ -55,16 +68,62 @@ impl TaskWindow {
             Some(self.new_task_project.trim().to_string())
         };
 
-        let task = Task::new(self.new_task_title.trim().to_string(), project);
+        let mut task = Task::new(self.new_task_title.trim().to_string(), project);
+        task.status = self.new_task_status;
+        task.priority = self.new_task_priority;
 
         self.task_service.update(cx, |service, cx| {
             service.add_task(task, cx);
         });
 
+        self.clear_form();
+        cx.notify();
+    }
+
+    fn update_task(&mut self, task_id: Uuid, cx: &mut Context<Self>) {
+        if self.new_task_title.trim().is_empty() {
+            return;
+        }
+
+        let project = if self.new_task_project.trim().is_empty() {
+            None
+        } else {
+            Some(self.new_task_project.trim().to_string())
+        };
+
+        self.task_service.update(cx, |service, cx| {
+            service.update_task(
+                task_id,
+                self.new_task_title.trim().to_string(),
+                project,
+                self.new_task_status,
+                self.new_task_priority,
+                cx,
+            );
+        });
+
+        self.clear_form();
+        cx.notify();
+    }
+
+    fn clear_form(&mut self) {
         self.new_task_title.clear();
         self.new_task_project.clear();
+        self.new_task_status = TaskStatus::Todo;
+        self.new_task_priority = 5;
         self.focused_input = None;
         self.show_create_modal = false;
+        self.form_mode = FormMode::Create;
+    }
+
+    fn edit_task(&mut self, task: &Task, cx: &mut Context<Self>) {
+        self.new_task_title = task.title.clone();
+        self.new_task_project = task.project.clone().unwrap_or_default();
+        self.new_task_status = task.status;
+        self.new_task_priority = task.priority;
+        self.form_mode = FormMode::Edit(task.id);
+        self.show_create_modal = true;
+        self.focused_input = Some(FocusedInput::Title);
         cx.notify();
     }
 }
@@ -92,10 +151,12 @@ impl Render for TaskWindow {
                             }
                             cx.notify();
                         } else if event.keystroke.key == "enter" {
-                            this.create_task(cx);
+                            match this.form_mode {
+                                FormMode::Create => this.create_task(cx),
+                                FormMode::Edit(task_id) => this.update_task(task_id, cx),
+                            }
                         } else if event.keystroke.key == "escape" {
-                            this.show_create_modal = false;
-                            this.focused_input = None;
+                            this.clear_form();
                             cx.notify();
                         } else if event.keystroke.key == "tab" {
                             this.focused_input = match focused {
@@ -170,6 +231,15 @@ impl TaskWindow {
         theme: crate::theme::Theme,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
+        let form_title = match self.form_mode {
+            FormMode::Create => "Create Task",
+            FormMode::Edit(_) => "Edit Task",
+        };
+        let button_label = match self.form_mode {
+            FormMode::Create => "Create Task",
+            FormMode::Edit(_) => "Update Task",
+        };
+
         div()
             .flex()
             .flex_col()
@@ -179,9 +249,16 @@ impl TaskWindow {
             .gap_4()
             .child(
                 div()
+                    .text_lg()
+                    .font_weight(FontWeight::SEMIBOLD)
+                    .text_color(theme.text)
+                    .child(form_title),
+            )
+            .child(
+                div()
                     .flex()
                     .flex_col()
-                    .gap_2()
+                    .gap_3()
                     .child(
                         TextInput::new("task-title-input")
                             .value(self.new_task_title.clone())
@@ -197,11 +274,129 @@ impl TaskWindow {
                             .on_click(|_window, _cx| {}),
                     )
                     .child(
-                        Button::new("add-task-button")
-                            .label("Create Task")
+                        div()
+                            .flex()
+                            .gap_3()
+                            .child(
+                                div()
+                                    .flex()
+                                    .flex_col()
+                                    .flex_1()
+                                    .gap_1()
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .text_color(theme.text_muted)
+                                            .child("Status"),
+                                    )
+                                    .child(
+                                        Dropdown::new(
+                                            "task-status-dropdown",
+                                            vec![
+                                                DropdownOption {
+                                                    value: TaskStatus::Todo,
+                                                    label: "Todo".into(),
+                                                },
+                                                DropdownOption {
+                                                    value: TaskStatus::InProgress,
+                                                    label: "In Progress".into(),
+                                                },
+                                                DropdownOption {
+                                                    value: TaskStatus::Done,
+                                                    label: "Done".into(),
+                                                },
+                                            ],
+                                        )
+                                        .selected(Some(self.new_task_status))
+                                        .on_select(
+                                            cx.listener(
+                                                |this, status: &TaskStatus, _window, cx| {
+                                                    this.new_task_status = *status;
+                                                    cx.notify();
+                                                },
+                                            ),
+                                        ),
+                                    ),
+                            )
+                            .child(
+                                div()
+                                    .flex()
+                                    .flex_col()
+                                    .flex_1()
+                                    .gap_1()
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .text_color(theme.text_muted)
+                                            .child("Priority"),
+                                    )
+                                    .child(
+                                        Dropdown::new(
+                                            "task-priority-dropdown",
+                                            vec![
+                                                DropdownOption {
+                                                    value: 0u8,
+                                                    label: "0 - Lowest".into(),
+                                                },
+                                                DropdownOption {
+                                                    value: 1u8,
+                                                    label: "1".into(),
+                                                },
+                                                DropdownOption {
+                                                    value: 2u8,
+                                                    label: "2".into(),
+                                                },
+                                                DropdownOption {
+                                                    value: 3u8,
+                                                    label: "3".into(),
+                                                },
+                                                DropdownOption {
+                                                    value: 4u8,
+                                                    label: "4".into(),
+                                                },
+                                                DropdownOption {
+                                                    value: 5u8,
+                                                    label: "5 - Medium".into(),
+                                                },
+                                                DropdownOption {
+                                                    value: 6u8,
+                                                    label: "6".into(),
+                                                },
+                                                DropdownOption {
+                                                    value: 7u8,
+                                                    label: "7".into(),
+                                                },
+                                                DropdownOption {
+                                                    value: 8u8,
+                                                    label: "8".into(),
+                                                },
+                                                DropdownOption {
+                                                    value: 9u8,
+                                                    label: "9".into(),
+                                                },
+                                                DropdownOption {
+                                                    value: 10u8,
+                                                    label: "10 - Highest".into(),
+                                                },
+                                            ],
+                                        )
+                                        .selected(Some(self.new_task_priority))
+                                        .on_select(
+                                            cx.listener(|this, priority: &u8, _window, cx| {
+                                                this.new_task_priority = *priority;
+                                                cx.notify();
+                                            }),
+                                        ),
+                                    ),
+                            ),
+                    )
+                    .child(
+                        Button::new("submit-task-button")
+                            .label(button_label)
                             .accent()
-                            .on_click(cx.listener(|this, _, _window, cx| {
-                                this.create_task(cx);
+                            .on_click(cx.listener(|this, _, _window, cx| match this.form_mode {
+                                FormMode::Create => this.create_task(cx),
+                                FormMode::Edit(task_id) => this.update_task(task_id, cx),
                             })),
                     ),
             )
@@ -212,7 +407,7 @@ impl TaskWindow {
         tasks: Vec<Task>,
         active_task_id: Option<uuid::Uuid>,
         theme: crate::theme::Theme,
-        _cx: &mut Context<Self>,
+        cx: &mut Context<Self>,
     ) -> impl IntoElement {
         div()
             .flex()
@@ -227,6 +422,7 @@ impl TaskWindow {
                 let task_service = self.task_service.clone();
                 let task_service_toggle = self.task_service.clone();
                 let task_service_delete = self.task_service.clone();
+                let task_clone = task.clone();
 
                 div()
                     .flex()
@@ -278,14 +474,48 @@ impl TaskWindow {
                             .gap_1()
                             .child(
                                 div()
-                                    .text_sm()
-                                    .text_color(if task.completed {
-                                        theme.text_muted
-                                    } else {
-                                        theme.text
-                                    })
-                                    .when(task.completed, |this| this.line_through())
-                                    .child(task.title.clone()),
+                                    .flex()
+                                    .items_center()
+                                    .gap_2()
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .text_color(if task.completed {
+                                                theme.text_muted
+                                            } else {
+                                                theme.text
+                                            })
+                                            .when(task.completed, |this| this.line_through())
+                                            .child(task.title.clone()),
+                                    )
+                                    .child(
+                                        div()
+                                            .px_2()
+                                            .py_0p5()
+                                            .rounded(px(4.))
+                                            .text_xs()
+                                            .bg(match task.status {
+                                                TaskStatus::Todo => theme.surface,
+                                                TaskStatus::InProgress => theme.accent.opacity(0.2),
+                                                TaskStatus::Done => theme.green.opacity(0.2),
+                                            })
+                                            .text_color(match task.status {
+                                                TaskStatus::Todo => theme.text_muted,
+                                                TaskStatus::InProgress => theme.accent,
+                                                TaskStatus::Done => theme.green,
+                                            })
+                                            .child(task.status.as_str()),
+                                    )
+                                    .child(
+                                        div()
+                                            .px_2()
+                                            .py_0p5()
+                                            .rounded(px(4.))
+                                            .text_xs()
+                                            .bg(theme.accent.opacity(0.2))
+                                            .text_color(theme.accent)
+                                            .child(format!("P{}", task.priority)),
+                                    ),
                             )
                             .when_some(task.project.as_ref(), |this, project| {
                                 this.child(
@@ -307,6 +537,14 @@ impl TaskWindow {
                             )
                         },
                     ))
+                    .child(
+                        Button::new(format!("edit-task-{}", task_id))
+                            .label("Edit")
+                            .variant(ButtonVariant::Default)
+                            .on_click(cx.listener(move |this, _, _window, cx| {
+                                this.edit_task(&task_clone, cx);
+                            })),
+                    )
                     .child(
                         Button::new(format!("delete-task-{}", task_id))
                             .label("Delete")

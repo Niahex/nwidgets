@@ -3,6 +3,38 @@ use gpui::{EventEmitter, SharedString};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum TaskStatus {
+    Todo,
+    InProgress,
+    Done,
+}
+
+impl TaskStatus {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            TaskStatus::Todo => "Todo",
+            TaskStatus::InProgress => "In Progress",
+            TaskStatus::Done => "Done",
+        }
+    }
+
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "Todo" => Some(TaskStatus::Todo),
+            "InProgress" => Some(TaskStatus::InProgress),
+            "Done" => Some(TaskStatus::Done),
+            _ => None,
+        }
+    }
+}
+
+impl Default for TaskStatus {
+    fn default() -> Self {
+        TaskStatus::Todo
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Task {
     pub id: Uuid,
@@ -11,6 +43,8 @@ pub struct Task {
     pub time_spent_secs: u64,
     pub created_at: DateTime<Utc>,
     pub completed: bool,
+    pub status: TaskStatus,
+    pub priority: u8,
 }
 
 impl Task {
@@ -22,6 +56,8 @@ impl Task {
             time_spent_secs: 0,
             created_at: Utc::now(),
             completed: false,
+            status: TaskStatus::Todo,
+            priority: 5,
         }
     }
 
@@ -56,4 +92,7 @@ pub struct TaskSelected {
 #[derive(Clone)]
 pub struct TaskWindowToggled;
 
-pub trait TaskEvents: EventEmitter<TaskStateChanged> + EventEmitter<TaskSelected> + EventEmitter<TaskWindowToggled> {}
+pub trait TaskEvents:
+    EventEmitter<TaskStateChanged> + EventEmitter<TaskSelected> + EventEmitter<TaskWindowToggled>
+{
+}

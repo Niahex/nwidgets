@@ -83,10 +83,50 @@ impl Database {
                 project TEXT,
                 time_spent_secs INTEGER NOT NULL DEFAULT 0,
                 created_at INTEGER NOT NULL,
-                completed INTEGER NOT NULL DEFAULT 0
+                completed INTEGER NOT NULL DEFAULT 0,
+                status TEXT NOT NULL DEFAULT 'Todo',
+                priority INTEGER NOT NULL DEFAULT 5
             )",
             [],
         )?;
+
+        self.migrate_tasks_table(&conn)?;
+
+        Ok(())
+    }
+
+    fn migrate_tasks_table(&self, conn: &Connection) -> Result<()> {
+        let has_status: bool = conn
+            .query_row(
+                "SELECT COUNT(*) FROM pragma_table_info('tasks') WHERE name='status'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap_or(0)
+            > 0;
+
+        let has_priority: bool = conn
+            .query_row(
+                "SELECT COUNT(*) FROM pragma_table_info('tasks') WHERE name='priority'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap_or(0)
+            > 0;
+
+        if !has_status {
+            conn.execute(
+                "ALTER TABLE tasks ADD COLUMN status TEXT NOT NULL DEFAULT 'Todo'",
+                [],
+            )?;
+        }
+
+        if !has_priority {
+            conn.execute(
+                "ALTER TABLE tasks ADD COLUMN priority INTEGER NOT NULL DEFAULT 5",
+                [],
+            )?;
+        }
 
         Ok(())
     }

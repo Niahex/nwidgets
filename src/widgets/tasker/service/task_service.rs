@@ -1,5 +1,5 @@
 use crate::services::database::get_database;
-use crate::widgets::tasker::types::{Task, TaskSelected, TaskStateChanged, TaskWindowToggled};
+use crate::widgets::tasker::types::{Task, TaskSelected, TaskStateChanged, TaskStatus, TaskWindowToggled};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use gpui::{App, AppContext, Context, Entity, EventEmitter, Global};
@@ -34,7 +34,7 @@ impl TaskService {
         let conn = conn.lock();
 
         let mut stmt = conn.prepare(
-            "SELECT id, title, project, time_spent_secs, created_at, completed 
+            "SELECT id, title, project, time_spent_secs, created_at, completed, status, priority 
              FROM tasks 
              ORDER BY created_at DESC",
         )?;
@@ -57,9 +57,13 @@ impl TaskService {
                 let time_spent_secs: u64 = row.get(3)?;
                 let created_at_timestamp: i64 = row.get(4)?;
                 let completed: bool = row.get(5)?;
+                let status_str: String = row.get(6)?;
+                let priority: i64 = row.get(7)?;
 
                 let created_at =
                     DateTime::from_timestamp(created_at_timestamp, 0).unwrap_or_else(|| Utc::now());
+
+                let status = TaskStatus::from_str(&status_str).unwrap_or(TaskStatus::Todo);
 
                 Ok(Task {
                     id,
@@ -68,6 +72,8 @@ impl TaskService {
                     time_spent_secs,
                     created_at,
                     completed,
+                    status,
+                    priority: priority.clamp(0, 10) as u8,
                 })
             })?
             .collect::<Result<Vec<_>, _>>()?;
@@ -97,8 +103,8 @@ impl TaskService {
         for task in tasks {
             conn.execute(
                 "INSERT INTO tasks 
-                 (id, title, project, time_spent_secs, created_at, completed)
-                 VALUES (?, ?, ?, ?, ?, ?)",
+                 (id, title, project, time_spent_secs, created_at, completed, status, priority)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 rusqlite::params![
                     task.id.to_string(),
                     task.title,
@@ -106,6 +112,8 @@ impl TaskService {
                     task.time_spent_secs as i64,
                     task.created_at.timestamp(),
                     task.completed,
+                    task.status.as_str(),
+                    task.priority as i64,
                 ],
             )?;
         }
@@ -148,6 +156,26 @@ impl TaskService {
         self.save_tasks(cx);
         cx.emit(TaskStateChanged);
         cx.notify();
+    }
+
+    pub fn update_task(&mut self, task_id: Uuid, title: String, project: Option<String>, status: TaskStatus, priority: u8, cx: &mut Context<Self>) {
+        let found = {
+            let mut tasks = self.tasks.write();
+            if let Some(task) = tasks.iter_mut().find(|t| t.id == task_id) {
+                task.title = title;
+                task.project = project;
+                task.status = status;
+                task.priority = priority.clamp(0, 10);
+                true
+            } else {
+                false
+            }
+        };
+        if found {
+            self.save_tasks(cx);
+            cx.emit(TaskStateChanged);
+            cx.notify();
+        }
     }
 
     pub fn toggle_task_completed(&mut self, task_id: Uuid, cx: &mut Context<Self>) {

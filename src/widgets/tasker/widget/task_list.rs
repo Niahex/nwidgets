@@ -1,5 +1,6 @@
-use crate::widgets::tasker::service::TaskService;
 use crate::theme::ActiveTheme;
+use crate::widgets::tasker::service::TaskService;
+use crate::widgets::tasker::types::TaskStatus;
 use gpui::prelude::*;
 use gpui::*;
 
@@ -34,9 +35,44 @@ impl Render for TaskListWidget {
                         .border_color(theme.accent)
                         .child(
                             div()
-                                .text_sm()
-                                .text_color(theme.text)
-                                .child(format!("Active: {}", task.title)),
+                                .flex()
+                                .items_center()
+                                .gap_2()
+                                .child(
+                                    div()
+                                        .flex_1()
+                                        .text_sm()
+                                        .text_color(theme.text)
+                                        .child(format!("Active: {}", task.title)),
+                                )
+                                .child(
+                                    div()
+                                        .px_1p5()
+                                        .py_0p5()
+                                        .rounded(px(3.))
+                                        .text_xs()
+                                        .bg(match task.status {
+                                            TaskStatus::Todo => theme.surface,
+                                            TaskStatus::InProgress => theme.accent.opacity(0.3),
+                                            TaskStatus::Done => theme.green.opacity(0.3),
+                                        })
+                                        .text_color(match task.status {
+                                            TaskStatus::Todo => theme.text_muted,
+                                            TaskStatus::InProgress => theme.accent,
+                                            TaskStatus::Done => theme.green,
+                                        })
+                                        .child(task.status.as_str()),
+                                )
+                                .child(
+                                    div()
+                                        .px_1p5()
+                                        .py_0p5()
+                                        .rounded(px(3.))
+                                        .text_xs()
+                                        .bg(theme.accent.opacity(0.3))
+                                        .text_color(theme.accent)
+                                        .child(format!("P{}", task.priority)),
+                                ),
                         )
                         .when(task.time_spent_secs > 0, |this| {
                             this.child(
@@ -60,6 +96,34 @@ impl Render for TaskListWidget {
                             .text_xs()
                             .text_color(theme.text)
                             .child(task.title.clone()),
+                    )
+                    .child(
+                        div()
+                            .px_1p5()
+                            .py_0p5()
+                            .rounded(px(3.))
+                            .text_xs()
+                            .bg(match task.status {
+                                TaskStatus::Todo => theme.surface,
+                                TaskStatus::InProgress => theme.accent.opacity(0.2),
+                                TaskStatus::Done => theme.green.opacity(0.2),
+                            })
+                            .text_color(match task.status {
+                                TaskStatus::Todo => theme.text_muted,
+                                TaskStatus::InProgress => theme.accent,
+                                TaskStatus::Done => theme.green,
+                            })
+                            .child(task.status.as_str()),
+                    )
+                    .child(
+                        div()
+                            .px_1p5()
+                            .py_0p5()
+                            .rounded(px(3.))
+                            .text_xs()
+                            .bg(theme.accent.opacity(0.2))
+                            .text_color(theme.accent)
+                            .child(format!("P{}", task.priority)),
                     )
                     .when(task.time_spent_secs > 0, |this| {
                         this.child(
