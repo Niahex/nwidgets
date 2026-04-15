@@ -6,6 +6,7 @@
     flake-utils.url = "github:numtide/flake-utils";
     crane.url = "github:ipetkov/crane";
     rust-overlay.url = "github:oxalica/rust-overlay";
+    fff-nvim.url = "github:dmtrKovalenko/fff.nvim";
   };
 
   outputs = {
@@ -14,6 +15,7 @@
     flake-utils,
     crane,
     rust-overlay,
+    fff-nvim,
     ...
   }:
     flake-utils.lib.eachDefaultSystem (
@@ -225,6 +227,7 @@
           cargo-flamegraph
           bacon
           libnotify
+          fff-nvim.packages.${system}.default
         ];
       in {
         packages = {

@@ -2,6 +2,37 @@
 
 This document defines coding standards for nwidgets, adapted from Zed's best practices.
 
+## Development Tools
+
+### fff-mcp - Fast File Finder
+
+**For any file search, grep, or code navigation task, use `fff-mcp` (Fast File Finder MCP server).**
+
+`fff-mcp` is available in the nix development environment and provides:
+- Fuzzy file search with frecency (frequency + recency) ranking
+- Fast grep across the codebase with regex support
+- Git-aware file filtering
+- Multi-threaded indexing and search
+- Persistent caching for instant results
+
+**Usage**:
+```bash
+# Start MCP server (indexes current directory)
+fff-mcp
+
+# Start with custom path
+fff-mcp /path/to/project
+
+# Options
+fff-mcp --log-level debug --no-warmup
+```
+
+**When to use**:
+- Finding files by name or pattern
+- Searching code content across multiple files
+- Navigating unfamiliar codebases
+- Any grep/search operation
+
 ## Core Principles
 
 * **Prioritize code correctness and clarity**. Speed and efficiency are secondary priorities unless otherwise specified.
