@@ -538,24 +538,41 @@ impl TaskWindow {
                         },
                     ))
                     .child(
-                        Button::new(format!("edit-task-{}", task_id))
-                            .label("Edit")
-                            .variant(ButtonVariant::Default)
-                            .on_click(cx.listener(move |this, _, _window, cx| {
-                                cx.stop_propagation();
-                                this.edit_task(&task_clone, cx);
-                            })),
+                        div()
+                            .px_3()
+                            .py_1p5()
+                            .rounded_md()
+                            .text_xs()
+                            .bg(theme.surface)
+                            .text_color(theme.text)
+                            .cursor_pointer()
+                            .hover(|s| s.bg(theme.hover))
+                            .on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(move |this, _event, _window, cx| {
+                                    cx.stop_propagation();
+                                    this.edit_task(&task_clone, cx);
+                                }),
+                            )
+                            .child("Edit"),
                     )
                     .child(
-                        Button::new(format!("delete-task-{}", task_id))
-                            .label("Delete")
-                            .variant(ButtonVariant::Danger)
-                            .on_click(move |_, _window, cx| {
+                        div()
+                            .px_3()
+                            .py_1p5()
+                            .rounded_md()
+                            .text_xs()
+                            .bg(theme.red.opacity(0.2))
+                            .text_color(theme.red)
+                            .cursor_pointer()
+                            .hover(|s| s.bg(theme.red.opacity(0.3)))
+                            .on_mouse_down(MouseButton::Left, move |_event, _window, cx| {
                                 cx.stop_propagation();
                                 task_service_delete.update(cx, |service, cx| {
                                     service.remove_task(task_id, cx);
                                 });
-                            }),
+                            })
+                            .child("Delete"),
                     )
             }))
     }
