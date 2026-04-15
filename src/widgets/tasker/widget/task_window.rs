@@ -542,6 +542,7 @@ impl TaskWindow {
                             .label("Edit")
                             .variant(ButtonVariant::Default)
                             .on_click(cx.listener(move |this, _, _window, cx| {
+                                cx.stop_propagation();
                                 this.edit_task(&task_clone, cx);
                             })),
                     )
@@ -550,6 +551,7 @@ impl TaskWindow {
                             .label("Delete")
                             .variant(ButtonVariant::Danger)
                             .on_click(move |_, _window, cx| {
+                                cx.stop_propagation();
                                 task_service_delete.update(cx, |service, cx| {
                                     service.remove_task(task_id, cx);
                                 });
