@@ -11,6 +11,8 @@ pub async fn replay_macro(
 ) -> Result<()> {
     let mut wayland_input = super::wayland_input::WaylandInput::new()?;
     let mut last_timestamp = 0u64;
+    let mut current_mouse_x = 0i32;
+    let mut current_mouse_y = 0i32;
 
     for action in &macro_rec.actions {
         if playing.read().is_none() {
@@ -28,10 +30,18 @@ pub async fn replay_macro(
         match &action.action_type {
             ActionType::MouseClick(btn) => {
                 if let Some(zone) = &action.click_zone {
-                    let (x, y) = randomize_click_position(zone);
-                    if let Err(e) = wayland_input.move_pointer(x, y) {
-                        log::warn!("Failed to move pointer: {}", e);
+                    let (target_x, target_y) = randomize_click_position(zone);
+                    if let Err(e) = wayland_input.move_pointer_smooth(
+                        target_x,
+                        target_y,
+                        current_mouse_x,
+                        current_mouse_y,
+                    ) {
+                        log::warn!("Failed to move pointer smoothly: {}", e);
                     }
+                    current_mouse_x = target_x;
+                    current_mouse_y = target_y;
+                    
                     tokio::time::sleep(std::time::Duration::from_millis(10)).await;
                 }
                 

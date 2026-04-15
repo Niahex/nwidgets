@@ -207,7 +207,55 @@ impl WaylandInput {
         Ok(())
     }
 
+    pub fn move_pointer_smooth(
+        &mut self,
+        target_x: i32,
+        target_y: i32,
+        current_x: i32,
+        current_y: i32,
+    ) -> Result<()> {
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+
+        let dx = target_x - current_x;
+        let dy = target_y - current_y;
+        let distance = ((dx * dx + dy * dy) as f64).sqrt();
+
+        let steps = (distance / 10.0).max(5.0).min(20.0) as i32;
+
+        for i in 1..=steps {
+            let progress = i as f64 / steps as f64;
+            let eased = 1.0 - (1.0 - progress).powi(3);
+
+            let jitter_x = rng.gen_range(-2..=2);
+            let jitter_y = rng.gen_range(-2..=2);
+
+            let x = current_x + (dx as f64 * eased) as i32 + jitter_x;
+            let y = current_y + (dy as f64 * eased) as i32 + jitter_y;
+
+            {
+                let pointer = self
+                    .state
+                    .virtual_pointer
+                    .as_ref()
+                    .context("Virtual pointer not initialized")?;
+
+                pointer.motion_absolute(0, x as u32, y as u32, u32::MAX, u32::MAX);
+                pointer.frame();
+            }
+
+            let mut event_queue = self.connection.new_event_queue();
+            event_queue.roundtrip(&mut self.state)?;
+
+            let delay = rng.gen_range(1..=3);
+            std::thread::sleep(std::time::Duration::from_millis(delay));
+        }
+
+        Ok(())
+    }
+
     pub fn click_button(&mut self, button: MacroMouseButton) -> Result<()> {
+        use rand::Rng;
         use wayland_client::protocol::wl_pointer::ButtonState;
 
         let button_code = match button {
@@ -232,7 +280,9 @@ impl WaylandInput {
             event_queue.roundtrip(&mut self.state)?;
         }
 
-        std::thread::sleep(std::time::Duration::from_millis(10));
+        let mut rng = rand::thread_rng();
+        let click_duration = rng.gen_range(8..=15);
+        std::thread::sleep(std::time::Duration::from_millis(click_duration));
 
         {
             let pointer = self
