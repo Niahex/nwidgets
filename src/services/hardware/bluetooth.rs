@@ -177,12 +177,6 @@ impl BluetoothService {
                         log::warn!("Failed to send bluetooth device removed update: {}", e);
                     }
                 }
-                _ = tokio::time::sleep(Duration::from_secs(2)) => {
-                    let new_state = Self::fetch_bluetooth_state_dbus(&object_manager).await;
-                    if let Err(e) = ui_tx.unbounded_send(new_state) {
-                        log::warn!("Failed to send bluetooth polling update: {}", e);
-                    }
-                }
             }
         }
     }
