@@ -10,9 +10,9 @@ publish = false
 include = ["src/**/*", "Cargo.toml", "assets/**/*"]
 
 [dependencies]
-gpui = { git = "https://github.com/Niahex/zed", branch = "layershell-v0.230.1", features = ["wayland"] }
-gpui_tokio = { git = "https://github.com/Niahex/zed", branch = "layershell-v0.230.1" }
-gpui_platform = { git = "https://github.com/Niahex/zed", branch = "layershell-v0.230.1", features = ["wayland"] }
+gpui = { git = "https://github.com/Niahex/zed", branch = "layershell-0.2", features = ["wayland"] }
+gpui_tokio = { git = "https://github.com/Niahex/zed", branch = "layershell-0.2" }
+gpui_platform = { git = "https://github.com/Niahex/zed", branch = "layershell-0.2", features = ["wayland"] }
 
 anyhow = "1.0"
 log = "0.4"

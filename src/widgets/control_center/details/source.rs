@@ -9,8 +9,8 @@ impl super::super::ControlCenterWidget {
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let theme = cx.theme().clone();
-        let sources = self.audio.read(cx).sources();
-        let streams = self.audio.read(cx).source_outputs();
+        let sources = (*self.audio.read(cx).sources()).clone();
+        let streams = (*self.audio.read(cx).source_outputs()).clone();
         let is_open = self.source_dropdown_open;
 
         self.render_audio_device_panel(
