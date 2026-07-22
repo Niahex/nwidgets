@@ -47,6 +47,7 @@ let
         topLevel = builtins.head (lib.splitString "/" relPath);
       in
       builtins.elem topLevel [
+        "assets"
         "crates"
         "Cargo.toml"
         "Cargo.lock"

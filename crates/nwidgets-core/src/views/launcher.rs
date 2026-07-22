@@ -372,6 +372,13 @@ impl Launcher {
 
         Self { focus_handle, apps_service, clipboard_service, list_state, _subscriptions: subscriptions }
     }
+
+    /// Vide le champ de recherche du launcher
+    pub fn reset(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.list_state.update(cx, |list, cx| {
+            list.set_query("", window, cx);
+        });
+    }
 }
 
 impl Render for Launcher {
@@ -385,7 +392,8 @@ impl Render for Launcher {
         div()
             .id("launcher-main")
             .track_focus(&self.focus_handle)
-            .on_action(cx.listener(|_this, _action: &CloseLauncher, _window, cx| {
+            .on_action(cx.listener(|this, _action: &CloseLauncher, window, cx| {
+                this.reset(window, cx);
                 cx.emit(CloseLauncher);
             }))
             .size_full()

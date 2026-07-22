@@ -105,7 +105,7 @@ fn main() {
         let launcher_visible = std::rc::Rc::new(std::cell::Cell::new(false));
 
         // Subscribe Escape event for Launcher
-        if let Some(launcher_entity) = launcher_entity {
+        if let Some(ref launcher_entity) = launcher_entity {
             let launcher_win_close = launcher_window.clone();
             let launcher_vis_close = launcher_visible.clone();
             let _ = launcher_window.update(cx, |_, _window, cx| {
@@ -150,6 +150,15 @@ fn main() {
             nwidgets_shortcut::ShortcutCommand::ToggleLauncher => {
                 let v = !launcher_vis.get();
                 launcher_vis.set(v);
+                if v {
+                    if let Some(ref entity) = launcher_entity {
+                        let _ = launcher_window.update(cx, |_, window, cx| {
+                            entity.update(cx, |launcher, cx| {
+                                launcher.reset(window, cx);
+                            });
+                        });
+                    }
+                }
                 nwidgets_launcher::set_visible(&launcher_win, v, launcher_fh.as_ref(), cx);
             }
             nwidgets_shortcut::ShortcutCommand::PinChat => {}
