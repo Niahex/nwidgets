@@ -52,15 +52,25 @@ impl Render for Bar {
                     .w_full()
                     .h(px(BAR_HEIGHT))
                     .bg(bg)
+                    .relative()
                     .flex()
                     .items_center()
                     .justify_between()
                     .px_4()
                     // ── Left: Active window ──
-                    .child(self.active_window.clone())
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .max_w(px(320.0))
+                            .overflow_hidden()
+                            .child(self.active_window.clone()),
+                    )
                     // ── Center: Pomodoro ──
                     .child(
                         div()
+                            .absolute()
+                            .inset_0()
                             .flex()
                             .items_center()
                             .justify_center()

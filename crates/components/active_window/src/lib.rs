@@ -44,7 +44,7 @@ impl ActiveWindowComponent {
             (
                 app_id.to_string().into(),
                 class_str.to_string().into(),
-                Self::extract_short_title(title, 35).into(),
+                Self::extract_short_title(title, 25).into(),
             )
         }
     }
@@ -111,18 +111,18 @@ impl Render for ActiveWindowComponent {
             .flex()
             .gap_2()
             .items_center()
-            .px_3()
+            .px_2()
             .py_1()
-            .min_w(px(200.0))
-            .max_w(px(450.0))
+            .min_w(px(160.0))
+            .max_w(px(300.0))
             .child(
                 div()
-                    .size(px(28.0))
+                    .size(px(26.0))
                     .flex_shrink_0()
                     .flex()
                     .items_center()
                     .justify_center()
-                    .child(img(icon_path).size(px(28.0))),
+                    .child(img(icon_path).size(px(26.0))),
             )
             .child(
                 div()
