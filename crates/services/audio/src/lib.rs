@@ -1,8 +1,7 @@
 use futures::channel::mpsc;
 use futures::StreamExt;
 use gpui::{App, AppContext, AsyncApp, Context, Entity, EventEmitter, Global};
-use std::process::Stdio;
-use tokio::io::{AsyncBufReadExt, BufReader};
+use std::time::Duration;
 use tokio::process::Command;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -51,7 +50,7 @@ impl AudioService {
 
         let (tx, mut rx) = mpsc::unbounded::<AudioState>();
 
-        // Background worker to monitor Pactl / Pipewire events
+        // Background worker to monitor Pipewire / wpctl / pactl events
         gpui_tokio::Tokio::spawn(cx, async move {
             let fetch_state = || async {
                 let mut state = AudioState::default();
@@ -82,20 +81,17 @@ impl AudioService {
             };
 
             // Send initial audio state
-            let initial = fetch_state().await;
-            let _ = tx.unbounded_send(initial);
+            let mut last_state = fetch_state().await;
+            let _ = tx.unbounded_send(last_state.clone());
 
-            // Subscribe to pactl events
-            if let Ok(mut child) = Command::new("pactl")
-                .arg("subscribe")
-                .stdout(Stdio::piped())
-                .spawn()
-            {
-                if let Some(stdout) = child.stdout.take() {
-                    let mut lines = BufReader::new(stdout).lines();
-                    while let Ok(Some(_line)) = lines.next_line().await {
-                        let updated = fetch_state().await;
-                        let _ = tx.unbounded_send(updated);
+            // Polling loop (150ms) to guarantee volume updates across Pipewire/ALSA/NixOS
+            loop {
+                tokio::time::sleep(Duration::from_millis(150)).await;
+                let current_state = fetch_state().await;
+                if current_state != last_state {
+                    last_state = current_state.clone();
+                    if tx.unbounded_send(current_state).is_err() {
+                        break;
                     }
                 }
             }
@@ -126,8 +122,11 @@ impl AudioService {
     }
 
     pub fn set_sink_volume(&mut self, volume_percent: u8, cx: &mut Context<Self>) {
-        self.state.sink_volume = volume_percent;
-        cx.notify();
+        if self.state.sink_volume != volume_percent {
+            self.state.sink_volume = volume_percent;
+            cx.emit(AudioStateChanged);
+            cx.notify();
+        }
         let vol_str = format!("{}%", volume_percent);
         gpui_tokio::Tokio::spawn(cx, async move {
             let _ = Command::new("wpctl")
@@ -139,8 +138,11 @@ impl AudioService {
     }
 
     pub fn set_source_volume(&mut self, volume_percent: u8, cx: &mut Context<Self>) {
-        self.state.source_volume = volume_percent;
-        cx.notify();
+        if self.state.source_volume != volume_percent {
+            self.state.source_volume = volume_percent;
+            cx.emit(AudioStateChanged);
+            cx.notify();
+        }
         let vol_str = format!("{}%", volume_percent);
         gpui_tokio::Tokio::spawn(cx, async move {
             let _ = Command::new("wpctl")
