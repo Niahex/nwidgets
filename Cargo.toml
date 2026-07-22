@@ -9,6 +9,18 @@ members = [
     "crates/widgets/control_center",
     "crates/widgets/launcher",
     "crates/shortcut",
+    "crates/services/niri",
+    "crates/services/audio",
+    "crates/services/system_monitor",
+    "crates/services/bluetooth",
+    "crates/services/network",
+    "crates/services/applications",
+    "crates/services/process",
+    "crates/services/clipboard",
+    "crates/components/active_window",
+    "crates/components/datetime",
+    "crates/components/pomodoro",
+    "crates/components/quicksettings",
 ]
 default-members = ["crates/nwidgets-core"]
 
@@ -21,6 +33,18 @@ gpui = { path = "/run/mount/ve_stock_2/ngpui/crates/ngpui_core/gpui", features =
 gpui_tokio = { path = "/run/mount/ve_stock_2/ngpui/crates/ngpui_core/gpui_tokio" }
 gpui_platform = { path = "/run/mount/ve_stock_2/ngpui/crates/ngpui_core/gpui_platform", features = ["wayland"] }
 gpui-component = { path = "/run/mount/ve_stock_2/ngpui/crates/ngpui_ui/ui" }
+nwidgets-service-niri = { path = "crates/services/niri" }
+nwidgets-service-audio = { path = "crates/services/audio" }
+nwidgets-service-system-monitor = { path = "crates/services/system_monitor" }
+nwidgets-service-bluetooth = { path = "crates/services/bluetooth" }
+nwidgets-service-network = { path = "crates/services/network" }
+nwidgets-service-applications = { path = "crates/services/applications" }
+nwidgets-service-process = { path = "crates/services/process" }
+nwidgets-service-clipboard = { path = "crates/services/clipboard" }
+nwidgets-component-active-window = { path = "crates/components/active_window" }
+nwidgets-component-datetime = { path = "crates/components/datetime" }
+nwidgets-component-pomodoro = { path = "crates/components/pomodoro" }
+nwidgets-component-quicksettings = { path = "crates/components/quicksettings" }
 anyhow = "1.0"
 
 [workspace.lints.rust]

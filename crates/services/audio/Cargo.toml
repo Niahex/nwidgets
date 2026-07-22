@@ -1,0 +1,16 @@
+[package]
+name = "nwidgets-service-audio"
+version = "0.1.0"
+edition.workspace = true
+publish = false
+license = "GPL-3.0"
+
+[dependencies]
+gpui.workspace = true
+gpui_tokio.workspace = true
+tokio = { version = "1.0", features = ["full"] }
+futures = "0.3"
+anyhow.workspace = true
+
+[lints]
+workspace = true

@@ -3,13 +3,30 @@ use gpui_component::corner::{Corner, CornerPosition};
 
 const CORNER_RADIUS: f32 = 12.0;
 
-pub struct Chat;
+actions!(chat, [CloseChat]);
+
+pub struct Chat {
+    pub focus_handle: FocusHandle,
+}
+
+impl Chat {
+    pub fn new(cx: &mut Context<Self>) -> Self {
+        Self {
+            focus_handle: cx.focus_handle(),
+        }
+    }
+}
 
 impl Render for Chat {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let bg = rgb(0x434c5e);
 
         div()
+            .track_focus(&self.focus_handle)
+            .on_action(cx.listener(|_this, _action: &CloseChat, _window, cx| {
+                // Notifie la fermeture du Chat
+                cx.emit(CloseChat);
+            }))
             .size_full()
             .flex()
             .flex_row()
@@ -48,3 +65,5 @@ impl Render for Chat {
             )
     }
 }
+
+impl EventEmitter<CloseChat> for Chat {}

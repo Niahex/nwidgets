@@ -17,6 +17,18 @@ nwidgets-notification = { path = "../widgets/notification" }
 nwidgets-control-center = { path = "../widgets/control_center" }
 nwidgets-launcher = { path = "../widgets/launcher" }
 nwidgets-shortcut = { path = "../shortcut" }
+nwidgets-service-niri.workspace = true
+nwidgets-service-audio.workspace = true
+nwidgets-service-system-monitor.workspace = true
+nwidgets-service-bluetooth.workspace = true
+nwidgets-service-network.workspace = true
+nwidgets-service-applications.workspace = true
+nwidgets-service-process.workspace = true
+nwidgets-service-clipboard.workspace = true
+nwidgets-component-active-window = { path = "../components/active_window" }
+nwidgets-component-datetime = { path = "../components/datetime" }
+nwidgets-component-pomodoro = { path = "../components/pomodoro" }
+nwidgets-component-quicksettings = { path = "../components/quicksettings" }
 
 [lints]
 workspace = true

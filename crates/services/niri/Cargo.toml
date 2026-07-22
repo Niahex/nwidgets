@@ -1,0 +1,18 @@
+[package]
+name = "nwidgets-service-niri"
+version = "0.1.0"
+edition.workspace = true
+publish = false
+license = "GPL-3.0"
+
+[dependencies]
+gpui.workspace = true
+gpui_tokio.workspace = true
+tokio = { version = "1.0", features = ["full"] }
+futures = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow.workspace = true
+
+[lints]
+workspace = true

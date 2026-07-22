@@ -1,0 +1,12 @@
+[package]
+name = "nwidgets-service-process"
+version = "0.1.0"
+edition.workspace = true
+publish = false
+license = "GPL-3.0"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+
+[lints]
+workspace = true

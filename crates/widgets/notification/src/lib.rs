@@ -29,13 +29,13 @@ impl NotificationWindow {
                 WindowOptions {
                     window_bounds: Some(WindowBounds::Windowed(Bounds {
                         origin: Point { x: px(0.0), y: px(0.0) },
-                        size: Size { width: px(500.0), height: px(175.0) },
+                        size: Size { width: px(1.0), height: px(1.0) },
                     })),
                     titlebar: None,
                     window_background: WindowBackgroundAppearance::Transparent,
                     kind: WindowKind::LayerShell(LayerShellOptions {
                         namespace: "nwidgets-notifications".to_string(),
-                        layer: Layer::Overlay,
+                        layer: Layer::Background,
                         anchor: Anchor::TOP | Anchor::RIGHT,
                         margin: None,
                         keyboard_interactivity: KeyboardInteractivity::None,
@@ -45,6 +45,7 @@ impl NotificationWindow {
                 },
                 |window, cx| {
                     window.set_input_region(None);
+                    window.resize(size(px(1.0), px(1.0)));
                     build_view(window, cx)
                 },
             )

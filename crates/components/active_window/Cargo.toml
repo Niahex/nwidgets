@@ -1,0 +1,14 @@
+[package]
+name = "nwidgets-component-active-window"
+version = "0.1.0"
+edition.workspace = true
+publish = false
+license = "GPL-3.0"
+
+[dependencies]
+gpui.workspace = true
+nwidgets-service-niri = { path = "../../services/niri" }
+anyhow.workspace = true
+
+[lints]
+workspace = true
