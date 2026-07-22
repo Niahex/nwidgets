@@ -3623,6 +3623,7 @@ dependencies = [
  "nwidgets-service-audio",
  "nwidgets-service-bluetooth",
  "nwidgets-service-clipboard",
+ "nwidgets-service-lock",
  "nwidgets-service-network",
  "nwidgets-service-niri",
  "nwidgets-service-process",
@@ -3699,6 +3700,17 @@ dependencies = [
  "gpui_tokio",
  "log",
  "serde",
+ "tokio",
+]
+
+[[package]]
+name = "nwidgets-service-lock"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "gpui",
+ "gpui_tokio",
+ "log",
  "tokio",
 ]
 

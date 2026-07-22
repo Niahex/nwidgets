@@ -80,6 +80,36 @@ impl ControlCenter {
         })
         .detach();
 
+        cx.subscribe(&volume_slider, |this, _, ev: &gpui_component::slider::SliderEvent, cx| {
+            let val = match ev {
+                gpui_component::slider::SliderEvent::Change(v) | gpui_component::slider::SliderEvent::Release(v) => {
+                    match v {
+                        gpui_component::slider::SliderValue::Single(f) => *f,
+                        _ => 0.0,
+                    }
+                }
+            };
+            this.audio.update(cx, |audio, cx| {
+                audio.set_sink_volume(val as u8, cx);
+            });
+        })
+        .detach();
+
+        cx.subscribe(&mic_slider, |this, _, ev: &gpui_component::slider::SliderEvent, cx| {
+            let val = match ev {
+                gpui_component::slider::SliderEvent::Change(v) | gpui_component::slider::SliderEvent::Release(v) => {
+                    match v {
+                        gpui_component::slider::SliderValue::Single(f) => *f,
+                        _ => 0.0,
+                    }
+                }
+            };
+            this.audio.update(cx, |audio, cx| {
+                audio.set_source_volume(val as u8, cx);
+            });
+        })
+        .detach();
+
         cx.subscribe(&system_monitor, |_, _, _: &SystemStatsChanged, cx| cx.notify()).detach();
         cx.subscribe(&bluetooth, |_, _, _: &BluetoothStateChanged, cx| cx.notify()).detach();
         cx.subscribe(&network, |_, _, _: &NetworkStateChanged, cx| cx.notify()).detach();
@@ -136,16 +166,21 @@ impl ControlCenter {
                             .justify_between()
                             .child(
                                 div()
+                                    .id("sink-mute-trigger")
                                     .flex()
                                     .items_center()
                                     .gap_2()
-                                    .child(Icon::new("volume_up").size(px(20.0)).text_color(accent))
+                                    .cursor_pointer()
+                                    .on_click(cx.listener(|this, _, _window, cx| {
+                                        this.audio.update(cx, |audio, cx| audio.toggle_sink_mute(cx));
+                                    }))
+                                    .child(Icon::new(if audio_state.sink_muted { "volume_off" } else { "volume_up" }).size(px(20.0)).text_color(if audio_state.sink_muted { rgb(0xbf616a) } else { accent }))
                                     .child(
                                         div()
                                             .text_sm()
                                             .font_weight(FontWeight::SEMIBOLD)
                                             .text_color(text_main)
-                                            .child("Output Volume"),
+                                            .child(if audio_state.sink_muted { "Output Muted" } else { "Output Volume" }),
                                     ),
                             )
                             .child(
@@ -210,16 +245,21 @@ impl ControlCenter {
                             .justify_between()
                             .child(
                                 div()
+                                    .id("source-mute-trigger")
                                     .flex()
                                     .items_center()
                                     .gap_2()
-                                    .child(Icon::new("mic").size(px(20.0)).text_color(accent))
+                                    .cursor_pointer()
+                                    .on_click(cx.listener(|this, _, _window, cx| {
+                                        this.audio.update(cx, |audio, cx| audio.toggle_source_mute(cx));
+                                    }))
+                                    .child(Icon::new(if audio_state.source_muted { "mic_off" } else { "mic" }).size(px(20.0)).text_color(if audio_state.source_muted { rgb(0xbf616a) } else { accent }))
                                     .child(
                                         div()
                                             .text_sm()
                                             .font_weight(FontWeight::SEMIBOLD)
                                             .text_color(text_main)
-                                            .child("Microphone"),
+                                            .child(if audio_state.source_muted { "Microphone Muted" } else { "Microphone" }),
                                     ),
                             )
                             .child(

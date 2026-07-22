@@ -150,4 +150,30 @@ impl AudioService {
         })
         .detach();
     }
+
+    pub fn toggle_sink_mute(&mut self, cx: &mut Context<Self>) {
+        self.state.sink_muted = !self.state.sink_muted;
+        cx.emit(AudioStateChanged);
+        cx.notify();
+        gpui_tokio::Tokio::spawn(cx, async move {
+            let _ = Command::new("wpctl")
+                .args(["set-mute", "@DEFAULT_AUDIO_SINK@", "toggle"])
+                .status()
+                .await;
+        })
+        .detach();
+    }
+
+    pub fn toggle_source_mute(&mut self, cx: &mut Context<Self>) {
+        self.state.source_muted = !self.state.source_muted;
+        cx.emit(AudioStateChanged);
+        cx.notify();
+        gpui_tokio::Tokio::spawn(cx, async move {
+            let _ = Command::new("wpctl")
+                .args(["set-mute", "@DEFAULT_AUDIO_SOURCE@", "toggle"])
+                .status()
+                .await;
+        })
+        .detach();
+    }
 }

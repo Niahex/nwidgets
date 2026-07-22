@@ -1,0 +1,11 @@
+[package]
+name = "nwidgets-service-lock"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+gpui.workspace = true
+gpui_tokio.workspace = true
+futures = "0.3"
+tokio = { version = "1.0", features = ["full"] }
+log = "0.4"

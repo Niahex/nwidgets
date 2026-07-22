@@ -24,6 +24,7 @@ fn main() {
         let _network_service = nwidgets_service_network::NetworkService::init(cx);
         let _applications_service = nwidgets_service_applications::ApplicationsService::init(cx);
         let _clipboard_service = nwidgets_service_clipboard::ClipboardService::init(cx);
+        let _lock_service = nwidgets_service_lock::LockMonitor::init(cx);
 
         // ── Launcher Window ──
         cx.bind_keys([
@@ -60,12 +61,20 @@ fn main() {
         }
 
         // ── OSD ──
-        let osd = views::osd::OsdManager::new();
-        {
-            let mut mgr = osd.0.borrow_mut();
-            mgr.open(cx, |_window, cx| cx.new(|_| views::osd::OsdView));
+        let mut osd_entity = None;
+        let osd_window = nwidgets_osd::open(cx, |window, cx| {
+            let view = cx.new(views::osd::OsdView::new);
+            osd_entity = Some(view.clone());
+            cx.new(|cx| gpui_component::Root::new(view, window, cx).bordered(false))
+        });
+        if let (Some(osd_window), Some(osd_entity)) = (osd_window, osd_entity) {
+            let handle: AnyWindowHandle = osd_window.into();
+            let _ = osd_window.update(cx, |_, _window, cx| {
+                osd_entity.update(cx, |osd, _| {
+                    osd.set_window_handle(handle);
+                });
+            });
         }
-        cx.set_global(osd);
 
         // ── Notifications ──
         let ntf = views::notification::NtfManager::new();
