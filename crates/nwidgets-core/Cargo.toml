@@ -9,7 +9,14 @@ license = "GPL-3.0"
 gpui.workspace = true
 gpui_tokio.workspace = true
 gpui_platform.workspace = true
-gpui_component.workspace = true
+gpui-component.workspace = true
+nwidgets-bar = { path = "../widgets/bar" }
+nwidgets-chat = { path = "../widgets/chat" }
+nwidgets-osd = { path = "../widgets/osd" }
+nwidgets-notification = { path = "../widgets/notification" }
+nwidgets-control-center = { path = "../widgets/control_center" }
+nwidgets-launcher = { path = "../widgets/launcher" }
+nwidgets-shortcut = { path = "../shortcut" }
 
 [lints]
 workspace = true

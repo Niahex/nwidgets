@@ -2,6 +2,13 @@
 resolver = "2"
 members = [
     "crates/nwidgets-core",
+    "crates/widgets/bar",
+    "crates/widgets/chat",
+    "crates/widgets/osd",
+    "crates/widgets/notification",
+    "crates/widgets/control_center",
+    "crates/widgets/launcher",
+    "crates/shortcut",
 ]
 default-members = ["crates/nwidgets-core"]
 
@@ -13,7 +20,8 @@ edition = "2024"
 gpui = { path = "/run/mount/ve_stock_2/ngpui/crates/ngpui_core/gpui", features = ["wayland"] }
 gpui_tokio = { path = "/run/mount/ve_stock_2/ngpui/crates/ngpui_core/gpui_tokio" }
 gpui_platform = { path = "/run/mount/ve_stock_2/ngpui/crates/ngpui_core/gpui_platform", features = ["wayland"] }
-gpui_component = { path = "/run/mount/ve_stock_2/ngpui/crates/ngpui_ui/ui" }
+gpui-component = { path = "/run/mount/ve_stock_2/ngpui/crates/ngpui_ui/ui" }
+anyhow = "1.0"
 
 [workspace.lints.rust]
 unexpected_cfgs = { level = "allow" }
