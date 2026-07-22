@@ -60,10 +60,10 @@ struct PwNodeInfo {
 
 pub struct AudioService {
     state: Arc<RwLock<AudioState>>,
-    sinks: Arc<RwLock<SmallVec<[AudioDevice; 8]>>>,
-    sources: Arc<RwLock<SmallVec<[AudioDevice; 8]>>>,
-    sink_inputs: Arc<RwLock<SmallVec<[AudioStream; 16]>>>,
-    source_outputs: Arc<RwLock<SmallVec<[AudioStream; 16]>>>,
+    sinks: Arc<RwLock<Arc<SmallVec<[AudioDevice; 8]>>>>,
+    sources: Arc<RwLock<Arc<SmallVec<[AudioDevice; 8]>>>>,
+    sink_inputs: Arc<RwLock<Arc<SmallVec<[AudioStream; 16]>>>>,
+    source_outputs: Arc<RwLock<Arc<SmallVec<[AudioStream; 16]>>>>,
 }
 
 impl EventEmitter<AudioStateChanged> for AudioService {}
@@ -81,10 +81,10 @@ enum AudioUpdate {
 impl AudioService {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let state = Arc::new(RwLock::new(AudioState::default()));
-        let sinks = Arc::new(RwLock::new(SmallVec::new()));
-        let sources = Arc::new(RwLock::new(SmallVec::new()));
-        let sink_inputs = Arc::new(RwLock::new(SmallVec::new()));
-        let source_outputs = Arc::new(RwLock::new(SmallVec::new()));
+        let sinks = Arc::new(RwLock::new(Arc::new(SmallVec::new())));
+        let sources = Arc::new(RwLock::new(Arc::new(SmallVec::new())));
+        let sink_inputs = Arc::new(RwLock::new(Arc::new(SmallVec::new())));
+        let source_outputs = Arc::new(RwLock::new(Arc::new(SmallVec::new())));
 
         let (ui_tx, mut ui_rx) = futures::channel::mpsc::unbounded::<AudioUpdate>();
 
@@ -127,10 +127,10 @@ impl AudioService {
                             sink_inputs,
                             source_outputs,
                         } => {
-                            *sinks_clone.write() = *sinks;
-                            *sources_clone.write() = *sources;
-                            *sink_inputs_clone.write() = *sink_inputs;
-                            *source_outputs_clone.write() = *source_outputs;
+                            *sinks_clone.write() = Arc::new(*sinks);
+                            *sources_clone.write() = Arc::new(*sources);
+                            *sink_inputs_clone.write() = Arc::new(*sink_inputs);
+                            *source_outputs_clone.write() = Arc::new(*source_outputs);
 
                             let _ = this.update(&mut cx, |_, cx| {
                                 cx.notify();
@@ -554,20 +554,20 @@ impl AudioService {
         .detach();
     }
 
-    pub fn sinks(&self) -> SmallVec<[AudioDevice; 8]> {
-        self.sinks.read().clone()
+    pub fn sinks(&self) -> Arc<SmallVec<[AudioDevice; 8]>> {
+        Arc::clone(&self.sinks.read())
     }
 
-    pub fn sources(&self) -> SmallVec<[AudioDevice; 8]> {
-        self.sources.read().clone()
+    pub fn sources(&self) -> Arc<SmallVec<[AudioDevice; 8]>> {
+        Arc::clone(&self.sources.read())
     }
 
-    pub fn sink_inputs(&self) -> SmallVec<[AudioStream; 16]> {
-        self.sink_inputs.read().clone()
+    pub fn sink_inputs(&self) -> Arc<SmallVec<[AudioStream; 16]>> {
+        Arc::clone(&self.sink_inputs.read())
     }
 
-    pub fn source_outputs(&self) -> SmallVec<[AudioStream; 16]> {
-        self.source_outputs.read().clone()
+    pub fn source_outputs(&self) -> Arc<SmallVec<[AudioStream; 16]>> {
+        Arc::clone(&self.source_outputs.read())
     }
 }
 
