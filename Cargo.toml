@@ -18,6 +18,7 @@ members = [
     "crates/services/process",
     "crates/services/clipboard",
     "crates/services/lock",
+    "crates/services/notification",
     "crates/components/active_window",
     "crates/components/datetime",
     "crates/components/pomodoro",
@@ -43,6 +44,7 @@ nwidgets-service-applications = { path = "crates/services/applications" }
 nwidgets-service-process = { path = "crates/services/process" }
 nwidgets-service-clipboard = { path = "crates/services/clipboard" }
 nwidgets-service-lock = { path = "crates/services/lock" }
+nwidgets-service-notification = { path = "crates/services/notification" }
 nwidgets-component-active-window = { path = "crates/components/active_window" }
 nwidgets-component-datetime = { path = "crates/components/datetime" }
 nwidgets-component-pomodoro = { path = "crates/components/pomodoro" }

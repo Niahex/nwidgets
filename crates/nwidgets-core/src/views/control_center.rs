@@ -2,12 +2,14 @@ use gpui::prelude::FluentBuilder;
 use gpui::*;
 use gpui_component::button::{Button, ButtonVariants};
 use gpui_component::corner::{Corner, CornerPosition};
+use gpui_component::scroll::ScrollableElement;
 use gpui_component::slider::{Slider, SliderState};
 use gpui_component::switch::Switch;
 use gpui_component::{Icon, Selectable, Sizable};
 use nwidgets_service_audio::{AudioService, AudioStateChanged};
 use nwidgets_service_bluetooth::{BluetoothService, BluetoothStateChanged};
 use nwidgets_service_network::{NetworkService, NetworkStateChanged};
+use nwidgets_service_notification::{NotificationAdded, NotificationService, NotificationsCleared};
 use nwidgets_service_system_monitor::{SystemMonitorService, SystemStatsChanged};
 
 const CORNER_RADIUS: f32 = 12.0;
@@ -26,6 +28,7 @@ pub struct ControlCenter {
     system_monitor: Entity<SystemMonitorService>,
     bluetooth: Entity<BluetoothService>,
     network: Entity<NetworkService>,
+    notifications: Entity<NotificationService>,
     volume_slider: Entity<SliderState>,
     mic_slider: Entity<SliderState>,
     expanded_section: Option<ControlCenterSection>,
@@ -37,6 +40,7 @@ impl ControlCenter {
         let system_monitor = SystemMonitorService::global(cx);
         let bluetooth = BluetoothService::global(cx);
         let network = NetworkService::global(cx);
+        let notifications = NotificationService::init(cx);
 
         let sink_vol = audio.read(cx).state.sink_volume as f32;
         let source_vol = audio.read(cx).state.source_volume as f32;
@@ -113,12 +117,15 @@ impl ControlCenter {
         cx.subscribe(&system_monitor, |_, _, _: &SystemStatsChanged, cx| cx.notify()).detach();
         cx.subscribe(&bluetooth, |_, _, _: &BluetoothStateChanged, cx| cx.notify()).detach();
         cx.subscribe(&network, |_, _, _: &NetworkStateChanged, cx| cx.notify()).detach();
+        cx.subscribe(&notifications, |_, _, _: &NotificationAdded, cx| cx.notify()).detach();
+        cx.subscribe(&notifications, |_, _, _: &NotificationsCleared, cx| cx.notify()).detach();
 
         Self {
             audio,
             system_monitor,
             bluetooth,
             network,
+            notifications,
             volume_slider,
             mic_slider,
             expanded_section: None,
@@ -535,10 +542,14 @@ impl ControlCenter {
     }
 
     // ── 3. Notifications Section (matching notifications.rs) ──
-    fn render_notifications_section(&mut self, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render_notifications_section(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
         let card_bg = rgb(0x3b4252);
         let text_main = rgb(0xe5e9f0);
-        let text_muted = rgb(0x4c566a);
+        let text_muted = rgb(0xd8dee9);
+        let accent = rgb(0x88c0d0);
+
+        let notifs = self.notifications.read(cx).history.clone();
+        let notif_count = notifs.len();
 
         div()
             .flex_1()
@@ -555,13 +566,43 @@ impl ControlCenter {
                     .justify_between()
                     .child(
                         div()
-                            .text_sm()
-                            .font_weight(FontWeight::BOLD)
-                            .text_color(text_main)
-                            .child("Notifications"),
-                    ),
+                            .flex()
+                            .items_center()
+                            .gap_2()
+                            .child(
+                                div()
+                                    .text_sm()
+                                    .font_weight(FontWeight::BOLD)
+                                    .text_color(text_main)
+                                    .child("Notifications"),
+                            )
+                            .when(notif_count > 0, |d| {
+                                d.child(
+                                    div()
+                                        .px_1_5()
+                                        .py_0p5()
+                                        .bg(accent)
+                                        .rounded_full()
+                                        .text_xs()
+                                        .font_weight(FontWeight::BOLD)
+                                        .text_color(rgb(0x2e3440))
+                                        .child(format!("{}", notif_count)),
+                                )
+                            }),
+                    )
+                    .when(notif_count > 0, |d| {
+                        d.child(
+                            Button::new("clear-all-notifs")
+                                .ghost()
+                                .with_size(gpui_component::Size::Small)
+                                .label("Clear All")
+                                .on_click(cx.listener(|this, _, _window, cx| {
+                                    this.notifications.update(cx, |srv, cx| srv.clear(cx));
+                                })),
+                        )
+                    }),
             )
-            .child(
+            .child(if notifs.is_empty() {
                 div()
                     .flex_1()
                     .flex()
@@ -569,8 +610,63 @@ impl ControlCenter {
                     .justify_center()
                     .text_xs()
                     .text_color(text_muted)
-                    .child("No notifications"),
-            )
+                    .child("No notifications")
+                    .into_any_element()
+            } else {
+                div()
+                    .flex_1()
+                    .flex()
+                    .flex_col()
+                    .gap_2()
+                    .overflow_y_scrollbar()
+                    .children(notifs.into_iter().map(|notif| {
+                        let notif_id = notif.id;
+                        div()
+                            .id(SharedString::from(format!("cc-notif-{}", notif_id)))
+                            .flex()
+                            .flex_col()
+                            .gap_1()
+                            .p_2()
+                            .bg(rgb(0x2e3440))
+                            .rounded_md()
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .justify_between()
+                                    .child(
+                                        div()
+                                            .flex()
+                                            .items_center()
+                                            .gap_2()
+                                            .child(Icon::new("notifications").size(px(14.0)).text_color(accent))
+                                            .child(
+                                                div()
+                                                    .text_xs()
+                                                    .font_weight(FontWeight::BOLD)
+                                                    .text_color(text_main)
+                                                    .child(notif.app_name.clone()),
+                                            ),
+                                    ),
+                            )
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .font_weight(FontWeight::BOLD)
+                                    .text_color(text_main)
+                                    .child(notif.summary.clone()),
+                            )
+                            .when(!notif.body.as_ref().is_empty(), |this| {
+                                this.child(
+                                    div()
+                                        .text_xs()
+                                        .text_color(text_muted)
+                                        .child(notif.body.clone()),
+                                )
+                            })
+                    }))
+                    .into_any_element()
+            })
     }
 }
 

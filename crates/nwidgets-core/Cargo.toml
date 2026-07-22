@@ -26,6 +26,7 @@ nwidgets-service-applications.workspace = true
 nwidgets-service-process.workspace = true
 nwidgets-service-clipboard.workspace = true
 nwidgets-service-lock.workspace = true
+nwidgets-service-notification.workspace = true
 nwidgets-component-active-window = { path = "../components/active_window" }
 nwidgets-component-datetime = { path = "../components/datetime" }
 nwidgets-component-pomodoro = { path = "../components/pomodoro" }

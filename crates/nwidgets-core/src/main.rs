@@ -77,12 +77,20 @@ fn main() {
         }
 
         // ── Notifications ──
-        let ntf = views::notification::NtfManager::new();
-        {
-            let mut mgr = ntf.0.borrow_mut();
-            mgr.open(cx, |_window, cx| cx.new(|_| views::notification::NtfView));
+        let mut ntf_entity = None;
+        let ntf_window = nwidgets_notification::open(cx, |window, cx| {
+            let view = cx.new(views::notification::NtfView::new);
+            ntf_entity = Some(view.clone());
+            cx.new(|cx| gpui_component::Root::new(view, window, cx).bordered(false))
+        });
+        if let (Some(ntf_window), Some(ntf_entity)) = (ntf_window, ntf_entity) {
+            let handle: AnyWindowHandle = ntf_window.into();
+            let _ = ntf_window.update(cx, |_, _window, cx| {
+                ntf_entity.update(cx, |ntf, _| {
+                    ntf.set_window_handle(handle);
+                });
+            });
         }
-        cx.set_global(ntf);
 
         // ── Control Center ──
         let cc_window = nwidgets_control_center::open(cx, |window, cx| {

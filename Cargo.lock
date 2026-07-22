@@ -3626,6 +3626,7 @@ dependencies = [
  "nwidgets-service-lock",
  "nwidgets-service-network",
  "nwidgets-service-niri",
+ "nwidgets-service-notification",
  "nwidgets-service-process",
  "nwidgets-service-system-monitor",
  "nwidgets-shortcut",
@@ -3736,6 +3737,19 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "nwidgets-service-notification"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "gpui",
+ "gpui_tokio",
+ "log",
+ "parking_lot",
+ "tokio",
+ "zbus 4.4.0",
 ]
 
 [[package]]
