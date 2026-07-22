@@ -96,7 +96,8 @@ impl RenderOnce for LauncherListItem {
                                 .group_hover(&group, |s| s.text_color(frost0))
                                 .child({
                                     let exec = &app.exec;
-                                    if exec.len() > 40 { format!("{}…", &exec[..40]) } else { exec.clone() }
+                                    let char_count = exec.chars().count();
+                                    if char_count > 40 { format!("{}…", exec.chars().take(40).collect::<String>()) } else { exec.clone() }
                                 }),
                         ),
                 ),
@@ -135,8 +136,9 @@ impl RenderOnce for LauncherListItem {
             LauncherEntry::Clipboard(entry) => {
                 let preview = entry.content.replace(['\n', '\r'], " ");
                 let ts = entry.timestamp.format("%H:%M:%S").to_string();
-                let truncated = if preview.len() > 52 {
-                    format!("{}…", &preview[..52])
+                let char_count = preview.chars().count();
+                let truncated = if char_count > 52 {
+                    format!("{}…", preview.chars().take(52).collect::<String>())
                 } else {
                     preview
                 };

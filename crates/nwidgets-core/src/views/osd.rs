@@ -246,8 +246,9 @@ impl Render for OsdView {
 
             Some(OsdEvent::Clipboard { content }) => {
                 let truncated = content.replace(['\n', '\r'], " ");
-                let preview = if truncated.len() > 32 {
-                    format!("{}…", &truncated[..32])
+                let char_count = truncated.chars().count();
+                let preview = if char_count > 32 {
+                    format!("{}…", truncated.chars().take(32).collect::<String>())
                 } else {
                     truncated
                 };
