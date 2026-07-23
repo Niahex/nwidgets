@@ -122,6 +122,10 @@ impl NotificationService {
     }
 
     pub fn init(cx: &mut App) -> Entity<Self> {
+        if cx.has_global::<GlobalNotificationService>() {
+            return Self::global(cx);
+        }
+
         let service = cx.new(|_| Self {
             history: VecDeque::with_capacity(HISTORY_CAPACITY),
         });
