@@ -31,13 +31,12 @@ impl Render for SystemTrayComponent {
                     .flex()
                     .items_center()
                     .justify_center()
-                    .p_1()
                     .rounded_md()
                     .cursor_pointer()
                     .hover(|s| s.bg(rgb(0x3b4252)))
                     .child(
                         Icon::new(SharedString::from(item.icon_name))
-                            .size(px(18.0))
+                            .size(px(22.0))
                             .text_color(text_main),
                     )
             })
@@ -46,7 +45,7 @@ impl Render for SystemTrayComponent {
         div()
             .flex()
             .items_center()
-            .gap_1_5()
+            .gap_4()
             .children(icon_elements)
     }
 }

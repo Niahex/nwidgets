@@ -38,6 +38,7 @@ impl Render for QuickSettingsComponent {
         let text_muted = rgb(0x4c566a);
         let accent = rgb(0x88c0d0);
         let red = rgb(0xbf616a);
+        let border_subtle = rgb(0x4c566a).opacity(0.6);
 
         let bt_state = self.bluetooth.read(cx).state.clone();
         let _net_state = self.network.read(cx).state.clone();
@@ -81,6 +82,8 @@ impl Render for QuickSettingsComponent {
             .px_2()
             // ── SystemTray Component to the LEFT of Bluetooth ──
             .child(self.system_tray.clone())
+            // Subtle vertical separator between SystemTray and QuickSettings controls
+            .child(div().h(px(14.0)).w(px(1.0)).bg(border_subtle))
             .child(Icon::new(bt_icon_name).size(px(22.0)).text_color(bt_icon_color))
             .child(Icon::new(net_icon_name).size(px(22.0)).text_color(net_icon_color))
             .child(Icon::new(mic_icon_name).size(px(22.0)).text_color(mic_icon_color))
