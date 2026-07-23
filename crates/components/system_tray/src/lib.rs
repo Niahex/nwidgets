@@ -2,6 +2,7 @@ use gpui::*;
 use gpui_component::tooltip::Tooltip;
 use gpui_component::Icon;
 use nwidgets_service_system_tray::{SystemTrayService, SystemTrayStateChanged};
+use std::path::PathBuf;
 
 pub struct SystemTrayComponent {
     system_tray: Entity<SystemTrayService>,
@@ -28,6 +29,15 @@ impl Render for SystemTrayComponent {
             .into_iter()
             .map(|item| {
                 let tooltip_text = item.tooltip.clone();
+                let icon_element: AnyElement = if let Some(path) = item.icon_path {
+                    img(PathBuf::from(path)).size(px(22.0)).into_any_element()
+                } else {
+                    Icon::new(SharedString::from(item.icon_name))
+                        .size(px(22.0))
+                        .text_color(text_main)
+                        .into_any_element()
+                };
+
                 div()
                     .id(SharedString::from(format!("tray-item-{}", item.id)))
                     .flex()
@@ -39,11 +49,7 @@ impl Render for SystemTrayComponent {
                     .tooltip(move |window, cx| {
                         Tooltip::new(tooltip_text.clone()).build(window, cx)
                     })
-                    .child(
-                        Icon::new(SharedString::from(item.icon_name))
-                            .size(px(22.0))
-                            .text_color(text_main),
-                    )
+                    .child(icon_element)
             })
             .collect();
 

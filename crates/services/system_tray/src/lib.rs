@@ -1,13 +1,15 @@
 use futures::channel::mpsc;
 use futures::StreamExt;
 use gpui::{App, AppContext, AsyncApp, Context, Entity, EventEmitter, Global};
-use zbus::{connection::Builder, interface};
+use std::path::Path;
+use zbus::{connection::Builder, interface, Connection, Proxy};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TrayItem {
     pub id: String,
     pub title: String,
     pub icon_name: String,
+    pub icon_path: Option<String>,
     pub tooltip: String,
     pub category: String,
 }
@@ -57,6 +59,112 @@ impl StatusNotifierWatcher {
     }
 }
 
+fn find_icon_path(icon_name: &str, id: &str) -> Option<String> {
+    if !icon_name.is_empty() {
+        if let Some(p) = freedesktop_icons::lookup(icon_name).with_size(24).find() {
+            return Some(p.to_string_lossy().to_string());
+        }
+    }
+
+    if !id.is_empty() {
+        if let Some(p) = freedesktop_icons::lookup(id).with_size(24).find() {
+            return Some(p.to_string_lossy().to_string());
+        }
+    }
+
+    let candidates = [
+        format!("/usr/share/pixmaps/{}.png", icon_name),
+        format!("/usr/share/pixmaps/{}.svg", icon_name),
+        format!("/usr/share/pixmaps/{}.png", id),
+        format!("/usr/share/icons/hicolor/scalable/apps/{}.svg", icon_name),
+        format!("/usr/share/icons/hicolor/48x48/apps/{}.png", icon_name),
+        format!("/usr/share/icons/hicolor/256x256/apps/{}.png", icon_name),
+        format!("/usr/share/icons/hicolor/scalable/apps/{}.svg", id),
+        format!("/usr/share/icons/hicolor/48x48/apps/{}.png", id),
+    ];
+
+    for path in candidates {
+        if Path::new(&path).exists() {
+            return Some(path);
+        }
+    }
+
+    None
+}
+
+fn map_tray_icon(icon_name: &str, id: &str) -> String {
+    let lower_name = icon_name.to_lowercase();
+    let lower_id = id.to_lowercase();
+
+    if lower_name.contains("steam") || lower_id.contains("steam") {
+        "sports_esports".to_string()
+    } else if lower_name.contains("discord") || lower_id.contains("discord") {
+        "forum".to_string()
+    } else if lower_name.contains("slack") || lower_id.contains("slack") {
+        "work".to_string()
+    } else if lower_name.contains("spotify") || lower_id.contains("spotify") {
+        "music_note".to_string()
+    } else if lower_name.contains("obs") || lower_id.contains("obs") {
+        "videocam".to_string()
+    } else if lower_name.contains("dropbox") || lower_id.contains("dropbox") {
+        "cloud".to_string()
+    } else if lower_name.contains("mail") || lower_id.contains("mail") || lower_name.contains("thunderbird") {
+        "mail".to_string()
+    } else if lower_name.contains("telegram") || lower_id.contains("telegram") || lower_name.contains("signal") {
+        "send".to_string()
+    } else if !icon_name.is_empty() {
+        icon_name.to_string()
+    } else {
+        "tune".to_string()
+    }
+}
+
+async fn fetch_tray_item_info(item_path: String) -> (String, String, String, Option<String>, String) {
+    let conn = match Connection::session().await {
+        Ok(c) => c,
+        Err(_) => {
+            let icon_path = find_icon_path("", &item_path);
+            let icon_name = map_tray_icon("", &item_path);
+            return (item_path.clone(), item_path.clone(), icon_name, icon_path, item_path);
+        }
+    };
+
+    let (dest, path) = if let Some(idx) = item_path.find('/') {
+        if idx == 0 {
+            (item_path.clone(), item_path.clone())
+        } else {
+            (item_path[..idx].to_string(), item_path[idx..].to_string())
+        }
+    } else {
+        (item_path.clone(), "/StatusNotifierItem".to_string())
+    };
+
+    let proxy = Proxy::new(
+        &conn,
+        dest,
+        path,
+        "org.kde.StatusNotifierItem",
+    ).await;
+
+    if let Ok(p) = proxy {
+        let icon_name: String = p.get_property("IconName").await.unwrap_or_default();
+        let title: String = p.get_property("Title").await.unwrap_or_default();
+        let id: String = p.get_property("Id").await.unwrap_or_default();
+
+        let raw_id = if !id.is_empty() { id } else { item_path.clone() };
+        let raw_title = if !title.is_empty() { title } else { raw_id.clone() };
+
+        let icon_path = find_icon_path(&icon_name, &raw_id);
+        let fallback_icon = map_tray_icon(&icon_name, &raw_id);
+
+        (raw_id, raw_title.clone(), fallback_icon, icon_path, raw_title)
+    } else {
+        let icon_path = find_icon_path("", &item_path);
+        let fallback_icon = map_tray_icon("", &item_path);
+        (item_path.clone(), item_path.clone(), fallback_icon, icon_path, item_path)
+    }
+}
+
 impl SystemTrayService {
     pub fn global(cx: &App) -> Entity<Self> {
         cx.global::<GlobalSystemTrayService>().0.clone()
@@ -96,24 +204,23 @@ impl SystemTrayService {
             let cx = cx.clone();
             async move {
                 while let Some(item_path) = rx.next().await {
+                    if item_path.contains("blueman") {
+                        continue;
+                    }
+                    let (id, title, icon_name, icon_path, tooltip) = fetch_tray_item_info(item_path.clone()).await;
+                    if id.contains("blueman") || title.contains("blueman") {
+                        continue;
+                    }
+
                     let _ = cx.update(|cx| {
-                        if item_path.contains("blueman") {
-                            return;
-                        }
-                        let item_name = item_path
-                            .trim_start_matches('/')
-                            .trim_start_matches(':')
-                            .to_string();
-                        if item_name.contains("blueman") {
-                            return;
-                        }
                         service_entity.update(cx, |srv, cx| {
-                            if !srv.state.items.iter().any(|i| i.id == item_name) {
+                            if !srv.state.items.iter().any(|i| i.id == id) {
                                 srv.state.items.push(TrayItem {
-                                    id: item_name.clone(),
-                                    title: item_name.clone(),
-                                    icon_name: "tune".to_string(),
-                                    tooltip: item_name,
+                                    id,
+                                    title,
+                                    icon_name,
+                                    icon_path,
+                                    tooltip,
                                     category: "ApplicationStatus".to_string(),
                                 });
                                 cx.emit(SystemTrayStateChanged);

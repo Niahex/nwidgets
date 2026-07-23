@@ -11,6 +11,7 @@ gpui_tokio.workspace = true
 tokio = { version = "1.0", features = ["full"] }
 futures = "0.3"
 zbus = "4.4"
+freedesktop-icons = "0.2"
 anyhow.workspace = true
 
 [lints]
