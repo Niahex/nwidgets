@@ -63,34 +63,9 @@ impl SystemTrayService {
     }
 
     pub fn init(cx: &mut App) -> Entity<Self> {
-        // Initial default system tray items
-        let initial_items = vec![
-            TrayItem {
-                id: "nwidgets".to_string(),
-                title: "nwidgets".to_string(),
-                icon_name: "widgets".to_string(),
-                tooltip: "nwidgets desktop".to_string(),
-                category: "ApplicationStatus".to_string(),
-            },
-            TrayItem {
-                id: "nbuilder".to_string(),
-                title: "nbuilder".to_string(),
-                icon_name: "architecture".to_string(),
-                tooltip: "nbuilder pipeline manager".to_string(),
-                category: "ApplicationStatus".to_string(),
-            },
-            TrayItem {
-                id: "security".to_string(),
-                title: "Sécurité".to_string(),
-                icon_name: "shield".to_string(),
-                tooltip: "Sécurité système active".to_string(),
-                category: "Hardware".to_string(),
-            },
-        ];
-
         let service = cx.new(|_cx| Self {
             state: SystemTrayState {
-                items: initial_items,
+                items: vec![],
             },
         });
 

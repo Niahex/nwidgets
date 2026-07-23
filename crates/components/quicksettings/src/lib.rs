@@ -1,12 +1,15 @@
+use gpui::prelude::FluentBuilder;
 use gpui::*;
 use gpui_component::Icon;
 use nwidgets_component_system_tray::SystemTrayComponent;
 use nwidgets_service_audio::{AudioService, AudioStateChanged};
 use nwidgets_service_bluetooth::{BluetoothService, BluetoothStateChanged};
 use nwidgets_service_network::{NetworkService, NetworkStateChanged};
+use nwidgets_service_system_tray::{SystemTrayService, SystemTrayStateChanged};
 
 pub struct QuickSettingsComponent {
     system_tray: Entity<SystemTrayComponent>,
+    system_tray_service: Entity<SystemTrayService>,
     bluetooth: Entity<BluetoothService>,
     network: Entity<NetworkService>,
     audio: Entity<AudioService>,
@@ -15,16 +18,19 @@ pub struct QuickSettingsComponent {
 impl QuickSettingsComponent {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let system_tray = cx.new(SystemTrayComponent::new);
+        let system_tray_service = SystemTrayService::global(cx);
         let bluetooth = BluetoothService::global(cx);
         let network = NetworkService::global(cx);
         let audio = AudioService::global(cx);
 
+        cx.subscribe(&system_tray_service, |_, _, _: &SystemTrayStateChanged, cx| cx.notify()).detach();
         cx.subscribe(&bluetooth, |_, _, _: &BluetoothStateChanged, cx| cx.notify()).detach();
         cx.subscribe(&network, |_, _, _: &NetworkStateChanged, cx| cx.notify()).detach();
         cx.subscribe(&audio, |_, _, _: &AudioStateChanged, cx| cx.notify()).detach();
 
         Self {
             system_tray,
+            system_tray_service,
             bluetooth,
             network,
             audio,
@@ -43,6 +49,7 @@ impl Render for QuickSettingsComponent {
         let bt_state = self.bluetooth.read(cx).state.clone();
         let _net_state = self.network.read(cx).state.clone();
         let audio_state = self.audio.read(cx).state.clone();
+        let has_tray_items = !self.system_tray_service.read(cx).state.items.is_empty();
 
         // 1. Bluetooth Icon: "bluetooth_connected", "bluetooth", or "bluetooth_disabled"
         let has_bt_device = bt_state.devices.iter().any(|d| d.connected);
@@ -80,10 +87,10 @@ impl Render for QuickSettingsComponent {
             .items_center()
             .gap_4()
             .px_2()
-            // ── SystemTray Component to the LEFT of Bluetooth ──
-            .child(self.system_tray.clone())
-            // Subtle vertical separator between SystemTray and QuickSettings controls
-            .child(div().h(px(14.0)).w(px(1.0)).bg(border_subtle))
+            .when(has_tray_items, |this| {
+                this.child(self.system_tray.clone())
+                    .child(div().h(px(14.0)).w(px(1.0)).bg(border_subtle))
+            })
             .child(Icon::new(bt_icon_name).size(px(22.0)).text_color(bt_icon_color))
             .child(Icon::new(net_icon_name).size(px(22.0)).text_color(net_icon_color))
             .child(Icon::new(mic_icon_name).size(px(22.0)).text_color(mic_icon_color))
