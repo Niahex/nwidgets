@@ -143,6 +143,8 @@ impl Render for NtfView {
             .w(px(380.0))
             .bg(panel_bg)
             .rounded_bl(px(CORNER_RADIUS))
+            .border_1()
+            .border_color(rgb(0x88c0d0).opacity(0.3))
             .children(self.active_toasts.iter().map(|toast| {
                 let notif = &toast.notification;
                 let notif_id = notif.id;

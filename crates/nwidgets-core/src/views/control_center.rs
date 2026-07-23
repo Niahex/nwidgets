@@ -700,6 +700,8 @@ impl Render for ControlCenter {
                     .w_full()
                     .h_full()
                     .bg(bg)
+                    .border_1()
+                    .border_color(rgb(0x88c0d0).opacity(0.3))
                     .flex()
                     .flex_col()
                     .p_4()

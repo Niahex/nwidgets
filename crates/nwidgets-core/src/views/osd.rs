@@ -294,6 +294,8 @@ impl Render for OsdView {
                     .size_full()
                     .bg(bg)
                     .rounded_t(px(CORNER_RADIUS))
+                    .border_1()
+                    .border_color(rgb(0x88c0d0).opacity(0.3))
                     .flex()
                     .items_center()
                     .px_3()

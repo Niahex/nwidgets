@@ -52,6 +52,8 @@ impl Render for Bar {
                     .w_full()
                     .h(px(BAR_HEIGHT))
                     .bg(bg)
+                    .border_b_1()
+                    .border_color(rgb(0x88c0d0).opacity(0.3))
                     .relative()
                     .flex()
                     .items_center()

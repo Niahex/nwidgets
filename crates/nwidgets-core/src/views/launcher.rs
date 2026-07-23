@@ -411,6 +411,7 @@ impl Render for Launcher {
             .child(
                 div()
                     .w_full().size_full().bg(bg).rounded_b(px(CORNER_RADIUS))
+                    .border_1().border_color(rgb(0x88c0d0).opacity(0.3))
                     .flex().flex_col().p_3()
                     .child(List::new(&self.list_state).with_size(gpui_component::Size::Medium)),
             )
