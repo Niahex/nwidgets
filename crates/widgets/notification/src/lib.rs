@@ -17,7 +17,7 @@ pub fn open<T: gpui::Render + 'static>(
                 namespace: "nwidgets-notifications".to_string(),
                 layer: Layer::Background,
                 anchor: Anchor::TOP | Anchor::RIGHT,
-                margin: Some((px(10.0), px(16.0), px(0.0), px(0.0))),
+                margin: None,
                 keyboard_interactivity: KeyboardInteractivity::None,
                 ..Default::default()
             }),
