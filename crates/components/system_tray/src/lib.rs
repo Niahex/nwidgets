@@ -50,10 +50,10 @@ impl Render for SystemTrayComponent {
                     .cursor_pointer()
                     .hover(|s| s.bg(rgb(0x3b4252)))
                     .on_mouse_down(MouseButton::Left, move |_event, _window, cx| {
-                        system_tray.read(cx).activate_item(service_path_left.clone(), 0, 0);
+                        system_tray.read(cx).activate_item(service_path_left.clone(), 0, 0, cx);
                     })
                     .on_mouse_down(MouseButton::Right, move |_event, _window, cx| {
-                        system_tray_right.read(cx).context_menu_item(service_path_right.clone(), 0, 0);
+                        system_tray_right.read(cx).context_menu_item(service_path_right.clone(), 0, 0, cx);
                     })
                     .child(icon_element)
             })

@@ -271,8 +271,8 @@ impl SystemTrayService {
         service
     }
 
-    pub fn activate_item(&self, service_path: String, x: i32, y: i32) {
-        tokio::spawn(async move {
+    pub fn activate_item(&self, service_path: String, x: i32, y: i32, cx: &App) {
+        gpui_tokio::Tokio::spawn(cx, async move {
             if let Ok(conn) = Connection::session().await {
                 let (dest, path) = if let Some(idx) = service_path.find('/') {
                     if idx == 0 {
@@ -288,11 +288,12 @@ impl SystemTrayService {
                     let _ = proxy.call_method("Activate", &(x, y)).await;
                 }
             }
-        });
+        })
+        .detach();
     }
 
-    pub fn context_menu_item(&self, service_path: String, x: i32, y: i32) {
-        tokio::spawn(async move {
+    pub fn context_menu_item(&self, service_path: String, x: i32, y: i32, cx: &App) {
+        gpui_tokio::Tokio::spawn(cx, async move {
             if let Ok(conn) = Connection::session().await {
                 let (dest, path) = if let Some(idx) = service_path.find('/') {
                     if idx == 0 {
@@ -308,6 +309,7 @@ impl SystemTrayService {
                     let _ = proxy.call_method("ContextMenu", &(x, y)).await;
                 }
             }
-        });
+        })
+        .detach();
     }
 }
