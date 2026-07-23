@@ -1,13 +1,11 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use gpui::*;
 use gpui::prelude::FluentBuilder;
-use gpui_component::corner::{Corner, CornerPosition};
 use gpui_component::Icon;
 use nwidgets_service_notification::{Notification, NotificationAdded, NotificationService};
 
 const TOAST_TIMEOUT_SECS: u64 = 5;
 const MAX_ACTIVE_TOASTS: usize = 5;
-const CORNER_RADIUS: f32 = 12.0;
 
 #[derive(Clone)]
 pub struct ActiveToast {
@@ -103,13 +101,13 @@ impl NtfView {
             let handle = handle.clone();
             let count = self.active_toasts.len();
             let visible = count > 0;
-            let height = (count as f32 * 110.0).min(550.0) + CORNER_RADIUS;
+            let height = (count as f32 * 110.0).min(550.0) + 16.0;
 
             let _ = handle.update(cx, |_, window, _| {
                 if visible {
                     window.set_layer(gpui::layer_shell::Layer::Overlay);
                     window.set_input_region(None);
-                    window.resize(size(px(380.0 + CORNER_RADIUS), px(height)));
+                    window.resize(size(px(396.0), px(height)));
                 } else {
                     window.set_layer(gpui::layer_shell::Layer::Background);
                     window.set_input_region(None);
@@ -123,7 +121,6 @@ impl NtfView {
 
 impl Render for NtfView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let panel_bg = rgb(0x2e3440);
         let card_bg = rgb(0x3b4252);
         let frost0 = rgb(0xd8dee9);
         let text_muted = rgb(0xd8dee9);
@@ -136,22 +133,18 @@ impl Render for NtfView {
             return div().into_any_element();
         }
 
-        let toasts_list = div()
+        div()
             .flex()
             .flex_col()
             .gap_2()
-            .p_3()
-            .w(px(380.0))
-            .bg(panel_bg)
-            .rounded_bl(px(CORNER_RADIUS))
-            .border_1()
-            .border_color(rgb(0x88c0d0).opacity(0.3))
+            .p_2()
+            .w(px(396.0))
             .children(self.active_toasts.iter().map(|toast| {
                 let notif = &toast.notification;
                 let notif_id = notif.id;
                 let border_color = match notif.urgency {
                     2 => red,
-                    _ => rgb(0x4c566a),
+                    _ => frost_border,
                 };
 
                 let body_chars = notif.body.chars().count();
@@ -168,7 +161,7 @@ impl Render for NtfView {
                     .gap_1()
                     .p_3()
                     .bg(card_bg)
-                    .rounded_lg()
+                    .rounded_xl()
                     .border_1()
                     .border_color(border_color)
                     .shadow_lg()
@@ -230,53 +223,7 @@ impl Render for NtfView {
                                 .child(truncated_body),
                         )
                     })
-            }));
-
-        div()
-            .size_full()
-            .flex()
-            .flex_col()
-            .child(
-                // Top section with left concave corner
-                div()
-                    .w_full()
-                    .flex_1()
-                    .flex()
-                    .flex_row()
-                    .child(
-                        // Left column for Top-Left concave corner
-                        div()
-                            .h_full()
-                            .w(px(CORNER_RADIUS))
-                            .flex()
-                            .flex_col()
-                            .child(
-                                Corner::new(CornerPosition::TopRight, px(CORNER_RADIUS))
-                                    .color(panel_bg)
-                                    .border_color(frost_border),
-                            )
-                            .child(div().flex_1()),
-                    )
-                    .child(toasts_list),
-            )
-            .child(
-                // Bottom row with right concave corner
-                div()
-                    .w_full()
-                    .h(px(CORNER_RADIUS))
-                    .flex()
-                    .flex_row()
-                    .child(
-                        div().flex_1().flex().items_start().child(
-                            div().w_full().h(px(1.0)).bg(frost_border),
-                        ),
-                    )
-                    .child(
-                        Corner::new(CornerPosition::TopRight, px(CORNER_RADIUS))
-                            .color(panel_bg)
-                            .border_color(frost_border),
-                    ),
-            )
+            }))
             .into_any_element()
     }
 }

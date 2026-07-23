@@ -1,14 +1,11 @@
 use gpui::prelude::FluentBuilder;
 use gpui::*;
-use gpui_component::corner::{Corner, CornerPosition};
 use gpui_component::list::{List, ListDelegate, ListEvent, ListState};
 use gpui_component::{Icon, IndexPath, Selectable, Sizable};
 use nwidgets_service_applications::{AppInfo, ApplicationsService, ApplicationsStateChanged};
 use nwidgets_service_clipboard::{ClipboardChanged, ClipboardEntry, ClipboardService};
 use nwidgets_service_process::{ProcessInfo, kill_process, search_processes};
 use std::process::Command;
-
-const CORNER_RADIUS: f32 = 12.0;
 
 actions!(launcher, [CloseLauncher]);
 
@@ -400,26 +397,21 @@ impl Render for Launcher {
             }))
             .size_full()
             .flex()
-            .flex_row()
-            // ── Left Concave Corner ──
-            .child(
-                div().h_full().w(px(CORNER_RADIUS)).flex().flex_col()
-                    .child(Corner::new(CornerPosition::TopRight, px(CORNER_RADIUS)).color(bg).border_color(frost_border))
-                    .child(div().flex_1()),
-            )
-            // ── Launcher Body ──
+            .flex_col()
+            .p_2()
             .child(
                 div()
-                    .w_full().size_full().bg(bg).rounded_b(px(CORNER_RADIUS))
-                    .border_b_1().border_l_1().border_r_1().border_color(frost_border)
-                    .flex().flex_col().p_3()
+                    .w_full()
+                    .h_full()
+                    .bg(bg)
+                    .rounded_xl()
+                    .border_1()
+                    .border_color(frost_border)
+                    .shadow_lg()
+                    .flex()
+                    .flex_col()
+                    .p_3()
                     .child(List::new(&self.list_state).with_size(gpui_component::Size::Medium)),
-            )
-            // ── Right Concave Corner ──
-            .child(
-                div().h_full().w(px(CORNER_RADIUS)).flex().flex_col()
-                    .child(Corner::new(CornerPosition::TopLeft, px(CORNER_RADIUS)).color(bg).border_color(frost_border))
-                    .child(div().flex_1()),
             )
     }
 }
