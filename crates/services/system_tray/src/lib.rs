@@ -97,11 +97,17 @@ impl SystemTrayService {
             async move {
                 while let Some(item_path) = rx.next().await {
                     let _ = cx.update(|cx| {
+                        if item_path.contains("blueman") {
+                            return;
+                        }
+                        let item_name = item_path
+                            .trim_start_matches('/')
+                            .trim_start_matches(':')
+                            .to_string();
+                        if item_name.contains("blueman") {
+                            return;
+                        }
                         service_entity.update(cx, |srv, cx| {
-                            let item_name = item_path
-                                .trim_start_matches('/')
-                                .trim_start_matches(':')
-                                .to_string();
                             if !srv.state.items.iter().any(|i| i.id == item_name) {
                                 srv.state.items.push(TrayItem {
                                     id: item_name.clone(),
