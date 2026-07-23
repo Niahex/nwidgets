@@ -37,7 +37,7 @@ pub fn open<T: gpui::Render + 'static>(
             // afin que la zone transparente sous la barre ne bloque pas les clics sur les autres applications !
             window.set_input_region(Some(&[Bounds {
                 origin: point(px(0.0), px(0.0)),
-                size: size(px(3440.0), px(BAR_HEIGHT + CORNER_RADIUS)),
+                size: size(px(3440.0), px(BAR_HEIGHT)),
             }]));
             build_view(window, cx)
         },
