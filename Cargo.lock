@@ -3591,9 +3591,21 @@ dependencies = [
  "anyhow",
  "gpui",
  "gpui-component",
+ "nwidgets-component-system-tray",
  "nwidgets-service-audio",
  "nwidgets-service-bluetooth",
  "nwidgets-service-network",
+ "nwidgets-service-system-tray",
+]
+
+[[package]]
+name = "nwidgets-component-system-tray"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "gpui",
+ "gpui-component",
+ "nwidgets-service-system-tray",
 ]
 
 [[package]]
@@ -3610,6 +3622,7 @@ dependencies = [
  "nwidgets-component-datetime",
  "nwidgets-component-pomodoro",
  "nwidgets-component-quicksettings",
+ "nwidgets-component-system-tray",
  "nwidgets-launcher",
  "nwidgets-notification",
  "nwidgets-osd",
@@ -3624,6 +3637,7 @@ dependencies = [
  "nwidgets-service-notification",
  "nwidgets-service-process",
  "nwidgets-service-system-monitor",
+ "nwidgets-service-system-tray",
  "nwidgets-shortcut",
 ]
 
@@ -3771,6 +3785,18 @@ dependencies = [
  "gpui",
  "gpui_tokio",
  "tokio",
+]
+
+[[package]]
+name = "nwidgets-service-system-tray"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "futures",
+ "gpui",
+ "gpui_tokio",
+ "tokio",
+ "zbus 4.4.0",
 ]
 
 [[package]]

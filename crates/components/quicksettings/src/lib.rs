@@ -1,10 +1,12 @@
 use gpui::*;
 use gpui_component::Icon;
+use nwidgets_component_system_tray::SystemTrayComponent;
 use nwidgets_service_audio::{AudioService, AudioStateChanged};
 use nwidgets_service_bluetooth::{BluetoothService, BluetoothStateChanged};
 use nwidgets_service_network::{NetworkService, NetworkStateChanged};
 
 pub struct QuickSettingsComponent {
+    system_tray: Entity<SystemTrayComponent>,
     bluetooth: Entity<BluetoothService>,
     network: Entity<NetworkService>,
     audio: Entity<AudioService>,
@@ -12,6 +14,7 @@ pub struct QuickSettingsComponent {
 
 impl QuickSettingsComponent {
     pub fn new(cx: &mut Context<Self>) -> Self {
+        let system_tray = cx.new(SystemTrayComponent::new);
         let bluetooth = BluetoothService::global(cx);
         let network = NetworkService::global(cx);
         let audio = AudioService::global(cx);
@@ -21,6 +24,7 @@ impl QuickSettingsComponent {
         cx.subscribe(&audio, |_, _, _: &AudioStateChanged, cx| cx.notify()).detach();
 
         Self {
+            system_tray,
             bluetooth,
             network,
             audio,
@@ -75,6 +79,8 @@ impl Render for QuickSettingsComponent {
             .items_center()
             .gap_4()
             .px_2()
+            // ── SystemTray Component to the LEFT of Bluetooth ──
+            .child(self.system_tray.clone())
             .child(Icon::new(bt_icon_name).size(px(22.0)).text_color(bt_icon_color))
             .child(Icon::new(net_icon_name).size(px(22.0)).text_color(net_icon_color))
             .child(Icon::new(mic_icon_name).size(px(22.0)).text_color(mic_icon_color))
