@@ -37,7 +37,10 @@ pub fn set_visible<T: 'static>(handle: &WindowHandle<T>, visible: bool, height_p
     let _ = handle.update(cx, |_, window, _| {
         if visible {
             window.set_layer(Layer::Overlay);
-            window.set_input_region(None);
+            window.set_input_region(Some(&[Bounds {
+                origin: point(px(0.0), px(0.0)),
+                size: size(px(380.0), px(height_px)),
+            }]));
             window.resize(size(px(380.0), px(height_px)));
         } else {
             window.set_layer(Layer::Background);

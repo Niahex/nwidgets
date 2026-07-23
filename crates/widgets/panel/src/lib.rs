@@ -46,7 +46,10 @@ pub fn set_visible<T: 'static>(handle: &WindowHandle<T>, visible: bool, cx: &mut
     let _ = handle.update(cx, |_, window, cx| {
         if visible {
             window.set_layer(Layer::Overlay);
-            window.set_input_region(None);
+            window.set_input_region(Some(&[Bounds {
+                origin: point(px(0.0), px(0.0)),
+                size: size(px(PANEL_WIDTH), px(2000.0)),
+            }]));
             window.set_keyboard_interactivity(KeyboardInteractivity::Exclusive);
             window.resize(size(px(PANEL_WIDTH), px(2000.0)));
             cx.activate(true);
@@ -64,7 +67,10 @@ pub fn toggle(handle: &AnyWindowHandle, visible: bool, cx: &mut App) {
     let _ = handle.update(cx, |_, window, cx| {
         if visible {
             window.set_layer(Layer::Overlay);
-            window.set_input_region(None);
+            window.set_input_region(Some(&[Bounds {
+                origin: point(px(0.0), px(0.0)),
+                size: size(px(PANEL_WIDTH), px(2000.0)),
+            }]));
             window.set_keyboard_interactivity(KeyboardInteractivity::Exclusive);
             window.resize(size(px(PANEL_WIDTH), px(2000.0)));
             cx.activate(true);

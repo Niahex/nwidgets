@@ -135,8 +135,11 @@ impl NtfView {
             let _ = handle.update(cx, |_, window, _| {
                 if visible {
                     window.set_layer(gpui::layer_shell::Layer::Overlay);
-                    window.set_input_region(None);
-                    window.resize(size(px(392.0), px(height)));
+                    window.set_input_region(Some(&[Bounds {
+                        origin: point(px(0.0), px(0.0)),
+                        size: size(px(380.0), px(height)),
+                    }]));
+                    window.resize(size(px(380.0), px(height)));
                 } else {
                     window.set_layer(gpui::layer_shell::Layer::Background);
                     window.set_input_region(Some(&[]));
