@@ -389,7 +389,7 @@ impl Render for Launcher {
 
         // Force focus vers la barre de recherche
         let search_fh = self.list_state.focus_handle(cx);
-        window.focus(&search_fh, cx);
+        let frost_border = rgb(0x88c0d0).opacity(0.3);
 
         div()
             .id("launcher-main")
@@ -404,21 +404,21 @@ impl Render for Launcher {
             // ── Left Concave Corner ──
             .child(
                 div().h_full().w(px(CORNER_RADIUS)).flex().flex_col()
-                    .child(Corner::new(CornerPosition::TopRight, px(CORNER_RADIUS)).color(bg))
+                    .child(Corner::new(CornerPosition::TopRight, px(CORNER_RADIUS)).color(bg).border_color(frost_border))
                     .child(div().flex_1()),
             )
             // ── Launcher Body ──
             .child(
                 div()
                     .w_full().size_full().bg(bg).rounded_b(px(CORNER_RADIUS))
-                    .border_1().border_color(rgb(0x88c0d0).opacity(0.3))
+                    .border_b_1().border_l_1().border_r_1().border_color(frost_border)
                     .flex().flex_col().p_3()
                     .child(List::new(&self.list_state).with_size(gpui_component::Size::Medium)),
             )
             // ── Right Concave Corner ──
             .child(
                 div().h_full().w(px(CORNER_RADIUS)).flex().flex_col()
-                    .child(Corner::new(CornerPosition::TopLeft, px(CORNER_RADIUS)).color(bg))
+                    .child(Corner::new(CornerPosition::TopLeft, px(CORNER_RADIUS)).color(bg).border_color(frost_border))
                     .child(div().flex_1()),
             )
     }

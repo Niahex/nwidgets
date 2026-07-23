@@ -39,6 +39,7 @@ impl Bar {
 impl Render for Bar {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         let bg = rgb(0x2e3440);
+        let frost_border = rgb(0x88c0d0).opacity(0.3);
         let cc_win = self.cc_window;
         let cc_vis = self.cc_visible.clone();
 
@@ -52,8 +53,6 @@ impl Render for Bar {
                     .w_full()
                     .h(px(BAR_HEIGHT))
                     .bg(bg)
-                    .border_b_1()
-                    .border_color(rgb(0x88c0d0).opacity(0.3))
                     .relative()
                     .flex()
                     .items_center()
@@ -78,7 +77,7 @@ impl Render for Bar {
                             .justify_center()
                             .child(self.pomodoro.clone()),
                     )
-                    // ── Right: QuickSettings & DateTime (Toggle Control Center on click) ──
+                    // ── Right: QuickSettings & DateTime ──
                     .child(
                         div()
                             .id("quicksettings-trigger")
@@ -95,7 +94,7 @@ impl Render for Bar {
                             .child(self.datetime.clone()),
                     ),
             )
-            // ── Corners sous la barre ──
+            // ── Corners & bottom border row ──
             .child(
                 div()
                     .w_full()
@@ -105,17 +104,21 @@ impl Render for Bar {
                     .child(
                         // Coin gauche (sous la barre)
                         div().flex_none().child(
-                            Corner::new(CornerPosition::TopLeft, px(CORNER_RADIUS)).color(bg),
+                            Corner::new(CornerPosition::TopLeft, px(CORNER_RADIUS))
+                                .color(bg)
+                                .border_color(frost_border),
                         ),
                     )
                     .child(
-                        // Espace au milieu (transparent)
-                        div().flex_1(),
+                        // Espace au milieu avec la bordure inférieure
+                        div().flex_1().h(px(1.0)).bg(frost_border),
                     )
                     .child(
                         // Coin droit (sous la barre)
                         div().flex_none().child(
-                            Corner::new(CornerPosition::TopRight, px(CORNER_RADIUS)).color(bg),
+                            Corner::new(CornerPosition::TopRight, px(CORNER_RADIUS))
+                                .color(bg)
+                                .border_color(frost_border),
                         ),
                     ),
             )

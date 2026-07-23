@@ -271,6 +271,8 @@ impl Render for OsdView {
             None => div().child(div().text_xs().text_color(muted_text).child("OSD")),
         };
 
+        let frost_border = rgb(0x88c0d0).opacity(0.3);
+
         div()
             .size_full()
             .flex()
@@ -284,7 +286,9 @@ impl Render for OsdView {
                     .child(div().flex_1())
                     .child(
                         div().flex_none().child(
-                            Corner::new(CornerPosition::BottomRight, px(CORNER_RADIUS)).color(bg),
+                            Corner::new(CornerPosition::BottomRight, px(CORNER_RADIUS))
+                                .color(bg)
+                                .border_color(frost_border),
                         ),
                     ),
             )
@@ -294,8 +298,10 @@ impl Render for OsdView {
                     .size_full()
                     .bg(bg)
                     .rounded_t(px(CORNER_RADIUS))
-                    .border_1()
-                    .border_color(rgb(0x88c0d0).opacity(0.3))
+                    .border_t_1()
+                    .border_l_1()
+                    .border_r_1()
+                    .border_color(frost_border)
                     .flex()
                     .items_center()
                     .px_3()
@@ -310,7 +316,9 @@ impl Render for OsdView {
                     .child(div().flex_1())
                     .child(
                         div().flex_none().child(
-                            Corner::new(CornerPosition::BottomLeft, px(CORNER_RADIUS)).color(bg),
+                            Corner::new(CornerPosition::BottomLeft, px(CORNER_RADIUS))
+                                .color(bg)
+                                .border_color(frost_border),
                         ),
                     ),
             )

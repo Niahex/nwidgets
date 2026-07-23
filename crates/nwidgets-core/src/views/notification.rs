@@ -130,6 +130,7 @@ impl Render for NtfView {
         let text_bright = rgb(0xe5e9f0);
         let accent = rgb(0x88c0d0);
         let red = rgb(0xbf616a);
+        let frost_border = rgb(0x88c0d0).opacity(0.3);
 
         if self.active_toasts.is_empty() {
             return div().into_any_element();
@@ -250,7 +251,9 @@ impl Render for NtfView {
                             .flex()
                             .flex_col()
                             .child(
-                                Corner::new(CornerPosition::TopRight, px(CORNER_RADIUS)).color(panel_bg),
+                                Corner::new(CornerPosition::TopRight, px(CORNER_RADIUS))
+                                    .color(panel_bg)
+                                    .border_color(frost_border),
                             )
                             .child(div().flex_1()),
                     )
@@ -263,9 +266,15 @@ impl Render for NtfView {
                     .h(px(CORNER_RADIUS))
                     .flex()
                     .flex_row()
-                    .child(div().flex_1()) // Transparent space under main panel
                     .child(
-                        Corner::new(CornerPosition::TopRight, px(CORNER_RADIUS)).color(panel_bg),
+                        div().flex_1().flex().items_start().child(
+                            div().w_full().h(px(1.0)).bg(frost_border),
+                        ),
+                    )
+                    .child(
+                        Corner::new(CornerPosition::TopRight, px(CORNER_RADIUS))
+                            .color(panel_bg)
+                            .border_color(frost_border),
                     ),
             )
             .into_any_element()

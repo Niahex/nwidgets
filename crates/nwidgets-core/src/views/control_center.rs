@@ -674,24 +674,33 @@ impl Render for ControlCenter {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let bg = rgb(0x2e3440);
         let hover_line = rgb(0x3b4252);
+        let frost_border = rgb(0x88c0d0).opacity(0.3);
 
         div()
             .size_full()
             .flex()
             .flex_row()
-            // ── Left concave corners ──
             .child(
+                // ── Left concave corners column ──
                 div()
                     .h_full()
                     .w(px(CORNER_RADIUS))
                     .flex()
                     .flex_col()
                     .child(
-                        Corner::new(CornerPosition::TopRight, px(CORNER_RADIUS)).color(bg),
+                        Corner::new(CornerPosition::TopRight, px(CORNER_RADIUS))
+                            .color(bg)
+                            .border_color(frost_border),
                     )
-                    .child(div().flex_1())
                     .child(
-                        Corner::new(CornerPosition::BottomRight, px(CORNER_RADIUS)).color(bg),
+                        div().flex_1().flex().justify_end().child(
+                            div().w(px(1.0)).h_full().bg(frost_border),
+                        ),
+                    )
+                    .child(
+                        Corner::new(CornerPosition::BottomRight, px(CORNER_RADIUS))
+                            .color(bg)
+                            .border_color(frost_border),
                     ),
             )
             // ── Main Control Center Container ──
@@ -700,8 +709,9 @@ impl Render for ControlCenter {
                     .w_full()
                     .h_full()
                     .bg(bg)
-                    .border_1()
-                    .border_color(rgb(0x88c0d0).opacity(0.3))
+                    .border_b_1()
+                    .border_r_1()
+                    .border_color(frost_border)
                     .flex()
                     .flex_col()
                     .p_4()
