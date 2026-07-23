@@ -6,7 +6,7 @@ use zbus::{connection::Builder, interface};
 #[derive(Debug, Clone)]
 pub enum ShortcutCommand {
     ToggleChat,
-    ToggleControlCenter,
+    TogglePanel,
     ToggleLauncher,
     PinChat,
 }
@@ -21,8 +21,12 @@ impl NWidgetsShortcut {
         let _ = self.tx.unbounded_send(ShortcutCommand::ToggleChat);
     }
 
+    async fn toggle_panel(&self) {
+        let _ = self.tx.unbounded_send(ShortcutCommand::TogglePanel);
+    }
+
     async fn toggle_control_center(&self) {
-        let _ = self.tx.unbounded_send(ShortcutCommand::ToggleControlCenter);
+        let _ = self.tx.unbounded_send(ShortcutCommand::TogglePanel);
     }
 
     async fn toggle_launcher(&self) {

@@ -88,7 +88,7 @@ impl Render for Bar {
                             .on_click(move |_event, _window, cx| {
                                 let v = !cc_vis.get();
                                 cc_vis.set(v);
-                                nwidgets_control_center::toggle(&cc_win, v, cx);
+                                nwidgets_panel::toggle(&cc_win, v, cx);
                             })
                             .child(self.quicksettings.clone())
                             .child(self.datetime.clone()),

@@ -3597,14 +3597,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "nwidgets-control-center"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "gpui",
-]
-
-[[package]]
 name = "nwidgets-core"
 version = "0.1.0"
 dependencies = [
@@ -3618,10 +3610,10 @@ dependencies = [
  "nwidgets-component-datetime",
  "nwidgets-component-pomodoro",
  "nwidgets-component-quicksettings",
- "nwidgets-control-center",
  "nwidgets-launcher",
  "nwidgets-notification",
  "nwidgets-osd",
+ "nwidgets-panel",
  "nwidgets-service-applications",
  "nwidgets-service-audio",
  "nwidgets-service-bluetooth",
@@ -3654,6 +3646,14 @@ dependencies = [
 name = "nwidgets-osd"
 version = "0.1.0"
 dependencies = [
+ "gpui",
+]
+
+[[package]]
+name = "nwidgets-panel"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
  "gpui",
 ]
 

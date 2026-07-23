@@ -15,7 +15,7 @@ use nwidgets_service_system_monitor::{SystemMonitorService, SystemStatsChanged};
 const CORNER_RADIUS: f32 = 12.0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ControlCenterSection {
+pub enum PanelSection {
     Monitor,
     Bluetooth,
     Network,
@@ -23,7 +23,7 @@ pub enum ControlCenterSection {
     AudioSource,
 }
 
-pub struct ControlCenter {
+pub struct Panel {
     audio: Entity<AudioService>,
     system_monitor: Entity<SystemMonitorService>,
     bluetooth: Entity<BluetoothService>,
@@ -31,10 +31,10 @@ pub struct ControlCenter {
     notifications: Entity<NotificationService>,
     volume_slider: Entity<SliderState>,
     mic_slider: Entity<SliderState>,
-    expanded_section: Option<ControlCenterSection>,
+    expanded_section: Option<PanelSection>,
 }
 
-impl ControlCenter {
+impl Panel {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let audio = AudioService::global(cx);
         let system_monitor = SystemMonitorService::global(cx);
@@ -132,7 +132,7 @@ impl ControlCenter {
         }
     }
 
-    fn toggle_section(&mut self, section: ControlCenterSection, cx: &mut Context<Self>) {
+    fn toggle_section(&mut self, section: PanelSection, cx: &mut Context<Self>) {
         if self.expanded_section == Some(section) {
             self.expanded_section = None;
         } else {
@@ -148,8 +148,8 @@ impl ControlCenter {
         let text_muted = rgb(0x4c566a);
         let accent = rgb(0x88c0d0);
 
-        let sink_expanded = self.expanded_section == Some(ControlCenterSection::AudioSink);
-        let source_expanded = self.expanded_section == Some(ControlCenterSection::AudioSource);
+        let sink_expanded = self.expanded_section == Some(PanelSection::AudioSink);
+        let source_expanded = self.expanded_section == Some(PanelSection::AudioSource);
 
         let audio_state = self.audio.read(cx).state.clone();
 
@@ -207,7 +207,7 @@ impl ControlCenter {
                                             .with_size(gpui_component::Size::Small)
                                             .icon(Icon::new(if sink_expanded { "keyboard_arrow_up" } else { "keyboard_arrow_down" }).size(px(16.0)))
                                             .on_click(cx.listener(|this, _, _window, cx| {
-                                                this.toggle_section(ControlCenterSection::AudioSink, cx);
+                                                this.toggle_section(PanelSection::AudioSink, cx);
                                             })),
                                     ),
                             ),
@@ -286,7 +286,7 @@ impl ControlCenter {
                                             .with_size(gpui_component::Size::Small)
                                             .icon(Icon::new(if source_expanded { "keyboard_arrow_up" } else { "keyboard_arrow_down" }).size(px(16.0)))
                                             .on_click(cx.listener(|this, _, _window, cx| {
-                                                this.toggle_section(ControlCenterSection::AudioSource, cx);
+                                                this.toggle_section(PanelSection::AudioSource, cx);
                                             })),
                                     ),
                             ),
@@ -322,9 +322,9 @@ impl ControlCenter {
 
     // ── 2. Quick Actions & Connectivity Section ──
     fn render_quick_actions(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
-        let monitor_expanded = self.expanded_section == Some(ControlCenterSection::Monitor);
-        let bt_expanded = self.expanded_section == Some(ControlCenterSection::Bluetooth);
-        let net_expanded = self.expanded_section == Some(ControlCenterSection::Network);
+        let monitor_expanded = self.expanded_section == Some(PanelSection::Monitor);
+        let bt_expanded = self.expanded_section == Some(PanelSection::Bluetooth);
+        let net_expanded = self.expanded_section == Some(PanelSection::Network);
 
         let stats = self.system_monitor.read(cx).stats.clone();
         let bt_state = self.bluetooth.read(cx).state.clone();
@@ -350,7 +350,7 @@ impl ControlCenter {
                                 .icon(Icon::new("monitor").size(px(20.0)))
                                 .selected(monitor_expanded)
                                 .on_click(cx.listener(|this, _, _window, cx| {
-                                    this.toggle_section(ControlCenterSection::Monitor, cx);
+                                    this.toggle_section(PanelSection::Monitor, cx);
                                 })),
                         ),
                     )
@@ -363,7 +363,7 @@ impl ControlCenter {
                                 .icon(Icon::new(if bt_active { "bluetooth" } else { "bluetooth_disabled" }).size(px(20.0)))
                                 .selected(bt_expanded)
                                 .on_click(cx.listener(|this, _, _window, cx| {
-                                    this.toggle_section(ControlCenterSection::Bluetooth, cx);
+                                    this.toggle_section(PanelSection::Bluetooth, cx);
                                 })),
                         ),
                     )
@@ -376,7 +376,7 @@ impl ControlCenter {
                                 .icon(Icon::new("lan").size(px(20.0)))
                                 .selected(net_expanded)
                                 .on_click(cx.listener(|this, _, _window, cx| {
-                                    this.toggle_section(ControlCenterSection::Network, cx);
+                                    this.toggle_section(PanelSection::Network, cx);
                                 })),
                         ),
                     )
@@ -670,7 +670,7 @@ impl ControlCenter {
     }
 }
 
-impl Render for ControlCenter {
+impl Render for Panel {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let bg = rgb(0x2e3440);
         let hover_line = rgb(0x3b4252);

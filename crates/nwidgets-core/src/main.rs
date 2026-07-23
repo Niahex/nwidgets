@@ -92,12 +92,12 @@ fn main() {
             });
         }
 
-        // ── Control Center ──
-        let cc_window = nwidgets_control_center::open(cx, |window, cx| {
-            let view = cx.new(views::control_center::ControlCenter::new);
+        // ── Panel ──
+        let cc_window = nwidgets_panel::open(cx, |window, cx| {
+            let view = cx.new(views::panel::Panel::new);
             cx.new(|cx| gpui_component::Root::new(view, window, cx).bordered(false))
         })
-        .expect("Failed to open control center");
+        .expect("Failed to open panel");
         let cc_visible = std::rc::Rc::new(std::cell::Cell::new(false));
 
         // ── Bar (panel) ──
@@ -159,10 +159,10 @@ fn main() {
                     }
                 }
             }
-            nwidgets_shortcut::ShortcutCommand::ToggleControlCenter => {
+            nwidgets_shortcut::ShortcutCommand::TogglePanel => {
                 let v = !cc_vis.get();
                 cc_vis.set(v);
-                nwidgets_control_center::set_visible(&cc_win, v, cx);
+                nwidgets_panel::set_visible(&cc_win, v, cx);
             }
             nwidgets_shortcut::ShortcutCommand::ToggleLauncher => {
                 let v = !launcher_vis.get();

@@ -6,7 +6,7 @@ members = [
     "crates/widgets/chat",
     "crates/widgets/osd",
     "crates/widgets/notification",
-    "crates/widgets/control_center",
+    "crates/widgets/panel",
     "crates/widgets/launcher",
     "crates/shortcut",
     "crates/services/niri",

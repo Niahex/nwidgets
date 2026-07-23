@@ -3,9 +3,9 @@ use gpui::*;
 
 /// Hauteur de la barre en haut de l'écran (réservée par le panneau).
 pub const BAR_HEIGHT: f32 = 50.0;
-pub const CONTROL_CENTER_WIDTH: f32 = 600.0;
+pub const PANEL_WIDTH: f32 = 600.0;
 
-/// Ouvre la fenêtre layer shell pour le panneau de contrôle (masquée par défaut).
+/// Ouvre la fenêtre layer shell pour le panneau latéral (masquée par défaut).
 pub fn open<T: gpui::Render + 'static>(
     cx: &mut App,
     build_view: impl FnOnce(&mut Window, &mut App) -> Entity<T>,
@@ -22,7 +22,7 @@ pub fn open<T: gpui::Render + 'static>(
             titlebar: None,
             window_background: WindowBackgroundAppearance::Transparent,
             kind: WindowKind::LayerShell(LayerShellOptions {
-                namespace: "nwidgets-control-center".to_string(),
+                namespace: "nwidgets-panel".to_string(),
                 layer: Layer::Background,
                 anchor: Anchor::TOP | Anchor::RIGHT | Anchor::BOTTOM,
                 exclusive_zone: None,
@@ -41,13 +41,13 @@ pub fn open<T: gpui::Render + 'static>(
     Ok(window)
 }
 
-/// Bascule l'affichage du control center.
+/// Bascule l'affichage du panel.
 pub fn set_visible<T: 'static>(handle: &WindowHandle<T>, visible: bool, cx: &mut App) {
     let _ = handle.update(cx, |_, window, cx| {
         if visible {
             window.set_layer(Layer::Overlay);
             window.set_keyboard_interactivity(KeyboardInteractivity::Exclusive);
-            window.resize(size(px(CONTROL_CENTER_WIDTH), px(2000.0)));
+            window.resize(size(px(PANEL_WIDTH), px(2000.0)));
             cx.activate(true);
         } else {
             window.set_layer(Layer::Background);
@@ -58,13 +58,13 @@ pub fn set_visible<T: 'static>(handle: &WindowHandle<T>, visible: bool, cx: &mut
     });
 }
 
-/// Bascule la visibilité du control center depuis un AnyWindowHandle.
+/// Bascule la visibilité du panel depuis un AnyWindowHandle.
 pub fn toggle(handle: &AnyWindowHandle, visible: bool, cx: &mut App) {
     let _ = handle.update(cx, |_, window, cx| {
         if visible {
             window.set_layer(Layer::Overlay);
             window.set_keyboard_interactivity(KeyboardInteractivity::Exclusive);
-            window.resize(size(px(CONTROL_CENTER_WIDTH), px(2000.0)));
+            window.resize(size(px(PANEL_WIDTH), px(2000.0)));
             cx.activate(true);
         } else {
             window.set_layer(Layer::Background);
