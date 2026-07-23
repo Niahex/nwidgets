@@ -347,6 +347,7 @@ impl Chat {
                     .flex()
                     .items_center()
                     .justify_between()
+                    .h(px(32.0))
                     .child(
                         div()
                             .flex()
@@ -385,7 +386,7 @@ impl Chat {
                             .items_center()
                             .gap_1_5()
                             .px_3()
-                            .py_1_5()
+                            .h(px(28.0))
                             .bg(accent)
                             .rounded_lg()
                             .cursor_pointer()
