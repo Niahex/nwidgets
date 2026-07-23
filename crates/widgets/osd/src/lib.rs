@@ -37,7 +37,9 @@ pub fn set_visible<T: 'static>(handle: &WindowHandle<T>, visible: bool, cx: &mut
     let _ = handle.update(cx, |_, window, _| {
         if visible {
             window.set_layer(Layer::Overlay);
-            window.set_input_region(None);
+            // L'OSD est 100% traversant (click-through) : il ne capte aucun événement de souris ni de clavier !
+            window.set_input_region(Some(&[]));
+            window.set_keyboard_interactivity(KeyboardInteractivity::None);
             window.resize(size(px(340.0), px(54.0)));
         } else {
             window.set_layer(Layer::Background);
