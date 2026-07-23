@@ -103,7 +103,7 @@ impl NtfView {
             let handle = handle.clone();
             let count = self.active_toasts.len();
             let visible = count > 0;
-            let height = (count as f32 * 110.0).min(550.0) + 16.0;
+            let height = (count as f32 * 110.0).min(550.0) + 16.0 + CORNER_RADIUS;
 
             let _ = handle.update(cx, |_, window, _| {
                 if visible {
@@ -136,10 +136,18 @@ impl Render for NtfView {
             return div().into_any_element();
         }
 
-        let toasts_content = div()
+        let toasts_list = div()
             .flex()
             .flex_col()
             .gap_2()
+            .p_3()
+            .w(px(380.0))
+            .bg(panel_bg)
+            .rounded_bl(px(CORNER_RADIUS))
+            .border_l_1()
+            .border_r_1()
+            .border_b_1()
+            .border_color(frost_border)
             .children(self.active_toasts.iter().map(|toast| {
                 let notif = &toast.notification;
                 let notif_id = notif.id;
@@ -227,69 +235,39 @@ impl Render for NtfView {
 
         div()
             .size_full()
-            .relative()
-            // 1. Top-Left Concave Corner Arc
+            .flex()
+            .flex_col()
+            // ── Top Section: Left concave corner + Main notification body ──
             .child(
                 div()
-                    .absolute()
-                    .top_0()
-                    .left_0()
-                    .size(px(CORNER_RADIUS))
+                    .w_full()
+                    .flex_1()
+                    .flex()
+                    .flex_row()
+                    // Left column for Top-Left concave corner
                     .child(
-                        Corner::new(CornerPosition::TopRight, px(CORNER_RADIUS))
-                            .color(panel_bg)
-                            .border_color(frost_border),
-                    ),
+                        div()
+                            .h_full()
+                            .w(px(CORNER_RADIUS))
+                            .flex()
+                            .flex_col()
+                            .child(
+                                Corner::new(CornerPosition::TopRight, px(CORNER_RADIUS))
+                                    .color(panel_bg)
+                                    .border_color(frost_border),
+                            )
+                            .child(div().flex_1()),
+                    )
+                    .child(toasts_list),
             )
-            // 2. Main Notification Content Body
+            // ── Bottom Row: Right concave corner placed BELOW the notification body ──
             .child(
                 div()
-                    .absolute()
-                    .top_0()
-                    .left(px(CORNER_RADIUS))
-                    .w(px(380.0))
-                    .h_full()
-                    .bg(panel_bg)
-                    .p_3()
-                    .child(toasts_content),
-            )
-            // 3. Left Border Line (from y=12 down to y=H)
-            .child(
-                div()
-                    .absolute()
-                    .top(px(CORNER_RADIUS))
-                    .left(px(CORNER_RADIUS))
-                    .bottom_0()
-                    .w(px(1.0))
-                    .bg(frost_border),
-            )
-            // 4. Right Border Line (from y=0 down to y=H-12)
-            .child(
-                div()
-                    .absolute()
-                    .top_0()
-                    .right_0()
-                    .bottom(px(CORNER_RADIUS))
-                    .w(px(1.0))
-                    .bg(frost_border),
-            )
-            // 5. Bottom Border Line (from x=12 to x=380)
-            .child(
-                div()
-                    .absolute()
-                    .bottom_0()
-                    .left(px(CORNER_RADIUS))
-                    .right(px(CORNER_RADIUS))
-                    .h(px(1.0))
-                    .bg(frost_border),
-            )
-            // 6. Bottom-Right Concave Corner Arc
-            .child(
-                div()
-                    .absolute()
-                    .bottom_0()
-                    .right_0()
-                    .size(px(CORNER_RADIUS))
+                    .w_full()
+                    .h(px(CORNER_RADIUS))
+                    .flex()
+                    .flex_row()
+                    .child(div().flex_1()) // Transparent space under main body
                     .child(
                         Corner::new(CornerPosition::TopRight, px(CORNER_RADIUS))
                             .color(panel_bg)
