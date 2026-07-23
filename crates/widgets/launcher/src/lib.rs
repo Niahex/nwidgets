@@ -3,7 +3,7 @@ use gpui::*;
 
 pub const BAR_HEIGHT: f32 = 50.0;
 pub const LAUNCHER_WIDTH: f32 = 700.0;
-pub const LAUNCHER_HEIGHT: f32 = 500.0;
+pub const LAUNCHER_HEIGHT: f32 = 456.0;
 
 /// Ouvre la fenêtre layer shell pour le lanceur d'applications (masquée par défaut).
 pub fn open<T: gpui::Render + 'static>(
