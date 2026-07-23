@@ -8,6 +8,9 @@ license = "GPL-3.0"
 [dependencies]
 gpui.workspace = true
 gpui-component.workspace = true
+nwidgets-service-bluetooth.workspace = true
+nwidgets-service-network.workspace = true
+nwidgets-service-audio.workspace = true
 anyhow.workspace = true
 
 [lints]
