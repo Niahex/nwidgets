@@ -4,7 +4,9 @@ use gpui_component::corner::{Corner, CornerPosition};
 use gpui_component::input::{Input, InputState};
 use gpui_component::Icon;
 
+const CHAT_WIDTH: f32 = 600.0;
 const CORNER_RADIUS: f32 = 12.0;
+const MAIN_WIDTH: f32 = CHAT_WIDTH - CORNER_RADIUS; // 588.0px
 
 actions!(chat, [CloseChat, SendMessage]);
 
@@ -95,6 +97,7 @@ impl Chat {
         let frost_border = rgb(0x88c0d0).opacity(0.3);
 
         div()
+            .w_full()
             .flex()
             .items_center()
             .justify_between()
@@ -325,6 +328,7 @@ impl Chat {
         let frost_border = rgb(0x88c0d0).opacity(0.3);
 
         div()
+            .w_full()
             .flex()
             .flex_col()
             .gap_2()
@@ -344,6 +348,7 @@ impl Chat {
             )
             .child(
                 div()
+                    .w_full()
                     .flex()
                     .items_center()
                     .justify_between()
@@ -414,13 +419,14 @@ impl Render for Chat {
             .on_action(cx.listener(|_this, _action: &CloseChat, _window, cx| {
                 cx.emit(CloseChat);
             }))
-            .size_full()
+            .w(px(CHAT_WIDTH))
+            .h_full()
             .flex()
             .flex_row()
-            // ── Main Chat Container ──
+            // ── Main Chat Container (588px) ──
             .child(
                 div()
-                    .flex_1()
+                    .w(px(MAIN_WIDTH))
                     .h_full()
                     .bg(bg)
                     .border_b_1()
@@ -437,6 +443,7 @@ impl Render for Chat {
                             }).collect();
                             this.child(
                                 div()
+                                    .w_full()
                                     .flex()
                                     .flex_col()
                                     .gap_3()
@@ -447,11 +454,11 @@ impl Render for Chat {
                     )
                     .child(self.render_input_bar(cx)),
             )
-            // ── Right Concave Corners Column ──
+            // ── Right Concave Corners Column (12px) ──
             .child(
                 div()
-                    .h_full()
                     .w(px(CORNER_RADIUS))
+                    .h_full()
                     .flex()
                     .flex_col()
                     .child(
