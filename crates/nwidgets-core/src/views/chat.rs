@@ -420,11 +420,10 @@ impl Render for Chat {
             // ── Main Chat Container ──
             .child(
                 div()
-                    .w_full()
+                    .flex_1()
                     .h_full()
                     .bg(bg)
                     .border_b_1()
-                    .border_l_1()
                     .border_color(frost_border)
                     .flex()
                     .flex_col()
