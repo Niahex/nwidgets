@@ -103,13 +103,13 @@ impl NtfView {
             let handle = handle.clone();
             let count = self.active_toasts.len();
             let visible = count > 0;
-            let height = (count as f32 * 110.0).min(550.0) + 24.0;
+            let height = (count as f32 * 110.0).min(550.0) + 16.0;
 
             let _ = handle.update(cx, |_, window, _| {
                 if visible {
                     window.set_layer(gpui::layer_shell::Layer::Overlay);
                     window.set_input_region(None);
-                    window.resize(size(px(396.0), px(height)));
+                    window.resize(size(px(392.0), px(height)));
                 } else {
                     window.set_layer(gpui::layer_shell::Layer::Background);
                     window.set_input_region(None);
@@ -136,17 +136,10 @@ impl Render for NtfView {
             return div().into_any_element();
         }
 
-        let toasts_list = div()
+        let toasts_content = div()
             .flex()
             .flex_col()
             .gap_2()
-            .p_3()
-            .w(px(380.0))
-            .bg(panel_bg)
-            .rounded_bl(px(CORNER_RADIUS))
-            .border_b_1()
-            .border_r_1()
-            .border_color(frost_border)
             .children(self.active_toasts.iter().map(|toast| {
                 let notif = &toast.notification;
                 let notif_id = notif.id;
@@ -235,50 +228,42 @@ impl Render for NtfView {
         div()
             .size_full()
             .flex()
-            .flex_col()
+            .flex_row()
+            // 1. Left column for Top-Left concave corner
             .child(
-                // Top section with left concave corner
                 div()
-                    .w_full()
-                    .flex_1()
-                    .flex()
-                    .flex_row()
-                    .child(
-                        // Left column for Top-Left concave corner
-                        div()
-                            .h_full()
-                            .w(px(CORNER_RADIUS))
-                            .flex()
-                            .flex_col()
-                            .child(
-                                Corner::new(CornerPosition::TopRight, px(CORNER_RADIUS))
-                                    .color(panel_bg)
-                                    .border_color(frost_border),
-                            )
-                            .child(
-                                div().flex_1().flex().justify_end().child(
-                                    div().w(px(1.0)).h_full().bg(frost_border),
-                                ),
-                            ),
-                    )
-                    .child(toasts_list),
-            )
-            .child(
-                // Bottom row with right concave corner
-                div()
-                    .w_full()
-                    .h(px(CORNER_RADIUS))
-                    .flex()
-                    .flex_row()
-                    .child(
-                        div().flex_1().flex().items_start().child(
-                            div().w_full().h(px(1.0)).bg(frost_border),
-                        ),
-                    )
+                    .w(px(CORNER_RADIUS))
+                    .h_full()
                     .child(
                         Corner::new(CornerPosition::TopRight, px(CORNER_RADIUS))
                             .color(panel_bg)
                             .border_color(frost_border),
+                    ),
+            )
+            // 2. Main Notification Container
+            .child(
+                div()
+                    .w(px(380.0))
+                    .h_full()
+                    .bg(panel_bg)
+                    .p_3()
+                    .border_l_1()
+                    .border_r_1()
+                    .border_b_1()
+                    .border_color(frost_border)
+                    .relative()
+                    .child(toasts_content)
+                    // Bottom-Right concave corner overlay
+                    .child(
+                        div()
+                            .absolute()
+                            .bottom_0()
+                            .right_0()
+                            .child(
+                                Corner::new(CornerPosition::TopRight, px(CORNER_RADIUS))
+                                    .color(panel_bg)
+                                    .border_color(frost_border),
+                            ),
                     ),
             )
             .into_any_element()
