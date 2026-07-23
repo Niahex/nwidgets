@@ -383,6 +383,60 @@ impl Launcher {
 
 const CORNER_RADIUS: f32 = 12.0;
 
+#[derive(IntoElement)]
+struct RoundedBottomLeftCorner {
+    radius: Pixels,
+    border_color: Hsla,
+}
+
+impl RenderOnce for RoundedBottomLeftCorner {
+    fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
+        let r = self.radius;
+        let b_color = self.border_color;
+        canvas(
+            move |_, _, _| {},
+            move |bounds, _, window: &mut Window, _| {
+                let ox = bounds.origin.x;
+                let oy = bounds.origin.y;
+                let mut stroke_path = PathBuilder::stroke(px(1.0));
+                stroke_path.move_to(point(ox, oy));
+                stroke_path.arc_to(point(r, r), px(0.), false, false, point(ox + r, oy + r));
+                if let Ok(built_stroke) = stroke_path.build() {
+                    window.paint_path(built_stroke, b_color);
+                }
+            },
+        )
+        .size(r)
+    }
+}
+
+#[derive(IntoElement)]
+struct RoundedBottomRightCorner {
+    radius: Pixels,
+    border_color: Hsla,
+}
+
+impl RenderOnce for RoundedBottomRightCorner {
+    fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
+        let r = self.radius;
+        let b_color = self.border_color;
+        canvas(
+            move |_, _, _| {},
+            move |bounds, _, window: &mut Window, _| {
+                let ox = bounds.origin.x;
+                let oy = bounds.origin.y;
+                let mut stroke_path = PathBuilder::stroke(px(1.0));
+                stroke_path.move_to(point(ox, oy + r));
+                stroke_path.arc_to(point(r, r), px(0.), false, false, point(ox + r, oy));
+                if let Ok(built_stroke) = stroke_path.build() {
+                    window.paint_path(built_stroke, b_color);
+                }
+            },
+        )
+        .size(r)
+    }
+}
+
 impl Render for Launcher {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let bg = rgb(0x2e3440);
@@ -409,15 +463,28 @@ impl Render for Launcher {
                     .w(px(CORNER_RADIUS))
                     .flex()
                     .flex_col()
+                    .relative()
                     .child(
                         Corner::new(CornerPosition::TopRight, px(CORNER_RADIUS))
                             .color(bg)
                             .border_color(frost_border),
                     )
+                    // Left vertical border line (y=12 down to y=H-12)
                     .child(
                         div().flex_1().flex().justify_end().child(
                             div().w(px(1.0)).h_full().bg(frost_border),
                         ),
+                    )
+                    // Bottom-Left rounded corner arc stroke
+                    .child(
+                        div()
+                            .absolute()
+                            .bottom_0()
+                            .right_0()
+                            .child(RoundedBottomLeftCorner {
+                                radius: px(CORNER_RADIUS),
+                                border_color: frost_border.into(),
+                            }),
                     ),
             )
             // ── Launcher Body ──
@@ -427,12 +494,21 @@ impl Render for Launcher {
                     .h_full()
                     .bg(bg)
                     .rounded_b(px(CORNER_RADIUS))
-                    .border_b_1()
-                    .border_color(frost_border)
+                    .relative()
                     .flex()
                     .flex_col()
                     .p_3()
-                    .child(List::new(&self.list_state).with_size(gpui_component::Size::Medium)),
+                    .child(List::new(&self.list_state).with_size(gpui_component::Size::Medium))
+                    // Bottom border line (x=12 to x=700)
+                    .child(
+                        div()
+                            .absolute()
+                            .bottom_0()
+                            .left_0()
+                            .right_0()
+                            .h(px(1.0))
+                            .bg(frost_border),
+                    ),
             )
             // ── Right Concave Corner Column ──
             .child(
@@ -441,15 +517,28 @@ impl Render for Launcher {
                     .w(px(CORNER_RADIUS))
                     .flex()
                     .flex_col()
+                    .relative()
                     .child(
                         Corner::new(CornerPosition::TopLeft, px(CORNER_RADIUS))
                             .color(bg)
                             .border_color(frost_border),
                     )
+                    // Right vertical border line (y=12 down to y=H-12)
                     .child(
                         div().flex_1().flex().justify_start().child(
                             div().w(px(1.0)).h_full().bg(frost_border),
                         ),
+                    )
+                    // Bottom-Right rounded corner arc stroke
+                    .child(
+                        div()
+                            .absolute()
+                            .bottom_0()
+                            .left_0()
+                            .child(RoundedBottomRightCorner {
+                                radius: px(CORNER_RADIUS),
+                                border_color: frost_border.into(),
+                            }),
                     ),
             )
     }
