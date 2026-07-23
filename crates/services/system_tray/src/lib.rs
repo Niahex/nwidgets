@@ -60,6 +60,38 @@ impl StatusNotifierWatcher {
 }
 
 fn find_icon_path(icon_name: &str, id: &str) -> Option<String> {
+    let lower_name = icon_name.to_lowercase();
+    let lower_id = id.to_lowercase();
+
+    // Special Steam direct icon check
+    if lower_name.contains("steam") || lower_id.contains("steam") {
+        if let Ok(home) = std::env::var("HOME") {
+            let steam_tray = format!("{home}/.local/share/Steam/public/steam_tray_mono.png");
+            if Path::new(&steam_tray).exists() {
+                return Some(steam_tray);
+            }
+
+            let icons_dir = format!("{home}/.local/share/icons/hicolor");
+            if let Ok(entries) = std::fs::read_dir(&icons_dir) {
+                for entry in entries.flatten() {
+                    let apps_dir = entry.path().join("apps");
+                    if apps_dir.exists() {
+                        if let Ok(app_files) = std::fs::read_dir(&apps_dir) {
+                            for app_file in app_files.flatten() {
+                                let path_str = app_file.path().to_string_lossy().to_string();
+                                if path_str.to_lowercase().contains("steam")
+                                    && (path_str.ends_with(".png") || path_str.ends_with(".svg"))
+                                {
+                                    return Some(path_str);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     if !icon_name.is_empty() {
         if let Some(p) = freedesktop_icons::lookup(icon_name).with_size(24).find() {
             return Some(p.to_string_lossy().to_string());
@@ -73,14 +105,14 @@ fn find_icon_path(icon_name: &str, id: &str) -> Option<String> {
     }
 
     let candidates = [
-        format!("/usr/share/pixmaps/{}.png", icon_name),
-        format!("/usr/share/pixmaps/{}.svg", icon_name),
-        format!("/usr/share/pixmaps/{}.png", id),
-        format!("/usr/share/icons/hicolor/scalable/apps/{}.svg", icon_name),
-        format!("/usr/share/icons/hicolor/48x48/apps/{}.png", icon_name),
-        format!("/usr/share/icons/hicolor/256x256/apps/{}.png", icon_name),
-        format!("/usr/share/icons/hicolor/scalable/apps/{}.svg", id),
-        format!("/usr/share/icons/hicolor/48x48/apps/{}.png", id),
+        format!("/usr/share/pixmaps/{icon_name}.png"),
+        format!("/usr/share/pixmaps/{icon_name}.svg"),
+        format!("/usr/share/pixmaps/{id}.png"),
+        format!("/usr/share/icons/hicolor/scalable/apps/{icon_name}.svg"),
+        format!("/usr/share/icons/hicolor/48x48/apps/{icon_name}.png"),
+        format!("/usr/share/icons/hicolor/256x256/apps/{icon_name}.png"),
+        format!("/usr/share/icons/hicolor/scalable/apps/{id}.svg"),
+        format!("/usr/share/icons/hicolor/48x48/apps/{id}.png"),
     ];
 
     for path in candidates {
