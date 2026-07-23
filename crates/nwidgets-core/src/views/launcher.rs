@@ -1,5 +1,6 @@
 use gpui::prelude::FluentBuilder;
 use gpui::*;
+use gpui_component::corner::{Corner, CornerPosition};
 use gpui_component::list::{List, ListDelegate, ListEvent, ListState};
 use gpui_component::{Icon, IndexPath, Selectable, Sizable};
 use nwidgets_service_applications::{AppInfo, ApplicationsService, ApplicationsStateChanged};
@@ -380,12 +381,15 @@ impl Launcher {
     }
 }
 
+const CORNER_RADIUS: f32 = 12.0;
+
 impl Render for Launcher {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let bg = rgb(0x2e3440);
 
         // Force focus vers la barre de recherche
         let search_fh = self.list_state.focus_handle(cx);
+        window.focus(&search_fh, cx);
         let frost_border = rgb(0x88c0d0).opacity(0.3);
 
         div()
@@ -397,21 +401,56 @@ impl Render for Launcher {
             }))
             .size_full()
             .flex()
-            .flex_col()
-            .p_2()
+            .flex_row()
+            // ── Left Concave Corner Column ──
+            .child(
+                div()
+                    .h_full()
+                    .w(px(CORNER_RADIUS))
+                    .flex()
+                    .flex_col()
+                    .child(
+                        Corner::new(CornerPosition::TopRight, px(CORNER_RADIUS))
+                            .color(bg)
+                            .border_color(frost_border),
+                    )
+                    .child(
+                        div().flex_1().flex().justify_end().child(
+                            div().w(px(1.0)).h_full().bg(frost_border),
+                        ),
+                    ),
+            )
+            // ── Launcher Body ──
             .child(
                 div()
                     .w_full()
                     .h_full()
                     .bg(bg)
-                    .rounded_xl()
-                    .border_1()
+                    .rounded_b(px(CORNER_RADIUS))
+                    .border_b_1()
                     .border_color(frost_border)
-                    .shadow_lg()
                     .flex()
                     .flex_col()
                     .p_3()
                     .child(List::new(&self.list_state).with_size(gpui_component::Size::Medium)),
+            )
+            // ── Right Concave Corner Column ──
+            .child(
+                div()
+                    .h_full()
+                    .w(px(CORNER_RADIUS))
+                    .flex()
+                    .flex_col()
+                    .child(
+                        Corner::new(CornerPosition::TopLeft, px(CORNER_RADIUS))
+                            .color(bg)
+                            .border_color(frost_border),
+                    )
+                    .child(
+                        div().flex_1().flex().justify_start().child(
+                            div().w(px(1.0)).h_full().bg(frost_border),
+                        ),
+                    ),
             )
     }
 }
