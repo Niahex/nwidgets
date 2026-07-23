@@ -25,7 +25,7 @@ pub fn open<T: gpui::Render + 'static>(
         },
         |window, cx| {
             let entity = build_view(window, cx);
-            window.set_input_region(None);
+            window.set_input_region(Some(&[]));
             window.resize(size(px(1.0), px(1.0)));
             entity
         },
@@ -41,7 +41,7 @@ pub fn set_visible<T: 'static>(handle: &WindowHandle<T>, visible: bool, height_p
             window.resize(size(px(380.0), px(height_px)));
         } else {
             window.set_layer(Layer::Background);
-            window.set_input_region(None);
+            window.set_input_region(Some(&[]));
             window.set_keyboard_interactivity(KeyboardInteractivity::None);
             window.resize(size(px(1.0), px(1.0)));
         }

@@ -139,7 +139,7 @@ impl NtfView {
                     window.resize(size(px(392.0), px(height)));
                 } else {
                     window.set_layer(gpui::layer_shell::Layer::Background);
-                    window.set_input_region(None);
+                    window.set_input_region(Some(&[]));
                     window.set_keyboard_interactivity(gpui::layer_shell::KeyboardInteractivity::None);
                     window.resize(size(px(1.0), px(1.0)));
                 }
