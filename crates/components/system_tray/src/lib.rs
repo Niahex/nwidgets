@@ -51,8 +51,10 @@ impl Render for SystemTrayComponent {
                     .rounded_md()
                     .cursor_pointer()
                     .hover(|s| s.bg(rgb(0x3b4252)))
-                    .on_mouse_down(MouseButton::Left, move |_event, _window, cx| {
-                        system_tray_left.read(cx).activate_item(service_path_left.clone(), 0, 0, cx);
+                    .on_mouse_down(MouseButton::Left, move |event, _window, cx| {
+                        let x = f32::from(event.position.x) as i32;
+                        let y = f32::from(event.position.y) as i32;
+                        system_tray_left.read(cx).activate_item(service_path_left.clone(), x, y, cx);
                     })
                     .context_menu(move |menu, _window, _cx| {
                         let path_activate = service_path_right.clone();

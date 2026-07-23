@@ -151,13 +151,35 @@ fn map_tray_icon(icon_name: &str, id: &str) -> String {
     }
 }
 
+fn clean_tray_title(raw_title: &str, raw_id: &str, item_path: &str) -> String {
+    let candidate = if !raw_title.is_empty() && !raw_title.starts_with('/') {
+        raw_title
+    } else if !raw_id.is_empty() && !raw_id.starts_with('/') {
+        raw_id
+    } else {
+        item_path.rsplit('/').next().unwrap_or(item_path)
+    };
+
+    let clean = candidate.trim_start_matches('/').trim();
+    if clean.is_empty() {
+        return "Application".to_string();
+    }
+
+    let mut chars = clean.chars();
+    match chars.next() {
+        None => String::new(),
+        Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+    }
+}
+
 async fn fetch_tray_item_info(item_path: String) -> (String, String, String, Option<String>, String) {
     let conn = match Connection::session().await {
         Ok(c) => c,
         Err(_) => {
+            let clean_t = clean_tray_title("", "", &item_path);
             let icon_path = find_icon_path("", &item_path);
             let icon_name = map_tray_icon("", &item_path);
-            return (item_path.clone(), item_path.clone(), icon_name, icon_path, item_path);
+            return (item_path.clone(), clean_t.clone(), icon_name, icon_path, clean_t);
         }
     };
 
@@ -183,17 +205,18 @@ async fn fetch_tray_item_info(item_path: String) -> (String, String, String, Opt
         let title: String = p.get_property("Title").await.unwrap_or_default();
         let id: String = p.get_property("Id").await.unwrap_or_default();
 
+        let clean_title = clean_tray_title(&title, &id, &item_path);
         let raw_id = if !id.is_empty() { id } else { item_path.clone() };
-        let raw_title = if !title.is_empty() { title } else { raw_id.clone() };
 
         let icon_path = find_icon_path(&icon_name, &raw_id);
         let fallback_icon = map_tray_icon(&icon_name, &raw_id);
 
-        (raw_id, raw_title.clone(), fallback_icon, icon_path, raw_title)
+        (raw_id, clean_title.clone(), fallback_icon, icon_path, clean_title)
     } else {
+        let clean_t = clean_tray_title("", "", &item_path);
         let icon_path = find_icon_path("", &item_path);
         let fallback_icon = map_tray_icon("", &item_path);
-        (item_path.clone(), item_path.clone(), fallback_icon, icon_path, item_path)
+        (item_path.clone(), clean_t.clone(), fallback_icon, icon_path, clean_t)
     }
 }
 
