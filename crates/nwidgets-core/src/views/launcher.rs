@@ -456,38 +456,21 @@ impl Render for Launcher {
             .size_full()
             .flex()
             .flex_row()
-            // ── Left Concave Corner Column ──
+            // ── Left Concave Corner Column (x=0..12) ──
             .child(
                 div()
                     .h_full()
                     .w(px(CORNER_RADIUS))
                     .flex()
                     .flex_col()
-                    .relative()
                     .child(
                         Corner::new(CornerPosition::TopRight, px(CORNER_RADIUS))
                             .color(bg)
                             .border_color(frost_border),
                     )
-                    // Left vertical border line (y=12 down to y=H-12)
-                    .child(
-                        div().flex_1().flex().justify_end().child(
-                            div().w(px(1.0)).h_full().bg(frost_border),
-                        ),
-                    )
-                    // Bottom-Left rounded corner arc stroke
-                    .child(
-                        div()
-                            .absolute()
-                            .bottom_0()
-                            .right_0()
-                            .child(RoundedBottomLeftCorner {
-                                radius: px(CORNER_RADIUS),
-                                border_color: frost_border.into(),
-                            }),
-                    ),
+                    .child(div().flex_1()),
             )
-            // ── Launcher Body ──
+            // ── Launcher Body (x=12..712) ──
             .child(
                 div()
                     .w_full()
@@ -499,47 +482,72 @@ impl Render for Launcher {
                     .flex_col()
                     .p_3()
                     .child(List::new(&self.list_state).with_size(gpui_component::Size::Medium))
-                    // Bottom border line (x=12 to x=700)
+                    // Left vertical border line (x=12, y=12 down to y=H-12)
+                    .child(
+                        div()
+                            .absolute()
+                            .top(px(CORNER_RADIUS))
+                            .left_0()
+                            .bottom(px(CORNER_RADIUS))
+                            .w(px(1.0))
+                            .bg(frost_border),
+                    )
+                    // Bottom-Left rounded corner arc stroke (x=12..24, y=H-12..H)
                     .child(
                         div()
                             .absolute()
                             .bottom_0()
                             .left_0()
-                            .right_0()
+                            .child(RoundedBottomLeftCorner {
+                                radius: px(CORNER_RADIUS),
+                                border_color: frost_border.into(),
+                            }),
+                    )
+                    // Bottom horizontal border line (x=24 to x=700)
+                    .child(
+                        div()
+                            .absolute()
+                            .bottom_0()
+                            .left(px(CORNER_RADIUS))
+                            .right(px(CORNER_RADIUS))
                             .h(px(1.0))
+                            .bg(frost_border),
+                    )
+                    // Bottom-Right rounded corner arc stroke (x=700..712, y=H-12..H)
+                    .child(
+                        div()
+                            .absolute()
+                            .bottom_0()
+                            .right_0()
+                            .child(RoundedBottomRightCorner {
+                                radius: px(CORNER_RADIUS),
+                                border_color: frost_border.into(),
+                            }),
+                    )
+                    // Right vertical border line (x=712, y=12 down to y=H-12)
+                    .child(
+                        div()
+                            .absolute()
+                            .top(px(CORNER_RADIUS))
+                            .right_0()
+                            .bottom(px(CORNER_RADIUS))
+                            .w(px(1.0))
                             .bg(frost_border),
                     ),
             )
-            // ── Right Concave Corner Column ──
+            // ── Right Concave Corner Column (x=712..724) ──
             .child(
                 div()
                     .h_full()
                     .w(px(CORNER_RADIUS))
                     .flex()
                     .flex_col()
-                    .relative()
                     .child(
                         Corner::new(CornerPosition::TopLeft, px(CORNER_RADIUS))
                             .color(bg)
                             .border_color(frost_border),
                     )
-                    // Right vertical border line (y=12 down to y=H-12)
-                    .child(
-                        div().flex_1().flex().justify_start().child(
-                            div().w(px(1.0)).h_full().bg(frost_border),
-                        ),
-                    )
-                    // Bottom-Right rounded corner arc stroke
-                    .child(
-                        div()
-                            .absolute()
-                            .bottom_0()
-                            .left_0()
-                            .child(RoundedBottomRightCorner {
-                                radius: px(CORNER_RADIUS),
-                                border_color: frost_border.into(),
-                            }),
-                    ),
+                    .child(div().flex_1()),
             )
     }
 }
