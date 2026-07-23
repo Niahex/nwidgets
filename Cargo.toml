@@ -25,6 +25,7 @@ members = [
     "crates/components/pomodoro",
     "crates/components/quicksettings",
     "crates/components/system_tray",
+    "crates/components/calendar",
 ]
 default-members = ["crates/nwidgets-core"]
 

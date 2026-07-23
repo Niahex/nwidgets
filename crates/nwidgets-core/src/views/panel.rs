@@ -6,6 +6,7 @@ use gpui_component::scroll::ScrollableElement;
 use gpui_component::slider::{Slider, SliderState};
 use gpui_component::switch::Switch;
 use gpui_component::{Icon, Selectable, Sizable};
+use nwidgets_component_calendar::CalendarComponent;
 use nwidgets_service_audio::{AudioService, AudioStateChanged};
 use nwidgets_service_bluetooth::{BluetoothService, BluetoothStateChanged};
 use nwidgets_service_network::{NetworkService, NetworkStateChanged};
@@ -24,6 +25,7 @@ pub enum PanelSection {
 }
 
 pub struct Panel {
+    calendar: Option<Entity<CalendarComponent>>,
     audio: Entity<AudioService>,
     system_monitor: Entity<SystemMonitorService>,
     bluetooth: Entity<BluetoothService>,
@@ -121,6 +123,7 @@ impl Panel {
         cx.subscribe(&notifications, |_, _, _: &NotificationsCleared, cx| cx.notify()).detach();
 
         Self {
+            calendar: None,
             audio,
             system_monitor,
             bluetooth,
@@ -671,10 +674,15 @@ impl Panel {
 }
 
 impl Render for Panel {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let bg = rgb(0x2e3440);
         let hover_line = rgb(0x3b4252);
         let frost_border = rgb(0x88c0d0).opacity(0.3);
+
+        let calendar = self
+            .calendar
+            .get_or_insert_with(|| cx.new(|cx| CalendarComponent::new(window, cx)))
+            .clone();
 
         div()
             .size_full()
@@ -716,6 +724,9 @@ impl Render for Panel {
                     .flex_col()
                     .p_4()
                     .gap_4()
+                    // 0. Calendar Component (above Audio Section)
+                    .child(calendar)
+                    .child(div().h(px(1.0)).bg(hover_line))
                     // 1. Audio Section (Sink/Source Sliders & Device Dropdowns)
                     .child(self.render_audio_section(cx))
                     .child(div().h(px(1.0)).bg(hover_line))

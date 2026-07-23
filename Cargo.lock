@@ -3614,6 +3614,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "nwidgets-component-calendar"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "gpui",
+ "gpui-component",
+]
+
+[[package]]
 name = "nwidgets-component-datetime"
 version = "0.1.0"
 dependencies = [
@@ -3667,6 +3676,7 @@ dependencies = [
  "nwidgets-bar",
  "nwidgets-chat",
  "nwidgets-component-active-window",
+ "nwidgets-component-calendar",
  "nwidgets-component-datetime",
  "nwidgets-component-pomodoro",
  "nwidgets-component-quicksettings",

@@ -33,6 +33,7 @@ nwidgets-component-datetime = { path = "../components/datetime" }
 nwidgets-component-pomodoro = { path = "../components/pomodoro" }
 nwidgets-component-quicksettings = { path = "../components/quicksettings" }
 nwidgets-component-system-tray = { path = "../components/system_tray" }
+nwidgets-component-calendar = { path = "../components/calendar" }
 
 [lints]
 workspace = true
