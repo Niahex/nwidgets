@@ -36,7 +36,7 @@ fn main() {
         let mut chat_fh = None;
         let mut chat_entity = None;
         let chat_window = nwidgets_chat::open(cx, |window, cx| {
-            let view = cx.new(views::chat::Chat::new);
+            let view = cx.new(|cx| views::chat::Chat::new(window, cx));
             chat_fh = Some(view.read(cx).focus_handle.clone());
             chat_entity = Some(view.clone());
             cx.new(|cx| gpui_component::Root::new(view, window, cx).bordered(false))
