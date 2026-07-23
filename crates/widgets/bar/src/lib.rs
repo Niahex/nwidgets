@@ -15,7 +15,7 @@ pub fn open<T: gpui::Render + 'static>(
                 origin: Point { x: px(0.0), y: px(0.0) },
                 size: Size {
                     width: px(3440.0),
-                    height: px(50.0 + CORNER_RADIUS),
+                    height: px(350.0), // Surface height expanded to allow unclipped GPUI popovers & context menus
                 },
             })),
             titlebar: None,
