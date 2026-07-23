@@ -277,13 +277,13 @@ impl Render for NtfView {
                         border_color: frost_border.into(),
                     }),
             )
-            // Bottom border line (x=12 to x=380)
+            // Bottom border line (x=12 to x=368)
             .child(
                 div()
                     .absolute()
                     .bottom_0()
                     .left(px(CORNER_RADIUS))
-                    .right_0()
+                    .right(px(CORNER_RADIUS))
                     .h(px(1.0))
                     .bg(frost_border),
             )
