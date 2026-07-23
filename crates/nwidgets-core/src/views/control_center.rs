@@ -373,7 +373,7 @@ impl ControlCenter {
                             Button::new("network-toggle")
                                 .secondary()
                                 .with_size(gpui_component::Size::Medium)
-                                .icon(Icon::new(if wifi_active { "wifi" } else { "wifi_off" }).size(px(20.0)))
+                                .icon(Icon::new("lan").size(px(20.0)))
                                 .selected(net_expanded)
                                 .on_click(cx.listener(|this, _, _window, cx| {
                                     this.toggle_section(ControlCenterSection::Network, cx);

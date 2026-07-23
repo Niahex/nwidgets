@@ -36,7 +36,7 @@ impl Render for QuickSettingsComponent {
         let red = rgb(0xbf616a);
 
         let bt_state = self.bluetooth.read(cx).state.clone();
-        let net_state = self.network.read(cx).state.clone();
+        let _net_state = self.network.read(cx).state.clone();
         let audio_state = self.audio.read(cx).state.clone();
 
         // 1. Bluetooth Icon: "bluetooth_connected", "bluetooth", or "bluetooth_disabled"
@@ -49,15 +49,8 @@ impl Render for QuickSettingsComponent {
             ("bluetooth", text_main)
         };
 
-        // 2. Network Icon: "lan" for PC fixe / Ethernet, or "wifi" / "wifi_off"
-        let (net_icon_name, net_icon_color) = if let Some(_ssid) = net_state.active_ssid {
-            ("wifi", accent)
-        } else if net_state.wifi_enabled {
-            ("wifi", text_main)
-        } else {
-            // Desktop PC / Ethernet cable connection ("lan")
-            ("lan", accent)
-        };
+        // 2. Network Icon: "lan"
+        let (net_icon_name, net_icon_color) = ("lan", accent);
 
         // 3. Audio Sink Icon
         let (vol_icon_name, vol_icon_color) = if audio_state.sink_muted {
