@@ -103,7 +103,7 @@ impl NtfView {
             let handle = handle.clone();
             let count = self.active_toasts.len();
             let visible = count > 0;
-            let height = (count as f32 * 110.0).min(550.0) + 16.0 + CORNER_RADIUS;
+            let height = (count as f32 * 110.0).min(550.0) + 16.0;
 
             let _ = handle.update(cx, |_, window, _| {
                 if visible {
@@ -231,62 +231,53 @@ impl Render for NtfView {
                         )
                     })
             }))
-            // Right border line on the main notification body
+            // Right border line: from y=0 down to y=H-12 (where bottom-right concave corner starts)
             .child(
                 div()
                     .absolute()
                     .top_0()
                     .right_0()
-                    .bottom_0()
+                    .bottom(px(CORNER_RADIUS))
                     .w(px(1.0))
                     .bg(frost_border),
+            )
+            // Bottom-Right concave corner
+            .child(
+                div()
+                    .absolute()
+                    .bottom_0()
+                    .right_0()
+                    .size(px(CORNER_RADIUS))
+                    .child(
+                        Corner::new(CornerPosition::BottomRight, px(CORNER_RADIUS))
+                            .color(panel_bg)
+                            .border_color(frost_border),
+                    ),
             );
 
         div()
             .size_full()
             .flex()
-            .flex_col()
-            // ── Top Section: Left concave corner column + Main notification body ──
+            .flex_row()
+            // Left column: Top-Left concave corner + Left vertical border line below corner
             .child(
                 div()
-                    .w_full()
-                    .flex_1()
+                    .h_full()
+                    .w(px(CORNER_RADIUS))
                     .flex()
-                    .flex_row()
-                    // Left column for Top-Left concave corner + Left vertical border below corner
-                    .child(
-                        div()
-                            .h_full()
-                            .w(px(CORNER_RADIUS))
-                            .flex()
-                            .flex_col()
-                            .child(
-                                Corner::new(CornerPosition::TopRight, px(CORNER_RADIUS))
-                                    .color(panel_bg)
-                                    .border_color(frost_border),
-                            )
-                            .child(
-                                div().flex_1().flex().justify_end().child(
-                                    div().w(px(1.0)).h_full().bg(frost_border),
-                                ),
-                            ),
-                    )
-                    .child(toasts_list),
-            )
-            // ── Bottom Row: Right concave corner placed BELOW the notification body ──
-            .child(
-                div()
-                    .w_full()
-                    .h(px(CORNER_RADIUS))
-                    .flex()
-                    .flex_row()
-                    .child(div().flex_1()) // Transparent space under main body
+                    .flex_col()
                     .child(
                         Corner::new(CornerPosition::TopRight, px(CORNER_RADIUS))
                             .color(panel_bg)
                             .border_color(frost_border),
+                    )
+                    .child(
+                        div().flex_1().flex().justify_end().child(
+                            div().w(px(1.0)).h_full().bg(frost_border),
+                        ),
                     ),
             )
+            .child(toasts_list)
             .into_any_element()
     }
 }
