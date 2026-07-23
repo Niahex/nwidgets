@@ -1,5 +1,6 @@
 use gpui::prelude::FluentBuilder;
 use gpui::*;
+use gpui_component::button::{Button, ButtonVariants};
 use gpui_component::corner::{Corner, CornerPosition};
 use gpui_component::input::{Input, InputState};
 use gpui_component::Icon;
@@ -144,16 +145,12 @@ impl Chat {
                     ),
             )
             .child(
-                div()
-                    .id("clear-chat-btn")
-                    .cursor_pointer()
-                    .p_1_5()
-                    .rounded_md()
-                    .hover(|s| s.bg(rgb(0x3b4252)))
+                Button::new("clear-chat-btn")
+                    .icon("delete_sweep")
+                    .ghost()
                     .on_click(cx.listener(|this, _, _window, cx| {
                         this.clear_messages(cx);
-                    }))
-                    .child(Icon::new("delete_sweep").size(px(18.0)).text_color(text_muted)),
+                    })),
             )
     }
 
@@ -385,19 +382,12 @@ impl Chat {
                             ),
                     )
                     .child(
-                        div()
-                            .id("send-message-btn")
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .size(px(28.0))
-                            .bg(accent)
-                            .rounded_lg()
-                            .cursor_pointer()
+                        Button::new("send-message-btn")
+                            .icon("send")
+                            .primary()
                             .on_click(cx.listener(|this, _, window, cx| {
                                 this.send_current_message(window, cx);
-                            }))
-                            .child(Icon::new("send").size(px(16.0)).text_color(rgb(0x2e3440))),
+                            })),
                     ),
             )
     }
