@@ -1,5 +1,4 @@
 use gpui::*;
-use gpui_component::tooltip::Tooltip;
 use gpui_component::Icon;
 use nwidgets_service_system_tray::{SystemTrayService, SystemTrayStateChanged};
 use std::path::PathBuf;
@@ -28,7 +27,11 @@ impl Render for SystemTrayComponent {
         let icon_elements: Vec<_> = items
             .into_iter()
             .map(|item| {
-                let tooltip_text = item.tooltip.clone();
+                let service_path_left = item.service_path.clone();
+                let service_path_right = item.service_path.clone();
+                let system_tray = self.system_tray.clone();
+                let system_tray_right = self.system_tray.clone();
+
                 let icon_element: AnyElement = if let Some(path) = item.icon_path {
                     img(PathBuf::from(path)).size(px(22.0)).into_any_element()
                 } else {
@@ -46,8 +49,11 @@ impl Render for SystemTrayComponent {
                     .rounded_md()
                     .cursor_pointer()
                     .hover(|s| s.bg(rgb(0x3b4252)))
-                    .tooltip(move |window, cx| {
-                        Tooltip::new(tooltip_text.clone()).build(window, cx)
+                    .on_mouse_down(MouseButton::Left, move |_event, _window, cx| {
+                        system_tray.read(cx).activate_item(service_path_left.clone(), 0, 0);
+                    })
+                    .on_mouse_down(MouseButton::Right, move |_event, _window, cx| {
+                        system_tray_right.read(cx).context_menu_item(service_path_right.clone(), 0, 0);
                     })
                     .child(icon_element)
             })

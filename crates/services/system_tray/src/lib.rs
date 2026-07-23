@@ -7,6 +7,7 @@ use zbus::{connection::Builder, interface, Connection, Proxy};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TrayItem {
     pub id: String,
+    pub service_path: String,
     pub title: String,
     pub icon_name: String,
     pub icon_path: Option<String>,
@@ -63,7 +64,6 @@ fn find_icon_path(icon_name: &str, id: &str) -> Option<String> {
     let lower_name = icon_name.to_lowercase();
     let lower_id = id.to_lowercase();
 
-    // Special Steam direct icon check
     if lower_name.contains("steam") || lower_id.contains("steam") {
         if let Ok(home) = std::env::var("HOME") {
             let steam_tray = format!("{home}/.local/share/Steam/public/steam_tray_mono.png");
@@ -244,11 +244,14 @@ impl SystemTrayService {
                         continue;
                     }
 
+                    let service_path = item_path.clone();
+
                     let _ = cx.update(|cx| {
                         service_entity.update(cx, |srv, cx| {
                             if !srv.state.items.iter().any(|i| i.id == id) {
                                 srv.state.items.push(TrayItem {
                                     id,
+                                    service_path,
                                     title,
                                     icon_name,
                                     icon_path,
@@ -266,5 +269,45 @@ impl SystemTrayService {
         .detach();
 
         service
+    }
+
+    pub fn activate_item(&self, service_path: String, x: i32, y: i32) {
+        tokio::spawn(async move {
+            if let Ok(conn) = Connection::session().await {
+                let (dest, path) = if let Some(idx) = service_path.find('/') {
+                    if idx == 0 {
+                        (service_path.clone(), service_path.clone())
+                    } else {
+                        (service_path[..idx].to_string(), service_path[idx..].to_string())
+                    }
+                } else {
+                    (service_path.clone(), "/StatusNotifierItem".to_string())
+                };
+
+                if let Ok(proxy) = Proxy::new(&conn, dest, path, "org.kde.StatusNotifierItem").await {
+                    let _ = proxy.call_method("Activate", &(x, y)).await;
+                }
+            }
+        });
+    }
+
+    pub fn context_menu_item(&self, service_path: String, x: i32, y: i32) {
+        tokio::spawn(async move {
+            if let Ok(conn) = Connection::session().await {
+                let (dest, path) = if let Some(idx) = service_path.find('/') {
+                    if idx == 0 {
+                        (service_path.clone(), service_path.clone())
+                    } else {
+                        (service_path[..idx].to_string(), service_path[idx..].to_string())
+                    }
+                } else {
+                    (service_path.clone(), "/StatusNotifierItem".to_string())
+                };
+
+                if let Ok(proxy) = Proxy::new(&conn, dest, path, "org.kde.StatusNotifierItem").await {
+                    let _ = proxy.call_method("ContextMenu", &(x, y)).await;
+                }
+            }
+        });
     }
 }
