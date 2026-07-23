@@ -384,23 +384,15 @@ impl Chat {
                             .id("send-message-btn")
                             .flex()
                             .items_center()
-                            .gap_1_5()
-                            .px_3()
-                            .h(px(28.0))
+                            .justify_center()
+                            .size(px(28.0))
                             .bg(accent)
                             .rounded_lg()
                             .cursor_pointer()
                             .on_click(cx.listener(|this, _, window, cx| {
                                 this.send_current_message(window, cx);
                             }))
-                            .child(
-                                div()
-                                    .text_xs()
-                                    .font_weight(FontWeight::BOLD)
-                                    .text_color(rgb(0x2e3440))
-                                    .child("Envoyer"),
-                            )
-                            .child(Icon::new("send").size(px(14.0)).text_color(rgb(0x2e3440))),
+                            .child(Icon::new("send").size(px(16.0)).text_color(rgb(0x2e3440))),
                     ),
             )
     }
