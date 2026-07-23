@@ -373,10 +373,15 @@ impl Launcher {
         Self { focus_handle, apps_service, clipboard_service, list_state, _subscriptions: subscriptions }
     }
 
-    /// Vide le champ de recherche du launcher
+    /// Vide le champ de recherche du launcher et remet le mode sur Apps
     pub fn reset(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.list_state.update(cx, |list, cx| {
             list.set_query("", window, cx);
+            let delegate = list.delegate_mut();
+            delegate.mode = LauncherMode::Apps;
+            delegate.entries = delegate.all_apps.iter().cloned().map(LauncherEntry::App).collect();
+            delegate.selected_index = None;
+            cx.notify();
         });
     }
 }
