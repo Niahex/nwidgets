@@ -100,10 +100,12 @@ impl ActiveWindowComponent {
     }
 }
 
+use gpui_component::ActiveTheme;
+
 impl Render for ActiveWindowComponent {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-        let text_muted = rgb(0x4c566a);
-        let text_main = rgb(0xe5e9f0);
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let text_muted = cx.theme().muted_foreground;
+        let text_main = cx.theme().foreground;
         let icon_path = self.resolve_icon_path();
 
         div()

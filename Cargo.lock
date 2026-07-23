@@ -3561,6 +3561,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "gpui",
+ "gpui-component",
  "nwidgets-service-niri",
 ]
 
@@ -3571,8 +3572,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "gpui",
- "gpui_tokio",
- "tokio",
+ "gpui-component",
 ]
 
 [[package]]
