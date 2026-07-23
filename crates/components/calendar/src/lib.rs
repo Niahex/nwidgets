@@ -1,5 +1,6 @@
 use gpui::*;
 use gpui_component::calendar::{Calendar, CalendarState};
+use gpui_component::Sizable;
 
 pub struct CalendarComponent {
     calendar_state: Entity<CalendarState>,
@@ -20,9 +21,15 @@ impl Render for CalendarComponent {
             .w_full()
             .flex()
             .flex_col()
+            .items_center()
+            .justify_center()
             .p_3()
             .bg(card_bg)
             .rounded_xl()
-            .child(Calendar::new(&self.calendar_state))
+            .child(
+                Calendar::new(&self.calendar_state)
+                    .large()
+                    .w_full(),
+            )
     }
 }
