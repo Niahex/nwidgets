@@ -228,10 +228,9 @@ impl Chat {
             )
     }
 
-    fn render_message(&self, msg: &ChatMessage, ix: usize) -> impl IntoElement {
+    fn render_message(&self, msg: &ChatMessage, ix: usize, cx: &mut Context<Self>) -> Div {
         let text_main = rgb(0xe5e9f0);
         let text_muted = rgb(0xd8dee9);
-        let card_bg = rgb(0x3b4252);
         let purple = rgb(0xb48ead);
         let is_user = msg.role == "user";
         let thinking_expanded = self.thinking_expanded;
@@ -261,11 +260,9 @@ impl Chat {
                     .flex_col()
                     .gap_2()
                     .w_full()
-                    .p_3()
-                    .bg(card_bg)
-                    .rounded_xl();
+                    .py_2();
 
-                // Thinking block
+                // Thinking block (transparent background, collapsible)
                 if let Some(ref think_text) = msg.thinking {
                     let chevron_icon = if thinking_expanded { "expand_less" } else { "expand_more" };
                     container = container.child(
@@ -279,6 +276,11 @@ impl Chat {
                                     .flex()
                                     .items_center()
                                     .gap_2()
+                                    .cursor_pointer()
+                                    .on_click(cx.listener(|this, _, _window, cx| {
+                                        this.thinking_expanded = !this.thinking_expanded;
+                                        cx.notify();
+                                    }))
                                     .child(Icon::new("psychology").size(px(14.0)).text_color(purple))
                                     .child(
                                         div()
@@ -296,6 +298,7 @@ impl Chat {
                                         .flex()
                                         .gap_2()
                                         .pl_2()
+                                        .py_1()
                                         .child(div().w(px(2.0)).bg(purple))
                                         .child(
                                             div()
@@ -411,6 +414,12 @@ impl Render for Chat {
 
         let is_empty = self.messages.is_empty();
 
+        let messages = self.messages.clone();
+        let mut msgs = Vec::new();
+        for (ix, msg) in messages.iter().enumerate() {
+            msgs.push(self.render_message(msg, ix, cx));
+        }
+
         div()
             .track_focus(&self.focus_handle)
             .on_action(cx.listener(|_this, _action: &CloseChat, _window, cx| {
@@ -435,9 +444,6 @@ impl Render for Chat {
                         div().flex_1().flex().flex_col().when(is_empty, |this| {
                             this.child(self.render_empty_state())
                         }).when(!is_empty, |this| {
-                            let msgs: Vec<_> = self.messages.iter().enumerate().map(|(ix, msg)| {
-                                self.render_message(msg, ix)
-                            }).collect();
                             this.child(
                                 div()
                                     .w_full()
