@@ -1,11 +1,11 @@
 use gpui::prelude::FluentBuilder;
 use gpui::*;
 use gpui_component::Icon;
-use nwidgets_component_system_tray::SystemTrayComponent;
+use nwidgets_component_systray::SystemTrayComponent;
 use nwidgets_service_audio::{AudioService, AudioStateChanged};
 use nwidgets_service_bluetooth::{BluetoothService, BluetoothStateChanged};
 use nwidgets_service_network::{NetworkService, NetworkStateChanged};
-use nwidgets_service_system_tray::{SystemTrayService, SystemTrayStateChanged};
+use nwidgets_service_systray::{SystemTrayService, SystemTrayStateChanged};
 
 pub struct QuickSettingsComponent {
     system_tray: Entity<SystemTrayComponent>,

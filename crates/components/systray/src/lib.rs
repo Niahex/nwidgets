@@ -1,7 +1,7 @@
 use gpui::*;
 use gpui_component::menu::{ContextMenuExt, PopupMenuItem};
 use gpui_component::Icon;
-use nwidgets_service_system_tray::{SystemTrayService, SystemTrayStateChanged};
+use nwidgets_service_systray::{SystemTrayService, SystemTrayStateChanged};
 use std::path::PathBuf;
 
 pub struct SystemTrayComponent {

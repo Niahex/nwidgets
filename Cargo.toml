@@ -19,12 +19,12 @@ members = [
     "crates/services/clipboard",
     "crates/services/lock",
     "crates/services/notification",
-    "crates/services/system_tray",
+    "crates/services/systray",
     "crates/components/active_window",
     "crates/components/datetime",
     "crates/components/pomodoro",
     "crates/components/quicksettings",
-    "crates/components/system_tray",
+    "crates/components/systray",
     "crates/components/calendar",
 ]
 default-members = ["crates/nwidgets-core"]
@@ -48,12 +48,12 @@ nwidgets-service-process = { path = "crates/services/process" }
 nwidgets-service-clipboard = { path = "crates/services/clipboard" }
 nwidgets-service-lock = { path = "crates/services/lock" }
 nwidgets-service-notification = { path = "crates/services/notification" }
-nwidgets-service-system-tray = { path = "crates/services/system_tray" }
+nwidgets-service-systray = { path = "crates/services/systray" }
 nwidgets-component-active-window = { path = "crates/components/active_window" }
 nwidgets-component-datetime = { path = "crates/components/datetime" }
 nwidgets-component-pomodoro = { path = "crates/components/pomodoro" }
 nwidgets-component-quicksettings = { path = "crates/components/quicksettings" }
-nwidgets-component-system-tray = { path = "crates/components/system_tray" }
+nwidgets-component-systray = { path = "crates/components/systray" }
 anyhow = "1.0"
 
 [workspace.lints.rust]

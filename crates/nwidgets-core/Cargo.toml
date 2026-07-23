@@ -27,12 +27,12 @@ nwidgets-service-process.workspace = true
 nwidgets-service-clipboard.workspace = true
 nwidgets-service-lock.workspace = true
 nwidgets-service-notification.workspace = true
-nwidgets-service-system-tray.workspace = true
+nwidgets-service-systray.workspace = true
 nwidgets-component-active-window = { path = "../components/active_window" }
 nwidgets-component-datetime = { path = "../components/datetime" }
 nwidgets-component-pomodoro = { path = "../components/pomodoro" }
 nwidgets-component-quicksettings = { path = "../components/quicksettings" }
-nwidgets-component-system-tray = { path = "../components/system_tray" }
+nwidgets-component-systray = { path = "../components/systray" }
 nwidgets-component-calendar = { path = "../components/calendar" }
 
 [lints]

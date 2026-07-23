@@ -25,7 +25,7 @@ fn main() {
         let _applications_service = nwidgets_service_applications::ApplicationsService::init(cx);
         let _clipboard_service = nwidgets_service_clipboard::ClipboardService::init(cx);
         let _lock_service = nwidgets_service_lock::LockMonitor::init(cx);
-        let _system_tray_service = nwidgets_service_system_tray::SystemTrayService::init(cx);
+        let _system_tray_service = nwidgets_service_systray::SystemTrayService::init(cx);
 
         // ── Launcher Window ──
         cx.bind_keys([

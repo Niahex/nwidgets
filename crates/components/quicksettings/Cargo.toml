@@ -11,8 +11,8 @@ gpui-component.workspace = true
 nwidgets-service-bluetooth.workspace = true
 nwidgets-service-network.workspace = true
 nwidgets-service-audio.workspace = true
-nwidgets-service-system-tray.workspace = true
-nwidgets-component-system-tray = { path = "../system_tray" }
+nwidgets-service-systray.workspace = true
+nwidgets-component-systray = { path = "../systray" }
 anyhow.workspace = true
 
 [lints]
