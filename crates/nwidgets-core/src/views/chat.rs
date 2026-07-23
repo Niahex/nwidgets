@@ -20,6 +20,7 @@ impl Chat {
 impl Render for Chat {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let bg = rgb(0x434c5e);
+        let frost_border = rgb(0x88c0d0).opacity(0.3);
 
         div()
             .track_focus(&self.focus_handle)
@@ -30,16 +31,21 @@ impl Render for Chat {
             .size_full()
             .flex()
             .flex_row()
+            // ── Main Chat Container ──
             .child(
                 div()
                     .w_full()
                     .size_full()
                     .bg(bg)
+                    .border_b_1()
+                    .border_l_1()
+                    .border_color(frost_border)
                     .flex()
                     .items_center()
                     .px_2()
                     .child(div().text_color(rgb(0x88c0d0)).child("CHAT")),
             )
+            // ── Right Concave Corners Column ──
             .child(
                 div()
                     .h_full()
@@ -47,19 +53,25 @@ impl Render for Chat {
                     .flex()
                     .flex_col()
                     .child(
-                        // Coin gauche (sous la barre)
+                        // Top-Left concave corner (under top bar)
                         div().flex_none().child(
-                            Corner::new(CornerPosition::TopLeft, px(CORNER_RADIUS)).color(bg),
+                            Corner::new(CornerPosition::TopLeft, px(CORNER_RADIUS))
+                                .color(bg)
+                                .border_color(frost_border),
                         ),
                     )
                     .child(
-                        // Espace au milieu (transparent)
-                        div().flex_1(),
+                        // Vertical border line in the right column
+                        div().flex_1().flex().justify_start().child(
+                            div().w(px(1.0)).h_full().bg(frost_border),
+                        ),
                     )
                     .child(
-                        // Coin droit (sous la barre)
+                        // Bottom-Left concave corner
                         div().flex_none().child(
-                            Corner::new(CornerPosition::BottomLeft, px(CORNER_RADIUS)).color(bg),
+                            Corner::new(CornerPosition::BottomLeft, px(CORNER_RADIUS))
+                                .color(bg)
+                                .border_color(frost_border),
                         ),
                     ),
             )
