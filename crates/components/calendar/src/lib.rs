@@ -21,8 +21,6 @@ impl Render for CalendarComponent {
             .w_full()
             .flex()
             .flex_col()
-            .items_center()
-            .justify_center()
             .p_3()
             .bg(card_bg)
             .rounded_xl()
