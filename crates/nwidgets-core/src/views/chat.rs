@@ -244,18 +244,15 @@ impl Chat {
             .when(is_user, |this| {
                 this.child(
                     div()
-                        .flex()
-                        .justify_end()
-                        .child(
-                            div()
-                                .max_w(px(340.0))
-                                .p_3()
-                                .bg(rgb(0x4c566a))
-                                .rounded_xl()
-                                .text_sm()
-                                .text_color(text_main)
-                                .child(msg.content.clone()),
-                        ),
+                        .w_full()
+                        .p_3()
+                        .bg(rgb(0x3b4252))
+                        .border_1()
+                        .border_color(rgb(0x4c566a))
+                        .rounded_xl()
+                        .text_sm()
+                        .text_color(text_main)
+                        .child(msg.content.clone()),
                 )
             })
             .when(!is_user, |_this| {
