@@ -319,7 +319,7 @@ impl Chat {
     }
 
     fn render_input_bar(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let card_bg = rgb(0x3b4252);
+        let bg = rgb(0x2e3440);
         let text_muted = rgb(0xd8dee9);
         let accent = rgb(0x88c0d0);
         let frost_border = rgb(0x88c0d0).opacity(0.3);
@@ -329,7 +329,7 @@ impl Chat {
             .flex_col()
             .gap_2()
             .p_3()
-            .bg(card_bg)
+            .bg(bg)
             .border_t_1()
             .border_color(frost_border)
             .on_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
@@ -369,7 +369,7 @@ impl Chat {
                                     .px_2()
                                     .py_1()
                                     .rounded_md()
-                                    .bg(rgb(0x2e3440))
+                                    .bg(rgb(0x3b4252))
                                     .child(Icon::new("psychology").size(px(14.0)).text_color(accent))
                                     .child(
                                         div()
@@ -456,11 +456,9 @@ impl Render for Chat {
                     .flex_col()
                     .child(
                         // Top-Left concave corner (under top bar)
-                        div().flex_none().child(
-                            Corner::new(CornerPosition::TopLeft, px(CORNER_RADIUS))
-                                .color(bg)
-                                .border_color(frost_border),
-                        ),
+                        Corner::new(CornerPosition::TopLeft, px(CORNER_RADIUS))
+                            .color(bg)
+                            .border_color(frost_border),
                     )
                     .child(
                         // Vertical border line in the right column
@@ -470,11 +468,9 @@ impl Render for Chat {
                     )
                     .child(
                         // Bottom-Left concave corner
-                        div().flex_none().child(
-                            Corner::new(CornerPosition::BottomLeft, px(CORNER_RADIUS))
-                                .color(bg)
-                                .border_color(frost_border),
-                        ),
+                        Corner::new(CornerPosition::BottomLeft, px(CORNER_RADIUS))
+                            .color(bg)
+                            .border_color(frost_border),
                     ),
             )
     }
