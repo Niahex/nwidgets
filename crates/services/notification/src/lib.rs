@@ -145,7 +145,13 @@ impl NotificationService {
                     .await
                     .is_ok()
                 {
-                    let _ = connection.request_name("org.freedesktop.Notifications").await;
+                    loop {
+                        if connection.request_name("org.freedesktop.Notifications").await.is_ok() {
+                            log::info!("Successfully registered D-Bus name org.freedesktop.Notifications");
+                            break;
+                        }
+                        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                    }
                 }
             }
         })
