@@ -1,4 +1,5 @@
 use gpui::*;
+use gpui_component::tooltip::Tooltip;
 use gpui_component::Icon;
 use nwidgets_service_system_tray::{SystemTrayService, SystemTrayStateChanged};
 
@@ -26,6 +27,7 @@ impl Render for SystemTrayComponent {
         let icon_elements: Vec<_> = items
             .into_iter()
             .map(|item| {
+                let tooltip_text = item.tooltip.clone();
                 div()
                     .id(SharedString::from(format!("tray-item-{}", item.id)))
                     .flex()
@@ -34,6 +36,9 @@ impl Render for SystemTrayComponent {
                     .rounded_md()
                     .cursor_pointer()
                     .hover(|s| s.bg(rgb(0x3b4252)))
+                    .tooltip(move |window, cx| {
+                        Tooltip::new(tooltip_text.clone()).build(window, cx)
+                    })
                     .child(
                         Icon::new(SharedString::from(item.icon_name))
                             .size(px(22.0))
