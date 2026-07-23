@@ -30,7 +30,7 @@ pub fn open<T: gpui::Render + 'static>(
             ..Default::default()
         },
         |window, cx| {
-            window.set_input_region(None);
+            window.set_input_region(Some(&[]));
             build_view(window, cx)
         },
     )?;
@@ -48,6 +48,7 @@ pub fn set_visible<T: 'static>(
     let _ = handle.update(cx, |_, window, cx| {
         if visible {
             window.set_layer(Layer::Overlay);
+            window.set_input_region(None);
             window.set_keyboard_interactivity(KeyboardInteractivity::Exclusive);
             window.resize(size(px(LAUNCHER_WIDTH), px(LAUNCHER_HEIGHT)));
             if let Some(fh) = focus_handle {
@@ -56,10 +57,9 @@ pub fn set_visible<T: 'static>(
             cx.activate(true);
         } else {
             window.set_layer(Layer::Background);
-            window.set_input_region(None);
+            window.set_input_region(Some(&[]));
             window.set_keyboard_interactivity(KeyboardInteractivity::None);
             window.resize(size(px(1.0), px(1.0)));
         }
     });
 }
-

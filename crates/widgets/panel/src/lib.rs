@@ -33,7 +33,7 @@ pub fn open<T: gpui::Render + 'static>(
             ..Default::default()
         },
         |window, cx| {
-            window.set_input_region(None);
+            window.set_input_region(Some(&[]));
             build_view(window, cx)
         },
     )?;
@@ -46,12 +46,13 @@ pub fn set_visible<T: 'static>(handle: &WindowHandle<T>, visible: bool, cx: &mut
     let _ = handle.update(cx, |_, window, cx| {
         if visible {
             window.set_layer(Layer::Overlay);
+            window.set_input_region(None);
             window.set_keyboard_interactivity(KeyboardInteractivity::Exclusive);
             window.resize(size(px(PANEL_WIDTH), px(2000.0)));
             cx.activate(true);
         } else {
             window.set_layer(Layer::Background);
-            window.set_input_region(None);
+            window.set_input_region(Some(&[]));
             window.set_keyboard_interactivity(KeyboardInteractivity::None);
             window.resize(size(px(1.0), px(1.0)));
         }
@@ -63,12 +64,13 @@ pub fn toggle(handle: &AnyWindowHandle, visible: bool, cx: &mut App) {
     let _ = handle.update(cx, |_, window, cx| {
         if visible {
             window.set_layer(Layer::Overlay);
+            window.set_input_region(None);
             window.set_keyboard_interactivity(KeyboardInteractivity::Exclusive);
             window.resize(size(px(PANEL_WIDTH), px(2000.0)));
             cx.activate(true);
         } else {
             window.set_layer(Layer::Background);
-            window.set_input_region(None);
+            window.set_input_region(Some(&[]));
             window.set_keyboard_interactivity(KeyboardInteractivity::None);
             window.resize(size(px(1.0), px(1.0)));
         }
