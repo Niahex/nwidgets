@@ -9,6 +9,33 @@ const TOAST_TIMEOUT_SECS: u64 = 5;
 const MAX_ACTIVE_TOASTS: usize = 5;
 const CORNER_RADIUS: f32 = 12.0;
 
+#[derive(IntoElement)]
+struct RoundedBottomLeftCorner {
+    radius: Pixels,
+    border_color: Hsla,
+}
+
+impl RenderOnce for RoundedBottomLeftCorner {
+    fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
+        let r = self.radius;
+        let b_color = self.border_color;
+        canvas(
+            move |_, _, _| {},
+            move |bounds, _, window: &mut Window, _| {
+                let ox = bounds.origin.x;
+                let oy = bounds.origin.y;
+                let mut stroke_path = PathBuilder::stroke(px(1.0));
+                stroke_path.move_to(point(ox, oy));
+                stroke_path.arc_to(point(r, r), px(0.), false, false, point(ox + r, oy + r));
+                if let Ok(built_stroke) = stroke_path.build() {
+                    window.paint_path(built_stroke, b_color);
+                }
+            },
+        )
+        .size(r)
+    }
+}
+
 #[derive(Clone)]
 pub struct ActiveToast {
     pub notification: Notification,
@@ -103,7 +130,7 @@ impl NtfView {
             let handle = handle.clone();
             let count = self.active_toasts.len();
             let visible = count > 0;
-            let height = (count as f32 * 110.0).min(550.0) + 16.0;
+            let height = (count as f32 * 110.0).min(550.0) + 16.0 + CORNER_RADIUS;
 
             let _ = handle.update(cx, |_, window, _| {
                 if visible {
@@ -144,8 +171,6 @@ impl Render for NtfView {
             .w(px(380.0))
             .bg(panel_bg)
             .rounded_bl(px(CORNER_RADIUS))
-            .border_b_1()
-            .border_color(frost_border)
             .relative()
             .children(self.active_toasts.iter().map(|toast| {
                 let notif = &toast.notification;
@@ -231,53 +256,89 @@ impl Render for NtfView {
                         )
                     })
             }))
-            // Right border line: from y=0 down to y=H-12 (where bottom-right concave corner starts)
+            // Left border line (y=12 down to y=H-12)
+            .child(
+                div()
+                    .absolute()
+                    .top(px(CORNER_RADIUS))
+                    .left_0()
+                    .bottom(px(CORNER_RADIUS))
+                    .w(px(1.0))
+                    .bg(frost_border),
+            )
+            // Bottom-Left rounded corner arc stroke
+            .child(
+                div()
+                    .absolute()
+                    .bottom_0()
+                    .left_0()
+                    .child(RoundedBottomLeftCorner {
+                        radius: px(CORNER_RADIUS),
+                        border_color: frost_border.into(),
+                    }),
+            )
+            // Bottom border line (x=12 to x=380)
+            .child(
+                div()
+                    .absolute()
+                    .bottom_0()
+                    .left(px(CORNER_RADIUS))
+                    .right_0()
+                    .h(px(1.0))
+                    .bg(frost_border),
+            )
+            // Right border line (y=0 down to y=H)
             .child(
                 div()
                     .absolute()
                     .top_0()
                     .right_0()
-                    .bottom(px(CORNER_RADIUS))
+                    .bottom_0()
                     .w(px(1.0))
                     .bg(frost_border),
-            )
-            // Bottom-Right concave corner
-            .child(
-                div()
-                    .absolute()
-                    .bottom_0()
-                    .right_0()
-                    .size(px(CORNER_RADIUS))
-                    .child(
-                        Corner::new(CornerPosition::BottomRight, px(CORNER_RADIUS))
-                            .color(panel_bg)
-                            .border_color(frost_border),
-                    ),
             );
 
         div()
             .size_full()
             .flex()
-            .flex_row()
-            // Left column: Top-Left concave corner + Left vertical border line below corner
+            .flex_col()
+            // ── Top Section: Left concave corner column + Main notification body ──
             .child(
                 div()
-                    .h_full()
-                    .w(px(CORNER_RADIUS))
+                    .w_full()
+                    .flex_1()
                     .flex()
-                    .flex_col()
+                    .flex_row()
+                    // Left column for Top-Left concave corner
+                    .child(
+                        div()
+                            .h_full()
+                            .w(px(CORNER_RADIUS))
+                            .flex()
+                            .flex_col()
+                            .child(
+                                Corner::new(CornerPosition::TopRight, px(CORNER_RADIUS))
+                                    .color(panel_bg)
+                                    .border_color(frost_border),
+                            )
+                            .child(div().flex_1()),
+                    )
+                    .child(toasts_list),
+            )
+            // ── Bottom Row: Right concave corner placed BELOW the notification body ──
+            .child(
+                div()
+                    .w_full()
+                    .h(px(CORNER_RADIUS))
+                    .flex()
+                    .flex_row()
+                    .child(div().flex_1()) // Transparent space under main body
                     .child(
                         Corner::new(CornerPosition::TopRight, px(CORNER_RADIUS))
                             .color(panel_bg)
                             .border_color(frost_border),
-                    )
-                    .child(
-                        div().flex_1().flex().justify_end().child(
-                            div().w(px(1.0)).h_full().bg(frost_border),
-                        ),
                     ),
             )
-            .child(toasts_list)
             .into_any_element()
     }
 }
