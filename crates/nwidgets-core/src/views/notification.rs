@@ -227,43 +227,73 @@ impl Render for NtfView {
 
         div()
             .size_full()
-            .flex()
-            .flex_row()
-            // 1. Left column for Top-Left concave corner
+            .relative()
+            // 1. Top-Left Concave Corner Arc
             .child(
                 div()
-                    .w(px(CORNER_RADIUS))
-                    .h_full()
+                    .absolute()
+                    .top_0()
+                    .left_0()
+                    .size(px(CORNER_RADIUS))
                     .child(
                         Corner::new(CornerPosition::TopRight, px(CORNER_RADIUS))
                             .color(panel_bg)
                             .border_color(frost_border),
                     ),
             )
-            // 2. Main Notification Container
+            // 2. Main Notification Content Body
             .child(
                 div()
+                    .absolute()
+                    .top_0()
+                    .left(px(CORNER_RADIUS))
                     .w(px(380.0))
                     .h_full()
                     .bg(panel_bg)
                     .p_3()
-                    .border_l_1()
-                    .border_r_1()
-                    .border_b_1()
-                    .border_color(frost_border)
-                    .relative()
-                    .child(toasts_content)
-                    // Bottom-Right concave corner overlay
+                    .child(toasts_content),
+            )
+            // 3. Left Border Line (from y=12 down to y=H)
+            .child(
+                div()
+                    .absolute()
+                    .top(px(CORNER_RADIUS))
+                    .left(px(CORNER_RADIUS))
+                    .bottom_0()
+                    .w(px(1.0))
+                    .bg(frost_border),
+            )
+            // 4. Right Border Line (from y=0 down to y=H-12)
+            .child(
+                div()
+                    .absolute()
+                    .top_0()
+                    .right_0()
+                    .bottom(px(CORNER_RADIUS))
+                    .w(px(1.0))
+                    .bg(frost_border),
+            )
+            // 5. Bottom Border Line (from x=12 to x=380)
+            .child(
+                div()
+                    .absolute()
+                    .bottom_0()
+                    .left(px(CORNER_RADIUS))
+                    .right(px(CORNER_RADIUS))
+                    .h(px(1.0))
+                    .bg(frost_border),
+            )
+            // 6. Bottom-Right Concave Corner Arc
+            .child(
+                div()
+                    .absolute()
+                    .bottom_0()
+                    .right_0()
+                    .size(px(CORNER_RADIUS))
                     .child(
-                        div()
-                            .absolute()
-                            .bottom_0()
-                            .right_0()
-                            .child(
-                                Corner::new(CornerPosition::TopRight, px(CORNER_RADIUS))
-                                    .color(panel_bg)
-                                    .border_color(frost_border),
-                            ),
+                        Corner::new(CornerPosition::TopRight, px(CORNER_RADIUS))
+                            .color(panel_bg)
+                            .border_color(frost_border),
                     ),
             )
             .into_any_element()
