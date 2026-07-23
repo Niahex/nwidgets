@@ -144,10 +144,9 @@ impl Render for NtfView {
             .w(px(380.0))
             .bg(panel_bg)
             .rounded_bl(px(CORNER_RADIUS))
-            .border_l_1()
-            .border_r_1()
             .border_b_1()
             .border_color(frost_border)
+            .relative()
             .children(self.active_toasts.iter().map(|toast| {
                 let notif = &toast.notification;
                 let notif_id = notif.id;
@@ -231,20 +230,30 @@ impl Render for NtfView {
                                 .child(truncated_body),
                         )
                     })
-            }));
+            }))
+            // Right border line on the main notification body
+            .child(
+                div()
+                    .absolute()
+                    .top_0()
+                    .right_0()
+                    .bottom_0()
+                    .w(px(1.0))
+                    .bg(frost_border),
+            );
 
         div()
             .size_full()
             .flex()
             .flex_col()
-            // ── Top Section: Left concave corner + Main notification body ──
+            // ── Top Section: Left concave corner column + Main notification body ──
             .child(
                 div()
                     .w_full()
                     .flex_1()
                     .flex()
                     .flex_row()
-                    // Left column for Top-Left concave corner
+                    // Left column for Top-Left concave corner + Left vertical border below corner
                     .child(
                         div()
                             .h_full()
@@ -256,7 +265,11 @@ impl Render for NtfView {
                                     .color(panel_bg)
                                     .border_color(frost_border),
                             )
-                            .child(div().flex_1()),
+                            .child(
+                                div().flex_1().flex().justify_end().child(
+                                    div().w(px(1.0)).h_full().bg(frost_border),
+                                ),
+                            ),
                     )
                     .child(toasts_list),
             )
